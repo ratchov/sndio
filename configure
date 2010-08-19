@@ -1,0 +1,149 @@
+#!/bin/sh
+
+#
+# display help screeen
+#
+help() {
+cat << END
+Usage: configure [options]
+--prefix=DIR			set install prefix to DIR [$prefix]
+--bindir=DIR			install executables in DIR [\$prefix/bin]
+--datadir=DIR			install read-only data in DIR [\$prefix/share]
+--includedir=DIR		install header files in DIR [\$prefix/include]
+--libdir=DIR			install libraries in DIR [\$prefix/lib]
+--mandir=DIR			install man pages in DIR [\$prefix/man]
+--enable-alsa			enable alsa backend [$alsa]
+--disable-alsa			disable alsa backend
+--enable-sun			enable sun backend [$sun]
+--disable-sun			disable sun backend
+END
+}
+
+#
+# defaults
+#
+prefix=/usr/local			# where to install sndio
+so="libsndio.so.\${MAJ}.\${MIN}"	# shared libs to build
+alsa=no					# do we want alsa support ?
+sun=no					# do we want sun support ?
+unset vars				# variables passed as arguments
+unset bindir				# path where to install binaries
+unset datadir				# path where to install doc
+unset mandir				# path where to install man pages
+unset includedir			# path where to install header file
+unset libdir				# path where to install library
+unset defs				# no extra #defines
+unset ldadd				# no extra libraries (-l options)
+
+if [ `uname` = Linux ]; then
+	alsa=yes
+	so="$so libsndio.so.\${MAJ}"
+	so="$so libsndio.so"
+	defs='-DCOMPAT_GETPEEREID -DCOMPAT_ISSETUGID \\\
+	-DCOMPAT_STRLCPY -DCOMPAT_STRTONUM \\\
+	-DCOMPAT_LETOH -DCOMPAT_PACKED'
+fi
+
+if [ `uname` = OpenBSD ]; then
+	sun=yes
+fi
+
+# shell word separator (none)
+IFS=''
+
+# sed-quoted new-line
+nl='\
+'
+
+for i; do
+	case "$i" in
+	--prefix=*)
+		prefix="${i#--prefix=}"
+		shift;;
+	--bindir=*)
+		bindir="${i#--bindir=}"
+		shift;;
+	--datadir=*)
+		datadir="${i#--datadir=}"
+		shift;;
+	--includedir=*)
+		includedir="${i#--includedir=}"
+		shift;;
+	--libdir=*)
+		libdir="${i#--libdir=}"
+		shift;;
+	--mandir=*)
+		mandir="${i#--mandir=}"
+		shift;;
+	--enable-alsa)
+		alsa=yes
+		shift;;
+	--disable-alsa)
+		alsa=no
+		shift;;
+	--enable-sun)
+		sun=yes
+		shift;;
+	--disable-sun)
+		sun=no
+		shift;;
+	CC=*|CFLAGS=*|LDFLAGS=*)
+		vars="$vars$i$nl"
+		shift;;
+	*)
+		help
+		exit 1
+		;;
+	esac
+done
+
+#
+# if $xxxdir is not specified, define it to $prefix/xxx
+#
+bindir="${bindir:-$prefix/bin}"
+datadir="${datadir:-$prefix/share}"
+includedir="${includedir:-$prefix/include}"
+libdir="${libdir:-$prefix/lib}"
+mandir="${mandir:-$prefix/man}"
+
+#
+# if using ALSA, add corresponding parameters
+#
+if [ $alsa = yes ]; then
+	defs="$defs -DUSE_ALSA"
+	ldadd="$ldadd -lasound"
+fi
+
+#
+# if using Sun API, add corresponding parameters
+#
+if [ $sun = yes ]; then
+	defs="$defs -DUSE_SUN"
+fi
+
+for makefile in Makefile aucat/Makefile libsndio/Makefile
+do
+	sed \
+	-e "s:@bindir@:$bindir:" \
+	-e "s:@datadir@:$datadir:" \
+	-e "s:@includedir@:$includedir:" \
+	-e "s:@libdir@:$libdir:" \
+	-e "s:@mandir@:$mandir:" \
+	-e "s:@defs@:$defs:" \
+	-e "s:@ldadd@:$ldadd:" \
+	-e "s:@so@:$so:" \
+	-e "s:@vars@:${vars}:" \
+	< $makefile.in > $makefile
+done
+
+echo
+echo "bindir................... $bindir"
+echo "datadir.................. $datadir"
+echo "includedir............... $includedir"
+echo "libdir................... $libdir"
+echo "mandir................... $mandir"
+echo "alsa..................... $alsa"
+echo "sun...................... $sun"
+echo
+echo "Do \"make && make install\" to compile and install sndio"
+echo

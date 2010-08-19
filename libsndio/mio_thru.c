@@ -1,4 +1,4 @@
-/*	$OpenBSD: mio_thru.c,v 1.10 2010/07/21 23:00:16 ratchov Exp $	*/
+/*	$OpenBSD$	*/
 /*
  * Copyright (c) 2008 Alexandre Ratchov <alex@caoua.org>
  *
@@ -29,6 +29,9 @@
 
 #include "amsg.h"
 #include "mio_priv.h"
+#ifdef COMPAT_STRLCPY
+#include "bsd-compat.h"
+#endif
 
 #define THRU_SOCKET "midithru"
 

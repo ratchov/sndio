@@ -1,4 +1,4 @@
-/*	$OpenBSD: sndio.c,v 1.25 2010/04/24 06:15:54 ratchov Exp $	*/
+/*	$OpenBSD$	*/
 /*
  * Copyright (c) 2008 Alexandre Ratchov <alex@caoua.org>
  *
@@ -29,6 +29,9 @@
 #include <unistd.h>
 
 #include "sndio_priv.h"
+#ifdef COMPAT_ISSETUGID
+#include "bsd-compat.h"
+#endif
 
 #define SIO_PAR_MAGIC	0x83b905a4
 
@@ -171,6 +174,9 @@ sio_open(const char *str, unsigned mode, int nbio)
 {
 	static char prefix_aucat[] = "aucat";
 	static char prefix_sun[] = "sun";
+#ifdef USE_ALSA
+	static char prefix_alsa[] = "hw";
+#endif
 	struct sio_hdl *hdl;
 	struct stat sb;
 	char *sep, buf[NAME_MAX];
@@ -192,15 +198,26 @@ sio_open(const char *str, unsigned mode, int nbio)
 		hdl = sio_open_aucat("0", mode, nbio);
 		if (hdl != NULL)
 			return hdl;
+#ifdef USE_SUN
 		if (stat("/dev/audio", &sb) == 0 && S_ISCHR(sb.st_mode)) {
 			snprintf(buf, sizeof(buf), "%u",
 			    minor(sb.st_rdev) & 0xf);
 		} else
 			strlcpy(buf, "0", sizeof(buf));
-		return sio_open_sun(buf, mode, nbio);
+		hdl = sio_open_sun(buf, mode, nbio);
+		if (hdl != NULL)
+			return hdl;
+#endif
+#ifdef USE_ALSA
+		hdl = sio_open_alsa("default", mode, nbio);
+		if (hdl != NULL)
+			return hdl;
+#endif
+		return NULL;
 	}
 	sep = strchr(str, ':');
 	if (sep == NULL) {
+#ifdef USE_SUN
 		/*
 		 * try legacy "/dev/audioxxx" or ``socket'' device name
 		 */
@@ -210,14 +227,24 @@ sio_open(const char *str, unsigned mode, int nbio)
 		}
 		snprintf(buf, sizeof(buf), "%u", minor(sb.st_rdev) & 0xf);
 		return sio_open_sun(buf, mode, nbio);
+#else
+		return NULL;
+#endif
 	}
 	len = sep - str;
 	if (len == (sizeof(prefix_aucat) - 1) &&
 	    memcmp(str, prefix_aucat, len) == 0)
 		return sio_open_aucat(sep + 1, mode, nbio);
+#ifdef USE_SUN
 	if (len == (sizeof(prefix_sun) - 1) &&
 	    memcmp(str, prefix_sun, len) == 0)
 		return sio_open_sun(sep + 1, mode, nbio);
+#endif
+#ifdef USE_ALSA
+	if (len == (sizeof(prefix_alsa) - 1) &&
+	    memcmp(str, prefix_alsa, len) == 0)
+		return sio_open_alsa(sep + 1, mode, nbio);
+#endif
 	DPRINTF("sio_open: %s: unknown device type\n", str);
 	return NULL;
 }

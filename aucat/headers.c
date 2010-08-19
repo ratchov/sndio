@@ -1,4 +1,4 @@
-/*	$OpenBSD: headers.c,v 1.18 2010/06/05 16:54:19 ratchov Exp $	*/
+/*	$OpenBSD$	*/
 /*
  * Copyright (c) 2008 Alexandre Ratchov <alex@caoua.org>
  *
@@ -27,6 +27,9 @@
 #include "aparams.h"
 #include "conf.h"
 #include "wav.h"
+#if defined(COMPAT_LETOH) || defined(COMPAT_PACKED)
+#include "bsd-compat.h"
+#endif
 
 /*
  * Encoding IDs used in .wav headers.

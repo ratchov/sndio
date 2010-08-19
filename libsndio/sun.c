@@ -1,4 +1,4 @@
-/*	$OpenBSD: sun.c,v 1.40 2010/08/06 06:52:17 ratchov Exp $	*/
+/*	$OpenBSD$	*/
 /*
  * Copyright (c) 2008 Alexandre Ratchov <alex@caoua.org>
  *
@@ -25,7 +25,7 @@
  * implement generic blocking sio_read() and sio_write() with poll(2)
  * and use non-blocking sio_ops only
  */
-
+#ifdef USE_SUN
 #include <sys/types.h>
 #include <sys/ioctl.h>
 #include <sys/audioio.h>
@@ -891,7 +891,7 @@ sun_revents(struct sio_hdl *sh, struct pollfd *pfd)
 {
 	struct sun_hdl *hdl = (struct sun_hdl *)sh;
 	struct audio_offset ao;
-	int xrun, dmove, dierr = 0, doerr = 0, delta;
+	int xrun, dmove, dierr = 0, doerr = 0, doffset = 0;
 	int revents = pfd->revents;
 
 	if (hdl->sio.mode & SIO_PLAY) {
@@ -902,8 +902,8 @@ sun_revents(struct sio_hdl *sh, struct pollfd *pfd)
 		}
 		doerr = xrun - hdl->oerr;
 		hdl->oerr = xrun;
-		if (!(hdl->sio.mode & SIO_REC))
-			dierr = doerr;
+		if (hdl->sio.mode & SIO_REC)
+			doffset += doerr;
 	}
 	if (hdl->sio.mode & SIO_REC) {
 		if (ioctl(hdl->fd, AUDIO_RERROR, &xrun) < 0) {
@@ -913,10 +913,10 @@ sun_revents(struct sio_hdl *sh, struct pollfd *pfd)
 		}
 		dierr = xrun - hdl->ierr;
 		hdl->ierr = xrun;
-		if (!(hdl->sio.mode & SIO_PLAY))
-			doerr = dierr;
+		if (hdl->sio.mode & SIO_PLAY)
+			doffset -= dierr;
 	}
-	hdl->offset += doerr - dierr;
+	hdl->offset += doffset;
 	dmove = dierr > doerr ? dierr : doerr;
 	hdl->idelta -= dmove;
 	hdl->odelta -= dmove;
@@ -927,29 +927,25 @@ sun_revents(struct sio_hdl *sh, struct pollfd *pfd)
 			hdl->sio.eof = 1;
 			return POLLHUP;
 		}
-		delta = (ao.samples - hdl->obytes) / hdl->obpf;
+		hdl->odelta += (ao.samples - hdl->obytes) / hdl->obpf;
 		hdl->obytes = ao.samples;
-		hdl->odelta += delta;
-		if (!(hdl->sio.mode & SIO_REC))
-			hdl->idelta += delta;
+		if (hdl->odelta > 0) {
+			sio_onmove_cb(&hdl->sio, hdl->odelta);
+			hdl->odelta = 0;
+		}
 	}
-	if ((revents & POLLIN) && (hdl->sio.mode & SIO_REC)) {
+	if ((revents & POLLIN) && !(hdl->sio.mode & SIO_PLAY)) {
 		if (ioctl(hdl->fd, AUDIO_GETIOFFS, &ao) < 0) {
 			DPERROR("sun_revents: GETIOFFS");
 			hdl->sio.eof = 1;
 			return POLLHUP;
 		}
-		delta = (ao.samples - hdl->ibytes) / hdl->ibpf;
+		hdl->idelta += (ao.samples - hdl->ibytes) / hdl->ibpf;
 		hdl->ibytes = ao.samples;
-		hdl->idelta += delta;
-		if (!(hdl->sio.mode & SIO_PLAY))
-			hdl->odelta += delta;
-	}
-	delta = (hdl->idelta > hdl->odelta) ? hdl->idelta : hdl->odelta;
-	if (delta > 0) {
-		sio_onmove_cb(&hdl->sio, delta);
-		hdl->idelta -= delta;
-		hdl->odelta -= delta;
+		if (hdl->idelta > 0) {
+			sio_onmove_cb(&hdl->sio, hdl->idelta);
+			hdl->idelta = 0;
+		}
 	}
 
 	/*
@@ -967,3 +963,4 @@ sun_revents(struct sio_hdl *sh, struct pollfd *pfd)
 	}
 	return revents;
 }
+#endif /* defined USE_SUN */

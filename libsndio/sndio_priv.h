@@ -1,4 +1,4 @@
-/*	$OpenBSD: sndio_priv.h,v 1.8 2009/07/25 11:15:56 ratchov Exp $	*/
+/*	$OpenBSD$	*/
 /*
  * Copyright (c) 2008 Alexandre Ratchov <alex@caoua.org>
  *
@@ -78,7 +78,12 @@ struct sio_ops {
 };
 
 struct sio_hdl *sio_open_aucat(const char *, unsigned, int);
+#ifdef USE_SUN
 struct sio_hdl *sio_open_sun(const char *, unsigned, int);
+#endif
+#ifdef USE_ALSA
+struct sio_hdl *sio_open_alsa(const char *, unsigned, int);
+#endif
 void sio_create(struct sio_hdl *, struct sio_ops *, unsigned, int);
 void sio_destroy(struct sio_hdl *);
 void sio_onmove_cb(struct sio_hdl *, int);

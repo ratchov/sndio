@@ -1,4 +1,4 @@
-/*	$OpenBSD: mio.c,v 1.8 2010/04/24 06:15:54 ratchov Exp $	*/
+/*	$OpenBSD$	*/
 /*
  * Copyright (c) 2008 Alexandre Ratchov <alex@caoua.org>
  *
@@ -29,6 +29,9 @@
 #include <unistd.h>
 
 #include "mio_priv.h"
+#ifdef COMPAT_ISSETUGID
+#include "bsd-compat.h"
+#endif
 
 #ifdef DEBUG
 /*

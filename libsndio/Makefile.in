@@ -1,0 +1,131 @@
+# extra includes paths (-I options)
+INCLUDE = -I../aucat -I../bsd-compat
+
+# extra libraries paths (-L options)
+LIB =
+
+# extra defines (-D options)
+DEFS = -DDEBUG @defs@
+
+# extra libraries (-l options)
+LDADD = @ldadd@
+
+# extra compiler flags to produce objects for shared library
+SO_CFLAGS = -fPIC
+
+# extra compiler flags to produce a shared library with the given name
+SO_LDFLAGS = -shared -Wl,-soname=libsndio.so.${MAJ}.${MIN}
+
+# variables defined on configure script command line (if any)
+@vars@
+
+#
+# headers, libraries and man pages installation paths
+#
+INCLUDE_DIR = @includedir@
+LIB_DIR = @libdir@
+MAN3_DIR = @mandir@/man3
+MAN7_DIR = @mandir@/man7
+
+# man3 and man7 pages
+MAN3 = \
+	sio_open.3 \
+	sio_close.3 sio_setpar.3 sio_getpar.3 sio_getcap.3 \
+	sio_start.3 sio_stop.3 sio_read.3 sio_write.3 sio_onmove.3 \
+	sio_nfds.3 sio_pollfd.3 sio_revents.3 sio_eof.3 \
+	sio_setvol.3 sio_onvol.3 sio_initpar.3 \
+	mio_open.3 \
+	mio_close.3 mio_read.3 mio_write.3 mio_nfds.3 mio_pollfd.3 \
+	mio_revents.3 mio_eof.3
+MAN7 = sndio.7
+
+#
+# libraries to build and install
+#
+MAJ = 3
+MIN = 3
+SO = @so@
+
+all:		${SO}
+
+install:
+		mkdir -p ${DESTDIR}${INCLUDE_DIR}
+		mkdir -p ${DESTDIR}${LIB_DIR}
+		mkdir -p ${DESTDIR}${MAN3_DIR}
+		mkdir -p ${DESTDIR}${MAN7_DIR}
+		cp sndio.h ${DESTDIR}${INCLUDE_DIR}
+		cp -R ${SO} ${DESTDIR}${LIB_DIR}
+		cp sio_open.3 ${DESTDIR}${MAN3_DIR}
+		ln -sf sio_open.3 ${DESTDIR}${MAN3_DIR}/sio_close.3
+		ln -sf sio_open.3 ${DESTDIR}${MAN3_DIR}/sio_setpar.3
+		ln -sf sio_open.3 ${DESTDIR}${MAN3_DIR}/sio_getpar.3
+		ln -sf sio_open.3 ${DESTDIR}${MAN3_DIR}/sio_getcap.3
+		ln -sf sio_open.3 ${DESTDIR}${MAN3_DIR}/sio_start.3
+		ln -sf sio_open.3 ${DESTDIR}${MAN3_DIR}/sio_stop.3
+		ln -sf sio_open.3 ${DESTDIR}${MAN3_DIR}/sio_read.3
+		ln -sf sio_open.3 ${DESTDIR}${MAN3_DIR}/sio_write.3
+		ln -sf sio_open.3 ${DESTDIR}${MAN3_DIR}/sio_onmove.3
+		ln -sf sio_open.3 ${DESTDIR}${MAN3_DIR}/sio_nfds.3
+		ln -sf sio_open.3 ${DESTDIR}${MAN3_DIR}/sio_pollfd.3
+		ln -sf sio_open.3 ${DESTDIR}${MAN3_DIR}/sio_revents.3
+		ln -sf sio_open.3 ${DESTDIR}${MAN3_DIR}/sio_eof.3
+		ln -sf sio_open.3 ${DESTDIR}${MAN3_DIR}/sio_setvol.3
+		ln -sf sio_open.3 ${DESTDIR}${MAN3_DIR}/sio_onvol.3
+		ln -sf sio_open.3 ${DESTDIR}${MAN3_DIR}/sio_initpar.3
+		cp mio_open.3 ${DESTDIR}${MAN3_DIR}
+		ln -sf mio_open.3 ${DESTDIR}${MAN3_DIR}/mio_close.3
+		ln -sf mio_open.3 ${DESTDIR}${MAN3_DIR}/mio_read.3
+		ln -sf mio_open.3 ${DESTDIR}${MAN3_DIR}/mio_write.3
+		ln -sf mio_open.3 ${DESTDIR}${MAN3_DIR}/mio_nfds.3
+		ln -sf mio_open.3 ${DESTDIR}${MAN3_DIR}/mio_pollfd.3
+		ln -sf mio_open.3 ${DESTDIR}${MAN3_DIR}/mio_revents.3
+		ln -sf mio_open.3 ${DESTDIR}${MAN3_DIR}/mio_eof.3
+		cp sndio.7 ${DESTDIR}${MAN7_DIR}
+
+uninstall:
+		rm -f ${DESTDIR}${INCLUDE_DIR}/sndio.h
+		cd ${DESTDIR}${LIB_DIR} && rm -f ${SO}
+		cd ${DESTDIR}${MAN3_DIR} && rm -f ${MAN3}
+		cd ${DESTDIR}${MAN7_DIR} && rm -f ${MAN7}
+
+clean:
+		rm -f -- ${SO} *.o *~ *.bak *.core core
+
+# ---------------------------------------------------------- dependencies ---
+
+OBJS = alsa.o aucat.o sndio.o mio_rmidi.o mio_thru.o mio.o sun.o \
+getpeereid.o issetugid.o strlcpy.o strtonum.o
+
+.c.o:
+		${CC} ${CFLAGS} ${SO_CFLAGS} ${INCLUDE} ${DEFS} -o $@ -c $<
+
+libsndio.so.${MAJ}.${MIN}:	${OBJS}
+		${CC} ${LDFLAGS} ${SO_CFLAGS} ${SO_LDFLAGS} -o libsndio.so.${MAJ}.${MIN} ${OBJS}
+
+libsndio.so.${MAJ}:
+		ln -sf libsndio.so.${MAJ}.${MIN} libsndio.so.${MAJ}
+
+libsndio.so:
+		ln -sf libsndio.so.${MAJ} libsndio.so
+
+getpeereid.o:	../bsd-compat/getpeereid.c
+		${CC} ${CFLAGS} ${SO_CFLAGS} ${INCLUDE} ${DEFS} -c -o getpeereid.o ../bsd-compat/getpeereid.c
+
+issetugid.o:	../bsd-compat/issetugid.c
+		${CC} ${CFLAGS} ${SO_CFLAGS} ${INCLUDE} ${DEFS} -c -o issetugid.o ../bsd-compat/issetugid.c
+
+strlcpy.o:	../bsd-compat/strlcpy.c
+		${CC} ${CFLAGS} ${SO_CFLAGS} ${INCLUDE} ${DEFS} -c -o strlcpy.o ../bsd-compat/strlcpy.c
+
+strtonum.o:	../bsd-compat/strtonum.c
+		${CC} ${CFLAGS} ${SO_CFLAGS} ${INCLUDE} ${DEFS} -c -o strtonum.o ../bsd-compat/strtonum.c
+
+alsa.o:		alsa.c sndio_priv.h sndio.h
+aucat.o:	aucat.c ../aucat/amsg.h sndio_priv.h sndio.h \
+		../bsd-compat/bsd-compat.h
+mio.o:		mio.c mio_priv.h sndio.h ../bsd-compat/bsd-compat.h
+mio_rmidi.o:	mio_rmidi.c mio_priv.h sndio.h
+mio_thru.o:	mio_thru.c ../aucat/amsg.h mio_priv.h sndio.h \
+		../bsd-compat/bsd-compat.h
+sndio.o:	sndio.c sndio_priv.h sndio.h ../bsd-compat/bsd-compat.h
+sun.o:		sun.c sndio_priv.h sndio.h

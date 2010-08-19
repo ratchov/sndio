@@ -1,4 +1,4 @@
-/*	$OpenBSD: midi.c,v 1.28 2010/07/06 01:12:45 ratchov Exp $	*/
+/*	$OpenBSD$	*/
 /*
  * Copyright (c) 2008 Alexandre Ratchov <alex@caoua.org>
  *
@@ -34,6 +34,9 @@
 #include "midi.h"
 #ifdef DEBUG
 #include "dbg.h"
+#endif
+#ifdef COMPAT_STRLCPY
+#include "bsd-compat.h"
 #endif
 
 /*

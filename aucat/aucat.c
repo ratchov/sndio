@@ -1,4 +1,4 @@
-/*	$OpenBSD: aucat.c,v 1.103 2010/08/19 06:31:06 ratchov Exp $	*/
+/*	$OpenBSD$	*/
 /*
  * Copyright (c) 2008 Alexandre Ratchov <alex@caoua.org>
  *
@@ -30,7 +30,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <varargs.h>
 
 #include "abuf.h"
 #include "aparams.h"
@@ -43,6 +42,9 @@
 #include "wav.h"
 #ifdef DEBUG
 #include "dbg.h"
+#endif
+#ifdef COMPAT_STRTONUM
+#include "bsd-compat.h"
 #endif
 
 /*
@@ -181,7 +183,7 @@ opt_mode(void)
 	char *p = optarg;
 	size_t len;
 
-	for (p = optarg; *p != NULL; p++) {
+	for (p = optarg; *p != '\0'; p++) {
 		len = strcspn(p, ",");
 		if (strncmp("play", p, len) == 0) {
 			mode |= MODE_PLAY;

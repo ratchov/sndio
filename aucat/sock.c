@@ -1,4 +1,4 @@
-/*	$OpenBSD: sock.c,v 1.50 2010/06/05 16:00:52 ratchov Exp $	*/
+/*	$OpenBSD$	*/
 /*
  * Copyright (c) 2008 Alexandre Ratchov <alex@caoua.org>
  *
@@ -31,6 +31,9 @@
 #include "sock.h"
 #ifdef DEBUG
 #include "dbg.h"
+#endif
+#ifdef COMPAT_GETPEEREID
+#include "bsd-compat.h"
 #endif
 
 void sock_attach(struct sock *, int);

@@ -1,0 +1,19 @@
+all:
+	cd libsndio && ${MAKE}
+	cd aucat && ${MAKE}
+
+install:
+	cd libsndio && ${MAKE} install
+	cd aucat && ${MAKE} install
+
+uninstall:
+	cd libsndio && ${MAKE} uninstall
+	cd aucat && ${MAKE} uninstall
+
+clean:
+	cd libsndio && ${MAKE} clean
+	cd aucat && ${MAKE} clean
+
+distclean:	clean
+	rm -f Makefile libsndio/Makefile aucat/Makefile
+

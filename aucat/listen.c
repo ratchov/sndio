@@ -1,4 +1,4 @@
-/*	$OpenBSD: listen.c,v 1.11 2009/09/27 11:51:20 ratchov Exp $	*/
+/*	$OpenBSD$	*/
 /*
  * Copyright (c) 2008 Alexandre Ratchov <alex@caoua.org>
  *
@@ -31,6 +31,9 @@
 #include "conf.h"
 #include "listen.h"
 #include "sock.h"
+#ifdef COMPAT_STRLCPY
+#include "bsd-compat.h"
+#endif
 
 struct fileops listen_ops = {
 	"listen",

@@ -1,4 +1,4 @@
-/*	$OpenBSD: aucat.c,v 1.41 2010/06/05 16:00:52 ratchov Exp $	*/
+/*	$OpenBSD$	*/
 /*
  * Copyright (c) 2008 Alexandre Ratchov <alex@caoua.org>
  *
@@ -29,6 +29,9 @@
 
 #include "amsg.h"
 #include "sndio_priv.h"
+#ifdef COMPAT_STRLCPY
+#include "bsd-compat.h"
+#endif
 
 struct aucat_hdl {
 	struct sio_hdl sio;
