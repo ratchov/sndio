@@ -209,7 +209,7 @@ sio_open(const char *str, unsigned mode, int nbio)
 			return hdl;
 #endif
 #ifdef USE_ALSA
-		hdl = sio_open_alsa("default", mode, nbio);
+		hdl = sio_open_alsa("0", mode, nbio);
 		if (hdl != NULL)
 			return hdl;
 #endif
