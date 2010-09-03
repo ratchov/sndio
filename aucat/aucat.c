@@ -14,6 +14,9 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
+#ifdef COMPAT_STRTONUM
+#include "bsd-compat.h"
+#endif
 #include <sys/param.h>
 #include <sys/queue.h>
 #include <sys/stat.h>
@@ -23,6 +26,7 @@
 #include <err.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <grp.h>
 #include <limits.h>
 #include <pwd.h>
 #include <signal.h>
@@ -42,9 +46,6 @@
 #include "wav.h"
 #ifdef DEBUG
 #include "dbg.h"
-#endif
-#ifdef COMPAT_STRTONUM
-#include "bsd-compat.h"
 #endif
 
 /*
