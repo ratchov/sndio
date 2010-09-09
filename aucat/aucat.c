@@ -392,7 +392,7 @@ privdrop(void)
 	struct stat sb;
 
 	if ((pw = getpwnam(SNDIO_USER)) == NULL)
-		err(1, "getpwnam");
+		errx(1, "unknown user %s", SNDIO_USER);
 	if (stat(pw->pw_dir, &sb) < 0)
 		err(1, "stat(\"%s\")", pw->pw_dir);
 	if (sb.st_uid != 0 || (sb.st_mode & 022) != 0)
