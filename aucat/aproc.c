@@ -1042,6 +1042,10 @@ mix_setmaster(struct aproc *p)
 	 * uses channels that have no intersection, they are 
 	 * counted only once because they don't need to 
 	 * share their volume
+	 *
+	 * XXX: that's wrong, this not optimal if we have to
+	 *      buckets of N and N' clients. Indeed, we should
+	 *	get 1/N and 1/N'
 	 */
 	n = 0;
 	LIST_FOREACH(i, &p->ins, ient) {
