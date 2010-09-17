@@ -21,6 +21,11 @@
 #endif
 
 /*
+ * setgroups(2) is defined here, on linux
+ */
+#include <grp.h>
+
+/*
  * prototypes of these don't hurt
  */
 long long strtonum(const char *, long long, long long, const char **);
