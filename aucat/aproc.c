@@ -1043,9 +1043,9 @@ mix_setmaster(struct aproc *p)
 	 * counted only once because they don't need to 
 	 * share their volume
 	 *
-	 * XXX: that's wrong, this not optimal if we have to
-	 *      buckets of N and N' clients. Indeed, we should
-	 *	get 1/N and 1/N'
+	 * XXX: this is wrong, this is not optimal if we have two
+	 *      buckets of N and N' clients, in which case we should
+	 *	get 1/N and 1/N' respectively
 	 */
 	n = 0;
 	LIST_FOREACH(i, &p->ins, ient) {
