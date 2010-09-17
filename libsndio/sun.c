@@ -895,6 +895,8 @@ sun_revents(struct sio_hdl *sh, struct pollfd *pfd)
 	int xrun, dmove, dierr = 0, doerr = 0, delta;
 	int revents = pfd->revents;
 
+	if (!hdl->sio.started)
+		return pfd->revents;
 	if (hdl->sio.mode & SIO_PLAY) {
 		if (ioctl(hdl->fd, AUDIO_PERROR, &xrun) < 0) {
 			DPERROR("sun_revents: PERROR");
@@ -958,14 +960,12 @@ sun_revents(struct sio_hdl *sh, struct pollfd *pfd)
 	 * right now to adjust revents, and avoid busy loops
 	 * programs
 	 */
-	if (hdl->sio.started) {
-		if (hdl->filling)
-			revents |= POLLOUT;
-		if ((hdl->sio.mode & SIO_PLAY) && !sun_wsil(hdl))
-			revents &= ~POLLOUT;
-		if ((hdl->sio.mode & SIO_REC) && !sun_rdrop(hdl))
-			revents &= ~POLLIN;
-	}
+	if (hdl->filling)
+		revents |= POLLOUT;
+	if ((hdl->sio.mode & SIO_PLAY) && !sun_wsil(hdl))
+		revents &= ~POLLOUT;
+	if ((hdl->sio.mode & SIO_REC) && !sun_rdrop(hdl))
+		revents &= ~POLLIN;
 	return revents;
 }
 #endif /* defined USE_SUN */
