@@ -563,20 +563,19 @@ ctl_getidx(struct aproc *p, char *who)
 			umap |= (1 << i);
 	} 
 	for (unit = 0; ; unit++) {
-		if (unit == CTL_NSLOT)
+		if (unit == CTL_NSLOT) {
+#ifdef DEBUG
+			if (debug_level >= 1) {
+				dbg_puts(name);
+				dbg_puts(": too many instances");
+			}
+#endif
 			return -1;
+		}
 		if ((umap & (1 << unit)) == 0)
 			break;
 	}
-#ifdef DEBUG
-	if (debug_level >= 3) {
-		aproc_dbg(p);
-		dbg_puts(": new control name is ");
-		dbg_puts(name);
-		dbg_putu(unit);
-		dbg_puts("\n");
-	}
-#endif
+
 	/*
 	 * find a free controller slot with the same name/unit
 	 */
@@ -586,7 +585,8 @@ ctl_getidx(struct aproc *p, char *who)
 		    slot->unit == unit) {
 #ifdef DEBUG
 			if (debug_level >= 3) {
-				aproc_dbg(p);
+				dbg_puts(name);
+				dbg_putu(unit);
 				dbg_puts(": found slot ");
 				dbg_putu(i);
 				dbg_puts("\n");
@@ -611,8 +611,16 @@ ctl_getidx(struct aproc *p, char *who)
 			bestidx = i;
 		}
 	}
-	if (bestidx == CTL_NSLOT)
+	if (bestidx == CTL_NSLOT) {
+#ifdef DEBUG
+		if (debug_level >= 1) {
+			dbg_puts(name);
+			dbg_putu(unit);
+			dbg_puts(": out of mixer slots\n");
+		}
+#endif
 		return -1;
+	}
 	slot = p->u.ctl.slot + bestidx;
 	if (slot->name[0] != '\0')
 		slot->vol = MIDI_MAXCTL;
@@ -621,7 +629,8 @@ ctl_getidx(struct aproc *p, char *who)
 	slot->unit = unit;
 #ifdef DEBUG
 	if (debug_level >= 3) {
-		aproc_dbg(p);
+		dbg_puts(name);
+		dbg_putu(unit);
 		dbg_puts(": overwritten slot ");
 		dbg_putu(bestidx);
 		dbg_puts("\n");

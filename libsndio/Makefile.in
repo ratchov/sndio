@@ -121,11 +121,11 @@ strtonum.o:	../bsd-compat/strtonum.c
 		${CC} ${CFLAGS} ${SO_CFLAGS} ${INCLUDE} ${DEFS} -c -o strtonum.o ../bsd-compat/strtonum.c
 
 alsa.o:		alsa.c sndio_priv.h sndio.h
-aucat.o:	aucat.c ../aucat/amsg.h sndio_priv.h sndio.h \
-		../bsd-compat/bsd-compat.h
+aucat.o:	aucat.c ../aucat/amsg.h ../aucat/conf.h sndio_priv.h \
+		sndio.h ../bsd-compat/bsd-compat.h
 mio.o:		mio.c mio_priv.h sndio.h ../bsd-compat/bsd-compat.h
 mio_rmidi.o:	mio_rmidi.c mio_priv.h sndio.h
-mio_thru.o:	mio_thru.c ../aucat/amsg.h mio_priv.h sndio.h \
-		../bsd-compat/bsd-compat.h
+mio_thru.o:	mio_thru.c ../aucat/amsg.h ../aucat/conf.h mio_priv.h \
+		sndio.h ../bsd-compat/bsd-compat.h
 sndio.o:	sndio.c sndio_priv.h sndio.h ../bsd-compat/bsd-compat.h
 sun.o:		sun.c sndio_priv.h sndio.h

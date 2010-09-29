@@ -694,7 +694,7 @@ aucat_main(int argc, char **argv)
 		if (n_flag) {
 			d = dev_new_loop(&cd->ipar, &cd->opar, cd->bufsz);
 		} else {
-			d = dev_new_sio(cd->path, cd->mode,
+			d = dev_new_sio(cd->path, cd->mode | MODE_MIDIMASK,
 			    &cd->ipar, &cd->opar, cd->bufsz, cd->round,
 			    cd->hold);
 		}
@@ -747,7 +747,7 @@ aucat_main(int argc, char **argv)
 			SLIST_REMOVE_HEAD(&cd->opts, entry);
 			opt_new(cs->path, d, &cs->opar, &cs->ipar,
 			    MIDI_TO_ADATA(cs->vol), cs->mmc,
-			    cs->join, cs->mode);
+			    cs->join, cs->mode | MODE_MIDIMASK);
 			free(cs);
 		}
 		free(cd);
@@ -1021,7 +1021,7 @@ midicat_main(int argc, char **argv)
 		while (!SLIST_EMPTY(&cd->opts)) {
 			cs = SLIST_FIRST(&cd->opts);
 			SLIST_REMOVE_HEAD(&cd->opts, entry);
-			opt_new(cs->path, d, NULL, NULL, 0, 0, 0, 0);
+			opt_new(cs->path, d, NULL, NULL, 0, 0, 0, MODE_MIDIMASK);
 			free(cs);
 		}
 		free(cd);
