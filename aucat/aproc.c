@@ -2126,7 +2126,7 @@ join_new(char *name)
 #ifdef DEBUG
 	if (debug_level >= 3) {
 		aproc_dbg(p);
-		dbg_puts("\n");
+		dbg_puts(": new\n");
 	}
 #endif
 	return p;

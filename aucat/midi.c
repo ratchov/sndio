@@ -567,7 +567,7 @@ ctl_getidx(struct aproc *p, char *who)
 #ifdef DEBUG
 			if (debug_level >= 1) {
 				dbg_puts(name);
-				dbg_puts(": too many instances");
+				dbg_puts(": too many instances\n");
 			}
 #endif
 			return -1;

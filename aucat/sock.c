@@ -495,7 +495,9 @@ sock_startreq(void *arg)
 	}
 #endif
 	(void)sock_attach(f, 0);
-}/*
+}
+
+/*
  * Callback invoked by MMC stop
  */
 void
@@ -1217,11 +1219,11 @@ sock_execmsg(struct sock *f)
 #endif
 			aproc_del(f->pipe.file.rproc);
 			return 0;
+		}
 		/*
 		 * XXX: device could have desappeared at this point,
 		 * see how this is fixed in wav.c
 		 */
-		}
 		if ((f->pstate == SOCK_START || f->pstate == SOCK_READY) &&
 		    ctl_slotstart(f->dev->midi, f->slot))
 			(void)sock_attach(f, 1);
@@ -1608,7 +1610,7 @@ sock_read(struct sock *f)
 		}
 		/*
 		 * XXX: sock_attach() may not start if there's not enough
-		 *	samples queues, if so ctl_slotstart() will trigger
+		 *	samples queued, if so ctl_slotstart() will trigger
 		 *	other streams, but this one won't start.
 		 */
 		if (f->pstate == SOCK_READY && ctl_slotstart(f->dev->midi, f->slot))
