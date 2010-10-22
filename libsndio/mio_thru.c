@@ -54,7 +54,7 @@ static struct mio_ops thru_ops = {
 	thru_revents,
 };
 
-struct mio_hdl *
+static struct mio_hdl *
 thru_open(const char *str, char *sock, unsigned mode, int nbio)
 {
 	extern char *__progname;
