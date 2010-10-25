@@ -599,23 +599,28 @@ sio_setvol(struct sio_hdl *hdl, unsigned ctl)
 {
 	if (hdl->eof)
 		return 0;
+	if (!hdl->ops->setvol)
+		return 1;
 	if (!hdl->ops->setvol(hdl, ctl))
 		return 0;
 	hdl->ops->getvol(hdl);
 	return 1;
 }
 
-void
+int
 sio_onvol(struct sio_hdl *hdl, void (*cb)(void *, unsigned), void *addr)
 {
 	if (hdl->started) {
 		DPRINTF("sio_onvol: already started\n");
 		hdl->eof = 1;
-		return;
+		return 0;
 	}
+	if (!hdl->ops->setvol)
+		return 0;
 	hdl->vol_cb = cb;
 	hdl->vol_addr = addr;
-	hdl->ops->getvol(hdl);
+       	hdl->ops->getvol(hdl);
+	return 1;
 }
 
 void

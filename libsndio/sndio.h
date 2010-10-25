@@ -146,7 +146,7 @@ int sio_pollfd(struct sio_hdl *, struct pollfd *, int);
 int sio_revents(struct sio_hdl *, struct pollfd *);
 int sio_eof(struct sio_hdl *);
 int sio_setvol(struct sio_hdl *, unsigned);
-void sio_onvol(struct sio_hdl *, void (*)(void *, unsigned), void *);
+int sio_onvol(struct sio_hdl *, void (*)(void *, unsigned), void *);
 
 struct mio_hdl *mio_open(const char *, unsigned, int);
 void mio_close(struct mio_hdl *);

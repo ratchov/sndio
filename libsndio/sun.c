@@ -65,8 +65,6 @@ static size_t sun_read(struct sio_hdl *, void *, size_t);
 static size_t sun_write(struct sio_hdl *, const void *, size_t);
 static int sun_pollfd(struct sio_hdl *, struct pollfd *, int);
 static int sun_revents(struct sio_hdl *, struct pollfd *);
-static int sun_setvol(struct sio_hdl *, unsigned);
-static void sun_getvol(struct sio_hdl *);
 
 static struct sio_ops sun_ops = {
 	sun_close,
@@ -79,8 +77,8 @@ static struct sio_ops sun_ops = {
 	sun_stop,
 	sun_pollfd,
 	sun_revents,
-	sun_setvol,
-	sun_getvol
+	NULL, /* setvol */
+	NULL, /* getvol */
 };
 
 /*
@@ -332,20 +330,6 @@ sun_getcap(struct sio_hdl *sh, struct sio_cap *cap)
 	return 1;
 #undef NCHANS
 #undef NRATES
-}
-
-static void
-sun_getvol(struct sio_hdl *sh)
-{
-	struct sun_hdl *hdl = (struct sun_hdl *)sh;
-
-	sio_onvol_cb(&hdl->sio, SIO_MAXVOL);
-}
-
-int
-sun_setvol(struct sio_hdl *sh, unsigned vol)
-{
-	return 1;
 }
 
 struct sio_hdl *
