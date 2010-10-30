@@ -49,126 +49,6 @@ sio_initpar(struct sio_par *par)
 	par->__magic = SIO_PAR_MAGIC;
 }
 
-/*
- * Generate a string corresponding to the encoding in par,
- * return the length of the resulting string
- */
-int
-sio_enctostr(struct sio_par *par, char *ostr)
-{
-	char *p = ostr;
-
-	*p++ = par->sig ? 's' : 'u';
-	if (par->bits > 9)
-		*p++ = '0' + par->bits / 10;
-	*p++ = '0' + par->bits % 10;
-	if (par->bps > 1) {
-		*p++ = par->le ? 'l' : 'b';
-		*p++ = 'e';
-		if (par->bps != SIO_BPS(par->bits) ||
-		    par->bits < par->bps * 8) {
-			*p++ = par->bps + '0';
-			if (par->bits < par->bps * 8) {
-				*p++ = par->msb ? 'm' : 'l';
-				*p++ = 's';
-				*p++ = 'b';
-			}
-		}
-	}
-	*p++ = '\0';
-	return p - ostr - 1;
-}
-
-/*
- * Parse an encoding string, examples: s8, u8, s16, s16le, s24be ...
- * Return the number of bytes consumed
- */
-int
-sio_strtoenc(struct sio_par *par, char *istr)
-{
-	char *p = istr;
-	int i, sig, bits, le, bps, msb;
-
-#define IS_SEP(c)			\
-	(((c) < 'a' || (c) > 'z') &&	\
-	 ((c) < 'A' || (c) > 'Z') &&	\
-	 ((c) < '0' || (c) > '9'))
-
-	/*
-	 * get signedness
-	 */
-	if (*p == 's') {
-		sig = 1;
-	} else if (*p == 'u') {
-		sig = 0;
-	} else
-		return 0;
-	p++;
-
-	/*
-	 * get number of bits per sample
-	 */
-	bits = 0;
-	for (i = 0; i < 2; i++) {
-		if (*p < '0' || *p > '9')
-			break;
-		bits = (bits * 10) + *p - '0';
-		p++;
-	}
-	if (bits < 1 || bits > 32)
-		return 0;
-	bps = SIO_BPS(bits);
-	le = SIO_LE_NATIVE;
-	msb = 1;
-
-	/*
-	 * get (optional) endianness
-	 */
-	if (p[0] == 'l' && p[1] == 'e') {
-		le = 1;
-		p += 2;
-	} else if (p[0] == 'b' && p[1] == 'e') {
-		le = 0;
-		p += 2;
-	} else if (IS_SEP(*p)) {
-		goto done;
-	} else
-		return 0;
-
-	/*
-	 * get (optional) number of bytes
-	 */
-	if (*p >= '1' && *p <= '4') {
-		bps = *p - '0';
-		if (bps * 8  < bits)
-			return 0;
-		p++;
-
-		/*
-		 * get (optional) alignment
-		 */
-		if (p[0] == 'm' && p[1] == 's' && p[2] == 'b') {
-			msb = 1;
-			p += 3;
-		} else if (p[0] == 'l' && p[1] == 's' && p[2] == 'b') {
-			msb = 0;
-			p += 3;
-		} else if (IS_SEP(*p)) {
-			goto done;
-		} else
-			return 0;
-	} else if (!IS_SEP(*p))
-		return 0;
-
-done:
-       	par->msb = msb;
-	par->sig = sig;
-	par->bits = bits;
-	par->bps = bps;
-	par->le = le;
-	return p - istr;
-}
-
 struct sio_hdl *
 sio_open(const char *str, unsigned mode, int nbio)
 {
@@ -619,7 +499,7 @@ sio_onvol(struct sio_hdl *hdl, void (*cb)(void *, unsigned), void *addr)
 		return 0;
 	hdl->vol_cb = cb;
 	hdl->vol_addr = addr;
-       	hdl->ops->getvol(hdl);
+	hdl->ops->getvol(hdl);
 	return 1;
 }
 
