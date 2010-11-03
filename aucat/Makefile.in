@@ -70,7 +70,6 @@ dev.o:		dev.c abuf.h aproc.h aparams.h file.h conf.h dev.h \
 file.o:		file.c abuf.h aproc.h aparams.h file.h conf.h dbg.h
 headers.o:	headers.c aparams.h conf.h wav.h pipe.h file.h \
 		../bsd-compat/bsd-compat.h
-legacy.o:	legacy.c wav.h aparams.h pipe.h file.h
 listen.o:	listen.c conf.h listen.h aparams.h file.h sock.h amsg.h \
 		pipe.h ../bsd-compat/bsd-compat.h
 midi.o:		midi.c abuf.h aproc.h aparams.h file.h conf.h dev.h \
