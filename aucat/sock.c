@@ -1329,8 +1329,8 @@ sock_execmsg(struct sock *f)
 		    (f->opt->rpar.cmax - f->opt->rpar.cmin + 1) : 0;
 		m->u.cap.rchan = (f->opt->mode & (MODE_PLAY | MODE_REC)) ?
 		    (f->opt->wpar.cmax - f->opt->wpar.cmin + 1) : 0;
-		m->u.cap.bits = sizeof(short) * 8;
-		m->u.cap.bps = sizeof(short);
+		m->u.cap.bits = ADATA_BITS;
+		m->u.cap.bps = sizeof(adata_t);
 		f->rstate = SOCK_RRET;
 		f->rtodo = sizeof(struct amsg);
 		break;
