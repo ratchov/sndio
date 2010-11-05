@@ -249,7 +249,9 @@ file_new(struct fileops *ops, char *name, unsigned nfds)
 	f->ops = ops;
 	f->name = name;
 	f->state = 0;
+#ifdef DEBUG
 	f->cycles = 0;
+#endif
 	f->rproc = NULL;
 	f->wproc = NULL;
 	LIST_INSERT_HEAD(&file_list, f, entry);

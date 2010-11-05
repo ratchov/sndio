@@ -768,8 +768,10 @@ aucat_main(int argc, char **argv)
 	if (geteuid() == 0)
 		privdrop();
 	if (l_flag) {
+#ifdef DEBUG
 		debug_level = 0;
 		dbg_flush();
+#endif
 		if (daemon(0, 0) < 0)
 			err(1, "daemon");
 	}
@@ -1036,8 +1038,10 @@ midicat_main(int argc, char **argv)
 	if (geteuid() == 0)
 		privdrop();
 	if (l_flag) {
+#ifdef DEBUG
 		debug_level = 0;
 		dbg_flush();
+#endif
 		if (daemon(0, 0) < 0)
 			err(1, "daemon");
 	}
