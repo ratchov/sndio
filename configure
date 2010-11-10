@@ -12,6 +12,7 @@ Usage: configure [options]
 --includedir=DIR		install header files in DIR [\$prefix/include]
 --libdir=DIR			install libraries in DIR [\$prefix/lib]
 --mandir=DIR			install man pages in DIR [\$prefix/man]
+--precision=NUMBER		aucat processing precision [$precision]
 --enable-alsa			enable alsa backend [$alsa]
 --disable-alsa			disable alsa backend
 --enable-sun			enable sun backend [$sun]
@@ -26,6 +27,7 @@ prefix=/usr/local			# where to install sndio
 so="libsndio.so.\${MAJ}.\${MIN}"	# shared libs to build
 alsa=no					# do we want alsa support ?
 sun=no					# do we want sun support ?
+precision=16					# aucat arithmetic precision
 unset vars				# variables passed as arguments
 unset bindir				# path where to install binaries
 unset datadir				# path where to install doc
@@ -87,6 +89,13 @@ for i; do
 	--disable-sun)
 		sun=no
 		shift;;
+	--precision=*)
+		precision="${i#--precision=}"
+		if [ "$precision" != 16 -a "$precision" != 24 ]; then
+			echo "$i: only 16 and 24 are supported" >&2
+			exit 1
+		fi
+		shift;;
 	CC=*|CFLAGS=*|LDFLAGS=*)
 		vars="$vars$i$nl"
 		shift;;
@@ -133,6 +142,7 @@ do
 	-e "s:@ldadd@:$ldadd:" \
 	-e "s:@so@:$so:" \
 	-e "s:@vars@:${vars}:" \
+	-e "s:@precision@:$precision:" \
 	< $makefile.in > $makefile
 done
 
@@ -142,6 +152,7 @@ echo "datadir.................. $datadir"
 echo "includedir............... $includedir"
 echo "libdir................... $libdir"
 echo "mandir................... $mandir"
+echo "precision................ $precision"
 echo "alsa..................... $alsa"
 echo "sun...................... $sun"
 echo
