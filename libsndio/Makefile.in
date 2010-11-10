@@ -93,7 +93,11 @@ clean:
 
 # ---------------------------------------------------------- dependencies ---
 
-OBJS = alsa.o aucat.o sndio.o mio_rmidi.o mio_thru.o mio.o sun.o \
+#
+# object files, sorted following dependencies to allow the
+# loader to determine dependencies in a single pass
+#
+OBJS = mio.o mio_rmidi.o mio_thru.o sndio.o alsa.o aucat.o sun.o \
 getpeereid.o issetugid.o strlcpy.o strtonum.o
 
 .c.o:
