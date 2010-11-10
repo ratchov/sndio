@@ -60,6 +60,13 @@
 #define PROG_AUCAT	"aucat"
 #define PROG_MIDICAT	"midicat"
 
+/*
+ * sample rate if no ``-r'' is used
+ */
+#ifndef DEFAULT_RATE
+#define DEFAULT_RATE	44100
+#endif
+
 #ifdef DEBUG
 int debug_level = 0;
 #endif
@@ -453,8 +460,8 @@ aucat_main(int argc, char **argv)
 		perror("malloc");
 		exit(1);
 	}
-	aparams_init(&cs->ipar, 0, 1, 44100);
-	aparams_init(&cs->opar, 0, 1, 44100);
+	aparams_init(&cs->ipar, 0, 1, DEFAULT_RATE);
+	aparams_init(&cs->opar, 0, 1, DEFAULT_RATE);
 	cs->mmc = 0;
 	cs->hdr = HDR_AUTO;
 	cs->xrun = XRUN_IGNORE;
@@ -470,8 +477,8 @@ aucat_main(int argc, char **argv)
 		perror("malloc");
 		exit(1);
 	}
-	aparams_init(&cd->ipar, 0, 1, 44100);
-	aparams_init(&cd->opar, 0, 1, 44100);
+	aparams_init(&cd->ipar, 0, 1, DEFAULT_RATE);
+	aparams_init(&cd->opar, 0, 1, DEFAULT_RATE);
 	SLIST_INIT(&cd->ins);
 	SLIST_INIT(&cd->outs);
 	SLIST_INIT(&cd->opts);
