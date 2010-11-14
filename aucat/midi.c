@@ -274,13 +274,17 @@ thru_eof(struct aproc *p, struct abuf *ibuf)
 {
 	if (!(p->flags & APROC_QUIT))
 		return;
-	if (LIST_EMPTY(&p->ins))
+	if (LIST_EMPTY(&p->ins) || LIST_EMPTY(&p->outs))
 		aproc_del(p);
 }
 
 void
 thru_hup(struct aproc *p, struct abuf *obuf)
 {
+	if (!(p->flags & APROC_QUIT))
+		return;
+	if (LIST_EMPTY(&p->outs))
+		aproc_del(p);
 }
 
 void
