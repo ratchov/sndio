@@ -23,6 +23,7 @@
 /*
  * setgroups(2) is defined here, on linux
  */
+#include <sys/types.h>
 #include <grp.h>
 
 /*
