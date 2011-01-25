@@ -37,18 +37,22 @@ unset libdir				# path where to install library
 unset defs				# no extra #defines
 unset ldadd				# no extra libraries (-l options)
 
-if [ `uname` = Linux ]; then
-	alsa=yes
-	so="$so libsndio.so.\${MAJ}"
-	so="$so libsndio.so"
-	defs='-DCOMPAT_GETPEEREID -DCOMPAT_ISSETUGID \\\
-	-DCOMPAT_STRLCPY -DCOMPAT_STRTONUM \\\
-	-DCOMPAT_LETOH -DCOMPAT_PACKED'
-fi
-
-if [ `uname` = OpenBSD ]; then
-	sun=yes
-fi
+#
+# guess OS-specific parameters
+#
+case `uname` in
+	Linux)
+		alsa=yes
+		ldadd="-lrt"
+		so="$so libsndio.so.\${MAJ} libsndio.so"
+		defs='-DCOMPAT_GETPEEREID -DCOMPAT_ISSETUGID \\\
+		-DCOMPAT_STRLCPY -DCOMPAT_STRTONUM \\\
+		-DCOMPAT_LETOH -DCOMPAT_PACKED'
+		;;
+	OpenBSD)
+		sun=yes
+		;;
+esac
 
 # shell word separator (none)
 IFS=''
