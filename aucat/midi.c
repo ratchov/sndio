@@ -478,7 +478,7 @@ ctl_qfr(struct aproc *p)
 		p->u.ctl.fr -= p->u.ctl.fps;
 		p->u.ctl.sec++;
 		if (p->u.ctl.sec < 60)
-			break;;
+			break;
 		p->u.ctl.sec = 0;
 		p->u.ctl.min++;
 		if (p->u.ctl.min < 60)
