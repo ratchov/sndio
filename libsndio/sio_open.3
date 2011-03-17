@@ -669,7 +669,8 @@ The callback is always invoked when
 is called in order to provide the initial volume.
 An application can safely assume that once
 .Fn sio_onvol
-returns non-zero value, the callback has already been invoked and thus
+has returned a non-zero value,
+the callback has been invoked and thus
 the current volume is available.
 If there's no volume setting available,
 .Fn sio_onvol
