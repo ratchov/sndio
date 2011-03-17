@@ -557,10 +557,8 @@ filelist_done(void)
 	dbg_sync = 1;
 	dbg_flush();
 #endif
-	it.it_value.tv_sec = 0;
-	it.it_value.tv_usec = 0;
-	it.it_interval.tv_sec = 0;
-	it.it_interval.tv_usec = 0;
+	timerclear(&it.it_value);
+	timerclear(&it.it_interval);
 	if (setitimer(ITIMER_REAL, &it, NULL) < 0) {
 		perror("setitimer");
 		exit(1);
