@@ -1664,8 +1664,11 @@ sock_write(struct sock *f)
 	if (debug_level >= 4) {
 		sock_dbg(f);
 		dbg_puts(": writing ");
-		dbg_putu(f->wtodo);
-		dbg_puts(" todo\n");
+		if (f->wstate != SOCK_WIDLE) {
+			dbg_putu(f->wtodo);
+			dbg_puts(" todo\n");
+		} else
+			dbg_puts("\n");
 	}
 #endif
 	switch (f->wstate) {
