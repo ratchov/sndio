@@ -1663,12 +1663,12 @@ sock_write(struct sock *f)
 #ifdef DEBUG
 	if (debug_level >= 4) {
 		sock_dbg(f);
-		dbg_puts(": writing ");
+		dbg_puts(": writing");
 		if (f->wstate != SOCK_WIDLE) {
+			dbg_puts(" todo = ");
 			dbg_putu(f->wtodo);
-			dbg_puts(" todo\n");
-		} else
-			dbg_puts("\n");
+		}
+		dbg_puts("\n");
 	}
 #endif
 	switch (f->wstate) {
