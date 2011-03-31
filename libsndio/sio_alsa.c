@@ -33,7 +33,7 @@
 #include <unistd.h>
 #include <values.h>
 
-#include "sndio_priv.h"
+#include "sio_priv.h"
 
 #ifdef DEBUG
 #define DALSA(str, err) fprintf(stderr, "%s: %s\n", str, snd_strerror(err)) 
@@ -41,7 +41,7 @@
 #define DALSA(str, err) do {} while (0)
 #endif
 
-struct alsa_hdl {
+struct sio_alsa_hdl {
 	struct sio_hdl sio;
 	struct sio_par par;
 	struct pollfd *pfds;
@@ -61,41 +61,41 @@ struct alsa_hdl {
 	int nfds, infds, onfds;
 };
 
-static void alsa_close(struct sio_hdl *);
-static int alsa_start(struct sio_hdl *);
-static int alsa_stop(struct sio_hdl *);
-static int alsa_setpar(struct sio_hdl *, struct sio_par *);
-static int alsa_getpar(struct sio_hdl *, struct sio_par *);
-static int alsa_getcap(struct sio_hdl *, struct sio_cap *);
-static size_t alsa_read(struct sio_hdl *, void *, size_t);
-static size_t alsa_write(struct sio_hdl *, const void *, size_t);
-static int alsa_nfds(struct sio_hdl *);
-static int alsa_pollfd(struct sio_hdl *, struct pollfd *, int);
-static int alsa_revents(struct sio_hdl *, struct pollfd *);
-static int alsa_setvol(struct sio_hdl *, unsigned);
-static void alsa_getvol(struct sio_hdl *);
+static void sio_alsa_close(struct sio_hdl *);
+static int sio_alsa_start(struct sio_hdl *);
+static int sio_alsa_stop(struct sio_hdl *);
+static int sio_alsa_setpar(struct sio_hdl *, struct sio_par *);
+static int sio_alsa_getpar(struct sio_hdl *, struct sio_par *);
+static int sio_alsa_getcap(struct sio_hdl *, struct sio_cap *);
+static size_t sio_alsa_read(struct sio_hdl *, void *, size_t);
+static size_t sio_alsa_write(struct sio_hdl *, const void *, size_t);
+static int sio_alsa_nfds(struct sio_hdl *);
+static int sio_alsa_pollfd(struct sio_hdl *, struct pollfd *, int);
+static int sio_alsa_revents(struct sio_hdl *, struct pollfd *);
+static int sio_alsa_setvol(struct sio_hdl *, unsigned);
+static void sio_alsa_getvol(struct sio_hdl *);
 
-static struct sio_ops alsa_ops = {
-	alsa_close,
-	alsa_setpar,
-	alsa_getpar,
-	alsa_getcap,
-	alsa_write,
-	alsa_read,
-	alsa_start,
-	alsa_stop,
-	alsa_nfds,
-	alsa_pollfd,
-	alsa_revents,
-	alsa_setvol,
-	alsa_getvol
+static struct sio_ops sio_alsa_ops = {
+	sio_alsa_close,
+	sio_alsa_setpar,
+	sio_alsa_getpar,
+	sio_alsa_getcap,
+	sio_alsa_write,
+	sio_alsa_read,
+	sio_alsa_start,
+	sio_alsa_stop,
+	sio_alsa_nfds,
+	sio_alsa_pollfd,
+	sio_alsa_revents,
+	sio_alsa_setvol,
+	sio_alsa_getvol
 };
 
 /*
  * convert ALSA format to sio_par encoding
  */
 static int
-alsa_fmttopar(struct alsa_hdl *hdl, snd_pcm_format_t fmt, struct sio_par *par)
+sio_alsa_fmttopar(struct sio_alsa_hdl *hdl, snd_pcm_format_t fmt, struct sio_par *par)
 {
 	switch (fmt) {
 	case SND_PCM_FORMAT_U8:
@@ -147,7 +147,7 @@ alsa_fmttopar(struct alsa_hdl *hdl, snd_pcm_format_t fmt, struct sio_par *par)
 		par->le = 0;
 		break;
 	default:
-		DPRINTF("alsa_fmttopar: 0x%x: unsupported format\n", fmt);
+		DPRINTF("sio_alsa_fmttopar: 0x%x: unsupported format\n", fmt);
 		hdl->sio.eof = 1;
 		return 0;
 	}
@@ -161,7 +161,7 @@ alsa_fmttopar(struct alsa_hdl *hdl, snd_pcm_format_t fmt, struct sio_par *par)
  * convert sio_par encoding to ALSA format
  */
 static void
-alsa_enctofmt(struct alsa_hdl *hdl, snd_pcm_format_t *rfmt, struct sio_par *enc)
+sio_alsa_enctofmt(struct sio_alsa_hdl *hdl, snd_pcm_format_t *rfmt, struct sio_par *enc)
 {
 	if (enc->bits == 8) {
 		if (enc->sig == ~0U || !enc->sig)
@@ -220,12 +220,12 @@ alsa_enctofmt(struct alsa_hdl *hdl, snd_pcm_format_t *rfmt, struct sio_par *enc)
  */
 #if 0
 static int
-alsa_tryinfo(struct alsa_hdl *hdl, struct sio_enc *enc,
+sio_alsa_tryinfo(struct sio_alsa_hdl *hdl, struct sio_enc *enc,
     unsigned pchan, unsigned rchan, unsigned rate)
 {
 	snd_pcm_format_t fmt;
 
-	alsa_enctofmt(hdl, &fmt, enc);
+	sio_alsa_enctofmt(hdl, &fmt, enc);
 	if (hdl->sio.mode & SIO_PLAY) {
 		if (snd_pcm_hw_params_test_format(hdl->out_pcm, hdl->out_hwp,
 		    fmt) < 0)
@@ -267,25 +267,25 @@ alsa_tryinfo(struct alsa_hdl *hdl, struct sio_enc *enc,
  * guess device capabilities
  */
 static int
-alsa_getcap(struct sio_hdl *sh, struct sio_cap *cap)
+sio_alsa_getcap(struct sio_hdl *sh, struct sio_cap *cap)
 {
-	struct alsa_hdl *hdl = (struct alsa_hdl *)sh;
+	struct sio_alsa_hdl *hdl = (struct sio_alsa_hdl *)sh;
 
-	DPRINTF("alsa_getcap: not implemented\n");
+	DPRINTF("sio_alsa_getcap: not implemented\n");
 	hdl->sio.eof = 1;
 	return 0;
 }
 
 static void
-alsa_getvol(struct sio_hdl *sh)
+sio_alsa_getvol(struct sio_hdl *sh)
 {
-	struct alsa_hdl *hdl = (struct alsa_hdl *)sh;
+	struct sio_alsa_hdl *hdl = (struct sio_alsa_hdl *)sh;
 
 	sio_onvol_cb(&hdl->sio, SIO_MAXVOL);
 }
 
 int
-alsa_setvol(struct sio_hdl *sh, unsigned vol)
+sio_alsa_setvol(struct sio_hdl *sh, unsigned vol)
 {
 	return 1;
 }
@@ -293,15 +293,15 @@ alsa_setvol(struct sio_hdl *sh, unsigned vol)
 struct sio_hdl *
 sio_open_alsa(const char *str, unsigned mode, int nbio)
 {
-	struct alsa_hdl *hdl;
+	struct sio_alsa_hdl *hdl;
 	char path[PATH_MAX];
 	struct sio_par par;
 	int err;
 
-	hdl = malloc(sizeof(struct alsa_hdl));
+	hdl = malloc(sizeof(struct sio_alsa_hdl));
 	if (hdl == NULL)
 		return NULL;
-	sio_create(&hdl->sio, &alsa_ops, mode, nbio);
+	sio_create(&hdl->sio, &sio_alsa_ops, mode, nbio);
 
 	snprintf(path, sizeof(path), "hw:%s", str);
 
@@ -406,9 +406,9 @@ bad_free:
 }
 
 static void
-alsa_close(struct sio_hdl *sh)
+sio_alsa_close(struct sio_hdl *sh)
 {
-	struct alsa_hdl *hdl = (struct alsa_hdl *)sh;
+	struct sio_alsa_hdl *hdl = (struct sio_alsa_hdl *)sh;
 
 	if (hdl->sio.mode & SIO_PLAY) {
 		snd_pcm_close(hdl->out_pcm);
@@ -424,12 +424,12 @@ alsa_close(struct sio_hdl *sh)
 }
 
 static int
-alsa_start(struct sio_hdl *sh)
+sio_alsa_start(struct sio_hdl *sh)
 {
-	struct alsa_hdl *hdl = (struct alsa_hdl *)sh;
+	struct sio_alsa_hdl *hdl = (struct sio_alsa_hdl *)sh;
 	int err;
 
-	DPRINTF("alsa_start:\n");
+	DPRINTF("sio_alsa_start:\n");
 
 	hdl->ibpf = hdl->par.rchan * hdl->par.bps;
 	hdl->obpf = hdl->par.pchan * hdl->par.bps;
@@ -448,7 +448,7 @@ alsa_start(struct sio_hdl *sh)
 	if (hdl->sio.mode & SIO_PLAY) {
 		err = snd_pcm_prepare(hdl->out_pcm);
 		if (err < 0) {
-			DALSA("alsa_start: prepare playback failed", err);
+			DALSA("sio_alsa_start: prepare playback failed", err);
 			hdl->sio.eof = 1;
 			return 0;
 		}
@@ -456,7 +456,7 @@ alsa_start(struct sio_hdl *sh)
 	if (hdl->sio.mode & SIO_REC) {
 		err = snd_pcm_prepare(hdl->in_pcm);
 		if (err < 0) {
-			DALSA("alsa_start: prepare record failed", err);
+			DALSA("sio_alsa_start: prepare record failed", err);
 			hdl->sio.eof = 1;
 			return 0;
 		}
@@ -468,7 +468,7 @@ alsa_start(struct sio_hdl *sh)
 	} else {
 		err = snd_pcm_start(hdl->in_pcm);
 		if (err < 0) {
-			DALSA("alsa_start: start record failed", err);
+			DALSA("sio_alsa_start: start record failed", err);
 			hdl->sio.eof = 1;
 			return 0;
 		}
@@ -477,15 +477,15 @@ alsa_start(struct sio_hdl *sh)
 }
 
 static int
-alsa_stop(struct sio_hdl *sh)
+sio_alsa_stop(struct sio_hdl *sh)
 {
-	struct alsa_hdl *hdl = (struct alsa_hdl *)sh;
+	struct sio_alsa_hdl *hdl = (struct sio_alsa_hdl *)sh;
 	int err;
 
 	if (hdl->sio.mode & SIO_PLAY) {
 		err = snd_pcm_drop(hdl->out_pcm);
 		if (err < 0) {
-			DALSA("alsa_stop: drop/close playback failed", err);
+			DALSA("sio_alsa_stop: drop/close playback failed", err);
 			hdl->sio.eof = 1;
 			return 0;
 		}
@@ -493,7 +493,7 @@ alsa_stop(struct sio_hdl *sh)
 	if (hdl->sio.mode & SIO_REC) {
 		err = snd_pcm_drop(hdl->in_pcm);
 		if (err < 0) {
-			DALSA("alsa_stop: drop/close record failed", err);
+			DALSA("sio_alsa_stop: drop/close record failed", err);
 			hdl->sio.eof = 1;
 			return 0;
 		}
@@ -503,9 +503,9 @@ alsa_stop(struct sio_hdl *sh)
 }
 
 static int
-alsa_setpar(struct sio_hdl *sh, struct sio_par *par)
+sio_alsa_setpar(struct sio_hdl *sh, struct sio_par *par)
 {
-	struct alsa_hdl *hdl = (struct alsa_hdl *)sh;
+	struct sio_alsa_hdl *hdl = (struct sio_alsa_hdl *)sh;
 	unsigned bufsz, round;
 	unsigned irate, orate, req_rate;
 	unsigned ich, och;
@@ -517,7 +517,7 @@ alsa_setpar(struct sio_hdl *sh, struct sio_par *par)
 	/*
 	 * set encoding
 	 */
-	alsa_enctofmt(hdl, &ofmt, par);
+	sio_alsa_enctofmt(hdl, &ofmt, par);
 	DPRINTF("ofmt = %u\n", ofmt);
 	if (hdl->sio.mode & SIO_PLAY) {
 		err = snd_pcm_hw_params_any(hdl->out_pcm, hdl->out_hwp);
@@ -586,7 +586,7 @@ alsa_setpar(struct sio_hdl *sh, struct sio_par *par)
 		hdl->sio.eof = 1;
 		return 0;
 	}
-	if (!alsa_fmttopar(hdl, ofmt, &hdl->par))
+	if (!sio_alsa_fmttopar(hdl, ofmt, &hdl->par))
 		return 0;
 
 	/*
@@ -678,7 +678,7 @@ alsa_setpar(struct sio_hdl *sh, struct sio_par *par)
 	} else
 		return 1;
 
-	DPRINTF("alsa_setpar: trying bufsz = %u, round = %u\n", bufsz, round);
+	DPRINTF("sio_alsa_setpar: trying bufsz = %u, round = %u\n", bufsz, round);
 
 	obufsz = bufsz;
 	if (hdl->sio.mode & SIO_PLAY) {
@@ -689,7 +689,7 @@ alsa_setpar(struct sio_hdl *sh, struct sio_par *par)
 			hdl->sio.eof = 1;
 			return 0;
 		}
-		DPRINTF("alsa_setpar: obufsz: ok\n");
+		DPRINTF("sio_alsa_setpar: obufsz: ok\n");
 	}
 	ibufsz = obufsz;
 	if (hdl->sio.mode & SIO_REC) {
@@ -719,7 +719,7 @@ alsa_setpar(struct sio_hdl *sh, struct sio_par *par)
 			hdl->sio.eof = 1;
 			return 0;
 		}
-		DPRINTF("alsa_setpar: onfr: ok\n");
+		DPRINTF("sio_alsa_setpar: onfr: ok\n");
 	}
 	infr = onfr;
 	if (hdl->sio.mode & SIO_REC) {
@@ -740,7 +740,7 @@ alsa_setpar(struct sio_hdl *sh, struct sio_par *par)
 	}
 	hdl->par.round = onfr;
 
-	DPRINTF("alsa_setpar: got bufsz = %u, round = %u\n",
+	DPRINTF("sio_alsa_setpar: got bufsz = %u, round = %u\n",
 	    hdl->par.bufsz, hdl->par.round);
 
 
@@ -754,7 +754,7 @@ alsa_setpar(struct sio_hdl *sh, struct sio_par *par)
 			hdl->sio.eof = 1;
 			return 0;
 		}
-		DPRINTF("alsa_setpar: out_hwp: ok\n");
+		DPRINTF("sio_alsa_setpar: out_hwp: ok\n");
 	}
 	if (hdl->sio.mode & SIO_REC) {
 		err = snd_pcm_hw_params(hdl->in_pcm, hdl->in_hwp);
@@ -824,14 +824,14 @@ alsa_setpar(struct sio_hdl *sh, struct sio_par *par)
 			return 0;
 		}
 	}
-	DPRINTF("alsa_setpar: done\n");
+	DPRINTF("sio_alsa_setpar: done\n");
 	return 1;
 }
 
 static int
-alsa_getpar(struct sio_hdl *sh, struct sio_par *par)
+sio_alsa_getpar(struct sio_hdl *sh, struct sio_par *par)
 {
-	struct alsa_hdl *hdl = (struct alsa_hdl *)sh;
+	struct sio_alsa_hdl *hdl = (struct sio_alsa_hdl *)sh;
 
 	*par = hdl->par;
 	return 1;
@@ -841,7 +841,7 @@ alsa_getpar(struct sio_hdl *sh, struct sio_par *par)
  * drop recorded samples to compensate xruns
  */
 static int
-alsa_rdrop(struct alsa_hdl *hdl)
+sio_alsa_rdrop(struct sio_alsa_hdl *hdl)
 {
 #define DROP_NMAX 0x1000
 	static char dropbuf[DROP_NMAX];
@@ -854,41 +854,41 @@ alsa_rdrop(struct alsa_hdl *hdl)
 		if (todo > drop_nmax)
 			todo = drop_nmax;
 		while ((n = snd_pcm_readi(hdl->in_pcm, dropbuf, todo)) < 0) {
-			DALSA("alsa_rdrop: readi", n);
+			DALSA("sio_alsa_rdrop: readi", n);
 			hdl->sio.eof = 1;
 			return 0;
 		}
 		if (n == 0) {
-			DPRINTF("alsa_rdrop: eof\n");
+			DPRINTF("sio_alsa_rdrop: eof\n");
 			hdl->sio.eof = 1;
 			return 0;
 		}
 		hdl->offset -= (int)n;
 		//hdl->isfr += (int)n;
-		DPRINTF("alsa_rdrop: dropped %ld/%ld frames\n", n, todo);
+		DPRINTF("sio_alsa_rdrop: dropped %ld/%ld frames\n", n, todo);
 	}
 	return 1;
 }
 
 static size_t
-alsa_read(struct sio_hdl *sh, void *buf, size_t len)
+sio_alsa_read(struct sio_hdl *sh, void *buf, size_t len)
 {
-	struct alsa_hdl *hdl = (struct alsa_hdl *)sh;
+	struct sio_alsa_hdl *hdl = (struct sio_alsa_hdl *)sh;
 	snd_pcm_sframes_t n;
 	snd_pcm_uframes_t todo;
 
-	if (!alsa_rdrop(hdl))
+	if (!sio_alsa_rdrop(hdl))
 		return 0;
 	todo = len / hdl->ibpf;
 	while ((n = snd_pcm_readi(hdl->in_pcm, buf, todo)) < 0) {
 		if (n == -ESTRPIPE)
 			continue;
-		DALSA("alsa_read: read", n);
+		DALSA("sio_alsa_read: read", n);
 		hdl->sio.eof = 1;
 		return 0;
 	}
 	if (n == 0) {
-		DPRINTF("alsa_read: eof\n");
+		DPRINTF("sio_alsa_read: eof\n");
 		hdl->sio.eof = 1;
 		return 0;
 	}
@@ -898,7 +898,7 @@ alsa_read(struct sio_hdl *sh, void *buf, size_t len)
 }
 
 static size_t
-alsa_autostart(struct alsa_hdl *hdl)
+sio_alsa_autostart(struct sio_alsa_hdl *hdl)
 {
 	int state, err;
 
@@ -906,16 +906,16 @@ alsa_autostart(struct alsa_hdl *hdl)
 	if (state == SND_PCM_STATE_PREPARED) {
 		err = snd_pcm_start(hdl->out_pcm);
 		if (err < 0) {
-			DALSA("alsa_autostart: failed", err);
+			DALSA("sio_alsa_autostart: failed", err);
 			hdl->sio.eof = 1;
 			return 0;
 		}
 	} else {
-		DPRINTF("alsa_autostart: bad state");
+		DPRINTF("sio_alsa_autostart: bad state");
 		hdl->sio.eof = 1;
 		return 0;
 	}
-	DPRINTF("alsa_autostart: started\n");
+	DPRINTF("sio_alsa_autostart: started\n");
 	sio_onmove_cb(&hdl->sio, 0);
 	return 1;
 }
@@ -924,7 +924,7 @@ alsa_autostart(struct alsa_hdl *hdl)
  * insert silence to play to compensate xruns
  */
 static int
-alsa_wsil(struct alsa_hdl *hdl)
+sio_alsa_wsil(struct sio_alsa_hdl *hdl)
 {
 #define ZERO_NMAX 0x1000
 	static char zero[ZERO_NMAX];
@@ -933,40 +933,40 @@ alsa_wsil(struct alsa_hdl *hdl)
 	int zero_nmax = ZERO_NMAX / hdl->obpf;
 
 	while (hdl->offset < 0) {
-		DPRINTF("alsa_wsil:\n");
+		DPRINTF("sio_alsa_wsil:\n");
 
 		todo = (int)-hdl->offset;
 		if (todo > zero_nmax)
 			todo = zero_nmax;
 		if ((n = snd_pcm_writei(hdl->out_pcm, zero, todo)) < 0) {
-			DALSA("alsa_wsil", n);
+			DALSA("sio_alsa_wsil", n);
 			hdl->sio.eof = 1;
 			return 0;
 		}
 		hdl->offset += (int)n;
 		//hdl->osfr += (int)n;
-		DPRINTF("alsa_wsil: inserted %ld/%ld frames\n", n, todo);
+		DPRINTF("sio_alsa_wsil: inserted %ld/%ld frames\n", n, todo);
 	}
 	return 1;
 }
 
 static size_t
-alsa_write(struct sio_hdl *sh, const void *buf, size_t len)
+sio_alsa_write(struct sio_hdl *sh, const void *buf, size_t len)
 {
-	struct alsa_hdl *hdl = (struct alsa_hdl *)sh;
+	struct sio_alsa_hdl *hdl = (struct sio_alsa_hdl *)sh;
 	ssize_t n, todo;
 
-	if (!alsa_wsil(hdl))
+	if (!sio_alsa_wsil(hdl))
 		return 0;
 	todo = len / hdl->obpf;
 	if (hdl->filling && todo > hdl->filltodo)
 		todo = hdl->filltodo;
-	DPRINTF("alsa_write: len = %zd, todo = %zd\n", len, todo);
+	DPRINTF("sio_alsa_write: len = %zd, todo = %zd\n", len, todo);
 	while ((n = snd_pcm_writei(hdl->out_pcm, buf, todo)) < 0) {
 		if (n == -EINTR)
 			continue;
 		if (n != -EAGAIN) {
-			DALSA("alsa_write", n);
+			DALSA("sio_alsa_write", n);
 			hdl->sio.eof = 1;
 		}
 		return 0;
@@ -976,7 +976,7 @@ alsa_write(struct sio_hdl *sh, const void *buf, size_t len)
 		hdl->filltodo -= n;
 		if (hdl->filltodo == 0) {
 			hdl->filling = 0;
-			if (!alsa_autostart(hdl))
+			if (!sio_alsa_autostart(hdl))
 				return 0;
 		}
 	}
@@ -986,21 +986,21 @@ alsa_write(struct sio_hdl *sh, const void *buf, size_t len)
 }
 
 static int
-alsa_nfds(struct sio_hdl *sh)
+sio_alsa_nfds(struct sio_hdl *sh)
 {
-	struct alsa_hdl *hdl = (struct alsa_hdl *)sh;
+	struct sio_alsa_hdl *hdl = (struct sio_alsa_hdl *)sh;
 
 	return hdl->nfds;
 }
 
 
 static int
-alsa_pollfd(struct sio_hdl *sh, struct pollfd *pfd, int events)
+sio_alsa_pollfd(struct sio_hdl *sh, struct pollfd *pfd, int events)
 {
-	struct alsa_hdl *hdl = (struct alsa_hdl *)sh;
+	struct sio_alsa_hdl *hdl = (struct sio_alsa_hdl *)sh;
 	int i;
 
-	DPRINTF("alsa_pollfd: count = %d\n", 
+	DPRINTF("sio_alsa_pollfd: count = %d\n", 
 	    snd_pcm_poll_descriptors_count(hdl->out_pcm));
 
 	memset(pfd, 0, sizeof(struct pollfd) * hdl->nfds);
@@ -1013,33 +1013,33 @@ alsa_pollfd(struct sio_hdl *sh, struct pollfd *pfd, int events)
 		hdl->infds = snd_pcm_poll_descriptors(hdl->in_pcm,
 		    pfd + hdl->onfds, hdl->nfds - hdl->onfds);
 	}
-	DPRINTF("alsa_pollfd: events = %x, nfds = %d + %d\n",
+	DPRINTF("sio_alsa_pollfd: events = %x, nfds = %d + %d\n",
 	    events, hdl->onfds, hdl->infds);
 	for (i = 0; i < hdl->onfds + hdl->infds; i++) {
-		DPRINTF("alsa_pollfd: pfds[%d].events = %x\n",
+		DPRINTF("sio_alsa_pollfd: pfds[%d].events = %x\n",
 		    i, pfd[i].events);
 	}
 	return hdl->onfds + hdl->infds;
 }
 
 int
-alsa_revents(struct sio_hdl *sh, struct pollfd *pfd)
+sio_alsa_revents(struct sio_hdl *sh, struct pollfd *pfd)
 {
-	struct alsa_hdl *hdl = (struct alsa_hdl *)sh;
+	struct sio_alsa_hdl *hdl = (struct sio_alsa_hdl *)sh;
 	snd_pcm_sframes_t idelay, odelay;
 	snd_pcm_state_t istate, ostate;
 	int hw_ptr, nfds;
 	unsigned short revents, all_revents;
 	int err;
 
-	DPRINTF("alsa_revents:\n");
+	DPRINTF("sio_alsa_revents:\n");
 
 	all_revents = nfds = 0;
 	if (hdl->sio.mode & SIO_PLAY) {
 		revents = 0;
 		ostate = snd_pcm_state(hdl->out_pcm);
 		if (ostate == SND_PCM_STATE_XRUN) {
-			fprintf(stderr, "alsa_revents: play xrun\n");
+			fprintf(stderr, "sio_alsa_revents: play xrun\n");
 		}
 		err = snd_pcm_poll_descriptors_revents(hdl->out_pcm, pfd, hdl->onfds, &revents);
 		if (err < 0) {
@@ -1048,7 +1048,7 @@ alsa_revents(struct sio_hdl *sh, struct pollfd *pfd)
 			return POLLHUP;
 		}
 		if (revents & POLLERR)
-			DPRINTF("alsa_revents: play POLLERR\n");
+			DPRINTF("sio_alsa_revents: play POLLERR\n");
 		all_revents |= revents;
 		nfds += hdl->onfds;
 	}
@@ -1056,21 +1056,21 @@ alsa_revents(struct sio_hdl *sh, struct pollfd *pfd)
 		revents = 0;
 		istate = snd_pcm_state(hdl->in_pcm);
 		if (istate == SND_PCM_STATE_XRUN) {
-			printf("alsa_revents: record xrun\n");
+			printf("sio_alsa_revents: record xrun\n");
 		}
 		err = snd_pcm_poll_descriptors_revents(hdl->in_pcm, pfd + nfds, hdl->infds, &revents);
 		if (err < 0) {
-			DALSA("alsa_revents: snd_pcm_poll_descriptors_revents/rec", err);
+			DALSA("sio_alsa_revents: snd_pcm_poll_descriptors_revents/rec", err);
 			hdl->sio.eof = 1;
 			return POLLHUP;
 		}
 		if (revents & POLLERR)
-			DPRINTF("alsa_revents: record xrun?\n");
+			DPRINTF("sio_alsa_revents: record xrun?\n");
 		all_revents |= revents;
 		nfds += hdl->infds;
 	}
 	revents = all_revents;
-	DPRINTF("alsa_revents: revents = %x\n", revents);
+	DPRINTF("sio_alsa_revents: revents = %x\n", revents);
 
 #if 0
 	if ((revents & POLLOUT) && (hdl->sio.mode & SIO_PLAY) &&
@@ -1078,18 +1078,18 @@ alsa_revents(struct sio_hdl *sh, struct pollfd *pfd)
 	     ostate == SND_PCM_STATE_PREPARED)) {
 		err = snd_pcm_avail_update(hdl->out_pcm);
 		if (err < 0) {
-			DALSA("alsa_revents: play snd_pcm_avail_update", err);
+			DALSA("sio_alsa_revents: play snd_pcm_avail_update", err);
 			hdl->sio.eof = 1;
 			return POLLHUP;
 		}
 		err = snd_pcm_delay(hdl->out_pcm, &odelay);
 		if (err < 0) {
-			DALSA("alsa_revents: play snd_pcm_delay", err);
+			DALSA("sio_alsa_revents: play snd_pcm_delay", err);
 			hdl->sio.eof = 1;
 			return POLLHUP;
 		}
 		if (odelay < 0) {
-			printf("alsa_revents: play xrun (delay)\n");
+			printf("sio_alsa_revents: play xrun (delay)\n");
 		}
 		hw_ptr = hdl->osfr - odelay;
 		hdl->odelta += hw_ptr - hdl->ohfr;
@@ -1104,18 +1104,18 @@ alsa_revents(struct sio_hdl *sh, struct pollfd *pfd)
 	     istate == SND_PCM_STATE_PREPARED)) {
 		err = snd_pcm_avail_update(hdl->in_pcm);
 		if (err < 0) {
-			DALSA("alsa_revents: rec snd_pcm_avail_update", err);
+			DALSA("sio_alsa_revents: rec snd_pcm_avail_update", err);
 			hdl->sio.eof = 1;
 			return POLLHUP;
 		}
 		err = snd_pcm_delay(hdl->in_pcm, &idelay);
 		if (err < 0) {
-			DALSA("alsa_revents: record snd_pcm_delay", err);
+			DALSA("sio_alsa_revents: record snd_pcm_delay", err);
 			hdl->sio.eof = 1;
 			return POLLHUP;
 		}
 		if (idelay < 0) {
-			printf("alsa_revents: record xrun (delay)\n");
+			printf("sio_alsa_revents: record xrun (delay)\n");
 		}
 		hw_ptr = hdl->isfr + idelay;
 		hdl->idelta += hw_ptr - hdl->ihfr;
@@ -1134,9 +1134,9 @@ alsa_revents(struct sio_hdl *sh, struct pollfd *pfd)
 	if (hdl->sio.started) {
 		if (hdl->filling)
 			revents |= POLLOUT;
-		if ((hdl->sio.mode & SIO_PLAY) && !alsa_wsil(hdl))
+		if ((hdl->sio.mode & SIO_PLAY) && !sio_alsa_wsil(hdl))
 			revents &= ~POLLOUT;
-		if ((hdl->sio.mode & SIO_REC) && !alsa_rdrop(hdl))
+		if ((hdl->sio.mode & SIO_REC) && !sio_alsa_rdrop(hdl))
 			revents &= ~POLLIN;
 	}
 #endif

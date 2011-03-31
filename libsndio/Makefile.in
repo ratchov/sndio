@@ -97,7 +97,7 @@ clean:
 # object files, sorted following dependencies to allow the
 # loader to determine dependencies in a single pass
 #
-OBJS = mio.o mio_rmidi.o mio_thru.o sndio.o alsa.o aucat.o sun.o \
+OBJS = mio.o mio_rmidi.o mio_thru.o sio.o sio_alsa.o sio_aucat.o sio_sun.o \
 getpeereid.o issetugid.o strlcpy.o strtonum.o
 
 .c.o:
@@ -124,12 +124,12 @@ strlcpy.o:	../bsd-compat/strlcpy.c
 strtonum.o:	../bsd-compat/strtonum.c
 		${CC} ${CFLAGS} ${SO_CFLAGS} ${INCLUDE} ${DEFS} -c -o strtonum.o ../bsd-compat/strtonum.c
 
-alsa.o:		alsa.c sndio_priv.h sndio.h
-aucat.o:	aucat.c ../aucat/amsg.h ../aucat/conf.h sndio_priv.h \
+sio_alsa.o:	sio_alsa.c sio_priv.h sndio.h
+sio_aucat.o:	sio_aucat.c ../aucat/amsg.h ../aucat/conf.h sio_priv.h \
 		sndio.h ../bsd-compat/bsd-compat.h
 mio.o:		mio.c mio_priv.h sndio.h ../bsd-compat/bsd-compat.h
 mio_rmidi.o:	mio_rmidi.c mio_priv.h sndio.h
 mio_thru.o:	mio_thru.c ../aucat/amsg.h ../aucat/conf.h mio_priv.h \
 		sndio.h ../bsd-compat/bsd-compat.h
-sndio.o:	sndio.c sndio_priv.h sndio.h ../bsd-compat/bsd-compat.h
-sun.o:		sun.c sndio_priv.h sndio.h
+sio.o:		sio.c sio_priv.h sndio.h ../bsd-compat/bsd-compat.h
+sio_sun.o:	sio_sun.c sio_priv.h sndio.h

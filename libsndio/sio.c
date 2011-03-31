@@ -28,7 +28,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "sndio_priv.h"
+#include "sio_priv.h"
 #ifdef COMPAT_ISSETUGID
 #include "bsd-compat.h"
 #endif
@@ -75,7 +75,7 @@ sio_open(const char *str, unsigned mode, int nbio)
 	if (str == NULL && !issetugid())
 		str = getenv("AUDIODEVICE");
 	if (str == NULL) {
-		hdl = sio_open_aucat("0", mode, nbio);
+		hdl = sio_aucat_open("0", mode, nbio);
 		if (hdl != NULL)
 			return hdl;
 #ifdef USE_SUN
@@ -84,7 +84,7 @@ sio_open(const char *str, unsigned mode, int nbio)
 			    minor(sb.st_rdev) & 0xf);
 		} else
 			strlcpy(buf, "0", sizeof(buf));
-		hdl = sio_open_sun(buf, mode, nbio);
+		hdl = sio_sun_open(buf, mode, nbio);
 		if (hdl != NULL)
 			return hdl;
 #endif
@@ -103,10 +103,10 @@ sio_open(const char *str, unsigned mode, int nbio)
 		 */
 		if (stat(str, &sb) < 0 || !S_ISCHR(sb.st_mode)) {
 			snprintf(buf, sizeof(buf), "0.%s", str);
-			return sio_open_aucat(buf, mode, nbio);
+			return sio_aucat_open(buf, mode, nbio);
 		}
 		snprintf(buf, sizeof(buf), "%u", minor(sb.st_rdev) & 0xf);
-		return sio_open_sun(buf, mode, nbio);
+		return sio_sun_open(buf, mode, nbio);
 #else
 		return NULL;
 #endif
@@ -114,11 +114,11 @@ sio_open(const char *str, unsigned mode, int nbio)
 	len = sep - str;
 	if (len == (sizeof(prefix_aucat) - 1) &&
 	    memcmp(str, prefix_aucat, len) == 0)
-		return sio_open_aucat(sep + 1, mode, nbio);
+		return sio_aucat_open(sep + 1, mode, nbio);
 #ifdef USE_SUN
 	if (len == (sizeof(prefix_sun) - 1) &&
 	    memcmp(str, prefix_sun, len) == 0)
-		return sio_open_sun(sep + 1, mode, nbio);
+		return sio_sun_open(sep + 1, mode, nbio);
 #endif
 #ifdef USE_ALSA
 	if (len == (sizeof(prefix_alsa) - 1) &&

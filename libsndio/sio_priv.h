@@ -77,9 +77,9 @@ struct sio_ops {
 	void (*getvol)(struct sio_hdl *);
 };
 
-struct sio_hdl *sio_open_aucat(const char *, unsigned, int);
+struct sio_hdl *sio_aucat_open(const char *, unsigned, int);
 #ifdef USE_SUN
-struct sio_hdl *sio_open_sun(const char *, unsigned, int);
+struct sio_hdl *sio_sun_open(const char *, unsigned, int);
 #endif
 #ifdef USE_ALSA
 struct sio_hdl *sio_open_alsa(const char *, unsigned, int);
