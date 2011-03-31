@@ -15,13 +15,6 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-/*
- * TODO:
- *
- * call hdl->cb_pos() from sun_read() and sun_write(), or better:
- * implement generic blocking sio_read() and sio_write() with poll(2)
- * and use non-blocking sio_ops only
- */
 #ifdef USE_ALSA
 #include <sys/types.h>
 #include <sys/ioctl.h>
@@ -42,22 +35,30 @@
 
 #include "sndio_priv.h"
 
+#ifdef DEBUG
+#define DALSA(str, err) fprintf(stderr, "%s: %s\n", str, snd_strerror(err)) 
+#else
+#define DALSA(str, err) do {} while (0)
+#endif
+
 struct alsa_hdl {
 	struct sio_hdl sio;
+	struct sio_par par;
+	struct pollfd *pfds;
 	snd_pcm_t *out_pcm;
 	snd_pcm_t *in_pcm;
 	snd_pcm_hw_params_t *out_hwp;
 	snd_pcm_sw_params_t *out_swp;
 	snd_pcm_hw_params_t *in_hwp;
 	snd_pcm_sw_params_t *in_swp;
-	int filling;
+	int filling, filltodo;
 	unsigned ibpf, obpf;		/* bytes per frame */
 	unsigned ihfr, ohfr;		/* frames the hw transfered */
 	unsigned isfr, osfr;		/* frames the sw transfered */
 	unsigned ierr, oerr;		/* frames the hw dropped */
 	int offset;			/* frames play is ahead of record */
 	int idelta, odelta;		/* position reported to client */
-	int infds, onfds;
+	int nfds, infds, onfds;
 };
 
 static void alsa_close(struct sio_hdl *);
@@ -68,6 +69,7 @@ static int alsa_getpar(struct sio_hdl *, struct sio_par *);
 static int alsa_getcap(struct sio_hdl *, struct sio_cap *);
 static size_t alsa_read(struct sio_hdl *, void *, size_t);
 static size_t alsa_write(struct sio_hdl *, const void *, size_t);
+static int alsa_nfds(struct sio_hdl *);
 static int alsa_pollfd(struct sio_hdl *, struct pollfd *, int);
 static int alsa_revents(struct sio_hdl *, struct pollfd *);
 static int alsa_setvol(struct sio_hdl *, unsigned);
@@ -82,6 +84,7 @@ static struct sio_ops alsa_ops = {
 	alsa_read,
 	alsa_start,
 	alsa_stop,
+	alsa_nfds,
 	alsa_pollfd,
 	alsa_revents,
 	alsa_setvol,
@@ -144,13 +147,12 @@ alsa_fmttopar(struct alsa_hdl *hdl, snd_pcm_format_t fmt, struct sio_par *par)
 		par->le = 0;
 		break;
 	default:
-		DPRINTF("alsa_fmttopar: unsupported format\n");
+		DPRINTF("alsa_fmttopar: 0x%x: unsupported format\n", fmt);
 		hdl->sio.eof = 1;
 		return 0;
 	}
 	par->msb = 1;
 	par->bps = SIO_BPS(par->bits);
-
 	return 1;
 }
 
@@ -159,7 +161,7 @@ alsa_fmttopar(struct alsa_hdl *hdl, snd_pcm_format_t fmt, struct sio_par *par)
  * convert sio_par encoding to ALSA format
  */
 static void
-alsa_enctofmt(struct alsa_hdl *hdl, snd_pcm_format_t *rfmt, struct sio_enc *enc)
+alsa_enctofmt(struct alsa_hdl *hdl, snd_pcm_format_t *rfmt, struct sio_par *enc)
 {
 	if (enc->bits == 8) {
 		if (enc->sig == ~0U || !enc->sig)
@@ -207,7 +209,6 @@ alsa_enctofmt(struct alsa_hdl *hdl, snd_pcm_format_t *rfmt, struct sio_enc *enc)
 				*rfmt = SND_PCM_FORMAT_U24_BE;
 		}
 	} else {
-		/* XXX */
 		*rfmt = SIO_LE_NATIVE ?
 		    SND_PCM_FORMAT_S16_LE : SND_PCM_FORMAT_S16_BE;
 	}
@@ -268,128 +269,11 @@ alsa_tryinfo(struct alsa_hdl *hdl, struct sio_enc *enc,
 static int
 alsa_getcap(struct sio_hdl *sh, struct sio_cap *cap)
 {
-#if 0
-#define NCHANS (sizeof(chans) / sizeof(chans[0]))
-#define NRATES (sizeof(rates) / sizeof(rates[0]))
-	static unsigned chans[] = {
-		1, 2, 4, 6, 8, 10, 12
-	};
-	static unsigned rates[] = {
-		8000, 11025, 12000, 16000, 22050, 24000,
-		32000, 44100, 48000, 64000, 88200, 96000
-	};
 	struct alsa_hdl *hdl = (struct alsa_hdl *)sh;
-	struct sio_par savepar;
-	unsigned nenc = 0, nconf = 0;
-	unsigned enc_map = 0, rchan_map = 0, pchan_map = 0, rate_map;
-	unsigned i, j, conf;
-	unsigned fmt;
 
-	if (!alsa_getpar(&hdl->sio, &savepar))
-		return 0;
-
-	/*
-	 * fill encoding list
-	 */
-	for (ae.index = 0; nenc < SIO_NENC; ae.index++) {
-		if (ioctl(hdl->fd, AUDIO_GETENC, &ae) < 0) {
-			if (errno == EINVAL)
-				break;
-			DPERROR("alsa_getcap: getenc");
-			hdl->sio.eof = 1;
-			return 0;
-		}
-		if (ae.flags & AUDIO_ENCODINGFLAG_EMULATED)
-			continue;
-		if (ae.encoding == AUDIO_ENCODING_SLINEAR_LE) {
-			cap->enc[nenc].le = 1;
-			cap->enc[nenc].sig = 1;
-		} else if (ae.encoding == AUDIO_ENCODING_SLINEAR_BE) {
-			cap->enc[nenc].le = 0;
-			cap->enc[nenc].sig = 1;
-		} else if (ae.encoding == AUDIO_ENCODING_ULINEAR_LE) {
-			cap->enc[nenc].le = 1;
-			cap->enc[nenc].sig = 0;
-		} else if (ae.encoding == AUDIO_ENCODING_ULINEAR_BE) {
-			cap->enc[nenc].le = 0;
-			cap->enc[nenc].sig = 0;
-		} else if (ae.encoding == AUDIO_ENCODING_SLINEAR) {
-			cap->enc[nenc].le = SIO_LE_NATIVE;
-			cap->enc[nenc].sig = 1;
-		} else if (ae.encoding == AUDIO_ENCODING_ULINEAR) {
-			cap->enc[nenc].le = SIO_LE_NATIVE;
-			cap->enc[nenc].sig = 0;
-		} else {
-			/* unsipported encoding */
-			continue;
-		}
-		cap->enc[nenc].bits = ae.precision;
-		cap->enc[nenc].bps = SIO_BPS(ae.precision);
-		cap->enc[nenc].msb = 1;
-		enc_map |= (1 << nenc);
-		nenc++;
-	}
-
-	/*
-	 * fill channels
-	 *
-	 * for now we're lucky: all kernel devices assume that the
-	 * number of channels and the encoding are independent so we can
-	 * use the current encoding and try various channels.
-	 */
-	if (hdl->sio.mode & SIO_PLAY) {
-		memcpy(&cap->pchan, chans, NCHANS * sizeof(unsigned));
-		for (i = 0; i < NCHANS; i++) {
-			if (alsa_tryinfo(hdl, NULL, chans[i], 0, 0))
-				pchan_map |= (1 << i);
-		}
-	}
-	if (hdl->sio.mode & SIO_REC) {
-		memcpy(&cap->rchan, chans, NCHANS * sizeof(unsigned));
-		for (i = 0; i < NCHANS; i++) {
-			if (alsa_tryinfo(hdl, NULL, 0, chans[i], 0))
-				rchan_map |= (1 << i);
-		}
-	}
-
-	/*
-	 * fill rates
-	 *
-	 * rates are not independent from other parameters (eg. on
-	 * uaudio devices), so certain rates may not be allowed with
-	 * certain encodings. We have to check rates for all encodings
-	 */
-	memcpy(&cap->rate, rates, NRATES * sizeof(unsigned));
-	for (j = 0; j < nenc; j++) {
-		rate_map = 0;
-		for (i = 0; i < NRATES; i++) {
-			if (alsa_tryinfo(hdl, &cap->enc[j], 0, 0, rates[i]))
-				rate_map |= (1 << i);
-		}
-		for (conf = 0; conf < nconf; conf++) {
-			if (cap->confs[conf].rate == rate_map) {
-				cap->confs[conf].enc |= (1 << j);
-				break;
-			}
-		}
-		if (conf == nconf) {
-			if (nconf == SIO_NCONF)
-				break;
-			cap->confs[nconf].enc = (1 << j);
-			cap->confs[nconf].pchan = pchan_map;
-			cap->confs[nconf].rchan = rchan_map;
-			cap->confs[nconf].rate = rate_map;
-			nconf++;
-		}
-	}
-	cap->nconf = nconf;
-	if (!alsa_setpar(&hdl->sio, &savepar))
-		return 0;
-	return 1;
-#undef NCHANS
-#undef NRATES
-#endif
-	return 1;
+	DPRINTF("alsa_getcap: not implemented\n");
+	hdl->sio.eof = 1;
+	return 0;
 }
 
 static void
@@ -411,6 +295,8 @@ sio_open_alsa(const char *str, unsigned mode, int nbio)
 {
 	struct alsa_hdl *hdl;
 	char path[PATH_MAX];
+	struct sio_par par;
+	int err;
 
 	hdl = malloc(sizeof(struct alsa_hdl));
 	if (hdl == NULL)
@@ -420,43 +306,63 @@ sio_open_alsa(const char *str, unsigned mode, int nbio)
 	snprintf(path, sizeof(path), "hw:%s", str);
 
 	if (mode & SIO_PLAY) {
-		if (snd_pcm_open(&hdl->out_pcm, path, SND_PCM_STREAM_PLAYBACK,
-		    SND_PCM_NONBLOCK) < 0) {
-			DPERROR(path);
+		err = snd_pcm_open(&hdl->out_pcm, path,
+		    SND_PCM_STREAM_PLAYBACK, SND_PCM_NONBLOCK);
+		if (err < 0) {
+			DALSA("snd_pcm_open", err);
 			goto bad_free;
 		}
-		snd_pcm_nonblock(hdl->out_pcm, 1);
 	}
-
 	if (mode & SIO_REC) {
-		if (snd_pcm_open(&hdl->in_pcm, path, SND_PCM_STREAM_CAPTURE,
-		    SND_PCM_NONBLOCK) < 0) {
-			DPERROR(path);
-			goto bad_free;
-		}
-		snd_pcm_nonblock(hdl->in_pcm, 1);
-	}
-
-	if (hdl->out_pcm) {
-		if (snd_pcm_hw_params_malloc(&hdl->out_hwp) < 0) {
-			DPERROR("could not alloc out_hwp");
-			goto bad_free;
-		}
-		if (snd_pcm_sw_params_malloc(&hdl->out_swp) < 0) {
-			DPERROR("could not alloc out_swp");
-			goto bad_free;
+		err = snd_pcm_open(&hdl->in_pcm, path,
+		    SND_PCM_STREAM_CAPTURE, SND_PCM_NONBLOCK);
+		if (err < 0) {
+			DALSA("snd_pcm_open", err);
+			goto bad_free_out_pcm;
 		}
 	}
-	if (hdl->in_pcm) {
-		if (snd_pcm_hw_params_malloc(&hdl->in_hwp) < 0) {
-			DPERROR("could not alloc in_hwp");
-			goto bad_free;
+	if (mode & SIO_PLAY) {
+		err = snd_pcm_hw_params_malloc(&hdl->out_hwp);
+		if (err < 0) {
+			DALSA("could not alloc out_hwp", err);
+			goto bad_free_in_pcm;
 		}
-		if (snd_pcm_sw_params_malloc(&hdl->in_swp) < 0) {
-			DPERROR("could not alloc in_swp");
-			goto bad_free;
+		err = snd_pcm_sw_params_malloc(&hdl->out_swp);
+		if (err < 0) {
+			DALSA("could not alloc out_swp", err);
+			goto bad_free_out_hwp;
 		}
 	}
+	if (mode & SIO_REC) {
+		err = snd_pcm_hw_params_malloc(&hdl->in_hwp);
+		if (err < 0) {
+			DALSA("could not alloc in_hwp", err);
+			goto bad_free_out_swp;
+		}
+		err = snd_pcm_sw_params_malloc(&hdl->in_swp);
+		if (err < 0) {
+			DALSA("could not alloc in_swp", err);
+			goto bad_free_in_hwp;
+		}
+	}
+	if ((mode & SIO_PLAY) && (mode & SIO_REC)) {
+		err = snd_pcm_link(hdl->in_pcm, hdl->out_pcm);
+		if (err < 0) {
+			DALSA("could not alloc in_swp", err);
+			goto bad_free_in_swp;
+		}
+	}
+	hdl->nfds = 0;
+	if (mode & SIO_PLAY)
+		hdl->nfds += snd_pcm_poll_descriptors_count(hdl->out_pcm);
+	if (mode & SIO_REC)
+		hdl->nfds += snd_pcm_poll_descriptors_count(hdl->in_pcm);
+	hdl->pfds = malloc(sizeof(struct pollfd) * hdl->nfds);
+	if (hdl->pfds == NULL) {
+		DPERROR("couldn't allocate pollfd structures");
+		goto bad_free_in_swp;
+	}
+	DPRINTF("allocated %d descriptors\n", hdl->nfds);
 
 	/*
 	 * Default parameters may not be compatible with libsndio (eg. mulaw
@@ -465,32 +371,36 @@ sio_open_alsa(const char *str, unsigned mode, int nbio)
 	 * not supported by the device, then sio_setpar() will pick supported
 	 * ones.
 	 */
-
-	if (mode & SIO_PLAY) {
-		if (snd_pcm_hw_params_any(hdl->out_pcm, hdl->out_hwp) < 0) {
-			DPERROR("no playback configurations available");
-			goto bad_free;
-		}
-		if (snd_pcm_hw_params_set_access(hdl->out_pcm, hdl->out_hwp,
-		    SND_PCM_ACCESS_RW_INTERLEAVED) < 0) {
-			DPERROR("cannot use interleaved samples for playback");
-			goto bad_free;
-		}
-	}
-	if (mode & SIO_REC) {
-		if (snd_pcm_hw_params_any(hdl->in_pcm, hdl->in_hwp) < 0) {
-			DPERROR("no recording configurations available");
-			goto bad_free;
-		}
-		if (snd_pcm_hw_params_set_access(hdl->in_pcm, hdl->in_hwp,
-		    SND_PCM_ACCESS_RW_INTERLEAVED) < 0) {
-			DPERROR("cannot use interleaved samples for recording");
-			goto bad_free;
-		}
-	}
-
+	sio_initpar(&par);
+	par.bits = 16;
+	par.le = SIO_LE_NATIVE;
+	par.rate = 48000;
+	if (mode & SIO_PLAY)
+		par.pchan = 2;
+	if (mode & SIO_REC)
+		par.rchan = 2;
+	if (!sio_setpar(&hdl->sio, &par))
+		goto bad_free_in_swp;
 	return (struct sio_hdl *)hdl;
- bad_free:
+bad_free_in_swp:
+ 	if (mode & SIO_REC)
+		snd_pcm_sw_params_free(hdl->in_swp);
+bad_free_in_hwp:
+ 	if (mode & SIO_REC)
+		snd_pcm_hw_params_free(hdl->in_hwp);
+bad_free_out_swp:
+ 	if (mode & SIO_PLAY)
+		snd_pcm_sw_params_free(hdl->out_swp);
+bad_free_out_hwp:
+ 	if (mode & SIO_PLAY)
+		snd_pcm_hw_params_free(hdl->out_hwp);
+bad_free_in_pcm:
+	if (mode & SIO_REC)
+		snd_pcm_close(hdl->in_pcm);
+bad_free_out_pcm:
+	if (mode & SIO_PLAY)
+		snd_pcm_close(hdl->out_pcm);
+bad_free:
 	free(hdl);
 	return NULL;
 }
@@ -510,20 +420,19 @@ alsa_close(struct sio_hdl *sh)
 		snd_pcm_hw_params_free(hdl->in_hwp);
 		snd_pcm_sw_params_free(hdl->in_swp);
 	}
-
 	free(hdl);
 }
 
 static int
 alsa_start(struct sio_hdl *sh)
 {
-	struct sio_par par;
 	struct alsa_hdl *hdl = (struct alsa_hdl *)sh;
+	int err;
 
-	if (!sio_getpar(&hdl->sio, &par))
-		return 0;
-	hdl->ibpf = par.rchan * par.bps;
-	hdl->obpf = par.pchan * par.bps;
+	DPRINTF("alsa_start:\n");
+
+	hdl->ibpf = hdl->par.rchan * hdl->par.bps;
+	hdl->obpf = hdl->par.pchan * hdl->par.bps;
 	hdl->ihfr = 0;
 	hdl->ohfr = 0;
 	hdl->isfr = 0;
@@ -536,36 +445,34 @@ alsa_start(struct sio_hdl *sh)
 	hdl->infds = 0;
 	hdl->onfds = 0;
 
-	/* prepare */
 	if (hdl->sio.mode & SIO_PLAY) {
-		if (snd_pcm_prepare(hdl->out_pcm) < 0) {
-			DPERROR("alsa_start: prepare playback failed");
+		err = snd_pcm_prepare(hdl->out_pcm);
+		if (err < 0) {
+			DALSA("alsa_start: prepare playback failed", err);
 			hdl->sio.eof = 1;
 			return 0;
 		}
-		hdl->onfds = snd_pcm_poll_descriptors_count(hdl->out_pcm);
 	}
 	if (hdl->sio.mode & SIO_REC) {
-		if (snd_pcm_prepare(hdl->in_pcm) < 0) {
-			DPERROR("alsa_start: prepare record failed");
+		err = snd_pcm_prepare(hdl->in_pcm);
+		if (err < 0) {
+			DALSA("alsa_start: prepare record failed", err);
 			hdl->sio.eof = 1;
 			return 0;
 		}
-		hdl->infds = snd_pcm_poll_descriptors_count(hdl->in_pcm);
 	}
-
 	hdl->filling = 0;
 	if (hdl->sio.mode & SIO_PLAY) {
 		hdl->filling = 1;
-	}
-	if (hdl->sio.mode & SIO_REC) {
-		if (snd_pcm_start(hdl->in_pcm) < 0) {
-			DPERROR("alsa_start: start record failed");
+		hdl->filltodo = hdl->par.bufsz;
+	} else {
+		err = snd_pcm_start(hdl->in_pcm);
+		if (err < 0) {
+			DALSA("alsa_start: start record failed", err);
 			hdl->sio.eof = 1;
 			return 0;
 		}
 	}
-
 	return 1;
 }
 
@@ -573,17 +480,20 @@ static int
 alsa_stop(struct sio_hdl *sh)
 {
 	struct alsa_hdl *hdl = (struct alsa_hdl *)sh;
+	int err;
 
 	if (hdl->sio.mode & SIO_PLAY) {
-		if (snd_pcm_drop(hdl->out_pcm) < 0) {
-			DPERROR("alsa_stop: drop/close playback failed");
+		err = snd_pcm_drop(hdl->out_pcm);
+		if (err < 0) {
+			DALSA("alsa_stop: drop/close playback failed", err);
 			hdl->sio.eof = 1;
 			return 0;
 		}
 	}
 	if (hdl->sio.mode & SIO_REC) {
-		if (snd_pcm_drop(hdl->in_pcm) < 0) {
-			DPERROR("alsa_stop: drop/close record failed");
+		err = snd_pcm_drop(hdl->in_pcm);
+		if (err < 0) {
+			DALSA("alsa_stop: drop/close record failed", err);
 			hdl->sio.eof = 1;
 			return 0;
 		}
@@ -601,312 +511,255 @@ alsa_setpar(struct sio_hdl *sh, struct sio_par *par)
 	unsigned ich, och;
 	snd_pcm_format_t ifmt, ofmt;
 	snd_pcm_uframes_t infr, onfr;
-	int fmt_err, nround;
-	unsigned inp, onp;
-	struct sio_enc enc;
+	snd_pcm_uframes_t ibufsz, obufsz;
+	int err;
 
-	/* bits, bps, sig, le, msb */
-
-	enc.bits = par->bits;
-	enc.bps = par->bps;
-	enc.sig = par->sig;
-	enc.le = par->le;
-	enc.msb = par->msb;
-	alsa_enctofmt(hdl, &ofmt, &enc);
+	/*
+	 * set encoding
+	 */
+	alsa_enctofmt(hdl, &ofmt, par);
+	DPRINTF("ofmt = %u\n", ofmt);
+	if (hdl->sio.mode & SIO_PLAY) {
+		err = snd_pcm_hw_params_any(hdl->out_pcm, hdl->out_hwp);
+		if (err < 0) {
+			DALSA("couldn't init play pars", err);
+			hdl->sio.eof = 1;
+			return 0;
+		}
+		err = snd_pcm_hw_params_set_access(hdl->out_pcm,
+		    hdl->out_hwp, SND_PCM_ACCESS_RW_INTERLEAVED);
+		if (err < 0) {
+			DALSA("couldn't set play access", err);
+			hdl->sio.eof = 1;
+			return 0;
+		}
+		err = snd_pcm_hw_params_set_format(hdl->out_pcm,
+		    hdl->out_hwp, ofmt);
+		if (err < 0) {
+			DALSA("couldn't set play fmt", err);
+			hdl->sio.eof = 1;
+			/*
+			 * XXX: try snd_pcm_set_format_mask
+			 */
+			return 0;
+		}
+		err = snd_pcm_hw_params_get_format(hdl->out_hwp, &ofmt);
+		if (err < 0) {
+			DALSA("couldn't get play fmt", err);
+			hdl->sio.eof = 1;
+			return 0;
+		}
+	}
 	ifmt = ofmt;
-	fmt_err = 0;
-	if (hdl->sio.mode & SIO_PLAY) {
- play_again:
-		/* SOUND_PCM_FORMAT_FLOAT_LE is the highest enum we can
-		 * support, SND_PCM_FORMAT_S16_LE is the lowest.
-		 */
-		while (ofmt < SND_PCM_FORMAT_FLOAT_LE) {
-			if (snd_pcm_hw_params_set_format(hdl->out_pcm,
-			    hdl->out_hwp, ofmt) < 0) {
-				if (!fmt_err) {
-					/* skip 8-bit formats */
-					ofmt = SND_PCM_FORMAT_S16_LE - 1;
-				}
-				fmt_err++;
-				ofmt++;
-			} else {
-				break;
-			}
-		}
-		if (ofmt >= SND_PCM_FORMAT_FLOAT_LE) {
-			DPERROR("could not set linear play format");
-			hdl->sio.eof = 1;
-			return 0;
-		}
-		if (snd_pcm_hw_params_get_format(hdl->out_hwp, &ofmt) < 0) {
-			DPERROR("get play format failed");
-			hdl->sio.eof = 1;
-			return 0;
-		}
-		if (hdl->sio.mode & SIO_REC) {
-			ifmt = ofmt;
-			if (snd_pcm_hw_params_set_format(hdl->in_pcm,
-			    hdl->in_hwp, ifmt) < 0) {
-				ifmt++;
-				ofmt = ifmt;
-				goto play_again;
-			}
-		}
-	} else {
-		while (ifmt < SND_PCM_FORMAT_FLOAT_LE) {
-			if (snd_pcm_hw_params_set_format(hdl->in_pcm,
-			    hdl->in_hwp, ifmt) < 0) {
-				if (!fmt_err) {
-					/* skip 8-bit formats */
-					ifmt = SND_PCM_FORMAT_S16_LE - 1;
-				}
-				fmt_err++;
-				ifmt++;
-			} else {
-				break;
-			}
-		}
-		if (ifmt >= SND_PCM_FORMAT_FLOAT_LE) {
-			DPERROR("could not set linear record format");
-			hdl->sio.eof = 1;
-			return 0;
-		}
-		if (snd_pcm_hw_params_get_format(hdl->in_hwp, &ifmt) < 0) {
-			DPERROR("get record format failed");
-			hdl->sio.eof = 1;
-			return 0;
-		}
-	}
-	alsa_fmttopar(hdl, (hdl->sio.mode & SIO_PLAY) ? ofmt : ifmt, par);
-
-	/* rate */
-
-	/* set a rate so we can get 1 rate back, otherwise _get_rate() fails */
-	if (!par->rate || par->rate == ~0U)
-		par->rate = 44100;
-	req_rate = orate = irate = par->rate;
-	if (hdl->sio.mode & SIO_PLAY) {
-		if (snd_pcm_hw_params_set_rate_near(hdl->out_pcm, hdl->out_hwp,
-		    &orate, NULL) < 0) {
-			DPERROR("set play rate failed");
-			hdl->sio.eof = 1;
-			return 0;
-		}
-		if (snd_pcm_hw_params_get_rate(hdl->out_hwp, &orate, 0) < 0) {
-			DPERROR("get play rate failed");
-			hdl->sio.eof = 1;
-			return 0;
-		}
-	}
 	if (hdl->sio.mode & SIO_REC) {
-		if (snd_pcm_hw_params_set_rate_near(hdl->in_pcm, hdl->in_hwp,
-		    &irate, NULL) < 0) {
-			DPERROR("set rec rate failed");
+		err = snd_pcm_hw_params_any(hdl->in_pcm, hdl->in_hwp);
+		if (err < 0) {
+			DALSA("couldn't init rec pars", err);
 			hdl->sio.eof = 1;
 			return 0;
 		}
-		if (snd_pcm_hw_params_get_rate(hdl->in_hwp, &irate, 0) < 0) {
-			DPERROR("get record rate failed");
+		err = snd_pcm_hw_params_set_access(hdl->out_pcm,
+		    hdl->out_hwp, SND_PCM_ACCESS_RW_INTERLEAVED);
+		if (err < 0) {
+			DALSA("couldn't set rec access", err);
 			hdl->sio.eof = 1;
 			return 0;
 		}
+		err = snd_pcm_hw_params_set_format(hdl->in_pcm,
+		    hdl->in_hwp, ifmt);
+		if (err < 0) {
+			DALSA("couldn't set rec fmt", err);
+			hdl->sio.eof = 1;
+			return 0;
+		}
+		err = snd_pcm_hw_params_get_format(hdl->in_hwp, &ifmt);
+		if (err < 0) {
+			DALSA("couldn't get play fmt", err);
+			hdl->sio.eof = 1;
+			return 0;
+		}
+		if (!(hdl->sio.mode & SIO_PLAY))
+			ofmt = ifmt;
 	}
-	if ((hdl->sio.mode == (SIO_PLAY|SIO_REC)) && (orate != irate)) {
-		DPERROR("could not get matching play/record rate");
+	if (ifmt != ofmt) {
+		DPRINTF("play and rec formats differ\n");
 		hdl->sio.eof = 1;
 		return 0;
 	}
-	par->rate = (hdl->sio.mode & SIO_PLAY) ? orate : irate;
-
-	/* pchan, rchan */
-
-	och = par->pchan;
-	ich = par->rchan;
-	if (hdl->sio.mode & SIO_PLAY) {
-		if (!och || och == ~0U)
-			och = 2;
-		if (snd_pcm_hw_params_set_channels_near(hdl->out_pcm,
-		    hdl->out_hwp, &och) < 0) {
-			DPERROR("set play channel count failed");
-			hdl->sio.eof = 1;
-			return 0;
-		}
-		if (snd_pcm_hw_params_get_channels(hdl->out_hwp, &och) < 0) {
-			DPERROR("get play channel count failed");
-			hdl->sio.eof = 1;
-			return 0;
-		}
-	}
-	if (hdl->sio.mode & SIO_REC) {
-		if (!ich || ich == ~0U)
-			ich = 2;
-		if (snd_pcm_hw_params_set_channels_near(hdl->in_pcm,
-		    hdl->in_hwp, &ich) < 0) {
-			DPERROR("set record channel count failed");
-			hdl->sio.eof = 1;
-			return 0;
-		}
-		if (snd_pcm_hw_params_get_channels(hdl->in_hwp, &ich) < 0) {
-			DPERROR("get record channel count failed");
-			hdl->sio.eof = 1;
-			return 0;
-		}
-	}
-	par->pchan = och;
-	par->rchan = ich;
-
-	/* round */
+	if (!alsa_fmttopar(hdl, ofmt, &hdl->par))
+		return 0;
 
 	/*
-	 * if block size and buffer size are not both set then
-	 * set the blocksize to 1/4 the buffer size
+	 * set rate
 	 */
+	orate = (par->rate == ~0U) ? 48000 : par->rate;
+	if (hdl->sio.mode & SIO_PLAY) {
+		err = snd_pcm_hw_params_set_rate_near(hdl->out_pcm,
+		    hdl->out_hwp, &orate, 0);
+		if (err < 0) {
+			DALSA("couldn't set play rate", err);
+			hdl->sio.eof = 1;
+			return 0;
+		}
+	}
+	irate = orate;
+	if (hdl->sio.mode & SIO_REC) {
+		err = snd_pcm_hw_params_set_rate_near(hdl->in_pcm,
+		    hdl->in_hwp, &irate, 0);
+		if (err < 0) {
+			DALSA("couldn't set rec rate", err);
+			hdl->sio.eof = 1;
+			return 0;
+		}
+		if (!(hdl->sio.mode & SIO_PLAY))
+			orate = irate;
+	}
+	if (irate != orate) {
+		DPRINTF("could not get matching play/record rate");
+		hdl->sio.eof = 1;
+		return 0;
+	}
+	hdl->par.rate = orate;
+
+	/*
+	 * set number of channels
+	 */
+	if ((hdl->sio.mode & SIO_PLAY) && par->pchan != ~0U) {
+		och = par->pchan;
+		err = snd_pcm_hw_params_set_channels_near(hdl->out_pcm,
+		    hdl->out_hwp, &och);
+		if (err < 0) {
+			DALSA("set play channel count failed", err);
+			hdl->sio.eof = 1;
+			return 0;
+		}
+		hdl->par.pchan = och;
+	}
+	if ((hdl->sio.mode & SIO_REC) && par->rchan != ~0U) {
+		ich = par->rchan;
+		err = snd_pcm_hw_params_set_channels_near(hdl->in_pcm,
+		    hdl->in_hwp, &ich);
+		if (err < 0) {
+			DALSA("set record channel count failed", err);
+			hdl->sio.eof = 1;
+			return 0;
+		}
+		hdl->par.rchan = ich;
+	}
+
+
+	/* XXX: factor this code chunk with sun backend */
+
 	/*
 	 * If the rate that the hardware is using is different than
 	 * the requested rate, scale buffer sizes so they will be the
-	 * same time duration as what was requested.
+	 * same time duration as what was requested.  This just gets
+	 * the rates to use for scaling, that actual scaling is done
+	 * later.
+	 */
+	req_rate = par->rate != ~0U ? par->rate : hdl->par.rate;
+	DPRINTF("req_rate = %u, orate = %u\n", req_rate, orate);
+
+	/*
+	 * if block size and buffer size are not both set then
+	 * set the blocksize to half the buffer size
 	 */
 	bufsz = par->appbufsz;
 	round = par->round;
-	if (bufsz && bufsz != ~0U) {
-		bufsz = bufsz * par->rate / req_rate;
+	if (bufsz != ~0U) {
+		bufsz = bufsz * orate / req_rate;
 		if (round == ~0U)
-			round = (bufsz + 1) / 4;
+			round = (bufsz + 1) / 2;
 		else
-			round = round * par->rate / req_rate;
-	} else if (round && round != ~0U) {
-		round = round * par->rate / req_rate;
-		bufsz = round * 4;
-	} else {
-		round = par->rate / 20;
-		bufsz = round * 4;
-	}
+			round = round * orate / req_rate;
+	} else if (round != ~0U) {
+		round = round * orate / req_rate;
+		bufsz = round * 2;
+	} else
+		return 1;
 
-	infr = onfr = round;
+	DPRINTF("alsa_setpar: trying bufsz = %u, round = %u\n", bufsz, round);
+
+	obufsz = bufsz;
 	if (hdl->sio.mode & SIO_PLAY) {
-		if (snd_pcm_hw_params_set_period_size_near(hdl->out_pcm,
-		    hdl->out_hwp, &onfr, NULL) < 0) {
-			DPERROR("set play period size failed");
+		err = snd_pcm_hw_params_set_buffer_size_near(hdl->out_pcm,
+		    hdl->out_hwp, &obufsz);
+		if (err < 0) {
+			DALSA("set play bufsz failed", err);
 			hdl->sio.eof = 1;
 			return 0;
 		}
-		if (snd_pcm_hw_params_get_period_size(hdl->out_hwp,
-		    &onfr, NULL) < 0) {
-			DPERROR("get play period size failed");
-			hdl->sio.eof = 1;
-			return 0;
-		}
+		DPRINTF("alsa_setpar: obufsz: ok\n");
 	}
-	if (hdl->sio.mode == (SIO_PLAY|SIO_REC))
-		infr = onfr;
+	ibufsz = obufsz;
 	if (hdl->sio.mode & SIO_REC) {
-		if (snd_pcm_hw_params_set_period_size_near(hdl->in_pcm,
-		    hdl->in_hwp, &infr, NULL) < 0) {
-			DPERROR("set record period size failed");
+		err = snd_pcm_hw_params_set_buffer_size_near(hdl->in_pcm,
+		    hdl->in_hwp, &ibufsz);
+		if (err < 0) {
+			DALSA("set record buffsz failed", err);
 			hdl->sio.eof = 1;
 			return 0;
 		}
-		if (snd_pcm_hw_params_get_period_size(hdl->in_hwp,
-		    &infr, NULL) < 0) {
-			DPERROR("get record period size failed");
-			hdl->sio.eof = 1;
-			return 0;
-		}
+		if (!(hdl->sio.mode & SIO_PLAY))
+			ibufsz = obufsz;
 	}
-	if ((hdl->sio.mode == (SIO_PLAY|SIO_REC)) && (infr != onfr)) {
-		DPERROR("could not get matching play/record period size");
+	if (ibufsz != obufsz) {
+		DPRINTF("could not get matching play/record buffer size");
 		hdl->sio.eof = 1;
 		return 0;
 	}
-	par->round = (hdl->sio.mode & SIO_PLAY) ? onfr : infr;
+	hdl->par.appbufsz = hdl->par.bufsz = obufsz;
 
-	/* appbufsz */
-
-	nround = (bufsz + round - 1) / round;
-	inp = onp = nround;
+	onfr = round;
 	if (hdl->sio.mode & SIO_PLAY) {
-		snd_pcm_hw_params_set_periods_min(hdl->out_pcm, hdl->out_hwp,
-		    &onp, NULL);
-		/* if above returned smaller than wanted, bump it back up.
-		 * if larger was returned, it's the min and we have to use it.
-		 */
-		if (onp < nround)
-			onp = nround;
-		if (snd_pcm_hw_params_set_periods_near(hdl->out_pcm,
-		    hdl->out_hwp, &onp, NULL) < 0) {
-			DPERROR("set play periods failed");
+		err = snd_pcm_hw_params_set_period_size_near(hdl->out_pcm,
+		    hdl->out_hwp, &onfr, NULL);
+		if (err < 0) {
+			DALSA("set play period size failed", err);
 			hdl->sio.eof = 1;
 			return 0;
 		}
-		if (snd_pcm_hw_params_get_periods(hdl->out_hwp,
-		    &onp, NULL) < 0) {
-			DPERROR("get play periods failed");
-			hdl->sio.eof = 1;
-			return 0;
-		}
+		DPRINTF("alsa_setpar: onfr: ok\n");
 	}
-	if (hdl->sio.mode == (SIO_PLAY|SIO_REC))
-		inp = onp;
+	infr = onfr;
 	if (hdl->sio.mode & SIO_REC) {
-		snd_pcm_hw_params_set_periods_min(hdl->in_pcm, hdl->in_hwp,
-		    &inp, NULL);
-		/* if above returned smaller than wanted, bump it back up.
-		 * if larger was returned, it's the min and we have to use it.
-		 */
-		if (inp < nround)
-			inp = nround;
-		if (snd_pcm_hw_params_set_periods_near(hdl->in_pcm, hdl->in_hwp,
-		    &inp, NULL) < 0) {
-			DPERROR("set record periods failed");
+		err = snd_pcm_hw_params_set_period_size_near(hdl->in_pcm,
+		    hdl->in_hwp, &infr, NULL);
+		if (err < 0) {
+			DALSA("set record period size failed", err);
 			hdl->sio.eof = 1;
 			return 0;
 		}
-		if (snd_pcm_hw_params_get_periods(hdl->in_hwp,
-		    &inp, NULL) < 0) {
-			DPERROR("get record periods failed");
-			hdl->sio.eof = 1;
-			return 0;
-		}
+		if (!(hdl->sio.mode & SIO_PLAY))
+			onfr = infr;
 	}
-	if ((hdl->sio.mode == (SIO_PLAY|SIO_REC)) && (inp != onp)) {
-		DPERROR("could not get matching play/record period count");
+	if (infr != onfr) {
+		DPRINTF("could not get matching play/record period size");
 		hdl->sio.eof = 1;
 		return 0;
 	}
-	if (hdl->sio.mode & SIO_PLAY) {
-		if (snd_pcm_hw_params_set_buffer_size(hdl->out_pcm,
-		    hdl->out_hwp, onp * onfr) < 0) {
-			DPERROR("set play buffer size failed");
-			hdl->sio.eof = 1;
-			return 0;
-		}
-	}
-	if (hdl->sio.mode & SIO_REC) {
-		if (snd_pcm_hw_params_set_buffer_size(hdl->in_pcm,
-		    hdl->in_hwp, inp * infr) < 0) {
-			DPERROR("set record buffer size failed");
-			hdl->sio.eof = 1;
-			return 0;
-		}
-	}
-	par->appbufsz = (hdl->sio.mode & SIO_PLAY) ? onfr * onp : infr * inp;
-	par->bufsz = par->appbufsz;
+	hdl->par.round = onfr;
 
-	DPRINTF("alsa_setpar: pchan=%d rchan=%d rate=%d round=%d bufsz=%d\n",
-	    par->pchan, par->rchan, par->rate, par->round, par->appbufsz);
+	DPRINTF("alsa_setpar: got bufsz = %u, round = %u\n",
+	    hdl->par.bufsz, hdl->par.round);
+
+
 
 	/* commit hardware params */
 
 	if (hdl->sio.mode & SIO_PLAY) {
-		if (snd_pcm_hw_params(hdl->out_pcm, hdl->out_hwp) < 0) {
-			DPERROR("commit play params failed");
+		err = snd_pcm_hw_params(hdl->out_pcm, hdl->out_hwp);
+		if (err < 0) {
+			DALSA("commit play params failed", err);
 			hdl->sio.eof = 1;
 			return 0;
 		}
+		DPRINTF("alsa_setpar: out_hwp: ok\n");
 	}
 	if (hdl->sio.mode & SIO_REC) {
-		if (snd_pcm_hw_params(hdl->in_pcm, hdl->in_hwp) < 0) {
-			DPERROR("commit record params failed");
+		err = snd_pcm_hw_params(hdl->in_pcm, hdl->in_hwp);
+		if (err < 0) {
+			DALSA("commit record params failed", err);
 			hdl->sio.eof = 1;
 			return 0;
 		}
@@ -915,49 +768,63 @@ alsa_setpar(struct sio_hdl *sh, struct sio_par *par)
 	/* software params */
 
 	if (hdl->sio.mode & SIO_PLAY) {
-		snd_pcm_sw_params_current(hdl->out_pcm, hdl->out_swp);
-		if (snd_pcm_sw_params_set_start_threshold(hdl->out_pcm,
-		    hdl->out_swp, UINT_MAX) < 0) {
-			DPERROR("set play start threshold failed");
+		err = snd_pcm_sw_params_current(hdl->out_pcm, hdl->out_swp);
+		if (err < 0) {
+			DALSA("snd_pcm_sw_params_current", err);
 			hdl->sio.eof = 1;
 			return 0;
 		}
-		if (snd_pcm_sw_params_set_stop_threshold(hdl->out_pcm,
-		    hdl->out_swp, onfr * onp) < 0) {
-			DPERROR("set play stop threshold failed");
+		err = snd_pcm_sw_params_set_start_threshold(hdl->out_pcm,
+		    hdl->out_swp, INT_MAX);
+		if (err < 0) {
+			DALSA("set play start threshold failed", err);
 			hdl->sio.eof = 1;
 			return 0;
 		}
-		if (snd_pcm_sw_params_set_avail_min(hdl->out_pcm,
-		    hdl->out_swp, onfr) < 0) {
-			DPERROR("set play min avail failed");
+		err = snd_pcm_sw_params_set_avail_min(hdl->out_pcm,
+		    hdl->out_swp, onfr);
+		if (err < 0) {
+			DALSA("set play avail min failed", err);
+			hdl->sio.eof = 1;
+			return 0;
+		}
+		err = snd_pcm_sw_params(hdl->out_pcm, hdl->out_swp);
+		if (err < 0) {
+			DALSA("commit play sw params failed", err);
 			hdl->sio.eof = 1;
 			return 0;
 		}
 	}
 
 	if (hdl->sio.mode & SIO_REC) {
-		snd_pcm_sw_params_current(hdl->in_pcm, hdl->in_swp);
-		if (snd_pcm_sw_params_set_start_threshold(hdl->in_pcm,
-		    hdl->in_swp, UINT_MAX) < 0) {
-			DPERROR("set record start threshold failed");
+		err = snd_pcm_sw_params_current(hdl->in_pcm, hdl->in_swp);
+		if (err < 0) {
+			DALSA("snd_pcm_sw_params_current", err);
 			hdl->sio.eof = 1;
 			return 0;
 		}
-		if (snd_pcm_sw_params_set_stop_threshold(hdl->in_pcm,
-		    hdl->in_swp, infr * inp) < 0) {
-			DPERROR("set record stop threshold failed");
+		err = snd_pcm_sw_params_set_start_threshold(hdl->in_pcm,
+		    hdl->in_swp, INT_MAX);
+		if (err < 0) {
+			DALSA("set record start threshold failed", err);
 			hdl->sio.eof = 1;
 			return 0;
 		}
-		if (snd_pcm_sw_params_set_avail_min(hdl->in_pcm,
-		    hdl->in_swp, infr) < 0) {
-			DPERROR("set record min avail failed");
+		err = snd_pcm_sw_params_set_avail_min(hdl->in_pcm,
+		    hdl->in_swp, infr);
+		if (err < 0) {
+			DALSA("set rec avail min failed", err);
+			hdl->sio.eof = 1;
+			return 0;
+		}
+		err = snd_pcm_sw_params(hdl->in_pcm, hdl->in_swp);
+		if (err < 0) {
+			DALSA("commit record sw params failed", err);
 			hdl->sio.eof = 1;
 			return 0;
 		}
 	}
-
+	DPRINTF("alsa_setpar: done\n");
 	return 1;
 }
 
@@ -965,101 +832,8 @@ static int
 alsa_getpar(struct sio_hdl *sh, struct sio_par *par)
 {
 	struct alsa_hdl *hdl = (struct alsa_hdl *)sh;
-	snd_pcm_format_t fmt;
-	snd_pcm_uframes_t nfr;
-	uint nch, rate;
-	int dir;
 
-	/* bit, sig, le, msb */
-
-	if (hdl->sio.mode & SIO_PLAY) {
-		if (snd_pcm_hw_params_get_format(hdl->out_hwp, &fmt) < 0) {
-			DPERROR("alsa_getpar: get play hw format");
-			hdl->sio.eof = 1;
-			return 0;
-		}
-	} else if (hdl->sio.mode & SIO_REC) {
-		if (snd_pcm_hw_params_get_format(hdl->in_hwp, &fmt) < 0) {
-			DPERROR("alsa_getpar: get rec hw format");
-			hdl->sio.eof = 1;
-			return 0;
-		}
-	}
-	alsa_fmttopar(hdl, fmt, par);
-
-	/* pchan, rchan */
-
-	if (hdl->sio.mode & SIO_PLAY) {
-		if (snd_pcm_hw_params_get_channels(hdl->out_hwp, &nch) < 0) {
-			DPERROR("alsa_getpar: get play hw channels");
-			hdl->sio.eof = 1;
-			return 0;
-		}
-		par->pchan = nch;
-	}
-	if (hdl->sio.mode & SIO_REC) {
-		if (snd_pcm_hw_params_get_channels(hdl->in_hwp, &nch) < 0) {
-			DPERROR("alsa_getpar: get rec hw channels");
-			hdl->sio.eof = 1;
-			return 0;
-		}
-		par->rchan = nch;
-	}
-
-	/* rate */
-
-	if (hdl->sio.mode & SIO_PLAY) {
-		if (snd_pcm_hw_params_get_rate(hdl->out_hwp, &rate, &dir) < 0) {
-			DPERROR("alsa_getpar: get play hw rate");
-			hdl->sio.eof = 1;
-			return 0;
-		}
-	} else if (hdl->sio.mode & SIO_REC) {
-		if (snd_pcm_hw_params_get_rate(hdl->in_hwp, &rate, &dir) < 0) {
-			DPERROR("alsa_getpar: get rec hw rate");
-			hdl->sio.eof = 1;
-			return 0;
-		}
-	}
-	par->rate = rate;
-
-	/* round */
-
-	if (hdl->sio.mode & SIO_PLAY) {
-		if (snd_pcm_hw_params_get_period_size(hdl->out_hwp,
-		    &nfr, &dir) < 0) {
-			DPERROR("alsa_getpar: get play hw round");
-			hdl->sio.eof = 1;
-			return 0;
-		}
-	} else if (hdl->sio.mode & SIO_REC) {
-		if (snd_pcm_hw_params_get_period_size(hdl->in_hwp,
-		    &nfr, &dir) < 0) {
-			DPERROR("alsa_getpar: get rec hw round");
-			hdl->sio.eof = 1;
-			return 0;
-		}
-	}
-	par->round = nfr;
-
-	/* appbufsz */
-
-	if (hdl->sio.mode & SIO_PLAY) {
-		if (snd_pcm_hw_params_get_buffer_size(hdl->out_hwp, &nfr) < 0) {
-			DPERROR("alsa_getpar: get play hw bufsz");
-			hdl->sio.eof = 1;
-			return 0;
-		}
-	} else if (hdl->sio.mode & SIO_REC) {
-		if (snd_pcm_hw_params_get_buffer_size(hdl->in_hwp, &nfr) < 0) {
-			DPERROR("alsa_getpar: get rec hw bufsz");
-			hdl->sio.eof = 1;
-			return 0;
-		}
-	}
-	par->appbufsz = nfr;
-	par->bufsz = par->appbufsz;
-
+	*par = hdl->par;
 	return 1;
 }
 
@@ -1080,9 +854,7 @@ alsa_rdrop(struct alsa_hdl *hdl)
 		if (todo > drop_nmax)
 			todo = drop_nmax;
 		while ((n = snd_pcm_readi(hdl->in_pcm, dropbuf, todo)) < 0) {
-			if (n == -ESTRPIPE)
-				continue;
-			DPERROR("alsa_rdrop: readi");
+			DALSA("alsa_rdrop: readi", n);
 			hdl->sio.eof = 1;
 			return 0;
 		}
@@ -1111,7 +883,7 @@ alsa_read(struct sio_hdl *sh, void *buf, size_t len)
 	while ((n = snd_pcm_readi(hdl->in_pcm, buf, todo)) < 0) {
 		if (n == -ESTRPIPE)
 			continue;
-		DPERROR("alsa_read: read");
+		DALSA("alsa_read: read", n);
 		hdl->sio.eof = 1;
 		return 0;
 	}
@@ -1128,57 +900,24 @@ alsa_read(struct sio_hdl *sh, void *buf, size_t len)
 static size_t
 alsa_autostart(struct alsa_hdl *hdl)
 {
-	struct pollfd *pfd;
-	int ret, state;
-	unsigned short revents;
+	int state, err;
 
-	pfd = malloc(sizeof(struct pollfd) * hdl->onfds);
-	if (pfd == NULL) {
-		DPERROR("alsa_autostart: allocate pfd");
+	state = snd_pcm_state(hdl->out_pcm);
+	if (state == SND_PCM_STATE_PREPARED) {
+		err = snd_pcm_start(hdl->out_pcm);
+		if (err < 0) {
+			DALSA("alsa_autostart: failed", err);
+			hdl->sio.eof = 1;
+			return 0;
+		}
+	} else {
+		DPRINTF("alsa_autostart: bad state");
 		hdl->sio.eof = 1;
 		return 0;
 	}
-	ret = snd_pcm_poll_descriptors(hdl->out_pcm, pfd, hdl->onfds);
-	if (ret != hdl->onfds) {
-		DPERROR("alsa_autostart: snd_pcm_poll_descriptors");
-		hdl->sio.eof = 1;
-		goto bad_free;
-	}
-	pfd->events = POLLOUT;
-	while (poll(pfd, hdl->onfds, 0) < 0) {
-		if (errno == EINTR)
-			continue;
-		DPERROR("alsa_autostart: poll");
-		hdl->sio.eof = 1;
-		goto bad_free;
-	}
-	if (snd_pcm_poll_descriptors_revents(hdl->out_pcm, pfd, hdl->onfds,
-	    &revents) < 0) {
-		DPERROR("alsa_autostart: snd_pcm_poll_descriptors");
-		goto bad_free;
-	}
-	if (!(revents & POLLOUT)) {
-		hdl->filling = 0;
-		if (hdl->sio.mode & SIO_PLAY) {
-			state = snd_pcm_state(hdl->out_pcm);
-			if (state == SND_PCM_STATE_PREPARED) {
-				if (snd_pcm_start(hdl->out_pcm) < 0) {
-					DPERROR("alsa_autostart: play failed");
-					goto bad_free;
-				}
-			} else if (state != SND_PCM_STATE_RUNNING) {
-				DPERROR("alsa_autostart: bad play state");
-				goto bad_free;
-			}
-		}
-		sio_onmove_cb(&hdl->sio, 0);
-	}
-	free(pfd);
+	DPRINTF("alsa_autostart: started\n");
+	sio_onmove_cb(&hdl->sio, 0);
 	return 1;
-
- bad_free:
-	free(pfd);
-	return 0;
 }
 
 /*
@@ -1194,16 +933,13 @@ alsa_wsil(struct alsa_hdl *hdl)
 	int zero_nmax = ZERO_NMAX / hdl->obpf;
 
 	while (hdl->offset < 0) {
+		DPRINTF("alsa_wsil:\n");
+
 		todo = (int)-hdl->offset;
 		if (todo > zero_nmax)
 			todo = zero_nmax;
 		if ((n = snd_pcm_writei(hdl->out_pcm, zero, todo)) < 0) {
-			if (errno == -EBADFD)
-				DPERROR("alsa_wsil: PCM not in the right state");
-			else if (errno == -EPIPE)
-				DPERROR("alsa_wsil: underrun");
-			else if (errno == -ESTRPIPE)
-				DPERROR("alsa_wsil: stream is suspended");
+			DALSA("alsa_wsil", n);
 			hdl->sio.eof = 1;
 			return 0;
 		}
@@ -1218,24 +954,31 @@ static size_t
 alsa_write(struct sio_hdl *sh, const void *buf, size_t len)
 {
 	struct alsa_hdl *hdl = (struct alsa_hdl *)sh;
-	const unsigned char *data = buf;
 	ssize_t n, todo;
 
 	if (!alsa_wsil(hdl))
 		return 0;
 	todo = len / hdl->obpf;
-	if ((n = snd_pcm_writei(hdl->out_pcm, data, todo)) < 0) {
-		if (errno == -EBADFD)
-			DPERROR("alsa_write: PCM not in the right state");
-		else if (errno == -EPIPE)
-			DPERROR("alsa_write: underrun");
-		else if (errno == -ESTRPIPE)
-			DPERROR("alsa_write: stream is suspended");
- 		return 0;
+	if (hdl->filling && todo > hdl->filltodo)
+		todo = hdl->filltodo;
+	DPRINTF("alsa_write: len = %zd, todo = %zd\n", len, todo);
+	while ((n = snd_pcm_writei(hdl->out_pcm, buf, todo)) < 0) {
+		if (n == -EINTR)
+			continue;
+		if (n != -EAGAIN) {
+			DALSA("alsa_write", n);
+			hdl->sio.eof = 1;
+		}
+		return 0;
 	}
+	DPRINTF("wrote %zd\n", n);
 	if (hdl->filling) {
-		if (!alsa_autostart(hdl))
-			return 0;
+		hdl->filltodo -= n;
+		if (hdl->filltodo == 0) {
+			hdl->filling = 0;
+			if (!alsa_autostart(hdl))
+				return 0;
+		}
 	}
 	hdl->osfr += n;
 	n *= hdl->obpf;
@@ -1243,42 +986,40 @@ alsa_write(struct sio_hdl *sh, const void *buf, size_t len)
 }
 
 static int
+alsa_nfds(struct sio_hdl *sh)
+{
+	struct alsa_hdl *hdl = (struct alsa_hdl *)sh;
+
+	return hdl->nfds;
+}
+
+
+static int
 alsa_pollfd(struct sio_hdl *sh, struct pollfd *pfd, int events)
 {
 	struct alsa_hdl *hdl = (struct alsa_hdl *)sh;
-	int nfds, ret, i;
+	int i;
 
-	nfds = 0;
+	DPRINTF("alsa_pollfd: count = %d\n", 
+	    snd_pcm_poll_descriptors_count(hdl->out_pcm));
+
+	memset(pfd, 0, sizeof(struct pollfd) * hdl->nfds);
 	if (hdl->sio.mode & SIO_PLAY) {
-		ret = snd_pcm_poll_descriptors(hdl->out_pcm, &pfd[0],
-		    hdl->onfds);
-		if (ret != hdl->onfds) {
-			DPERROR("alsa_pollfd: play snd_pcm_poll_descriptors");
-			hdl->sio.eof = 1;
-			return 0;
-		}
-		nfds += ret;
-	}
+		hdl->onfds = snd_pcm_poll_descriptors(hdl->out_pcm,
+		    pfd, hdl->nfds);
+	} else
+		hdl->onfds = 0;
 	if (hdl->sio.mode & SIO_REC) {
-		ret = snd_pcm_poll_descriptors(hdl->in_pcm, &pfd[nfds],
-		    hdl->infds);
-		if (ret != hdl->infds) {
-			DPERROR("alsa_pollfd: record snd_pcm_poll_descriptors");
-			hdl->sio.eof = 1;
-			return 0;
-		}
-		nfds += ret;
+		hdl->infds = snd_pcm_poll_descriptors(hdl->in_pcm,
+		    pfd + hdl->onfds, hdl->nfds - hdl->onfds);
 	}
-
-	for (i = 0; i < nfds; i++) {
-		/* user events */
-		pfd[i].events |= events;
-
-		/* ALSA doesn't set POLLERR in some versions ? */
-		pfd[i].events |= POLLERR;
+	DPRINTF("alsa_pollfd: events = %x, nfds = %d + %d\n",
+	    events, hdl->onfds, hdl->infds);
+	for (i = 0; i < hdl->onfds + hdl->infds; i++) {
+		DPRINTF("alsa_pollfd: pfds[%d].events = %x\n",
+		    i, pfd[i].events);
 	}
-
-	return nfds;
+	return hdl->onfds + hdl->infds;
 }
 
 int
@@ -1289,52 +1030,61 @@ alsa_revents(struct sio_hdl *sh, struct pollfd *pfd)
 	snd_pcm_state_t istate, ostate;
 	int hw_ptr, nfds;
 	unsigned short revents, all_revents;
+	int err;
+
+	DPRINTF("alsa_revents:\n");
 
 	all_revents = nfds = 0;
 	if (hdl->sio.mode & SIO_PLAY) {
+		revents = 0;
 		ostate = snd_pcm_state(hdl->out_pcm);
 		if (ostate == SND_PCM_STATE_XRUN) {
-			printf("alsa_revents: play xrun\n");
+			fprintf(stderr, "alsa_revents: play xrun\n");
 		}
-		if (snd_pcm_poll_descriptors_revents(hdl->out_pcm, &pfd[0],
-		    hdl->onfds, &revents) < 0) {
-			DPERROR("alsa_revents: snd_pcm_poll_descriptors");
+		err = snd_pcm_poll_descriptors_revents(hdl->out_pcm, pfd, hdl->onfds, &revents);
+		if (err < 0) {
+			DALSA("snd_pcm_poll_descriptors_revents/play", err);
 			hdl->sio.eof = 1;
 			return POLLHUP;
 		}
 		if (revents & POLLERR)
-			DPERROR("alsa_revents: play xrun?");
+			DPRINTF("alsa_revents: play POLLERR\n");
 		all_revents |= revents;
 		nfds += hdl->onfds;
 	}
 	if (hdl->sio.mode & SIO_REC) {
+		revents = 0;
 		istate = snd_pcm_state(hdl->in_pcm);
 		if (istate == SND_PCM_STATE_XRUN) {
 			printf("alsa_revents: record xrun\n");
 		}
-		if (snd_pcm_poll_descriptors_revents(hdl->in_pcm, &pfd[nfds],
-		    hdl->infds, &revents) < 0) {
-			DPERROR("alsa_revents: snd_pcm_poll_descriptors");
+		err = snd_pcm_poll_descriptors_revents(hdl->in_pcm, pfd + nfds, hdl->infds, &revents);
+		if (err < 0) {
+			DALSA("alsa_revents: snd_pcm_poll_descriptors_revents/rec", err);
 			hdl->sio.eof = 1;
 			return POLLHUP;
 		}
 		if (revents & POLLERR)
-			DPERROR("alsa_revents: record xrun?");
+			DPRINTF("alsa_revents: record xrun?\n");
 		all_revents |= revents;
 		nfds += hdl->infds;
 	}
 	revents = all_revents;
+	DPRINTF("alsa_revents: revents = %x\n", revents);
 
+#if 0
 	if ((revents & POLLOUT) && (hdl->sio.mode & SIO_PLAY) &&
 	    (ostate == SND_PCM_STATE_RUNNING ||
 	     ostate == SND_PCM_STATE_PREPARED)) {
-		if (snd_pcm_avail_update(hdl->out_pcm) < 0) {
-			DPERROR("alsa_revents: play snd_pcm_avail_update");
+		err = snd_pcm_avail_update(hdl->out_pcm);
+		if (err < 0) {
+			DALSA("alsa_revents: play snd_pcm_avail_update", err);
 			hdl->sio.eof = 1;
 			return POLLHUP;
 		}
-		if (snd_pcm_delay(hdl->out_pcm, &odelay) < 0) {
-			DPERROR("alsa_revents: play snd_pcm_delay");
+		err = snd_pcm_delay(hdl->out_pcm, &odelay);
+		if (err < 0) {
+			DALSA("alsa_revents: play snd_pcm_delay", err);
 			hdl->sio.eof = 1;
 			return POLLHUP;
 		}
@@ -1352,13 +1102,15 @@ alsa_revents(struct sio_hdl *sh, struct pollfd *pfd)
 	if ((revents & POLLIN) && !(hdl->sio.mode & SIO_PLAY) &&
 	    (istate == SND_PCM_STATE_RUNNING ||
 	     istate == SND_PCM_STATE_PREPARED)) {
-		if (snd_pcm_avail_update(hdl->in_pcm) < 0) {
-			DPERROR("alsa_revents: record snd_pcm_avail_update");
+		err = snd_pcm_avail_update(hdl->in_pcm);
+		if (err < 0) {
+			DALSA("alsa_revents: rec snd_pcm_avail_update", err);
 			hdl->sio.eof = 1;
 			return POLLHUP;
 		}
-		if (snd_pcm_delay(hdl->in_pcm, &idelay) < 0) {
-			DPERROR("alsa_revents: record snd_pcm_delay");
+		err = snd_pcm_delay(hdl->in_pcm, &idelay);
+		if (err < 0) {
+			DALSA("alsa_revents: record snd_pcm_delay", err);
 			hdl->sio.eof = 1;
 			return POLLHUP;
 		}
@@ -1387,6 +1139,7 @@ alsa_revents(struct sio_hdl *sh, struct pollfd *pfd)
 		if ((hdl->sio.mode & SIO_REC) && !alsa_rdrop(hdl))
 			revents &= ~POLLIN;
 	}
+#endif
 	return revents;
 }
 #endif /* defined USE_ALSA */
