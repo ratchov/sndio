@@ -89,7 +89,7 @@ sio_open(const char *str, unsigned mode, int nbio)
 			return hdl;
 #endif
 #ifdef USE_ALSA
-		hdl = sio_open_alsa("0", mode, nbio);
+		hdl = sio_alsa_open("0", mode, nbio);
 		if (hdl != NULL)
 			return hdl;
 #endif
@@ -123,7 +123,7 @@ sio_open(const char *str, unsigned mode, int nbio)
 #ifdef USE_ALSA
 	if (len == (sizeof(prefix_alsa) - 1) &&
 	    memcmp(str, prefix_alsa, len) == 0)
-		return sio_open_alsa(sep + 1, mode, nbio);
+		return sio_alsa_open(sep + 1, mode, nbio);
 #endif
 	DPRINTF("sio_open: %s: unknown device type\n", str);
 	return NULL;
@@ -379,10 +379,7 @@ sio_write(struct sio_hdl *hdl, const void *buf, size_t len)
 int
 sio_nfds(struct sio_hdl *hdl)
 {
-	/*
-	 * In the future we might use larger values
-	 */
-	return 1;
+	return hdl->ops->nfds(hdl);
 }
 
 int

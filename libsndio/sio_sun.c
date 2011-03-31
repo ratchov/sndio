@@ -63,6 +63,7 @@ static int sio_sun_getpar(struct sio_hdl *, struct sio_par *);
 static int sio_sun_getcap(struct sio_hdl *, struct sio_cap *);
 static size_t sio_sun_read(struct sio_hdl *, void *, size_t);
 static size_t sio_sun_write(struct sio_hdl *, const void *, size_t);
+static int sio_sun_nfds(struct sio_hdl *);
 static int sio_sun_pollfd(struct sio_hdl *, struct pollfd *, int);
 static int sio_sun_revents(struct sio_hdl *, struct pollfd *);
 
@@ -75,6 +76,7 @@ static struct sio_ops sio_sun_ops = {
 	sio_sun_read,
 	sio_sun_start,
 	sio_sun_stop,
+	sio_sun_nfds,
 	sio_sun_pollfd,
 	sio_sun_revents,
 	NULL, /* setvol */
@@ -859,6 +861,12 @@ sio_sun_write(struct sio_hdl *sh, const void *buf, size_t len)
 			return 0;
 	}
 	return n;
+}
+
+static int
+sio_sun_nfds(struct sio_hdl *hdl)
+{
+	return 1;
 }
 
 static int

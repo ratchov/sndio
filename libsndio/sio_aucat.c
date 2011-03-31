@@ -57,6 +57,7 @@ static int sio_aucat_getpar(struct sio_hdl *, struct sio_par *);
 static int sio_aucat_getcap(struct sio_hdl *, struct sio_cap *);
 static size_t sio_aucat_read(struct sio_hdl *, void *, size_t);
 static size_t sio_aucat_write(struct sio_hdl *, const void *, size_t);
+static int sio_aucat_nfds(struct sio_hdl *);
 static int sio_aucat_pollfd(struct sio_hdl *, struct pollfd *, int);
 static int sio_aucat_revents(struct sio_hdl *, struct pollfd *);
 static int sio_aucat_setvol(struct sio_hdl *, unsigned);
@@ -71,6 +72,7 @@ static struct sio_ops sio_aucat_ops = {
 	sio_aucat_read,
 	sio_aucat_start,
 	sio_aucat_stop,
+	sio_aucat_nfds,
 	sio_aucat_pollfd,
 	sio_aucat_revents,
 	sio_aucat_setvol,
@@ -689,6 +691,12 @@ sio_aucat_write(struct sio_hdl *sh, const void *buf, size_t len)
 	}
 	return n;
 }
+
+static int
+sio_aucat_nfds(struct sio_hdl *hdl)
+{
+	return 1;
+ }
 
 static int
 sio_aucat_pollfd(struct sio_hdl *sh, struct pollfd *pfd, int events)

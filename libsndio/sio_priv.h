@@ -71,6 +71,7 @@ struct sio_ops {
 	size_t (*read)(struct sio_hdl *, void *, size_t);
 	int (*start)(struct sio_hdl *);
 	int (*stop)(struct sio_hdl *);
+	int (*nfds)(struct sio_hdl *);
 	int (*pollfd)(struct sio_hdl *, struct pollfd *, int);
 	int (*revents)(struct sio_hdl *, struct pollfd *);
 	int (*setvol)(struct sio_hdl *, unsigned);
@@ -82,7 +83,7 @@ struct sio_hdl *sio_aucat_open(const char *, unsigned, int);
 struct sio_hdl *sio_sun_open(const char *, unsigned, int);
 #endif
 #ifdef USE_ALSA
-struct sio_hdl *sio_open_alsa(const char *, unsigned, int);
+struct sio_hdl *sio_alsa_open(const char *, unsigned, int);
 #endif
 void sio_create(struct sio_hdl *, struct sio_ops *, unsigned, int);
 void sio_destroy(struct sio_hdl *);
