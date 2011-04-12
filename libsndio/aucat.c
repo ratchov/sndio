@@ -59,7 +59,7 @@ aucat_rmsg(struct aucat *hdl, int *eof)
 	ssize_t n;
 	unsigned char *data;
 
-	if (hdl->rstate != STATE_RMSG) {
+	if (hdl->rstate != RSTATE_MSG) {
 		DPRINTF("aucat_rmsg: bad state\n");
 		abort();
 	}
@@ -84,10 +84,10 @@ aucat_rmsg(struct aucat *hdl, int *eof)
 	}
 	if (hdl->rmsg.cmd == AMSG_DATA) {
 		hdl->rtodo = hdl->rmsg.u.data.size;
-		hdl->rstate = STATE_RDATA;
+		hdl->rstate = RSTATE_DATA;
 	} else {
 		hdl->rtodo = sizeof(struct amsg);
-		hdl->rstate = STATE_RMSG;
+		hdl->rstate = RSTATE_MSG;
 	}
 	return 1;
 }
@@ -101,10 +101,10 @@ aucat_wmsg(struct aucat *hdl, int *eof)
 	ssize_t n;
 	unsigned char *data;
 
-	if (hdl->wstate == STATE_WIDLE)
-		hdl->wstate = STATE_WMSG;
+	if (hdl->wstate == WSTATE_IDLE)
+		hdl->wstate = WSTATE_MSG;
 		hdl->wtodo = sizeof(struct amsg);
-	if (hdl->wstate != STATE_WMSG) {
+	if (hdl->wstate != WSTATE_MSG) {
 		DPRINTF("aucat_wmsg: bad state\n");
 		abort();
 	}
@@ -124,10 +124,10 @@ aucat_wmsg(struct aucat *hdl, int *eof)
 	}
 	if (hdl->wmsg.cmd == AMSG_DATA) {
 		hdl->wtodo = hdl->wmsg.u.data.size;
-		hdl->wstate = STATE_WDATA;
+		hdl->wstate = WSTATE_DATA;
 	} else {
 		hdl->wtodo = 0xdeadbeef;
-		hdl->wstate = STATE_WIDLE;
+		hdl->wstate = WSTATE_IDLE;
 	}
 	return 1;
 }
@@ -137,7 +137,7 @@ aucat_rdata(struct aucat *hdl, void *buf, size_t len, int *eof)
 {
 	ssize_t n;
 
-	if (hdl->rstate != STATE_RDATA) {
+	if (hdl->rstate != RSTATE_DATA) {
 		DPRINTF("aucat_rdata: bad state\n");
 		abort();
 	}
@@ -159,7 +159,7 @@ aucat_rdata(struct aucat *hdl, void *buf, size_t len, int *eof)
 	}
 	hdl->rtodo -= n;
 	if (hdl->rtodo == 0) {
-		hdl->rstate = STATE_RMSG;
+		hdl->rstate = RSTATE_MSG;
 		hdl->rtodo = sizeof(struct amsg);
 	}
 	DPRINTF("aucat_rdata: read: n = %zd\n", n);
@@ -172,7 +172,7 @@ aucat_wdata(struct aucat *hdl, const void *buf, size_t len, unsigned wbpf, int *
 	ssize_t n;
 
 	switch (hdl->wstate) {
-	case STATE_WIDLE:
+	case WSTATE_IDLE:
 		if (len > AMSG_DATAMAX)
 			len = AMSG_DATAMAX;
 		len -= len % wbpf;
@@ -181,9 +181,9 @@ aucat_wdata(struct aucat *hdl, const void *buf, size_t len, unsigned wbpf, int *
 		hdl->wmsg.cmd = AMSG_DATA;
 		hdl->wmsg.u.data.size = len;
 		hdl->wtodo = sizeof(struct amsg);
-		hdl->wstate = STATE_WMSG;
+		hdl->wstate = WSTATE_MSG;
 		/* FALLTHROUGH */
-	case STATE_WMSG:
+	case WSTATE_MSG:
 		if (!aucat_wmsg(hdl, eof))
 			return 0;
 	}
@@ -205,7 +205,7 @@ aucat_wdata(struct aucat *hdl, const void *buf, size_t len, unsigned wbpf, int *
 	DPRINTF("aucat_wdata: write: n = %zd\n", n);
 	hdl->wtodo -= n;
 	if (hdl->wtodo == 0) {
-		hdl->wstate = STATE_WIDLE;
+		hdl->wstate = WSTATE_IDLE;
 		hdl->wtodo = 0xdeadbeef;
 	}
 	return n;
@@ -268,9 +268,9 @@ aucat_open(struct aucat *hdl, const char *str, char *sock, unsigned mode, int nb
 		goto bad_connect;
 	}
 	hdl->fd = s;
-	hdl->rstate = STATE_RMSG;
+	hdl->rstate = RSTATE_MSG;
 	hdl->rtodo = sizeof(struct amsg);
-	hdl->wstate = STATE_WIDLE;
+	hdl->wstate = WSTATE_IDLE;
 	hdl->wtodo = 0xdeadbeef;
 
 	/*
@@ -326,7 +326,7 @@ aucat_close(struct aucat *hdl, int eof)
 int
 aucat_pollfd(struct aucat *hdl, struct pollfd *pfd, int events)
 {
-	if (hdl->rstate == STATE_RMSG)
+	if (hdl->rstate == RSTATE_MSG)
 		events |= POLLIN;
 	pfd->fd = hdl->fd;
 	pfd->events = events;

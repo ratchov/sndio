@@ -10,12 +10,12 @@ struct aucat {
 	int fd;				/* socket */
 	struct amsg rmsg, wmsg;		/* temporary messages */
 	size_t wtodo, rtodo;		/* bytes to complete the packet */
-#define STATE_RMSG	0		/* message being received */
-#define STATE_RDATA	1		/* data being received */
+#define RSTATE_MSG	0		/* message being received */
+#define RSTATE_DATA	1		/* data being received */
 	unsigned rstate;		/* one of above */
-#define STATE_WIDLE	2		/* nothing to do */
-#define STATE_WMSG	3		/* message being transferred */
-#define STATE_WDATA	4		/* data being transferred */
+#define WSTATE_IDLE	2		/* nothing to do */
+#define WSTATE_MSG	3		/* message being transferred */
+#define WSTATE_DATA	4		/* data being transferred */
 	unsigned wstate;		/* one of above */
 };
 

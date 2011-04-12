@@ -41,8 +41,8 @@ struct sio_aucat_hdl {
 	int events;			/* events the user requested */
 	unsigned curvol, reqvol;	/* current and requested volume */
 	int delta;			/* some of received deltas */
-#define STATE_INIT	0
-#define STATE_RUN	1
+#define PSTATE_INIT	0
+#define RSTATE_UN	1
 	int pstate;
 };
 
@@ -114,14 +114,14 @@ sio_aucat_runmsg(struct sio_aucat_hdl *hdl)
 		sio_onvol_cb(&hdl->sio, hdl->curvol);
 		break;
 	case AMSG_STOP:
-		hdl->pstate = STATE_INIT;
+		hdl->pstate = PSTATE_INIT;
 		break;
 	default:
 		DPRINTF("sio_aucat_runmsg: unhandled message %u\n", hdl->aucat.rmsg.cmd);
 		hdl->sio.eof = 1;
 		return 0;
 	}
-	hdl->aucat.rstate = STATE_RMSG;
+	hdl->aucat.rstate = RSTATE_MSG;
 	hdl->aucat.rtodo = sizeof(struct amsg);
 	return 1;
 }
@@ -130,7 +130,7 @@ static int
 sio_aucat_buildmsg(struct sio_aucat_hdl *hdl)
 {
 	if (hdl->curvol != hdl->reqvol) {
-		hdl->aucat.wstate = STATE_WMSG;
+		hdl->aucat.wstate = WSTATE_MSG;
 		hdl->aucat.wtodo = sizeof(struct amsg);
 		hdl->aucat.wmsg.cmd = AMSG_SETVOL;
 		hdl->aucat.wmsg.u.vol.ctl = hdl->reqvol;
@@ -155,7 +155,7 @@ sio_aucat_open(const char *str, unsigned mode, int nbio)
 	sio_create(&hdl->sio, &sio_aucat_ops, mode, nbio);
 	hdl->curvol = SIO_MAXVOL;
 	hdl->reqvol = SIO_MAXVOL;
-	hdl->pstate = STATE_INIT;
+	hdl->pstate = PSTATE_INIT;
 	return (struct sio_hdl *)hdl;
 }
 
@@ -192,14 +192,14 @@ sio_aucat_start(struct sio_hdl *sh)
 	hdl->aucat.wtodo = sizeof(struct amsg);
 	if (!aucat_wmsg(&hdl->aucat, &hdl->sio.eof))
 		return 0;
-	hdl->aucat.rstate = STATE_RMSG;
+	hdl->aucat.rstate = RSTATE_MSG;
 	hdl->aucat.rtodo = sizeof(struct amsg);
 	if (fcntl(hdl->aucat.fd, F_SETFL, O_NONBLOCK) < 0) {
 		DPERROR("sio_aucat_start: fcntl(0)");
 		hdl->sio.eof = 1;
 		return 0;
 	}
-	hdl->pstate = STATE_RUN;
+	hdl->pstate = RSTATE_UN;
 	return 1;
 }
 
@@ -220,13 +220,13 @@ sio_aucat_stop(struct sio_hdl *sh)
 	/*
 	 * complete message or data block in progress
 	 */
-	if (hdl->aucat.wstate == STATE_WMSG) {
+	if (hdl->aucat.wstate == WSTATE_MSG) {
 		if (!aucat_wmsg(&hdl->aucat, &hdl->sio.eof))
 			return 0;
 	}
-	if (hdl->aucat.wstate == STATE_WDATA) {
+	if (hdl->aucat.wstate == WSTATE_DATA) {
 		hdl->maxwrite = hdl->aucat.wtodo;
-		while (hdl->aucat.wstate != STATE_WIDLE) {
+		while (hdl->aucat.wstate != WSTATE_IDLE) {
 			count = hdl->aucat.wtodo;
 			if (count > ZERO_MAX)
 				count = ZERO_MAX;
@@ -248,13 +248,13 @@ sio_aucat_stop(struct sio_hdl *sh)
 	/*
 	 * wait for the STOP ACK
 	 */
-	while (hdl->pstate != STATE_INIT) {
+	while (hdl->pstate != PSTATE_INIT) {
 		switch (hdl->aucat.rstate) {
-		case STATE_RMSG:
+		case RSTATE_MSG:
 			if (!sio_aucat_runmsg(hdl))
 				return 0;
 			break;
-		case STATE_RDATA:
+		case RSTATE_DATA:
 			if (!sio_aucat_read(&hdl->sio, zero, ZERO_MAX))
 				return 0;
 			break;
@@ -416,7 +416,7 @@ sio_aucat_read(struct sio_hdl *sh, void *buf, size_t len)
 {
 	struct sio_aucat_hdl *hdl = (struct sio_aucat_hdl *)sh;
 
-	while (hdl->aucat.rstate == STATE_RMSG) {
+	while (hdl->aucat.rstate == RSTATE_MSG) {
 		if (!sio_aucat_runmsg(hdl))
 			return 0;
 	}
@@ -429,7 +429,7 @@ sio_aucat_write(struct sio_hdl *sh, const void *buf, size_t len)
 	struct sio_aucat_hdl *hdl = (struct sio_aucat_hdl *)sh;
 	size_t n;
 
-	while (hdl->aucat.wstate == STATE_WIDLE) {
+	while (hdl->aucat.wstate == WSTATE_IDLE) {
 		if (!sio_aucat_buildmsg(hdl))
 			break;
 	}
@@ -466,11 +466,11 @@ sio_aucat_revents(struct sio_hdl *sh, struct pollfd *pfd)
 	int revents = pfd->revents;
 
 	if (revents & POLLIN) {
-		while (hdl->aucat.rstate == STATE_RMSG) {
+		while (hdl->aucat.rstate == RSTATE_MSG) {
 			if (!sio_aucat_runmsg(hdl))
 				break;
 		}
-		if (hdl->aucat.rstate != STATE_RDATA)
+		if (hdl->aucat.rstate != RSTATE_DATA)
 			revents &= ~POLLIN;
 	}
 	if (revents & POLLOUT) {
