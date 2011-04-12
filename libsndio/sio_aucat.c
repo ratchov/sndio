@@ -42,7 +42,7 @@ struct sio_aucat_hdl {
 	unsigned curvol, reqvol;	/* current and requested volume */
 	int delta;			/* some of received deltas */
 #define PSTATE_INIT	0
-#define RSTATE_UN	1
+#define PSTATE_RUN	1
 	int pstate;
 };
 
@@ -194,12 +194,9 @@ sio_aucat_start(struct sio_hdl *sh)
 		return 0;
 	hdl->aucat.rstate = RSTATE_MSG;
 	hdl->aucat.rtodo = sizeof(struct amsg);
-	if (fcntl(hdl->aucat.fd, F_SETFL, O_NONBLOCK) < 0) {
-		DPERROR("sio_aucat_start: fcntl(0)");
-		hdl->sio.eof = 1;
+	if (!aucat_setfl(&hdl->aucat, 1, &hdl->sio.eof))
 		return 0;
-	}
-	hdl->pstate = RSTATE_UN;
+	hdl->pstate = PSTATE_RUN;
 	return 1;
 }
 
@@ -211,12 +208,8 @@ sio_aucat_stop(struct sio_hdl *sh)
 	struct sio_aucat_hdl *hdl = (struct sio_aucat_hdl *)sh;
 	unsigned n, count;
 
-	if (fcntl(hdl->aucat.fd, F_SETFL, 0) < 0) {
-		DPERROR("sio_aucat_stop: fcntl(0)");
-		hdl->sio.eof = 1;
+	if (!aucat_setfl(&hdl->aucat, 0, &hdl->sio.eof))
 		return 0;
-	}
-
 	/*
 	 * complete message or data block in progress
 	 */

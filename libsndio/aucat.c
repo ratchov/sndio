@@ -324,6 +324,17 @@ aucat_close(struct aucat *hdl, int eof)
 }
 
 int
+aucat_setfl(struct aucat *hdl, int nbio, int *eof)
+{
+	if (fcntl(hdl->fd, F_SETFL, nbio ? O_NONBLOCK : 0) < 0) {
+		DPERROR("aucat_setfl: fcntl");
+		*eof = 1;
+		return 0;
+	}
+	return 1;
+}
+
+int
 aucat_pollfd(struct aucat *hdl, struct pollfd *pfd, int events)
 {
 	if (hdl->rstate == RSTATE_MSG)

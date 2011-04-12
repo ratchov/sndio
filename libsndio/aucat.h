@@ -24,5 +24,6 @@ int aucat_open(struct aucat *, const char *, char *, unsigned, int);
 void aucat_close(struct aucat *, int);
 int aucat_pollfd(struct aucat *, struct pollfd *, int);
 int aucat_revents(struct aucat *, struct pollfd *);
+int aucat_setfl(struct aucat *, int, int *);
 
 #endif /* !defined(AUCAT_H) */
