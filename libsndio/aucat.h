@@ -3,9 +3,6 @@
 
 #include "amsg.h"
 
-struct sio_hdl;
-struct mio_hdl;
-
 struct aucat {
 	int fd;				/* socket */
 	struct amsg rmsg, wmsg;		/* temporary messages */
