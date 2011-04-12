@@ -97,7 +97,7 @@ clean:
 # object files, sorted following dependencies to allow the
 # loader to determine dependencies in a single pass
 #
-OBJS = mio.o mio_rmidi.o mio_thru.o sio.o sio_alsa.o sio_aucat.o sio_sun.o \
+OBJS = mio.o mio_rmidi.o mio_aucat.o sio.o sio_alsa.o sio_aucat.o sio_sun.o \
 aucat.o getpeereid.o issetugid.o strlcpy.o strtonum.o
 
 .c.o:
@@ -128,7 +128,7 @@ aucat.o:	aucat.c aucat.h ../aucat/amsg.h ../aucat/conf.h \
 		../bsd-compat/bsd-compat.h
 mio.o:		mio.c mio_priv.h sndio.h ../bsd-compat/bsd-compat.h
 mio_rmidi.o:	mio_rmidi.c mio_priv.h sndio.h
-mio_thru.o:	mio_thru.c ../aucat/amsg.h ../aucat/conf.h mio_priv.h \
+mio_aucat.o:	mio_aucat.c ../aucat/amsg.h ../aucat/conf.h mio_priv.h \
 		sndio.h ../bsd-compat/bsd-compat.h
 sio.o:		sio.c sio_priv.h sndio.h ../bsd-compat/bsd-compat.h
 sio_alsa.o:	sio_alsa.c sio_priv.h sndio.h
