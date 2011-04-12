@@ -1224,7 +1224,7 @@ sock_execmsg(struct sock *f)
 		else
 			f->pstate = SOCK_STOP;
 		AMSG_INIT(m);
-		m->cmd = AMSG_ACK;
+		m->cmd = AMSG_STOP;
 		f->rstate = SOCK_RRET;
 		f->rtodo = sizeof(struct amsg);
 		break;
