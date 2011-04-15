@@ -233,14 +233,14 @@ aucat_open(struct aucat *hdl, const char *str, char *sock, unsigned mode, int nb
 		opt = sep + 1;
 		if (sep - str >= sizeof(unit)) {
 			DPRINTF("aucat_init: %s: too long\n", str);
-			return NULL;
+			return 0;
 		}
 		strlcpy(unit, str, opt - str);
 	}
 	DPRINTF("aucat_init: trying %s -> %s.%s\n", str, unit, opt);
 	uid = geteuid();
 	if (strchr(str, '/') != NULL)
-		return NULL;
+		return 0;
 	snprintf(ca.sun_path, sizeof(ca.sun_path),
 	    "/tmp/aucat-%u/%s%s", uid, sock, unit);
 	ca.sun_family = AF_UNIX;

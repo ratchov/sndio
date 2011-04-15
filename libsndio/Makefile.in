@@ -127,9 +127,9 @@ strtonum.o:	../bsd-compat/strtonum.c
 aucat.o:	aucat.c aucat.h ../aucat/amsg.h ../aucat/conf.h \
 		../bsd-compat/bsd-compat.h
 mio.o:		mio.c mio_priv.h sndio.h ../bsd-compat/bsd-compat.h
+mio_aucat.o:	mio_aucat.c aucat.h ../aucat/amsg.h ../aucat/conf.h \
+		mio_priv.h sndio.h ../bsd-compat/bsd-compat.h
 mio_rmidi.o:	mio_rmidi.c mio_priv.h sndio.h
-mio_aucat.o:	mio_aucat.c ../aucat/amsg.h ../aucat/conf.h mio_priv.h \
-		sndio.h ../bsd-compat/bsd-compat.h
 sio.o:		sio.c sio_priv.h sndio.h ../bsd-compat/bsd-compat.h
 sio_alsa.o:	sio_alsa.c sio_priv.h sndio.h
 sio_aucat.o:	sio_aucat.c aucat.h ../aucat/amsg.h ../aucat/conf.h \
