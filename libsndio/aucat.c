@@ -17,10 +17,12 @@
 
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <sys/un.h>
 
 #include <errno.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <poll.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -195,6 +197,70 @@ aucat_wdata(struct aucat *hdl, const void *buf, size_t len, unsigned wbpf, int *
 }
 
 int
+aucat_gencookie(unsigned char *cookie)
+{
+	arc4random_buf(cookie, AMSG_COOKIELEN);
+	return 1;
+}
+
+void
+aucat_savecookie(char *path, unsigned char *cookie)
+{
+	int fd;
+
+	fd = open(path, O_WRONLY | O_TRUNC | O_CREAT, 0600);
+	if (fd < 0) {
+		DPERROR(path);
+		return;
+	}
+	if (write(fd, cookie, AMSG_COOKIELEN) < 0) {
+		DPERROR(path);
+		return;
+	}
+	close(fd);
+}
+
+int
+aucat_loadcookie(unsigned char *cookie)
+{
+	char buf[PATH_MAX], *path;
+	int fd, len, res;
+
+	path = issetugid() ? NULL : getenv("AUCAT_COOKIE");
+	if (path == NULL) {
+		path = issetugid() ? NULL : getenv("HOME");
+		if (path == NULL)
+			goto bad_gen;
+		snprintf(buf, PATH_MAX, "%s/.aucat_cookie", path);
+		path = buf;
+	}
+	fd = open(path, O_RDONLY);
+	if (fd < 0) {
+		if (errno != ENOENT)
+			DPERROR(path);
+		goto bad_gen;
+	}
+	len = read(fd, cookie, AMSG_COOKIELEN);
+	if (len < 0) {
+		DPERROR(path);
+		goto bad_close;
+	}
+	if (len != AMSG_COOKIELEN) {
+		DPRINTF("%s: short read\n", path);
+		goto bad_close;
+	}
+	close(fd);
+	return 1;
+bad_close:
+	close(fd);
+bad_gen:
+	res = aucat_gencookie(cookie);
+	if (path != NULL)
+		aucat_savecookie(path, cookie);
+	return res;
+}
+
+int
 aucat_open(struct aucat *hdl, const char *str, char *sock, unsigned mode, int nbio)
 {
 	extern char *__progname;
@@ -255,6 +321,13 @@ aucat_open(struct aucat *hdl, const char *str, char *sock, unsigned mode, int nb
 	/*
 	 * say hello to server
 	 */
+	AMSG_INIT(&hdl->wmsg);
+	hdl->wmsg.cmd = AMSG_AUTH;
+	if (!aucat_loadcookie(hdl->wmsg.u.auth.cookie))
+		goto bad_connect;
+	hdl->wtodo = sizeof(struct amsg);
+	if (!aucat_wmsg(hdl, &eof))
+		goto bad_connect;
 	AMSG_INIT(&hdl->wmsg);
 	hdl->wmsg.cmd = AMSG_HELLO;
 	hdl->wmsg.u.hello.version = AMSG_VERSION;

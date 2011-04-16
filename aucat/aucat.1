@@ -533,12 +533,14 @@ Note that the sequencer must use
 .Va aucat:0
 as the MTC source, i.e. the audio server, not the audio player.
 .Sh ENVIRONMENT
-.Bl -tag -width "AUDIODEVICE" -compact
+.Bl -tag -width "AUCAT_COOKIE" -compact
 .It Ev AUDIODEVICE
 .Xr sndio 7
 audio device to use if the
 .Fl f
 option is not specified.
+.It Ev AUCAT_COOKIE
+file containing a user's session cookie.
 .El
 .Sh EXAMPLES
 The following will mix and play two stereo streams,

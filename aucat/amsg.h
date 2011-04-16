@@ -41,6 +41,7 @@ struct amsg {
 #define AMSG_SETVOL	9	/* set volume */
 #define AMSG_HELLO	10	/* say hello, check versions and so ... */
 #define AMSG_BYE	11	/* ask server to drop connection */
+#define AMSG_AUTH	12	/* send authentication cookie */
 	uint32_t cmd;
 	uint32_t __pad;
 	union {
@@ -79,6 +80,10 @@ struct amsg {
 			char opt[12];		/* profile name */
 			char who[12];		/* hint for leases */
 		} hello;
+		struct amsg_auth {
+#define AMSG_COOKIELEN	16
+			uint8_t cookie[AMSG_COOKIELEN];
+		} auth;
 	} u;
 };
 
