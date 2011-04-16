@@ -76,13 +76,13 @@ bad:
 struct mio_hdl *
 mio_midithru_open(const char *str, unsigned mode, int nbio)
 {
-	return mio_xxx_open(str, "midithru", mode, nbio);
+	return mio_xxx_open(str, MIDICAT_PATH, mode, nbio);
 }
 
 struct mio_hdl *
 mio_aucat_open(const char *str, unsigned mode, int nbio)
 {
-	return mio_xxx_open(str, "softaudio", mode, nbio);
+	return mio_xxx_open(str, AUCAT_PATH, mode, nbio);
 }
 
 static void
