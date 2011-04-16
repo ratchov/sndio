@@ -1289,35 +1289,6 @@ sock_execmsg(struct sock *f)
 		f->rstate = SOCK_RRET;
 		f->rtodo = sizeof(struct amsg);
 		break;
-	case AMSG_GETCAP:
-#ifdef DEBUG
-		if (debug_level >= 3) {
-			sock_dbg(f);
-			dbg_puts(": GETCAP message\n");
-		}
-#endif
-		if (f->pstate != SOCK_INIT) {
-#ifdef DEBUG
-			if (debug_level >= 1) {
-				sock_dbg(f);
-				dbg_puts(": GETCAP, bad state\n");
-			}
-#endif
-			aproc_del(f->pipe.file.rproc);
-			return 0;
-		}
-		AMSG_INIT(m);
-		m->cmd = AMSG_GETCAP;
-		m->u.cap.rate = f->dev->rate;
-		m->u.cap.pchan = (f->opt->mode & MODE_PLAY) ?
-		    (f->opt->rpar.cmax - f->opt->rpar.cmin + 1) : 0;
-		m->u.cap.rchan = (f->opt->mode & (MODE_PLAY | MODE_REC)) ?
-		    (f->opt->wpar.cmax - f->opt->wpar.cmin + 1) : 0;
-		m->u.cap.bits = ADATA_BITS;
-		m->u.cap.bps = sizeof(adata_t);
-		f->rstate = SOCK_RRET;
-		f->rtodo = sizeof(struct amsg);
-		break;
 	case AMSG_SETVOL:
 #ifdef DEBUG
 		if (debug_level >= 3) {
