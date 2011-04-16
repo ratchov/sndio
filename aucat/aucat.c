@@ -767,7 +767,7 @@ aucat_main(int argc, char **argv)
 	}
 	if (nsock > 0) {
 		snprintf(path, sizeof(path), "%s/%s%u", base,
-		    DEFAULT_SOFTAUDIO, unit);
+		    AUCAT_PATH, unit);
 		listen = listen_new(&listen_ops, path);
 		if (listen == NULL)
 			exit(1);
@@ -1037,7 +1037,7 @@ midicat_main(int argc, char **argv)
 	}
 	if (nsock > 0) {
 		snprintf(path, sizeof(path), "%s/%s%u", base,
-		    DEFAULT_MIDITHRU, unit);
+		    MIDICAT_PATH, unit);
 		listen = listen_new(&listen_ops, path);
 		if (listen == NULL)
 			exit(1);

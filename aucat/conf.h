@@ -33,8 +33,8 @@ extern int debug_level;
 /*
  * socket and option names
  */
-#define DEFAULT_MIDITHRU	"midithru"
-#define DEFAULT_SOFTAUDIO	"softaudio"
+#define MIDICAT_PATH		"midicat"
+#define AUCAT_PATH		"aucat"
 #define DEFAULT_OPT		"default"
 
 /*
