@@ -28,6 +28,7 @@
 #include <unistd.h>
 
 #include "aucat.h"
+#include "debug.h"
 #include "sio_priv.h"
 #ifdef COMPAT_STRLCPY
 #include "bsd-compat.h"

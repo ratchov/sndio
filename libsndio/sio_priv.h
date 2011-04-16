@@ -20,22 +20,6 @@
 #include <sys/param.h>
 #include "sndio.h"
 
-#ifdef DEBUG
-#define DPRINTF(...)						\
-	do {							\
-		if (sio_debug > 0)				\
-			fprintf(stderr, __VA_ARGS__);		\
-	} while(0)
-#define DPERROR(s)						\
-	do {							\
-		if (sio_debug > 0)				\
-			perror(s);				\
-	} while(0)
-#else
-#define DPRINTF(...) do {} while(0)
-#define DPERROR(s) do {} while(0)
-#endif
-
 /*
  * private ``handle'' structure
  */
@@ -89,9 +73,5 @@ void sio_create(struct sio_hdl *, struct sio_ops *, unsigned, int);
 void sio_destroy(struct sio_hdl *);
 void sio_onmove_cb(struct sio_hdl *, int);
 void sio_onvol_cb(struct sio_hdl *, unsigned);
-
-#ifdef DEBUG
-extern int sio_debug;
-#endif
 
 #endif /* !defined(SNDIO_PRIV_H) */

@@ -28,19 +28,13 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "debug.h"
 #include "sio_priv.h"
 #ifdef COMPAT_ISSETUGID
 #include "bsd-compat.h"
 #endif
 
 #define SIO_PAR_MAGIC	0x83b905a4
-
-#ifdef DEBUG
-/*
- * debug level, -1 means uninitialized
- */
-int sio_debug = -1;
-#endif
 
 void
 sio_initpar(struct sio_par *par)
@@ -61,14 +55,9 @@ sio_open(const char *str, unsigned mode, int nbio)
 	struct stat sb;
 	char *sep, buf[NAME_MAX];
 	int len;
-#ifdef DEBUG
-	char *dbg;
 
-	if (sio_debug < 0) {
-		dbg = issetugid() ? NULL : getenv("SIO_DEBUG");
-		if (!dbg || sscanf(dbg, "%u", &sio_debug) != 1)
-			sio_debug = 0;
-	}
+#ifdef DEBUG
+	sndio_debug_init();
 #endif
 	if ((mode & (SIO_PLAY | SIO_REC)) == 0)
 		return NULL;
@@ -328,7 +317,7 @@ sio_write(struct sio_hdl *hdl, const void *buf, size_t len)
 	struct timeval tv0, tv1, dtv;
 	unsigned us;
 
-	if (sio_debug >= 2)
+	if (sndio_debug >= 2)
 		gettimeofday(&tv0, NULL);
 #endif
 
@@ -361,7 +350,7 @@ sio_write(struct sio_hdl *hdl, const void *buf, size_t len)
 #endif
 	}
 #ifdef DEBUG
-	if (sio_debug >= 2) {
+	if (sndio_debug >= 2) {
 		gettimeofday(&tv1, NULL);
 		timersub(&tv0, &hdl->tv, &dtv);
 		DPRINTF("%ld.%06ld: ", dtv.tv_sec, dtv.tv_usec);
@@ -400,7 +389,7 @@ sio_revents(struct sio_hdl *hdl, struct pollfd *pfd)
 	struct timeval tv0, tv1, dtv;
 	unsigned us;
 
-	if (sio_debug >= 2)
+	if (sndio_debug >= 2)
 		gettimeofday(&tv0, NULL);
 #endif
 	if (hdl->eof)
@@ -412,7 +401,7 @@ sio_revents(struct sio_hdl *hdl, struct pollfd *pfd)
 	if (!hdl->started)
 		return revents & POLLHUP;
 #ifdef DEBUG
-	if (sio_debug >= 2) {
+	if (sndio_debug >= 2) {
 		gettimeofday(&tv1, NULL);
 		timersub(&tv0, &hdl->tv, &dtv);
 		DPRINTF("%ld.%06ld: ", dtv.tv_sec, dtv.tv_usec);
@@ -451,7 +440,7 @@ sio_onmove_cb(struct sio_hdl *hdl, int delta)
 	struct timeval tv0, dtv;
 	long long playpos;
 
-	if (sio_debug >= 3 && (hdl->mode & SIO_PLAY)) {
+	if (sndio_debug >= 3 && (hdl->mode & SIO_PLAY)) {
 		gettimeofday(&tv0, NULL);
 		timersub(&tv0, &hdl->tv, &dtv);
 		DPRINTF("%ld.%06ld: ", dtv.tv_sec, dtv.tv_usec);

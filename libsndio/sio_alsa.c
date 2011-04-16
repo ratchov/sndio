@@ -33,6 +33,7 @@
 #include <unistd.h>
 #include <values.h>
 
+#include "debug.h"
 #include "sio_priv.h"
 
 #ifdef DEBUG

@@ -27,6 +27,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "debug.h"
 #include "mio_priv.h"
 
 struct mio_rmidi_hdl {

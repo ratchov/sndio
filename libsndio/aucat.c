@@ -28,26 +28,9 @@
 #include <unistd.h>
 
 #include "aucat.h"
+#include "debug.h"
 #ifdef COMPAT_STRLCPY
 #include "bsd-compat.h"
-#endif
-
-int aucat_debug = 0;
-
-#ifdef DEBUG
-#define DPRINTF(...)						\
-	do {							\
-		if (aucat_debug > 0)				\
-			fprintf(stderr, __VA_ARGS__);		\
-	} while(0)
-#define DPERROR(s)						\
-	do {							\
-		if (aucat_debug > 0)				\
-			perror(s);				\
-	} while(0)
-#else
-#define DPRINTF(...) do {} while(0)
-#define DPERROR(s) do {} while(0)
 #endif
 
 /*
@@ -216,14 +199,10 @@ aucat_open(struct aucat *hdl, const char *str, char *sock, unsigned mode, int nb
 {
 	extern char *__progname;
 	int s, eof;
-	char unit[4], *sep, *opt, *debug;
+	char unit[4], *sep, *opt;
 	struct sockaddr_un ca;
 	socklen_t len = sizeof(struct sockaddr_un);
 	uid_t uid;
-
-	debug = getenv("AUCAT_DEBUG");
-	if (debug)
-		sscanf(debug, "%u", &aucat_debug);
 
 	sep = strchr(str, '.');
 	if (sep == NULL) {

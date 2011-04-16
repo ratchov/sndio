@@ -41,6 +41,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "debug.h"
 #include "sio_priv.h"
 
 struct sio_sun_hdl {
