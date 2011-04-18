@@ -33,6 +33,7 @@
 .Op Fl h Ar fmt
 .Op Fl i Ar file
 .Op Fl j Ar flag
+.Op Fl L Ar addr
 .Op Fl m Ar mode
 .Op Fl o Ar file
 .Op Fl q Ar device
@@ -140,6 +141,13 @@ For instance, this feature could be used to request mono streams to
 be sent on multiple outputs or to record a stereo input into a mono stream.
 The default is
 .Ar on .
+.It Fl L Ar addr
+Listen on the given address for incoming TCP connections.
+Without this option,
+.Nm
+listens only on the Unix-domain socket, thus it's not reachable
+from the network.
+The port number is 6523 plus the unit number.
 .It Fl l
 Detach and become a daemon.
 .It Fl m Ar mode

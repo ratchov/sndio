@@ -260,6 +260,16 @@ struct cfdev {
 
 SLIST_HEAD(cfdevlist, cfdev);
 
+/*
+ * TCP addresses to listen on
+ */
+struct cfnet {
+	SLIST_ENTRY(cfnet) entry;
+	char *addr;
+};
+
+SLIST_HEAD(cfnetlist, cfnet);
+
 void
 cfdev_add(struct cfdevlist *list, struct cfdev *templ, char *path)
 {
@@ -317,6 +327,20 @@ cfmid_add(struct cfmidlist *list, char *path)
 	}
 	cm->path = path;
 	SLIST_INSERT_HEAD(list, cm, entry);
+}
+
+void
+cfnet_add(struct cfnetlist *list, char *addr)
+{
+	struct cfnet *cn;
+
+	cn = malloc(sizeof(struct cfnet));
+	if (cn == NULL) {
+		perror("malloc");
+		abort();
+	}
+	cn->addr = addr;
+	SLIST_INSERT_HEAD(list, cn, entry);
 }
 
 void
@@ -416,11 +440,11 @@ aucat_usage(void)
 {
 	(void)fputs("usage: " PROG_AUCAT " [-dlnu] [-a flag] [-b nframes] "
 	    "[-C min:max] [-c min:max] [-e enc]\n\t"
-	    "[-f device] [-h fmt] [-i file] [-j flag] [-m mode]"
-	    "[-o file] [-q device]\n\t"
-	    "[-r rate] [-s name] [-t mode] [-U unit] "
-	    "[-v volume] [-x policy]\n\t"
-	    "[-z nframes]\n",
+	    "[-f device] [-h fmt] [-i file] [-j flag] [-L addr] [-m mode] "
+	    "[-o file]\n\t"
+	    "[-q device] [-r rate] [-s name] [-t mode] [-U unit] "
+	    "[-v volume]\n\t"
+	    "[-x policy] [-z nframes]\n",
 	    stderr);
 }
 
@@ -428,10 +452,11 @@ int
 aucat_main(int argc, char **argv)
 {
 	struct cfdevlist cfdevs;
+	struct cfnetlist cfnets;
 	struct cfmid *cm;
 	struct cfstr *cs;
 	struct cfdev *cd;
-	struct listen *listen = NULL;
+	struct cfnet *cn;
 	int c, u_flag, d_flag, l_flag, n_flag, unit;
 	char base[PATH_MAX], path[PATH_MAX];
 	unsigned mode, rate;
@@ -450,6 +475,7 @@ aucat_main(int argc, char **argv)
 	l_flag = 0;
 	n_flag = 0;
 	SLIST_INIT(&cfdevs);
+	SLIST_INIT(&cfnets);
 	nfile = nsock = 0;
 
 	/*
@@ -488,7 +514,7 @@ aucat_main(int argc, char **argv)
 	cd->round = 0;
 	cd->hold = 1;
 
-	while ((c = getopt(argc, argv, "a:dnb:c:C:e:r:h:x:v:i:o:f:m:luq:s:U:t:j:z:")) != -1) {
+	while ((c = getopt(argc, argv, "a:dnb:c:C:e:r:h:x:v:i:o:f:m:luq:s:U:L:t:j:z:")) != -1) {
 		switch (c) {
 		case 'd':
 #ifdef DEBUG
@@ -507,6 +533,9 @@ aucat_main(int argc, char **argv)
 			unit = strtonum(optarg, 0, MIDI_MAXCTL, &str);
 			if (str)
 				errx(1, "%s: unit number is %s", optarg, str);
+			break;
+		case 'L':
+			cfnet_add(&cfnets, optarg);
 			break;
 		case 'm':
 			cs->mode = opt_mode();
@@ -768,9 +797,12 @@ aucat_main(int argc, char **argv)
 	if (nsock > 0) {
 		snprintf(path, sizeof(path), "%s/%s%u", base,
 		    AUCAT_PATH, unit);
-		listen = listen_new(&listen_ops, path);
-		if (listen == NULL)
-			exit(1);
+		listen_new_un(path);
+		while (!SLIST_EMPTY(&cfnets)) {
+			cn = SLIST_FIRST(&cfnets);
+			SLIST_REMOVE_HEAD(&cfnets, entry);
+			listen_new_tcp(cn->addr, AUCAT_PORT + unit);
+		}
 	}
 	if (geteuid() == 0)
 		privdrop();
@@ -805,8 +837,8 @@ aucat_main(int argc, char **argv)
 			break;
 	}
   fatal:
-	if (nsock > 0)
-		file_close(&listen->file);
+	listen_closeall();
+
 	/*
 	 * give a chance to drain
 	 */
@@ -830,7 +862,7 @@ void
 midicat_usage(void)
 {
 	(void)fputs("usage: " PROG_MIDICAT " [-dl] "
-	    "[-i file] [-o file] [-q port] [-s name] [-U unit]\n",
+	    "[-i file] [-L addr] [-o file] [-q port] [-s name] [-U unit]\n",
 	    stderr);
 }
 
@@ -838,10 +870,11 @@ int
 midicat_main(int argc, char **argv)
 {
 	struct cfdevlist cfdevs;
+	struct cfnetlist cfnets;
 	struct cfmid *cm;
 	struct cfstr *cs;
 	struct cfdev *cd;
-	struct listen *listen = NULL;
+	struct cfnet *cn;
 	int c, d_flag, l_flag, unit, fd;
 	char base[PATH_MAX], path[PATH_MAX];
 	struct file *stdx;
@@ -858,6 +891,7 @@ midicat_main(int argc, char **argv)
 	d_flag = 0;
 	l_flag = 0;
 	SLIST_INIT(&cfdevs);
+	SLIST_INIT(&cfnets);
 	nsock = 0;
 	
 	/*
@@ -915,6 +949,9 @@ midicat_main(int argc, char **argv)
 			unit = strtonum(optarg, 0, MIDI_MAXCTL, &str);
 			if (str)
 				errx(1, "%s: unit number is %s", optarg, str);
+			break;
+		case 'L':
+			cfnet_add(&cfnets, optarg);
 			break;
 		default:
 			midicat_usage();
@@ -1038,9 +1075,12 @@ midicat_main(int argc, char **argv)
 	if (nsock > 0) {
 		snprintf(path, sizeof(path), "%s/%s%u", base,
 		    MIDICAT_PATH, unit);
-		listen = listen_new(&listen_ops, path);
-		if (listen == NULL)
-			exit(1);
+		listen_new_un(path);
+		while (!SLIST_EMPTY(&cfnets)) {
+			cn = SLIST_FIRST(&cfnets);
+			SLIST_REMOVE_HEAD(&cfnets, entry);
+			listen_new_tcp(cn->addr, MIDICAT_PORT + unit);
+		}
 	}
 	if (geteuid() == 0)
 		privdrop();
@@ -1068,8 +1108,8 @@ midicat_main(int argc, char **argv)
 			break;
 	}
   fatal:
-	if (nsock > 0)
-		file_close(&listen->file);
+	listen_closeall();
+
 	/*
 	 * give a chance to drain
 	 */

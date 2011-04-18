@@ -35,6 +35,8 @@ extern int debug_level;
  */
 #define MIDICAT_PATH		"midicat"
 #define AUCAT_PATH		"aucat"
+#define MIDICAT_PORT		6533
+#define AUCAT_PORT		6523
 #define DEFAULT_OPT		"default"
 
 /*

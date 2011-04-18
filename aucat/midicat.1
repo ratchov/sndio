@@ -24,6 +24,7 @@
 .Nm midicat
 .Op Fl dl
 .Op Fl i Ar file
+.Op Fl L Ar addr
 .Op Fl o Ar file
 .Op Fl q Ar port
 .Op Fl s Ar name
@@ -57,6 +58,13 @@ Read data to send from this file.
 If the option argument is
 .Sq -
 then standard input will be used.
+.It Fl L Ar addr
+Listen on the given address for incoming TCP connections.
+Without this option,
+.Nm
+listens only on the Unix-domain socket, thus it's not reachable
+from the network.
+The port number is 6533 plus the unit number.
 .It Fl l
 Detach and become a daemon.
 .It Fl o Ar file
