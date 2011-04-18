@@ -292,7 +292,7 @@ sio_alsa_setvol(struct sio_hdl *sh, unsigned vol)
 }
 
 struct sio_hdl *
-sio_open_alsa(const char *str, unsigned mode, int nbio)
+sio_alsa_open(const char *str, unsigned mode, int nbio)
 {
 	struct sio_alsa_hdl *hdl;
 	char path[PATH_MAX];
