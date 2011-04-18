@@ -59,12 +59,16 @@ If the option argument is
 .Sq -
 then standard input will be used.
 .It Fl L Ar addr
-Listen on the given address for incoming TCP connections.
+Specify a local network address to listen on in server mode,
+.Nm
+will listen on TCP port 11041+n, where n is the unit number
+specified with
+.Fl U .
 Without this option,
 .Nm
-listens only on the Unix-domain socket, thus it's not reachable
-from the network.
-The port number is 6533 plus the unit number.
+listens on the
+.Ux Ns -domain
+socket only, and is not reachable from the network.
 .It Fl l
 Detach and become a daemon.
 .It Fl o Ar file

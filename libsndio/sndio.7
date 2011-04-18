@@ -72,7 +72,7 @@ or
 .Xr midicat 1
 service has a name of the form:
 .Bd -literal -offset center
-type:unit[.option]
+type:[hostname/]unit[.option]
 .Ed
 .Pp
 This information is used by audio and MIDI applications to determine
@@ -101,6 +101,12 @@ software MIDI thru boxes, hardware
 ports and
 .Xr aucat 1
 control through MIDI respectively.
+.It Pa hostname
+The hostname where the remote
+.Xr aucat 1
+or
+.Xr midicat 1
+server to connect to is running.
 .It Pa unit
 For hardware audio or MIDI devices, this corresponds to
 the character device minor number.

@@ -33,10 +33,10 @@ extern int debug_level;
 /*
  * socket and option names
  */
-#define MIDICAT_PATH		"midicat"
 #define AUCAT_PATH		"aucat"
-#define MIDICAT_PORT		6533
-#define AUCAT_PORT		6523
+#define MIDICAT_PATH		"midicat"
+#define AUCAT_PORT		11025
+#define MIDICAT_PORT		11041
 #define DEFAULT_OPT		"default"
 
 /*

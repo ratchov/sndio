@@ -142,12 +142,16 @@ be sent on multiple outputs or to record a stereo input into a mono stream.
 The default is
 .Ar on .
 .It Fl L Ar addr
-Listen on the given address for incoming TCP connections.
+Specify a local network address to listen on in server mode,
+.Nm
+will listen on TCP port 11025+n, where n is the unit number
+specified with
+.Fl U .
 Without this option,
 .Nm
-listens only on the Unix-domain socket, thus it's not reachable
-from the network.
-The port number is 6523 plus the unit number.
+listens on the
+.Ux Ns -domain
+socket only, and is not reachable from the network.
 .It Fl l
 Detach and become a daemon.
 .It Fl m Ar mode
