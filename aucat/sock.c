@@ -326,18 +326,6 @@ sock_new(struct fileops *ops, int fd)
 {
 	struct aproc *rproc, *wproc;
 	struct sock *f;
-	uid_t uid, gid;
-
-	/*
-	 * ensure that all connections belong to the same user,
-	 * for privacy reasons.
-	 *
-	 * XXX: is there a portable way of doing this ?
-	 */
-	if (getpeereid(fd, &uid, &gid) < 0) {
-		close(fd);
-		return NULL;
-	}
 
 	f = (struct sock *)pipe_new(ops, fd, "sock");
 	if (f == NULL) {
