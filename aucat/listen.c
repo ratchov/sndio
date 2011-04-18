@@ -99,7 +99,7 @@ listen_new_un(char *path)
 void
 listen_new_tcp(char *addr, unsigned port)
 {
-	char serv[sizeof(unsigned) * 3 + 1];
+	char *host, serv[sizeof(unsigned) * 3 + 1];
 	struct addrinfo *ailist, *ai, aihints;
 	struct listen *f;
 	int s, error, opt = 1, n = 0;
@@ -109,12 +109,13 @@ listen_new_tcp(char *addr, unsigned port)
 	 */
 	memset(&aihints, 0, sizeof(struct addrinfo));
 	snprintf(serv, sizeof(serv), "%u", port);
+	host = strcmp(addr, "*") == 0 ? NULL : addr;
 	aihints.ai_flags |= AI_PASSIVE;
 	aihints.ai_socktype = SOCK_STREAM;
 	aihints.ai_protocol = IPPROTO_TCP;
-	error = getaddrinfo(addr, serv, &aihints, &ailist);
+	error = getaddrinfo(host, serv, &aihints, &ailist);
 	if (error) {
-		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(error));
+		fprintf(stderr, "%s: %s\n", addr, gai_strerror(error));
 		exit(1);
 	}
 
@@ -183,7 +184,7 @@ listen_revents(struct file *file, struct pollfd *pfd)
 		caddrlen = sizeof(caddrlen);
 		sock = accept(f->fd, &caddr, &caddrlen);
 		if (sock < 0) {
-			/* XXX: should kill the socket */
+			/* XXX: should we kill the socket here ? */
 			perror("accept");
 			return 0;
 		}
