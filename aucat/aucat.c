@@ -261,7 +261,7 @@ struct cfdev {
 SLIST_HEAD(cfdevlist, cfdev);
 
 /*
- * TCP addresses to listen on
+ * local network addresse to listen on
  */
 struct cfnet {
 	SLIST_ENTRY(cfnet) entry;
