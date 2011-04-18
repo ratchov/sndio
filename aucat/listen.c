@@ -32,7 +32,6 @@
 #include <unistd.h>
 
 #include "conf.h"
-#include "file.h"
 #include "listen.h"
 #include "sock.h"
 #ifdef COMPAT_STRLCPY

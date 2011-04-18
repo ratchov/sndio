@@ -19,8 +19,10 @@
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/un.h>
-#include <netinet/in.h>		/* IPPROTO_XXX */
-#include <netdb.h>		/* gethostbyname */
+
+#include <netinet/in.h>
+#include <netdb.h>
+
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
