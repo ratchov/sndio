@@ -31,7 +31,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include "sndio.h"
 
 #include "aucat.h"
 #include "debug.h"
@@ -288,7 +287,7 @@ bad_gen:
 }
 
 int
-aucat_connect_tcp(struct aucat *hdl, char *host, char *unit, unsigned mode)
+aucat_connect_tcp(struct aucat *hdl, char *host, char *unit, int isaudio)
 {
 	int s, error;
 	struct addrinfo *ailist, *ai, aihints;
@@ -299,14 +298,10 @@ aucat_connect_tcp(struct aucat *hdl, char *host, char *unit, unsigned mode)
 		DPRINTF("%s: bad unit number\n", unit);
 		return 0;
 	}
-	if (mode & (MIO_IN | MIO_OUT)) {
-		port += MIDICAT_PORT;
-	} else if (mode & (SIO_PLAY | SIO_REC)) {
+	if (isaudio)
 		port += AUCAT_PORT;
-	} else {
-		DPRINTF("aucat_connect_tcp: unknown mode\n");
-		abort();
-	}
+	else
+		port += MIDICAT_PORT;
 	snprintf(serv, sizeof(serv), "%u", port);
 	memset(&aihints, 0, sizeof(struct addrinfo));
 	aihints.ai_socktype = SOCK_STREAM;
@@ -326,6 +321,7 @@ aucat_connect_tcp(struct aucat *hdl, char *host, char *unit, unsigned mode)
 		if (connect(s, ai->ai_addr, ai->ai_addrlen) < 0) {
 			DPERROR("connect");
 			close(s);
+			s = -1;
 			continue;
 		}
 		break;
@@ -338,7 +334,7 @@ aucat_connect_tcp(struct aucat *hdl, char *host, char *unit, unsigned mode)
 }
 
 int
-aucat_connect_un(struct aucat *hdl, char *unit, unsigned mode)
+aucat_connect_un(struct aucat *hdl, char *unit, int isaudio)
 {
 	struct sockaddr_un ca;
 	socklen_t len = sizeof(struct sockaddr_un);
@@ -346,15 +342,8 @@ aucat_connect_un(struct aucat *hdl, char *unit, unsigned mode)
 	uid_t uid;
 	int s;
 
-	if (mode & (MIO_IN | MIO_OUT)) {
-		sock = MIDICAT_PATH;
-	} else if (mode & (SIO_PLAY | SIO_REC)) {
-		sock = AUCAT_PATH;
-	} else {
-		DPRINTF("aucat_connect_un: unknown mode\n");
-		abort();
-	}
 	uid = geteuid();
+	sock = isaudio ? AUCAT_PATH : MIDICAT_PATH;
 	snprintf(ca.sun_path, sizeof(ca.sun_path),
 	    "/tmp/aucat-%u/%s%s", uid, sock, unit);
 	ca.sun_family = AF_UNIX;
@@ -364,14 +353,14 @@ aucat_connect_un(struct aucat *hdl, char *unit, unsigned mode)
 	while (connect(s, (struct sockaddr *)&ca, len) < 0) {
 		if (errno == EINTR)
 			continue;
-		DPERROR("aucat_init: connect");
+		DPERROR(ca.sun_path);
 		/* try shared server */
 		snprintf(ca.sun_path, sizeof(ca.sun_path),
 		    "/tmp/aucat/%s%s", sock, unit);
 		while (connect(s, (struct sockaddr *)&ca, len) < 0) {
 			if (errno == EINTR)
 				continue;
-			DPERROR("aucat_init: connect");
+			DPERROR(ca.sun_path);
 			close(s);
 			return 0;
 		}
@@ -382,7 +371,7 @@ aucat_connect_un(struct aucat *hdl, char *unit, unsigned mode)
 }
 
 int
-aucat_open(struct aucat *hdl, const char *str, char *sock, unsigned mode, int nbio)
+aucat_open(struct aucat *hdl, const char *str, unsigned mode, int isaudio)
 {
 	extern char *__progname;
 	int eof, hashost;
@@ -416,10 +405,10 @@ aucat_open(struct aucat *hdl, const char *str, char *sock, unsigned mode, int nb
 	}
 	DPRINTF("aucat_init: trying %s -> %s.%s\n", str, unit, opt);
 	if (hashost) {
-		if (!aucat_connect_tcp(hdl, host, unit, mode))
+		if (!aucat_connect_tcp(hdl, host, unit, isaudio))
 			return 0;
 	} else {
-		if (!aucat_connect_un(hdl, unit, mode))
+		if (!aucat_connect_un(hdl, unit, isaudio))
 			return 0;
 	}
 	if (fcntl(hdl->fd, F_SETFD, FD_CLOEXEC) < 0) {
