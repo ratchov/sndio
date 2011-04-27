@@ -38,8 +38,10 @@
 #include "bsd-compat.h"
 #endif
 
+#ifndef USE_ARC4RANDOM
 #ifndef DEV_RANDOM
 #define DEV_RANDOM "/dev/arandom"
+#endif
 #endif
 
 /*
@@ -204,59 +206,19 @@ aucat_wdata(struct aucat *hdl, const void *buf, size_t len, unsigned wbpf, int *
 }
 
 int
-aucat_gencookie(unsigned char *cookie)
-{
-	int fd;
-	ssize_t n, len;
-
-	fd = open(DEV_RANDOM, O_RDONLY);
-	if (fd < 0) {
-		DPERROR(DEV_RANDOM);
-		return 0;
-	}
-	len = AMSG_COOKIELEN;
-	while (len > 0) {
-		n = read(fd, cookie, AMSG_COOKIELEN);
-		if (n < 0) {
-			DPERROR(DEV_RANDOM);
-			close(fd);
-			return 0;
-		}
-		if (n == 0) {
-			close(fd);
-			return 0;
-		}
-		cookie += n;
-		len -= n;
-	}
-	close(fd);
-	return 1;
-}
-
-void
-aucat_savecookie(char *path, unsigned char *cookie)
-{
-	int fd;
-
-	fd = open(path, O_WRONLY | O_TRUNC | O_CREAT, 0600);
-	if (fd < 0) {
-		DPERROR(path);
-		return;
-	}
-	if (write(fd, cookie, AMSG_COOKIELEN) < 0) {
-		DPERROR(path);
-		return;
-	}
-	close(fd);
-}
-
-int
 aucat_loadcookie(unsigned char *cookie)
 {
 	struct stat sb;
-	char buf[PATH_MAX], *path;
-	int fd, len, res;
+	char buf[PATH_MAX], tmp[PATH_MAX], *path;
+	ssize_t len;
+#ifndef USE_ARC4RANDOM
+	ssize_t n;
+#endif
+	int fd;
 
+	/*
+	 * try to load the cookie
+	 */
 	path = issetugid() ? NULL : getenv("AUCAT_COOKIE");
 	if (path == NULL) {
 		path = issetugid() ? NULL : getenv("HOME");
@@ -293,10 +255,59 @@ aucat_loadcookie(unsigned char *cookie)
 bad_close:
 	close(fd);
 bad_gen:
-	res = aucat_gencookie(cookie);
-	if (path != NULL)
-		aucat_savecookie(path, cookie);
-	return res;
+	/*
+	 * generate a new cookie
+	 */
+#ifdef USE_ARC4RANDOM
+	arc4random_buf(cookie, AMSG_COOKIELEN);
+#else
+	fd = open(DEV_RANDOM, O_RDONLY);
+	if (fd < 0) {
+		DPERROR(DEV_RANDOM);
+		return 0;
+	}
+	len = AMSG_COOKIELEN;
+	while (len > 0) {
+		n = read(fd, cookie, AMSG_COOKIELEN);
+		if (n < 0) {
+			DPERROR(DEV_RANDOM);
+			close(fd);
+			return 0;
+		}
+		if (n == 0) {
+			close(fd);
+			return 0;
+		}
+		cookie += n;
+		len -= n;
+	}
+	close(fd);
+#endif
+
+	/*
+	 * save the cookie, ignore errors
+	 */
+	if (path != NULL) {
+		if (strlcpy(tmp, path, PATH_MAX) >= PATH_MAX ||
+		    strlcat(tmp, ".XXXXXXXX", PATH_MAX) >= PATH_MAX) {
+			DPRINTF("%s: too long\n", path);
+			return 1;
+		}
+		fd = mkstemp(tmp);
+		if (fd < 0) {
+			DPERROR(tmp);
+			return 1;
+		}
+		if (write(fd, cookie, AMSG_COOKIELEN) < 0) {
+			DPERROR(tmp);
+		}
+		close(fd);
+		if (rename(tmp, path) < 0) {
+			DPERROR(tmp);
+			unlink(tmp);
+		}
+	}
+	return 1;
 }
 
 int

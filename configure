@@ -51,6 +51,7 @@ case `uname` in
 		;;
 	OpenBSD)
 		sun=yes
+		defs='-DUSE_ARC4RANDOM'
 		;;
 esac
 
