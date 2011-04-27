@@ -222,6 +222,10 @@ aucat_gencookie(unsigned char *cookie)
 			close(fd);
 			return 0;
 		}
+		if (n == 0) {
+			close(fd);
+			return 0;
+		}
 		cookie += n;
 		len -= n;
 	}
@@ -249,6 +253,7 @@ aucat_savecookie(char *path, unsigned char *cookie)
 int
 aucat_loadcookie(unsigned char *cookie)
 {
+	struct stat sb;
 	char buf[PATH_MAX], *path;
 	int fd, len, res;
 
@@ -265,6 +270,14 @@ aucat_loadcookie(unsigned char *cookie)
 		if (errno != ENOENT)
 			DPERROR(path);
 		goto bad_gen;
+	}
+	if (fstat(fd, &sb) < 0) {
+		DPERROR(path);
+		goto bad_close;
+	}
+	if (sb.st_mode & 0077) {
+		DPRINTF("%s has wrong permissions\n", path);
+		goto bad_close;
 	}
 	len = read(fd, cookie, AMSG_COOKIELEN);
 	if (len < 0) {
