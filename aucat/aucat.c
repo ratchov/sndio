@@ -35,6 +35,7 @@
 #include <unistd.h>
 
 #include "abuf.h"
+#include "amsg.h"
 #include "aparams.h"
 #include "aproc.h"
 #include "conf.h"

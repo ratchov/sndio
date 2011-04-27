@@ -18,7 +18,15 @@
 #define AMSG_H
 
 #include <stdint.h>
-#include "conf.h"
+
+/*
+ * socket and option names
+ */
+#define AUCAT_PATH		"aucat"
+#define MIDICAT_PATH		"midicat"
+#define AUCAT_PORT		11025
+#define MIDICAT_PORT		11041
+#define DEFAULT_OPT		"default"
 
 /*
  * WARNING: since the protocol may be simultaneously used by static

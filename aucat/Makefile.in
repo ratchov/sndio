@@ -61,17 +61,17 @@ abuf.o:		abuf.c abuf.h aparams.h aproc.h file.h conf.h dbg.h
 aparams.o:	aparams.c aparams.h dbg.h
 aproc.o:	aproc.c abuf.h aparams.h aproc.h file.h conf.h midi.h \
 		dbg.h
-aucat.o:	aucat.c ../bsd-compat/bsd-compat.h abuf.h aparams.h \
-		aproc.h file.h conf.h dev.h listen.h midi.h opt.h wav.h \
-		pipe.h dbg.h
+aucat.o:	aucat.c ../bsd-compat/bsd-compat.h abuf.h \
+		../libsndio/amsg.h aparams.h aproc.h file.h conf.h dev.h \
+		listen.h midi.h opt.h wav.h pipe.h dbg.h
 dbg.o:		dbg.c dbg.h
 dev.o:		dev.c abuf.h aproc.h aparams.h file.h conf.h dev.h \
 		pipe.h miofile.h siofile.h midi.h opt.h dbg.h
 file.o:		file.c abuf.h aproc.h aparams.h file.h conf.h dbg.h
 headers.o:	headers.c aparams.h conf.h wav.h pipe.h file.h \
 		../bsd-compat/bsd-compat.h
-listen.o:	listen.c conf.h listen.h aparams.h file.h sock.h amsg.h \
-		pipe.h ../bsd-compat/bsd-compat.h
+listen.o:	listen.c conf.h listen.h aparams.h file.h sock.h \
+		../libsndio/amsg.h pipe.h ../bsd-compat/bsd-compat.h
 midi.o:		midi.c abuf.h aproc.h aparams.h file.h conf.h dev.h \
 		midi.h dbg.h ../bsd-compat/bsd-compat.h
 miofile.o:	miofile.c conf.h file.h miofile.h dbg.h
@@ -80,7 +80,8 @@ pipe.o:		pipe.c conf.h pipe.h file.h dbg.h
 siofile.o:	siofile.c aparams.h aproc.h file.h abuf.h conf.h dev.h \
 		siofile.h dbg.h
 sock.o:		sock.c abuf.h aproc.h aparams.h file.h conf.h dev.h \
-		midi.h opt.h sock.h amsg.h pipe.h dbg.h \
+		midi.h opt.h sock.h ../libsndio/amsg.h pipe.h dbg.h \
 		../bsd-compat/bsd-compat.h
 wav.o:		wav.c abuf.h aproc.h aparams.h file.h conf.h dev.h \
 		midi.h wav.h pipe.h opt.h dbg.h
+

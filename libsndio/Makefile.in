@@ -1,5 +1,5 @@
 # extra includes paths (-I options)
-INCLUDE = -I../aucat -I../bsd-compat
+INCLUDE = -I../bsd-compat
 
 # extra libraries paths (-L options)
 LIB =
@@ -125,17 +125,17 @@ strlcpy.o:	../bsd-compat/strlcpy.c
 strtonum.o:	../bsd-compat/strtonum.c
 		${CC} ${CFLAGS} ${SO_CFLAGS} ${INCLUDE} ${DEFS} -c -o strtonum.o ../bsd-compat/strtonum.c
 
-aucat.o:	aucat.c aucat.h ../aucat/amsg.h ../aucat/conf.h debug.h \
+aucat.o:	aucat.c aucat.h amsg.h debug.h \
 		../bsd-compat/bsd-compat.h
 debug.o:	debug.c debug.h ../bsd-compat/bsd-compat.h
 mio.o:		mio.c debug.h mio_priv.h sndio.h \
 		../bsd-compat/bsd-compat.h
-mio_aucat.o:	mio_aucat.c aucat.h ../aucat/amsg.h ../aucat/conf.h \
-		debug.h mio_priv.h sndio.h ../bsd-compat/bsd-compat.h
+mio_aucat.o:	mio_aucat.c aucat.h amsg.h debug.h mio_priv.h sndio.h \
+		../bsd-compat/bsd-compat.h
 mio_rmidi.o:	mio_rmidi.c debug.h mio_priv.h sndio.h
 sio.o:		sio.c debug.h sio_priv.h sndio.h \
 		../bsd-compat/bsd-compat.h
 sio_alsa.o:	sio_alsa.c debug.h sio_priv.h sndio.h
-sio_aucat.o:	sio_aucat.c aucat.h ../aucat/amsg.h ../aucat/conf.h \
-		debug.h sio_priv.h sndio.h ../bsd-compat/bsd-compat.h
+sio_aucat.o:	sio_aucat.c aucat.h amsg.h debug.h sio_priv.h sndio.h \
+		../bsd-compat/bsd-compat.h
 sio_sun.o:	sio_sun.c debug.h sio_priv.h sndio.h
