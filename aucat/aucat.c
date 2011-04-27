@@ -69,9 +69,9 @@
 #endif
 
 #ifdef DEBUG
-int debug_level = 0;
+volatile sig_atomic_t debug_level = 0;
 #endif
-volatile int quit_flag = 0;
+volatile sig_atomic_t quit_flag = 0;
 
 /*
  * SIGINT handler, it raises the quit flag. If the flag is already set,

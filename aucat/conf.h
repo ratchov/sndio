@@ -27,7 +27,7 @@
  * 3 - structural changes (new aproc structures and files stream params changes)
  * 4 - data blocks and messages
  */
-extern int debug_level;
+extern volatile sig_atomic_t debug_level;
 #endif
 
 /*
