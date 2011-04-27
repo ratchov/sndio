@@ -172,18 +172,18 @@ If a session needs to be shared between multiple users, they
 can connect to the server using the same cookie.
 .Sh ENVIRONMENT
 .Bl -tag -width "AUDIODEVICEXXX" -compact
+.It AUCAT_COOKIE
+Path to file containing the session cookie to be used
+when connecting to
+.Xr aucat
+or
+.Xr midicat .
 .It Ev AUDIODEVICE
 Audio device to use if the application provides
 no device chooser.
 .It Ev MIDIDEVICE
 MIDI port to use if the application provides
 no MIDI port chooser.
-.It AUCAT_COOKIE
-Path to file containing the session cookie to be used
-when connecting to
-.Xr aucat
-or
-.Xr midicat
 .El
 .Pp
 Environment variables are ignored by programs
