@@ -18,6 +18,8 @@
 #define CONF_H
 
 #ifdef DEBUG
+#include <signal.h>
+
 /*
  * Debug trace levels:
  *
