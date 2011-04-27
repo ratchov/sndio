@@ -206,7 +206,7 @@ aucat_wdata(struct aucat *hdl, const void *buf, size_t len, unsigned wbpf, int *
 }
 
 int
-aucat_loadcookie(unsigned char *cookie)
+aucat_mkcookie(unsigned char *cookie)
 {
 	struct stat sb;
 	char buf[PATH_MAX], tmp[PATH_MAX], *path;
@@ -285,27 +285,30 @@ bad_gen:
 #endif
 
 	/*
-	 * save the cookie, ignore errors
+	 * try to save the cookie
 	 */
-	if (path != NULL) {
-		if (strlcpy(tmp, path, PATH_MAX) >= PATH_MAX ||
-		    strlcat(tmp, ".XXXXXXXX", PATH_MAX) >= PATH_MAX) {
-			DPRINTF("%s: too long\n", path);
-			return 1;
-		}
-		fd = mkstemp(tmp);
-		if (fd < 0) {
-			DPERROR(tmp);
-			return 1;
-		}
-		if (write(fd, cookie, AMSG_COOKIELEN) < 0) {
-			DPERROR(tmp);
-		}
+	if (path == NULL)
+		return 1;
+	if (strlcpy(tmp, path, PATH_MAX) >= PATH_MAX ||
+	    strlcat(tmp, ".XXXXXXXX", PATH_MAX) >= PATH_MAX) {
+		DPRINTF("%s: too long\n", path);
+		return 1;
+	}
+	fd = mkstemp(tmp);
+	if (fd < 0) {
+		DPERROR(tmp);
+		return 1;
+	}
+	if (write(fd, cookie, AMSG_COOKIELEN) < 0) {
+		DPERROR(tmp);
+		unlink(tmp);
 		close(fd);
-		if (rename(tmp, path) < 0) {
-			DPERROR(tmp);
-			unlink(tmp);
-		}
+		return 1;
+	}
+	close(fd);
+	if (rename(tmp, path) < 0) {
+		DPERROR(tmp);
+		unlink(tmp);
 	}
 	return 1;
 }
@@ -449,7 +452,7 @@ aucat_open(struct aucat *hdl, const char *str, unsigned mode, int isaudio)
 	 */
 	AMSG_INIT(&hdl->wmsg);
 	hdl->wmsg.cmd = AMSG_AUTH;
-	if (!aucat_loadcookie(hdl->wmsg.u.auth.cookie))
+	if (!aucat_mkcookie(hdl->wmsg.u.auth.cookie))
 		goto bad_connect;
 	hdl->wtodo = sizeof(struct amsg);
 	if (!aucat_wmsg(hdl, &eof))
