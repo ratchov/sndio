@@ -158,7 +158,7 @@ aproc_new(struct aproc_ops *ops, char *name)
 
 	p = malloc(sizeof(struct aproc));
 	if (p == NULL)
-		err(1, name);
+		err(1, "%s", name);
 	LIST_INIT(&p->ins);
 	LIST_INIT(&p->outs);
 	p->name = name;
