@@ -21,6 +21,7 @@
 #include <sys/un.h>
 
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <netdb.h>
 
 #include <errno.h>
@@ -316,7 +317,7 @@ bad_gen:
 int
 aucat_connect_tcp(struct aucat *hdl, char *host, char *unit, int isaudio)
 {
-	int s, error;
+	int s, error, opt;
 	struct addrinfo *ailist, *ai, aihints;
 	unsigned port;
 	char serv[NI_MAXSERV];
@@ -356,6 +357,12 @@ aucat_connect_tcp(struct aucat *hdl, char *host, char *unit, int isaudio)
 	freeaddrinfo(ailist);
 	if (s < 0)
 		return 0;
+	opt = 1;
+	if (setsockopt(s, IPPROTO_TCP, TCP_NODELAY, &opt, sizeof(int)) < 0) {
+		DPERROR("setsockopt");
+		close(s);
+		return 0;
+	}
 	hdl->fd = s;
 	return 1;
 }
