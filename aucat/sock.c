@@ -61,7 +61,7 @@ void
 sock_dbg(struct sock *f)
 {
 	static char *pstates[] = {
-		"hel", "ini", "sta", "rdy", "run", "stp", "mid"
+		"aut", "hel", "ini", "sta", "rdy", "run", "stp", "mid"
 	};
 	static char *rstates[] = { "rdat", "rmsg", "rret" };
 	static char *wstates[] = { "widl", "wmsg", "wdat" };
