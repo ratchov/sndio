@@ -87,12 +87,6 @@ struct sio_cap {
 #define MIO_IN		8
 
 /*
- * maximum size of the encording string (the longest possible
- * encoding is ``s24le3msb'')
- */
-#define SIO_ENCMAX	10
-
-/*
  * default bytes per sample for the given bits per sample
  */
 #define SIO_BPS(bits) (((bits) <= 8) ? 1 : (((bits) <= 16) ? 2 : 4))
@@ -107,16 +101,6 @@ struct sio_cap {
 #endif
 
 /*
- * default device for the sun audio(4) back-end
- */
-#define SIO_SUN_PATH	"/dev/audio"
-
-/*
- * default socket name for the aucat(1) back-end
- */
-#define SIO_AUCAT_PATH	"default"
-
-/*
  * maximum value of volume, eg. for sio_setvol()
  */
 #define SIO_MAXVOL 127
@@ -127,10 +111,7 @@ extern "C" {
 
 struct pollfd;
 
-int sio_strtoenc(struct sio_par *, char *);
-int sio_enctostr(struct sio_par *, char *);
 void sio_initpar(struct sio_par *);
-
 struct sio_hdl *sio_open(const char *, unsigned, int);
 void sio_close(struct sio_hdl *);
 int sio_setpar(struct sio_hdl *, struct sio_par *);
