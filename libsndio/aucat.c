@@ -412,6 +412,8 @@ aucat_open(struct aucat *hdl, const char *str, unsigned mode, int isaudio)
 	char unit[4], *sep, *opt;
 	char host[NI_MAXHOST];
 
+	if (str == NULL)
+		str = "0";
 	sep = strchr(str, '/');
 	if (sep == NULL) {
 		hashost = 0;

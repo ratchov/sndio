@@ -344,6 +344,8 @@ sio_sun_open(const char *str, unsigned mode, int nbio)
 	struct sio_par par;
 	char path[PATH_MAX];
 
+	if (str == NULL) 
+		str = "";
 	hdl = malloc(sizeof(struct sio_sun_hdl));
 	if (hdl == NULL)
 		return NULL;

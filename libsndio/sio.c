@@ -64,21 +64,16 @@ sio_open(const char *str, unsigned mode, int nbio)
 	if (str == NULL && !issetugid())
 		str = getenv("AUDIODEVICE");
 	if (str == NULL) {
-		hdl = sio_aucat_open("0", mode, nbio);
+		hdl = sio_aucat_open(NULL, mode, nbio);
 		if (hdl != NULL)
 			return hdl;
 #ifdef USE_SUN
-		if (stat("/dev/audio", &sb) == 0 && S_ISCHR(sb.st_mode)) {
-			snprintf(buf, sizeof(buf), "%u",
-			    minor(sb.st_rdev) & 0xf);
-		} else
-			strlcpy(buf, "0", sizeof(buf));
-		hdl = sio_sun_open(buf, mode, nbio);
+		hdl = sio_sun_open(NULL, mode, nbio);
 		if (hdl != NULL)
 			return hdl;
 #endif
 #ifdef USE_ALSA
-		hdl = sio_alsa_open("0", mode, nbio);
+		hdl = sio_alsa_open(NULL, mode, nbio);
 		if (hdl != NULL)
 			return hdl;
 #endif

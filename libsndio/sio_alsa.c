@@ -299,13 +299,14 @@ sio_alsa_open(const char *str, unsigned mode, int nbio)
 	struct sio_par par;
 	int err;
 
+	if (str == NULL)
+		str = "0";
 	hdl = malloc(sizeof(struct sio_alsa_hdl));
 	if (hdl == NULL)
 		return NULL;
 	sio_create(&hdl->sio, &sio_alsa_ops, mode, nbio);
 
 	snprintf(path, sizeof(path), "hw:%s", str);
-
 	if (mode & SIO_PLAY) {
 		err = snd_pcm_open(&hdl->out_pcm, path,
 		    SND_PCM_STREAM_PLAYBACK, SND_PCM_NONBLOCK);
