@@ -49,7 +49,7 @@ sio_open(const char *str, unsigned mode, int nbio)
 	static char prefix_aucat[] = "aucat";
 	static char prefix_sun[] = "sun";
 #ifdef USE_ALSA
-	static char prefix_alsa[] = "hw";
+	static char prefix_alsa[] = "alsa";
 #endif
 	struct sio_hdl *hdl;
 	struct stat sb;
