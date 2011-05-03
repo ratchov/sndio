@@ -110,7 +110,7 @@ listen_new_tcp(char *addr, unsigned port)
 	 */
 	memset(&aihints, 0, sizeof(struct addrinfo));
 	snprintf(serv, sizeof(serv), "%u", port);
-	host = strcmp(addr, "*") == 0 ? NULL : addr;
+	host = strcmp(addr, "-") == 0 ? NULL : addr;
 	aihints.ai_flags |= AI_PASSIVE;
 	aihints.ai_socktype = SOCK_STREAM;
 	aihints.ai_protocol = IPPROTO_TCP;
