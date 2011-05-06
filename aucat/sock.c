@@ -32,9 +32,6 @@
 #ifdef DEBUG
 #include "dbg.h"
 #endif
-#ifdef COMPAT_GETPEEREID
-#include "bsd-compat.h"
-#endif
 
 void sock_attach(struct sock *, int);
 int sock_read(struct sock *);

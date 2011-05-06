@@ -99,7 +99,7 @@ clean:
 #
 OBJS = debug.o aucat.o \
 mio.o mio_rmidi.o mio_aucat.o sio.o sio_alsa.o sio_aucat.o sio_sun.o \
-getpeereid.o issetugid.o strlcat.o strlcpy.o strtonum.o
+issetugid.o strlcat.o strlcpy.o strtonum.o
 
 .c.o:
 		${CC} ${CFLAGS} ${SO_CFLAGS} ${INCLUDE} ${DEFS} -o $@ -c $<
@@ -112,9 +112,6 @@ libsndio.so.${MAJ}:
 
 libsndio.so:
 		ln -sf libsndio.so.${MAJ} libsndio.so
-
-getpeereid.o:	../bsd-compat/getpeereid.c
-		${CC} ${CFLAGS} ${SO_CFLAGS} ${INCLUDE} ${DEFS} -c -o getpeereid.o ../bsd-compat/getpeereid.c
 
 issetugid.o:	../bsd-compat/issetugid.c
 		${CC} ${CFLAGS} ${SO_CFLAGS} ${INCLUDE} ${DEFS} -c -o issetugid.o ../bsd-compat/issetugid.c

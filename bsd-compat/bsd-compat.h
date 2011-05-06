@@ -32,4 +32,3 @@
 long long strtonum(const char *, long long, long long, const char **);
 size_t strlcpy(char *, const char *, size_t);
 int issetugid(void);
-int getpeereid(int, uid_t *, gid_t *);
