@@ -99,7 +99,7 @@ clean:
 #
 OBJS = debug.o aucat.o \
 mio.o mio_rmidi.o mio_aucat.o sio.o sio_alsa.o sio_aucat.o sio_sun.o \
-getpeereid.o issetugid.o strlcpy.o strtonum.o
+getpeereid.o issetugid.o strlcat.o strlcpy.o strtonum.o
 
 .c.o:
 		${CC} ${CFLAGS} ${SO_CFLAGS} ${INCLUDE} ${DEFS} -o $@ -c $<
@@ -119,11 +119,11 @@ getpeereid.o:	../bsd-compat/getpeereid.c
 issetugid.o:	../bsd-compat/issetugid.c
 		${CC} ${CFLAGS} ${SO_CFLAGS} ${INCLUDE} ${DEFS} -c -o issetugid.o ../bsd-compat/issetugid.c
 
-strlcpy.o:	../bsd-compat/strlcpy.c
-		${CC} ${CFLAGS} ${SO_CFLAGS} ${INCLUDE} ${DEFS} -c -o strlcpy.o ../bsd-compat/strlcpy.c
-
 strlcat.o:	../bsd-compat/strlcat.c
 		${CC} ${CFLAGS} ${SO_CFLAGS} ${INCLUDE} ${DEFS} -c -o strlcat.o ../bsd-compat/strlcat.c
+
+strlcpy.o:	../bsd-compat/strlcpy.c
+		${CC} ${CFLAGS} ${SO_CFLAGS} ${INCLUDE} ${DEFS} -c -o strlcpy.o ../bsd-compat/strlcpy.c
 
 strtonum.o:	../bsd-compat/strtonum.c
 		${CC} ${CFLAGS} ${SO_CFLAGS} ${INCLUDE} ${DEFS} -c -o strtonum.o ../bsd-compat/strtonum.c
