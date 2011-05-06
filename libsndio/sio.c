@@ -33,6 +33,7 @@
 #include "bsd-compat.h"
 
 #define SIO_PAR_MAGIC	0x83b905a4
+#define SIO_MAXNFDS	8
 
 struct sio_backend {
 	char *prefix;
@@ -222,19 +223,21 @@ sio_getcap(struct sio_hdl *hdl, struct sio_cap *cap)
 static int
 sio_psleep(struct sio_hdl *hdl, int event)
 {
-	struct pollfd pfd;
+	struct pollfd pfd[SIO_MAXNFDS];
 	int revents;
+	nfds_t nfds;
 
+	nfds = sio_nfds(hdl);
 	for (;;) {
-		sio_pollfd(hdl, &pfd, event);
-		while (poll(&pfd, 1, -1) < 0) {
+		sio_pollfd(hdl, pfd, event);
+		while (poll(pfd, nfds, -1) < 0) {
 			if (errno == EINTR)
 				continue;
 			DPERROR("sio_psleep: poll");
 			hdl->eof = 1;
 			return 0;
 		}
-		revents = sio_revents(hdl, &pfd);
+		revents = sio_revents(hdl, pfd);
 		if (revents & POLLHUP) {
 			DPRINTF("sio_psleep: hang-up\n");
 			return 0;
