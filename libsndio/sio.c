@@ -89,8 +89,7 @@ sio_open(const char *str, unsigned mode, int nbio)
 	}
 	len = sep - str;
 	for (b = backends; b->prefix != NULL; b++) {
-		len = strlen(b->prefix);
-		if (strncmp(str, b->prefix, len) == 0)
+		if (strlen(b->prefix) == len && memcmp(b->prefix, str, len) == 0)
 			return b->open(sep + 1, mode, nbio);
 	}
 	DPRINTF("sio_open: %s: unknown device type\n", str);
