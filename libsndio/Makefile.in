@@ -105,7 +105,7 @@ issetugid.o strlcat.o strlcpy.o strtonum.o
 		${CC} ${CFLAGS} ${SO_CFLAGS} ${INCLUDE} ${DEFS} -o $@ -c $<
 
 libsndio.so.${MAJ}.${MIN}:	${OBJS}
-		${CC} ${LDFLAGS} ${SO_CFLAGS} ${SO_LDFLAGS} -o libsndio.so.${MAJ}.${MIN} ${OBJS}
+		${CC} ${LDFLAGS} ${SO_CFLAGS} ${SO_LDFLAGS} -o libsndio.so.${MAJ}.${MIN} ${OBJS} ${LDADD}
 
 libsndio.so.${MAJ}:
 		ln -sf libsndio.so.${MAJ}.${MIN} libsndio.so.${MAJ}
