@@ -353,13 +353,6 @@ sio_alsa_open(const char *str, unsigned mode, int nbio)
 			goto bad_free_in_hwp;
 		}
 	}
-	if ((mode & SIO_PLAY) && (mode & SIO_REC)) {
-		err = snd_pcm_link(hdl->in_pcm, hdl->out_pcm);
-		if (err < 0) {
-			DALSA("could not alloc in_swp", err);
-			goto bad_free_in_swp;
-		}
-	}
 	hdl->nfds = 0;
 	if (mode & SIO_PLAY)
 		hdl->nfds += snd_pcm_poll_descriptors_count(hdl->out_pcm);
@@ -469,6 +462,14 @@ sio_alsa_start(struct sio_hdl *sh)
 			return 0;
 		}
 	}
+	if ((hdl->sio.mode & SIO_PLAY) && (hdl->sio.mode & SIO_REC)) {
+		err = snd_pcm_link(hdl->in_pcm, hdl->out_pcm);
+		if (err < 0) {
+			DALSA("could not link", err);
+			hdl->sio.eof = 1;
+			return 0;
+		}
+	}
 	hdl->filling = 0;
 	if (hdl->sio.mode & SIO_PLAY) {
 		hdl->filling = 1;
@@ -506,7 +507,15 @@ sio_alsa_stop(struct sio_hdl *sh)
 			return 0;
 		}
 	}
-
+	if ((hdl->sio.mode & SIO_PLAY) && (hdl->sio.mode & SIO_REC)) {
+		err = snd_pcm_unlink(hdl->in_pcm);
+		if (err < 0) {
+			DALSA("could not unlink in", err);
+			hdl->sio.eof = 1;
+			return 0;
+		}
+	}
+	DPRINTF("stopped");
 	return 1;
 }
 
@@ -536,7 +545,7 @@ sio_alsa_setpar(struct sio_hdl *sh, struct sio_par *par)
 		}
 		err = snd_pcm_hw_params_set_rate_resample(hdl->out_pcm, hdl->out_hwp, 0);
 		if (err < 0) {
-			printf("Resampling setup failed for playback: %s\n", snd_strerror(err));
+			DALSA("can't disable resampling", err);
 			return 0;
 		}
 		err = snd_pcm_hw_params_set_access(hdl->out_pcm,
@@ -798,6 +807,14 @@ sio_alsa_setpar(struct sio_hdl *sh, struct sio_par *par)
 			hdl->sio.eof = 1;
 			return 0;
 		}
+#if 0
+		err = snd_pcm_sw_params_set_period_event(hdl->out_pcm, hdl->out_swp, 1);
+		if (err < 0) {
+			DALSA("can't set period event", err);
+			hdl->sio.eof = 1;
+			return 0;
+		}
+#endif
 		err = snd_pcm_sw_params(hdl->out_pcm, hdl->out_swp);
 		if (err < 0) {
 			DALSA("commit play sw params failed", err);
@@ -864,8 +881,12 @@ sio_alsa_rdrop(struct sio_alsa_hdl *hdl)
 		if (todo > drop_nmax)
 			todo = drop_nmax;
 		while ((n = snd_pcm_readi(hdl->in_pcm, dropbuf, todo)) < 0) {
-			DALSA("sio_alsa_rdrop: readi", n);
-			hdl->sio.eof = 1;
+			if (n == -EINTR)
+				continue;
+			if (n != -EAGAIN) {
+				DALSA("sio_alsa_rdrop: readi", n);
+				hdl->sio.eof = 1;
+			}
 			return 0;
 		}
 		if (n == 0) {
@@ -891,10 +912,14 @@ sio_alsa_read(struct sio_hdl *sh, void *buf, size_t len)
 		return 0;
 	todo = len / hdl->ibpf;
 	while ((n = snd_pcm_readi(hdl->in_pcm, buf, todo)) < 0) {
-		if (n == -ESTRPIPE)
+		if (n == -EINTR)
 			continue;
-		DALSA("sio_alsa_read: read", n);
-		hdl->sio.eof = 1;
+		//if (n == -ESTRPIPE)
+		//	continue;
+		if (n != -EAGAIN) {
+			DALSA("sio_alsa_read: read", n);
+			hdl->sio.eof = 1;
+		}
 		return 0;
 	}
 	if (n == 0) {
@@ -922,8 +947,8 @@ sio_alsa_autostart(struct sio_alsa_hdl *hdl)
 		}
 	} else {
 		DPRINTF("sio_alsa_autostart: bad state");
-		//hdl->sio.eof = 1;
-		//return 0;
+		hdl->sio.eof = 1;
+		return 0;
 	}
 	DPRINTF("sio_alsa_autostart: started\n");
 	sio_onmove_cb(&hdl->sio, 0);
@@ -949,12 +974,16 @@ sio_alsa_wsil(struct sio_alsa_hdl *hdl)
 		if (todo > zero_nmax)
 			todo = zero_nmax;
 		if ((n = snd_pcm_writei(hdl->out_pcm, zero, todo)) < 0) {
-			DALSA("sio_alsa_wsil", n);
-			hdl->sio.eof = 1;
+			if (n == -EINTR)
+				continue;
+			if (n != -EAGAIN) {
+				DALSA("sio_alsa_wsil", n);
+				hdl->sio.eof = 1;
+			}
 			return 0;
 		}
 		hdl->offset += (int)n;
-		//hdl->osfr += (int)n;
+		//hdl->osfr += (int)n; //XXX: ?
 		DPRINTF("sio_alsa_wsil: inserted %ld/%ld frames\n", n, todo);
 	}
 	return 1;
@@ -1008,14 +1037,14 @@ static int
 sio_alsa_pollfd(struct sio_hdl *sh, struct pollfd *pfd, int events)
 {
 	struct sio_alsa_hdl *hdl = (struct sio_alsa_hdl *)sh;
-	int i;
+	int i, nfds = 0;
 
 	DPRINTF("sio_alsa_pollfd: count = %d, nfds = %d\n", 
 	    snd_pcm_poll_descriptors_count(hdl->out_pcm),
 	    hdl->nfds);
 
 	memset(pfd, 0, sizeof(struct pollfd) * hdl->nfds);
-	if (hdl->sio.mode & SIO_PLAY) {
+	if ((events & POLLOUT) && (hdl->sio.mode & SIO_PLAY) && hdl->sio.started) {
 		hdl->onfds = snd_pcm_poll_descriptors(hdl->out_pcm,
 		    pfd, hdl->nfds);
 		if (hdl->onfds < 0) {
@@ -1025,10 +1054,11 @@ sio_alsa_pollfd(struct sio_hdl *sh, struct pollfd *pfd, int events)
 		}
 	} else
 		hdl->onfds = 0;
-	if (hdl->sio.mode & SIO_REC) {
+	if ((events & POLLIN) && (hdl->sio.mode & SIO_REC) && hdl->sio.started) {
 		hdl->infds = snd_pcm_poll_descriptors(hdl->in_pcm,
 		    pfd + hdl->onfds, hdl->nfds - hdl->onfds);
-	}
+	} else
+		hdl->infds = 0;
 	DPRINTF("sio_alsa_pollfd: events = %x, nfds = %d + %d\n",
 	    events, hdl->onfds, hdl->infds);
 	for (i = 0; i < hdl->onfds + hdl->infds; i++) {
