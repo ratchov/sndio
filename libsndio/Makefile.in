@@ -122,6 +122,9 @@ issetugid.o:	../bsd-compat/issetugid.c
 strlcpy.o:	../bsd-compat/strlcpy.c
 		${CC} ${CFLAGS} ${SO_CFLAGS} ${INCLUDE} ${DEFS} -c -o strlcpy.o ../bsd-compat/strlcpy.c
 
+strlcat.o:	../bsd-compat/strlcat.c
+		${CC} ${CFLAGS} ${SO_CFLAGS} ${INCLUDE} ${DEFS} -c -o strlcat.o ../bsd-compat/strlcat.c
+
 strtonum.o:	../bsd-compat/strtonum.c
 		${CC} ${CFLAGS} ${SO_CFLAGS} ${INCLUDE} ${DEFS} -c -o strtonum.o ../bsd-compat/strtonum.c
 
