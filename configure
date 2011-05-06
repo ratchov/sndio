@@ -47,7 +47,7 @@ case `uname` in
 		so="$so libsndio.so.\${MAJ} libsndio.so"
 		defs='-DCOMPAT_ISSETUGID \\\
 		-DCOMPAT_STRLCAT -DCOMPAT_STRLCPY -DCOMPAT_STRTONUM \\\
-		-DCOMPAT_LETOH -DCOMPAT_PACKED -DDEV_RANDOM=\\"/dev/urandom\\"'
+		-DCOMPAT_LETOH -DDEV_RANDOM=\\"/dev/urandom\\"'
 		;;
 	OpenBSD)
 		sun=yes
