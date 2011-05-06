@@ -20,9 +20,7 @@
 #include <unistd.h>
 
 #include "debug.h"
-#ifdef COMPAT_ISSETUGID
 #include "bsd-compat.h"
-#endif
 
 #ifdef DEBUG
 /*

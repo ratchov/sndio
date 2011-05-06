@@ -30,9 +30,7 @@
 
 #include "debug.h"
 #include "sio_priv.h"
-#ifdef COMPAT_ISSETUGID
 #include "bsd-compat.h"
-#endif
 
 #define SIO_PAR_MAGIC	0x83b905a4
 

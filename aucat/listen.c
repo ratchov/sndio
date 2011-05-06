@@ -36,9 +36,7 @@
 #include "conf.h"
 #include "listen.h"
 #include "sock.h"
-#ifdef COMPAT_STRLCPY
 #include "bsd-compat.h"
-#endif
 
 struct fileops listen_ops = {
 	"listen",

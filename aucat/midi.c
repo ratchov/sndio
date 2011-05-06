@@ -35,9 +35,7 @@
 #ifdef DEBUG
 #include "dbg.h"
 #endif
-#ifdef COMPAT_STRLCPY
 #include "bsd-compat.h"
-#endif
 
 /*
  * input data rate is XFER / TIMO (in bytes per microsecond),

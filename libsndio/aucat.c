@@ -35,9 +35,7 @@
 
 #include "aucat.h"
 #include "debug.h"
-#ifdef COMPAT_STRLCPY
 #include "bsd-compat.h"
-#endif
 
 #ifndef USE_ARC4RANDOM
 #ifndef DEV_RANDOM

@@ -30,9 +30,7 @@
 
 #include "debug.h"
 #include "mio_priv.h"
-#ifdef COMPAT_ISSETUGID
 #include "bsd-compat.h"
-#endif
 
 struct mio_hdl *
 mio_open(const char *str, unsigned mode, int nbio)

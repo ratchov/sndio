@@ -35,6 +35,7 @@
 
 #include "debug.h"
 #include "sio_priv.h"
+#include "bsd-compat.h"
 
 #ifdef DEBUG
 #define DALSA(str, err) fprintf(stderr, "%s: %s\n", str, snd_strerror(err)) 

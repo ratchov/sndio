@@ -44,9 +44,7 @@
 #ifdef DEBUG
 #include "dbg.h"
 #endif
-#ifdef COMPAT_STRTONUM
 #include "bsd-compat.h"
-#endif
 
 /*
  * unprivileged user name

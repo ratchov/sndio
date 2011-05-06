@@ -30,9 +30,7 @@
 #include "aucat.h"
 #include "debug.h"
 #include "sio_priv.h"
-#ifdef COMPAT_STRLCPY
 #include "bsd-compat.h"
-#endif
 
 struct sio_aucat_hdl {
 	struct sio_hdl sio;

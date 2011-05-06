@@ -43,6 +43,7 @@
 
 #include "debug.h"
 #include "sio_priv.h"
+#include "bsd-compat.h"
 
 struct sio_sun_hdl {
 	struct sio_hdl sio;

@@ -27,9 +27,7 @@
 #include "aparams.h"
 #include "conf.h"
 #include "wav.h"
-#if defined(COMPAT_LETOH) || defined(COMPAT_PACKED)
 #include "bsd-compat.h"
-#endif
 
 /*
  * Encoding IDs used in .wav headers.
