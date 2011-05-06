@@ -269,7 +269,7 @@ bad_gen:
 	}
 	len = AMSG_COOKIELEN;
 	while (len > 0) {
-		n = read(fd, cookie, AMSG_COOKIELEN);
+		n = read(fd, cookie, len);
 		if (n < 0) {
 			DPERROR(DEV_RANDOM);
 			close(fd);
