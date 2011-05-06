@@ -36,6 +36,22 @@
 
 #define SIO_PAR_MAGIC	0x83b905a4
 
+struct sio_backend {
+	char *prefix;
+	struct sio_hdl *(*open)(const char *, unsigned, int);
+};
+
+static struct sio_backend backends[] = {
+	{ "aucat", sio_aucat_open },
+#ifdef USE_SUN
+	{ "sun", sio_sun_open },
+#endif
+#ifdef USE_ALSA
+	{ "alsa", sio_alsa_open },
+#endif
+	{ NULL, NULL }
+};
+
 void
 sio_initpar(struct sio_par *par)
 {
@@ -46,11 +62,7 @@ sio_initpar(struct sio_par *par)
 struct sio_hdl *
 sio_open(const char *str, unsigned mode, int nbio)
 {
-	static char prefix_aucat[] = "aucat";
-	static char prefix_sun[] = "sun";
-#ifdef USE_ALSA
-	static char prefix_alsa[] = "alsa";
-#endif
+	struct sio_backend *b;
 	struct sio_hdl *hdl;
 	char *sep;
 	int len;
@@ -63,19 +75,11 @@ sio_open(const char *str, unsigned mode, int nbio)
 	if (str == NULL && !issetugid())
 		str = getenv("AUDIODEVICE");
 	if (str == NULL) {
-		hdl = sio_aucat_open(NULL, mode, nbio);
-		if (hdl != NULL)
-			return hdl;
-#ifdef USE_SUN
-		hdl = sio_sun_open(NULL, mode, nbio);
-		if (hdl != NULL)
-			return hdl;
-#endif
-#ifdef USE_ALSA
-		hdl = sio_alsa_open(NULL, mode, nbio);
-		if (hdl != NULL)
-			return hdl;
-#endif
+		for (b = backends; b->prefix != NULL; b++) {
+			hdl = b->open(NULL, mode, nbio);
+			if (hdl != NULL)
+				return hdl;
+		}
 		return NULL;
 	}
 	sep = strchr(str, ':');
@@ -84,19 +88,11 @@ sio_open(const char *str, unsigned mode, int nbio)
 		return NULL;
 	}
 	len = sep - str;
-	if (len == (sizeof(prefix_aucat) - 1) &&
-	    memcmp(str, prefix_aucat, len) == 0)
-		return sio_aucat_open(sep + 1, mode, nbio);
-#ifdef USE_SUN
-	if (len == (sizeof(prefix_sun) - 1) &&
-	    memcmp(str, prefix_sun, len) == 0)
-		return sio_sun_open(sep + 1, mode, nbio);
-#endif
-#ifdef USE_ALSA
-	if (len == (sizeof(prefix_alsa) - 1) &&
-	    memcmp(str, prefix_alsa, len) == 0)
-		return sio_alsa_open(sep + 1, mode, nbio);
-#endif
+	for (b = backends; b->prefix != NULL; b++) {
+		len = strlen(b->prefix);
+		if (strncmp(str, b->prefix, len) == 0)
+			return b->open(sep + 1, mode, nbio);
+	}
 	DPRINTF("sio_open: %s: unknown device type\n", str);
 	return NULL;
 }
