@@ -115,7 +115,7 @@ main(int argc, char **argv) {
 		pfd[0].fd = tty;
 		pfd[0].events = POLLIN;
 		sio_pollfd(hdl, &pfd[1], POLLOUT);
-		if (poll(pfd, 2, INFTIM) < 0) {
+		if (poll(pfd, 2, -1) < 0) {
 			perror("poll");
 			exit(1);
 		}
