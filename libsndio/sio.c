@@ -33,7 +33,6 @@
 #include "bsd-compat.h"
 
 #define SIO_PAR_MAGIC	0x83b905a4
-#define SIO_MAXNFDS	8
 
 struct sio_backend {
 	char *prefix;

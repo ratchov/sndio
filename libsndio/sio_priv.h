@@ -20,6 +20,7 @@
 #include <sys/param.h>
 #include "sndio.h"
 
+#define SIO_MAXNFDS	8
 /*
  * private ``handle'' structure
  */
