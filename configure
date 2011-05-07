@@ -135,7 +135,7 @@ if [ $sun = yes ]; then
 	defs="$defs -DUSE_SUN"
 fi
 
-for makefile in Makefile aucat/Makefile libsndio/Makefile
+for makefile in Makefile aucat/Makefile libsndio/Makefile examples/Makefile
 do
 	sed \
 	-e "s:@bindir@:$bindir:" \
