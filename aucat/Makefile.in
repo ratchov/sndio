@@ -73,7 +73,7 @@ headers.o:	headers.c aparams.h conf.h wav.h pipe.h file.h \
 listen.o:	listen.c conf.h listen.h aparams.h file.h sock.h \
 		../libsndio/amsg.h pipe.h ../bsd-compat/bsd-compat.h
 midi.o:		midi.c abuf.h aproc.h aparams.h file.h conf.h dev.h \
-		midi.h dbg.h ../bsd-compat/bsd-compat.h
+		midi.h sysex.h dbg.h ../bsd-compat/bsd-compat.h
 miofile.o:	miofile.c conf.h file.h miofile.h dbg.h
 opt.o:		opt.c dev.h aparams.h conf.h opt.h dbg.h
 pipe.o:		pipe.c conf.h pipe.h file.h dbg.h
