@@ -918,7 +918,7 @@ midicat_main(int argc, char **argv)
 	cd->path = NULL;
 
 
-	while ((c = getopt(argc, argv, "di:o:ls:q:U:")) != -1) {
+	while ((c = getopt(argc, argv, "di:o:ls:q:U:L:")) != -1) {
 		switch (c) {
 		case 'd':
 #ifdef DEBUG
