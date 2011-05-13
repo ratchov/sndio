@@ -251,6 +251,7 @@ struct cfdev {
 	struct aparams ipar;		/* input (read) parameters */
 	struct aparams opar;		/* output (write) parameters */
 	unsigned hold;			/* open immediately */
+	unsigned autovol;		/* adjust volumes */
 	unsigned bufsz;			/* par.bufsz for sio device */
 	unsigned round;			/* par.round for sio device */
 	unsigned mode;			/* bitmap of MODE_XXX */
@@ -443,7 +444,7 @@ aucat_usage(void)
 	    "[-o file]\n\t"
 	    "[-q device] [-r rate] [-s name] [-t mode] [-U unit] "
 	    "[-v volume]\n\t"
-	    "[-x policy] [-z nframes]\n",
+	    "[-w flag] [-x policy] [-z nframes]\n",
 	    stderr);
 }
 
@@ -512,8 +513,9 @@ aucat_main(int argc, char **argv)
 	cd->bufsz = 0;
 	cd->round = 0;
 	cd->hold = 1;
+	cd->autovol = 1;
 
-	while ((c = getopt(argc, argv, "a:dnb:c:C:e:r:h:x:v:i:o:f:m:luq:s:U:L:t:j:z:")) != -1) {
+	while ((c = getopt(argc, argv, "a:w:dnb:c:C:e:r:h:x:v:i:o:f:m:luq:s:U:L:t:j:z:")) != -1) {
 		switch (c) {
 		case 'd':
 #ifdef DEBUG
@@ -592,6 +594,9 @@ aucat_main(int argc, char **argv)
 			break;
 		case 'a':
 			cd->hold = opt_onoff();
+			break;
+		case 'w':
+			cd->autovol = opt_onoff();
 			break;
 		case 'q':
 			cfmid_add(&cd->mids, optarg);
@@ -731,7 +736,7 @@ aucat_main(int argc, char **argv)
 		} else {
 			d = dev_new_sio(cd->path, cd->mode | MODE_MIDIMASK,
 			    &cd->ipar, &cd->opar, cd->bufsz, cd->round,
-			    cd->hold);
+			    cd->hold, cd->autovol);
 		}
 		if (d == NULL)
 			errx(1, "%s: can't open device", cd->path);

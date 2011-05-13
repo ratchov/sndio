@@ -42,6 +42,7 @@
 .Op Fl t Ar mode
 .Op Fl U Ar unit
 .Op Fl v Ar volume
+.Op Fl w Ar flag
 .Op Fl x Ar policy
 .Op Fl z Ar nframes
 .Ek
@@ -114,7 +115,7 @@ Preceding streams
 control MIDI ports
 .Pq Fl q ,
 and per-device options
-.Pq Fl abz
+.Pq Fl abwz
 apply to this device.
 Device mode and parameters are determined from streams
 attached to it.
@@ -255,6 +256,22 @@ of clients as long as their number is small enough.
 A good compromise is to use \-4dB attenuation (12 volume units)
 for each additional client expected
 (115 if 2 clients are expected, 103 for 3 clients, and so on).
+.It Fl w Ar flag
+Control whether the master volume resulting of all playback
+streams of the device is automatically adjusted.
+If the flag is
+.Va on ,
+then the master volume is lowered when necessary to ensure
+clipping never occurs.
+It should be set to
+.Va off
+to avoid lowering the volume twice if streams are already pre-scaled.
+Note that stream volumes can be manually set
+.Pq Fl v
+and if they are set correctly, the master volume doesn't need
+to be adjusted to avoid clipping.
+The default is
+.Va on .
 .It Fl x Ar policy
 Action when the output stream cannot accept
 recorded data fast enough or the input stream
@@ -298,7 +315,7 @@ to a 400 frame block size.
 .Pp
 On the command line,
 per-device parameters
-.Pq Fl abz
+.Pq Fl abwz
 must precede the device definition
 .Pq Fl f ,
 and per-stream parameters

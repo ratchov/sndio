@@ -140,6 +140,7 @@ struct aproc {
 			unsigned abspos;	/* frames produced */
 			struct aproc *ctl;	/* MIDI control/sync */
 			struct aproc *mon;	/* snoop output */
+			unsigned autovol;	/* adjust volume dynamically */
 		} mix;
 		struct {
 			unsigned idle;		/* frames since idleing */
@@ -239,7 +240,7 @@ void aproc_opos(struct aproc *, struct abuf *, int);
 
 struct aproc *rfile_new(struct file *);
 struct aproc *wfile_new(struct file *);
-struct aproc *mix_new(char *, int, unsigned);
+struct aproc *mix_new(char *, int, unsigned, unsigned);
 struct aproc *sub_new(char *, int, unsigned);
 struct aproc *resamp_new(char *, unsigned, unsigned);
 struct aproc *enc_new(char *, struct aparams *);
