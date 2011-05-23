@@ -38,9 +38,40 @@
 #include "bsd-compat.h"
 
 #ifndef USE_ARC4RANDOM
+
 #ifndef DEV_RANDOM
 #define DEV_RANDOM "/dev/arandom"
 #endif
+
+static int
+random_bytes(unsigned char *buf, int len)
+{
+	ssize_t n;
+	int fd;
+
+	fd = open(DEV_RANDOM, O_RDONLY);
+	if (fd < 0) {
+		DPERROR(DEV_RANDOM);
+		return 0;
+	}
+	while (len > 0) {
+		n = read(fd, buf, len);
+		if (n < 0) {
+			DPERROR(DEV_RANDOM);
+			close(fd);
+			return 0;
+		}
+		if (n == 0) {
+			DPRINTF("%s: unexpected eof\n", DEV_RANDOM);
+			close(fd);
+			return 0;
+		}
+		buf += n;
+		len -= n;
+	}
+	close(fd);
+	return 1;
+}
 #endif
 
 /*
@@ -210,9 +241,6 @@ aucat_mkcookie(unsigned char *cookie)
 	struct stat sb;
 	char buf[PATH_MAX], tmp[PATH_MAX], *path;
 	ssize_t len;
-#ifndef USE_ARC4RANDOM
-	ssize_t n;
-#endif
 	int fd;
 
 	/*
@@ -260,27 +288,8 @@ bad_gen:
 #ifdef USE_ARC4RANDOM
 	arc4random_buf(cookie, AMSG_COOKIELEN);
 #else
-	fd = open(DEV_RANDOM, O_RDONLY);
-	if (fd < 0) {
-		DPERROR(DEV_RANDOM);
+	if (!random_bytes(cookie, AMSG_COOKIELEN))
 		return 0;
-	}
-	len = AMSG_COOKIELEN;
-	while (len > 0) {
-		n = read(fd, cookie, len);
-		if (n < 0) {
-			DPERROR(DEV_RANDOM);
-			close(fd);
-			return 0;
-		}
-		if (n == 0) {
-			close(fd);
-			return 0;
-		}
-		cookie += n;
-		len -= n;
-	}
-	close(fd);
 #endif
 
 	/*
