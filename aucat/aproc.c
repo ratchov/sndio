@@ -616,7 +616,7 @@ mix_badd(struct abuf *ibuf, struct abuf *obuf)
 	unsigned cmin, cmax;
 	unsigned i, j, cc, istart, inext, onext, ostart;
 	unsigned scount, icount, ocount;
-	int vol;
+	int vol, s;
 
 #ifdef DEBUG
 	if (debug_level >= 4) {
@@ -673,7 +673,12 @@ mix_badd(struct abuf *ibuf, struct abuf *obuf)
 	idata += istart;
 	for (i = scount; i > 0; i--) {
 		for (j = cc; j > 0; j--) {
-			*odata += ADATA_MUL(*idata, vol);
+			s = *odata + ADATA_MUL(*idata, vol);
+			if (s >= ADATA_UNIT)
+				s = ADATA_UNIT - 1;
+			else if (s < -ADATA_UNIT)
+				s = -ADATA_UNIT;
+			*odata = s;
 			idata++;
 			odata++;
 		}
