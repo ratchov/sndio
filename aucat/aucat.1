@@ -257,19 +257,22 @@ A good compromise is to use \-4dB attenuation (12 volume units)
 for each additional client expected
 (115 if 2 clients are expected, 103 for 3 clients, and so on).
 .It Fl w Ar flag
-Control whether the master volume resulting of all playback
-streams of the device is automatically adjusted.
+Control
+.Nm
+behaviour when the maximum volume of the hardware is reached
+and a new stream is connected.
+This happens only when stream volumes
+are not properly set using the
+.Fl v
+option.
 If the flag is
 .Va on ,
-then the master volume is lowered when necessary to ensure
-clipping never occurs.
-It should be set to
-.Va off
-to avoid lowering the volume twice if streams are already pre-scaled.
-Note that stream volumes can be manually set
-.Pq Fl v
-and if they are set correctly, the master volume doesn't need
-to be adjusted to avoid clipping.
+then the master volume (corresponding to the mix of all playback streams)
+is automatically adjusted to avoid clipping.
+Using
+.Fl w Va off
+makes sense when all streams are recorded or produced with properly lowered
+volumes.
 The default is
 .Va on .
 .It Fl x Ar policy
