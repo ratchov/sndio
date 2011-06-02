@@ -24,10 +24,10 @@
  * the module also provides trivial timeout implementation,
  * derived from:
  *
- * 	anoncvs@moule.caoua.org:/cvs
+ * 	anoncvs@moule.caoua.org:/midish
  *
- *		midish/timo.c rev 1.16
- * 		midish/mdep.c rev 1.69
+ *		midish/timo.c rev 1.18
+ * 		midish/mdep.c rev 1.71
  *
  * A timeout is used to schedule the call of a routine (the callback)
  * there is a global list of timeouts that is processed inside the
@@ -300,7 +300,7 @@ file_poll(void)
 	long long delta_nsec;
 	int res;
 
-	if (LIST_EMPTY(&file_list)) {
+	if (LIST_EMPTY(&file_list) && timo_queue == NULL) {
 #ifdef DEBUG
 		if (debug_level >= 3)
 			dbg_puts("nothing to do...\n");
@@ -489,7 +489,7 @@ file_poll(void)
 			file_del(f);
 		f = fnext;
 	}
-	if (LIST_EMPTY(&file_list)) {
+	if (LIST_EMPTY(&file_list) && timo_queue == NULL) {
 #ifdef DEBUG
 		if (debug_level >= 3)
 			dbg_puts("no files anymore...\n");
