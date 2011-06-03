@@ -589,12 +589,12 @@ Record channels 2 and 3 into one stereo file and
 channels 6 and 7 into another stereo file using a 96kHz sampling rate for
 both:
 .Bd -literal -offset indent
-$ aucat -r 96000 -C 2:3 -o file1.raw -C 6:7 -o file2.raw
+$ aucat -j off -r 96000 -C 2:3 -o file1.raw -C 6:7 -o file2.raw
 .Ed
 .Pp
 Split a stereo file into two mono files:
 .Bd -literal -offset indent
-$ aucat -n -i stereo.wav -C 0:0 -o left.wav -C 1:1 -o right.wav
+$ aucat -n -j off -i stereo.wav -C 0:0 -o left.wav -C 1:1 -o right.wav
 .Ed
 .Pp
 Start
