@@ -101,6 +101,10 @@ sio_aucat_runmsg(struct sio_aucat_hdl *hdl)
 		DPRINTF("aucat: pos = %d, maxwrite = %d\n",
 		    delta, hdl->maxwrite);
 		hdl->delta = delta;
+		if (hdl->delta >= 0) {
+			sio_onmove_cb(&hdl->sio, hdl->delta);
+			hdl->delta = 0;
+		}
 		break;
 	case AMSG_MOVE:
 		delta = ntohl(hdl->aucat.rmsg.u.ts.delta);
