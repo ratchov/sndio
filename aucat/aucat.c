@@ -558,6 +558,8 @@ aucat_main(int argc, char **argv)
 		case 'e':
 			opt_enc(&cs->ipar);
 			aparams_copyenc(&cs->opar, &cs->ipar);
+			aparams_copyenc(&cd->ipar, &cs->ipar);
+			aparams_copyenc(&cd->opar, &cd->ipar);
 			break;
 		case 'r':
 			rate = strtonum(optarg, RATE_MIN, RATE_MAX, &str);
@@ -679,6 +681,10 @@ aucat_main(int argc, char **argv)
 	 */
 	SLIST_FOREACH(cd, &cfdevs, entry) {
 		mode = 0;
+		if (!u_flag) {
+			aparams_init(&cd->opar, NCHAN_MAX - 1, 0, RATE_MIN);
+			aparams_init(&cd->opar, NCHAN_MAX - 1, 0, RATE_MIN);
+		}
 		SLIST_FOREACH(cs, &cd->ins, entry) {
 			if (cs->mode == 0)
 				errx(1, "%s: not in play mode", cs->path);
