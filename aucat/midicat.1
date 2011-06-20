@@ -51,14 +51,16 @@ The options are as follows:
 .It Fl a Ar flag
 Control whether
 .Nm
-opens the MIDI port only when needed or keeps it open all the time.
+opens all MIDI ports connected to the thru box only when needed
+or keeps them open all the time.
 If the flag is
 .Va on
-then it is kept open all the time, ensuring no other program can steal it.
+then MIDI ports are are kept open all the time, ensuring no other program can
+steal any of them.
 If the flag is
 .Va off ,
-then it's automatically closed, allowing other programs to have direct
-access to it, or the corresponding MIDI hardware to be disconnected.
+then they are automatically closed, allowing other programs to have direct
+access to MIDI ports, or the corresponding hardware to be disconnected.
 The default is
 .Va on .
 .It Fl d

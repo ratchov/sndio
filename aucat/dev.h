@@ -54,9 +54,8 @@ struct dev {
 	struct aproc *midi;
 	struct devctl {
 		struct devctl *next;
-		char *path;
 		unsigned mode;
-		int hold;
+		char *path;
 	} *ctl_list;
 };
 
@@ -68,12 +67,12 @@ void dev_unref(struct dev *);
 void dev_del(struct dev *);
 void dev_wakeup(struct dev *);
 void dev_drain(struct dev *);
-struct dev *dev_new_thru(void);
+struct dev *dev_new_thru(int);
 struct dev *dev_new_loop(struct aparams *, struct aparams *, unsigned);
 struct dev *dev_new_sio(char *, unsigned, 
     struct aparams *, struct aparams *,
     unsigned, unsigned, unsigned, unsigned);
-int  devctl_add(struct dev *, char *, int, unsigned);
+int  devctl_add(struct dev *, char *, unsigned);
 void dev_midiattach(struct dev *, struct abuf *, struct abuf *);
 unsigned dev_roundof(struct dev *, unsigned);
 int dev_getpos(struct dev *);

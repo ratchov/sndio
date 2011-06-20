@@ -183,7 +183,7 @@ dev_new_loop(struct aparams *dipar, struct aparams *dopar, unsigned bufsz)
  * Create a MIDI thru box device
  */
 struct dev *
-dev_new_thru(void)
+dev_new_thru(int hold)
 {
 	struct dev *d;
 
@@ -195,7 +195,7 @@ dev_new_thru(void)
 	d->ctl_list = NULL;
 	d->reqmode = MODE_MIDIMASK;
 	d->pstate = DEV_CLOSED;
-	d->hold = 0;
+	d->hold = hold;
 	d->path = "midithru";
 	d->next = dev_list;
 	dev_list = d;
@@ -206,21 +206,16 @@ dev_new_thru(void)
  * Add a MIDI port to the device
  */
 int
-devctl_add(struct dev *d, char *name, int hold, unsigned mode)
+devctl_add(struct dev *d, char *name, unsigned mode)
 {
 	struct devctl *c;
 
-	if (hold) {
-		if (!dev_ref(d))
-			return 0;
-	}
 	c = malloc(sizeof(struct devctl));
 	if (c == NULL) {
 		perror("malloc");
 		exit(1);
 	}
 	c->path = name;
-	c->hold = hold;
 	c->mode = mode;
 	c->next = d->ctl_list;
 	d->ctl_list = c;

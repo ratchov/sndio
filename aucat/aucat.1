@@ -74,18 +74,16 @@ The options are as follows:
 .It Fl a Ar flag
 Control whether
 .Nm
-opens the audio device
-.Pq Fl f
-or the MIDI port
-.Pq Fl q
-only when needed or keeps it open all the time.
+opens the audio device only when needed or keeps it open all the time.
+This applies to MIDI ports controlling the device as well.
 If the flag is
 .Va on
-then it is kept open all the time, ensuring no other program can steal it.
+then the device is kept open all the time, ensuring no other program can
+steal it.
 If the flag is
 .Va off ,
 then it's automatically closed, allowing other programs to have direct
-access to it, or corresponding audio or MIDI hardware to be disconnected.
+access to the device, or the device to be disconnected.
 The default is
 .Va on .
 .It Fl b Ar nframes
@@ -322,7 +320,7 @@ On the command line,
 per-device parameters
 .Pq Fl abwz
 must precede the device definition
-.Pq Fl fq ,
+.Pq Fl f ,
 and per-stream parameters
 .Pq Fl Ccehjmrtvx
 must precede the stream definition
