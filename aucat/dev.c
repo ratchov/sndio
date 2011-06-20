@@ -105,6 +105,7 @@ void dev_close(struct dev *);
 void dev_start(struct dev *);
 void dev_stop(struct dev *);
 void dev_clear(struct dev *);
+int  devctl_open(struct dev *, struct devctl *);
 
 struct dev *dev_list = NULL;
 
@@ -123,6 +124,7 @@ dev_new_sio(char *path,
 		perror("malloc");
 		exit(1);
 	}
+	d->ctl_list = NULL;
 	d->path = path;
 	d->reqmode = mode;
 	if (mode & MODE_PLAY)
@@ -158,6 +160,7 @@ dev_new_loop(struct aparams *dipar, struct aparams *dopar, unsigned bufsz)
 		perror("malloc");
 		exit(1);
 	}
+	d->ctl_list = NULL;
 	cmin = (dipar->cmin < dopar->cmin) ? dipar->cmin : dopar->cmin;
 	cmax = (dipar->cmax > dopar->cmax) ? dipar->cmax : dopar->cmax;
 	rate = (dipar->rate > dopar->rate) ? dipar->rate : dopar->rate;
@@ -189,6 +192,7 @@ dev_new_thru(void)
 		perror("malloc");
 		exit(1);
 	}
+	d->ctl_list = NULL;
 	d->reqmode = MODE_MIDIMASK;
 	d->pstate = DEV_CLOSED;
 	d->hold = 0;
@@ -199,6 +203,62 @@ dev_new_thru(void)
 }
 
 /*
+ * Add a MIDI port to the device
+ */
+int
+devctl_add(struct dev *d, char *name, int hold, unsigned mode)
+{
+	struct devctl *c;
+
+	if (hold) {
+		if (!dev_ref(d))
+			return 0;
+	}
+	c = malloc(sizeof(struct devctl));
+	if (c == NULL) {
+		perror("malloc");
+		exit(1);
+	}
+	c->path = name;
+	c->hold = hold;
+	c->mode = mode;
+	c->next = d->ctl_list;
+	d->ctl_list = c;
+	if (d->pstate != DEV_CLOSED) {
+		if (!devctl_open(d, c))
+			return 0;
+	}
+	return 1;
+}
+
+/*
+ * Open a MIDI device and connect it to the thru box
+ */
+int
+devctl_open(struct dev *d, struct devctl *c)
+{
+	struct file *f;
+	struct abuf *rbuf = NULL, *wbuf = NULL;
+	struct aproc *rproc, *wproc;
+
+	f = (struct file *)miofile_new(&miofile_ops, c->path, c->mode);
+	if (f == NULL)
+		return 0;
+	if (c->mode & MODE_MIDIIN) {
+		rproc = rfile_new(f);
+		rbuf = abuf_new(MIDI_BUFSZ, &aparams_none);
+		aproc_setout(rproc, rbuf);
+	}
+	if (c->mode & MODE_MIDIOUT) {
+		wproc = wfile_new(f);
+		wbuf = abuf_new(MIDI_BUFSZ, &aparams_none);
+		aproc_setin(wproc, wbuf);
+	}
+	dev_midiattach(d, rbuf, wbuf);
+	return 1;
+}
+
+/*
  * Open the device with the dev_reqxxx capabilities. Setup a mixer, demuxer,
  * monitor, midi control, and any necessary conversions.
  */
@@ -206,6 +266,7 @@ int
 dev_open(struct dev *d)
 {
 	struct file *f;
+	struct devctl *c;
 	struct aparams par;
 	struct aproc *conv;
 	struct abuf *buf;
@@ -399,6 +460,18 @@ dev_open(struct dev *d)
 	}
 #endif
 	d->pstate = DEV_INIT;
+	for (c = d->ctl_list; c != NULL; c = c->next) {
+		if (!devctl_open(d, c)) {
+#ifdef DEBUG
+			if (debug_level >= 1) {
+				dbg_puts(c->path);
+				dbg_puts(": couldn't open MIDI port\n");
+			}
+#endif
+			dev_close(d);
+			return 0;
+		}
+	}
 	return 1;
 }
 
@@ -573,35 +646,6 @@ dev_del(struct dev *d)
 	}
 	*p = d->next;
 	free(d);
-}
-
-/*
- * Open a MIDI device and connect it to the thru box
- */
-int
-dev_thruadd(struct dev *d, char *name, int in, int out)
-{
-	struct file *f;
-	struct abuf *rbuf = NULL, *wbuf = NULL;
-	struct aproc *rproc, *wproc;
-
-	if (!dev_ref(d))
-		return 0;
-	f = (struct file *)miofile_new(&miofile_ops, name, in, out);
-	if (f == NULL)
-		return 0;
-	if (in) {
-		rproc = rfile_new(f);
-		rbuf = abuf_new(MIDI_BUFSZ, &aparams_none);
-		aproc_setout(rproc, rbuf);
-	}
-	if (out) {
-		wproc = wfile_new(f);
-		wbuf = abuf_new(MIDI_BUFSZ, &aparams_none);
-		aproc_setin(wproc, wbuf);
-	}
-	dev_midiattach(d, rbuf, wbuf);
-	return 1;
 }
 
 /*

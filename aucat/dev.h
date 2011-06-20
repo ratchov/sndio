@@ -52,6 +52,12 @@ struct dev {
 	struct aproc *mix, *sub, *submon;
 	struct aproc *rec, *play, *mon;
 	struct aproc *midi;
+	struct devctl {
+		struct devctl *next;
+		char *path;
+		unsigned mode;
+		int hold;
+	} *ctl_list;
 };
 
 extern struct dev *dev_list;
@@ -67,7 +73,7 @@ struct dev *dev_new_loop(struct aparams *, struct aparams *, unsigned);
 struct dev *dev_new_sio(char *, unsigned, 
     struct aparams *, struct aparams *,
     unsigned, unsigned, unsigned, unsigned);
-int  dev_thruadd(struct dev *, char *, int, int);
+int  devctl_add(struct dev *, char *, int, unsigned);
 void dev_midiattach(struct dev *, struct abuf *, struct abuf *);
 unsigned dev_roundof(struct dev *, unsigned);
 int dev_getpos(struct dev *);

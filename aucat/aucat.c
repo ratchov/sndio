@@ -235,6 +235,7 @@ SLIST_HEAD(cfstrlist, cfstr);
 struct cfmid {
 	SLIST_ENTRY(cfmid) entry;
 	char *path;			/* static path (no need to copy it) */
+	int hold;
 };
 
 SLIST_HEAD(cfmidlist, cfmid);
@@ -338,16 +339,28 @@ cfstr_add(struct cfstrlist *list, struct cfstr *cs, char *path)
 	SLIST_INSERT_HEAD(list, cs, entry);
 }
 
-void
-cfmid_add(struct cfmidlist *list, char *path)
+struct cfmid *
+cfmid_new(struct cfmid *templ)
 {
 	struct cfmid *cm;
-	
+
 	cm = malloc(sizeof(struct cfmid));
 	if (cm == NULL) {
 		perror("malloc");
 		abort();
 	}
+	if (templ)
+		memcpy(cm, templ, sizeof(struct cfmid));
+	else {
+		cm->hold = 1;
+	}
+	cm->path = NULL;
+	return cm;
+}
+
+void
+cfmid_add(struct cfmidlist *list, struct cfmid *cm, char *path)
+{
 	cm->path = path;
 	SLIST_INSERT_HEAD(list, cm, entry);
 }
@@ -506,6 +519,7 @@ aucat_main(int argc, char **argv)
 	 */
 	cd = cfdev_new(NULL);
 	cs = cfstr_new(NULL);
+	cm = cfmid_new(NULL);
 
 	while ((c = getopt(argc, argv, "a:w:dnb:c:C:e:r:h:x:v:i:o:f:m:luq:s:U:L:t:j:z:")) != -1) {
 		switch (c) {
@@ -587,13 +601,14 @@ aucat_main(int argc, char **argv)
 			nsock++;
 			break;
 		case 'a':
-			cd->hold = opt_onoff();
+			cm->hold = cd->hold = opt_onoff();
 			break;
 		case 'w':
 			cd->autovol = opt_onoff();
 			break;
 		case 'q':
-			cfmid_add(&cd->mids, optarg);
+			cfmid_add(&cd->mids, cm, optarg);
+			cm = cfmid_new(cm);
 			break;
 		case 'b':
 			cd->bufsz = strtonum(optarg, 1, RATE_MAX * 5, &str);
@@ -673,6 +688,7 @@ aucat_main(int argc, char **argv)
 		free(cs);
 		free(cd);
 	}
+	free(cm);
 
 	/*
 	 * Check modes and calculate "best" device parameters. Iterate over all
@@ -752,8 +768,8 @@ aucat_main(int argc, char **argv)
 		while (!SLIST_EMPTY(&cd->mids)) {
 			cm = SLIST_FIRST(&cd->mids);
 			SLIST_REMOVE_HEAD(&cd->mids, entry);
-			if (!dev_thruadd(d, cm->path, 1, 1))
-				errx(1, "%s: can't open device", cm->path);
+			if (!devctl_add(d, cm->path, cm->hold, MODE_MIDIMASK))
+				errx(1, "%s: can't open port", cm->path);
 			free(cm);
 		}
 
@@ -870,8 +886,9 @@ aucat_main(int argc, char **argv)
 void
 midicat_usage(void)
 {
-	(void)fputs("usage: " PROG_MIDICAT " [-dl] "
-	    "[-i file] [-L addr] [-o file] [-q port] [-s name] [-U unit]\n",
+	(void)fputs("usage: " PROG_MIDICAT " [-dl] [-a flag] "
+	    "[-i file] [-L addr] [-o file] [-q port]\n\t"
+	    "[-s name] [-U unit]\n",
 	    stderr);
 }
 
@@ -908,8 +925,9 @@ midicat_main(int argc, char **argv)
 	 */
 	cs = cfstr_new(NULL);
 	cd = cfdev_new(NULL);
+	cm = cfmid_new(NULL);
 
-	while ((c = getopt(argc, argv, "di:o:ls:q:U:L:")) != -1) {
+	while ((c = getopt(argc, argv, "di:o:ls:a:q:U:L:")) != -1) {
 		switch (c) {
 		case 'd':
 #ifdef DEBUG
@@ -926,8 +944,12 @@ midicat_main(int argc, char **argv)
 			cfstr_add(&cd->outs, cs, optarg);
 			cs = cfstr_new(cs);
 			break;
+		case 'a':
+			cm->hold = opt_onoff();
+			break;
 		case 'q':
-			cfmid_add(&cd->mids, optarg);
+			cfmid_add(&cd->mids, cm, optarg);
+			cm = cfmid_new(cm);
 			break;
 		case 's':
 			cfstr_add(&cd->opts, cs, optarg);
@@ -978,15 +1000,19 @@ midicat_main(int argc, char **argv)
 		if (SLIST_EMPTY(&cd->mids)) {
 			if (SLIST_EMPTY(&cd->ins) && SLIST_EMPTY(&cd->outs)) {
 				cfstr_add(&cd->opts, cs, DEFAULT_OPT);
+				free(cm);
 				nsock++;
 			} else {
-				cfmid_add(&cd->mids, "default");
+				cfmid_add(&cd->mids, cm, "default");
 				free(cs);
 			}
-		} else
+		} else {
+			free(cm);
 			free(cs);
+		}
 		cfdev_add(&cfdevs, cd, "default");
 	} else {
+		free(cm);
 		free(cs);
 		free(cd);
 	}
@@ -1014,8 +1040,8 @@ midicat_main(int argc, char **argv)
 		while (!SLIST_EMPTY(&cd->mids)) {
 			cm = SLIST_FIRST(&cd->mids);
 			SLIST_REMOVE_HEAD(&cd->mids, entry);
-			if (!dev_thruadd(d, cm->path, 1, 1))
-				errx(1, "%s: can't open device", cm->path);
+			if (!devctl_add(d, cm->path, cm->hold, MODE_MIDIMASK))
+				errx(1, "%s: can't open port", cm->path);
 			free(cm);
 		}
 

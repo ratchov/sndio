@@ -23,6 +23,7 @@
 .Sh SYNOPSIS
 .Nm midicat
 .Op Fl dl
+.Op Fl a Ar flag
 .Op Fl i Ar file
 .Op Fl L Ar addr
 .Op Fl o Ar file
@@ -47,6 +48,19 @@ MIDI hardware or to another application in a uniform way.
 .Pp
 The options are as follows:
 .Bl -tag -width Ds
+.It Fl a Ar flag
+Control whether
+.Nm
+opens the MIDI port only when needed or keeps it open all the time.
+If the flag is
+.Va on
+then it is kept open all the time, ensuring no other program can steal it.
+If the flag is
+.Va off ,
+then it's automatically closed, allowing other programs to have direct
+access to it, or the corresponding MIDI hardware to be disconnected.
+The default is
+.Va on .
 .It Fl d
 Increase log verbosity.
 .Nm

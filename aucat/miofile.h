@@ -1,4 +1,4 @@
-/*	$OpenBSD: miofile.h,v 1.1 2009/07/25 08:44:27 ratchov Exp $	*/
+/*	$OpenBSD$	*/
 /*
  * Copyright (c) 2008 Alexandre Ratchov <alex@caoua.org>
  *
@@ -21,7 +21,7 @@ struct file;
 struct fileops;
 struct miofile;
 
-struct miofile *miofile_new(struct fileops *, char *, int, int);
+struct miofile *miofile_new(struct fileops *, char *, unsigned);
 
 extern struct fileops miofile_ops;
 
