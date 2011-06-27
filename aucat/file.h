@@ -1,4 +1,4 @@
-/*	$OpenBSD: file.h,v 1.10 2010/07/06 20:06:35 ratchov Exp $	*/
+/*	$OpenBSD$	*/
 /*
  * Copyright (c) 2008 Alexandre Ratchov <alex@caoua.org>
  *
@@ -68,6 +68,10 @@ struct file {
 LIST_HEAD(filelist,file);
 
 extern struct filelist file_list;
+
+#ifdef DEBUG
+extern long long file_wtime, file_utime;
+#endif
 
 void timo_set(struct timo *, void (*)(void *), void *);
 void timo_add(struct timo *, unsigned);
