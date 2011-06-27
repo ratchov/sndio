@@ -589,7 +589,6 @@ ctl_dump(struct aproc *p, struct abuf *obuf)
 	msg[4] = SYSEX_AUCAT_DUMPEND;
 	msg[5] = SYSEX_END;
 	ctl_copymsg(obuf, msg, 6);
-	dbg_puts("end dump\n");
 	abuf_flush(obuf);
 }
 
@@ -1152,7 +1151,6 @@ ctl_ev(struct aproc *p, struct abuf *ibuf)
 			return;
 		if (len != SYSEX_SIZE(dumpreq))
 			return;
-		dbg_puts("dump request\n");
 		if (ibuf->duplex)
 			ctl_dump(p, ibuf->duplex);
 		break;
