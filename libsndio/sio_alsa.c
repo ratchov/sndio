@@ -1,4 +1,4 @@
-/*	$OpenBSD: sun.c,v 1.37 2010/05/25 06:49:13 ratchov Exp $	*/
+/*	$OpenBSD$	*/
 /*
  * Copyright (c) 2010 Jacob Meuser <jakemsr@sdf.lonestar.org>
  * Copyright (c) 2008 Alexandre Ratchov <alex@caoua.org>
@@ -53,7 +53,6 @@ struct sio_alsa_hdl {
 	unsigned ibpf, obpf;		/* bytes per frame */
 	unsigned ihfr, ohfr;		/* frames the hw transfered */
 	unsigned isfr, osfr;		/* frames the sw transfered */
-	unsigned ierr, oerr;		/* frames the hw dropped */
 	int offset;			/* frames play is ahead of record */
 	int idelta, odelta;		/* position reported to client */
 	int nfds, infds, onfds;
@@ -390,8 +389,6 @@ sio_alsa_start(struct sio_hdl *sh)
 	hdl->ohfr = 0;
 	hdl->isfr = 0;
 	hdl->osfr = 0;
-	hdl->ierr = 0;
-	hdl->oerr = 0;
 	hdl->offset = 0;
 	hdl->idelta = 0;
 	hdl->odelta = 0;
