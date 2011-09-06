@@ -458,7 +458,7 @@ wav_seekmmc(struct wav *f)
 	 * don't go beyond the end-of-file, if so
 	 * put it in INIT state so it dosn't start
 	 */
-	if (f->mmcpos > f->endpos) {
+	if (f->mmcpos > f->endpos && !(f->mode & MODE_RECMASK)) {
 		wav_reset(f);
 		f->pstate = WAV_FAILED;
 		/*
@@ -472,6 +472,8 @@ wav_seekmmc(struct wav *f)
 		wav_exit(f);
 		return 0;
 	}
+	if (f->mode & MODE_RECMASK)
+		f->endpos = f->mmcpos;
 	if (f->hdr == HDR_WAV)
 		f->wbytes = WAV_DATAMAX - f->mmcpos;
 	f->rbytes = f->endpos - f->mmcpos;
@@ -582,7 +584,7 @@ wav_startreq(void *arg)
 		return;
 	case WAV_READY:
 		if (f->mode & MODE_RECMASK)
-			f->endpos = f->startpos;
+			f->endpos = f->mmcpos + f->startpos;
 		(void)wav_attach(f, 0);
 		break;
 #ifdef DEBUG
