@@ -669,7 +669,7 @@ aucat_main(int argc, char **argv)
 		if (!SLIST_EMPTY(&cd->opts) ||
 		    !SLIST_EMPTY(&cd->ins) ||
 		    !SLIST_EMPTY(&cd->outs) ||
-		    !SLIST_EMPTY(&cd->outs))
+		    !SLIST_EMPTY(&cd->mids))
 			errx(1, "no device to attach last stream to");
 		free(cs);
 		free(cd);
