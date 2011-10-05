@@ -497,14 +497,11 @@ wav_init(struct wav *f)
 	f->pstate = WAV_INIT;
 	if ((f->mode & f->dev->mode) != f->mode) {
 #ifdef DEBUG
-		wav_dbg(f);
-		dbg_puts(": ");
-		dbg_puts("d = ");
-		dbg_putx(f->dev->mode);
-		dbg_puts(", f = ");
-		dbg_putx(f->mode);
-		
-		dbg_puts(": operation not supported by device\n");
+		if (debug_level >= 1) {
+			wav_dbg(f);
+			dbg_puts(": ");
+			dbg_puts(": operation not supported by device\n");
+		}
 #endif
 		wav_exit(f);
 		return 0;
