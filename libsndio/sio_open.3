@@ -216,14 +216,14 @@ This parameter takes into account any buffers, and
 can be used for latency calculations.
 It is read-only.
 .It Va appbufsz
-Size of the buffer in frames the application must maintain non empty
-(on the play end) or non full (on the record end) by calling
+Size of the buffer in frames the application must maintain non-empty
+(on the play end) or non-full (on the record end) by calling
 .Fn sio_write
 or
 .Fn sio_read
 fast enough to avoid overrun or underrun conditions.
 The audio subsystem may use additional buffering, thus this
-parameter cannot be used for latency calculations
+parameter cannot be used for latency calculations.
 .It Va round
 Optimal number of frames that the application buffers
 should be a multiple of, to get best performance.
