@@ -353,7 +353,10 @@ aucat_connect_tcp(struct aucat *hdl, char *host, char *unit, int isaudio)
 			DPERROR("socket");
 			continue;
 		}
+	restart:
 		if (connect(s, ai->ai_addr, ai->ai_addrlen) < 0) {
+			if (errno == EINTR)
+				goto restart;
 			DPERROR("connect");
 			close(s);
 			s = -1;
