@@ -369,17 +369,16 @@ file_poll(void)
 	delta_nsec = 1000000000LL * (ts.tv_sec - file_ts.tv_sec);
 	delta_nsec += ts.tv_nsec - file_ts.tv_nsec;
 #ifdef DEBUG
-	if (delta_nsec < 0) {
+	if (delta_nsec < 0)
 		dbg_puts("file_poll: negative time interval\n");
-		dbg_panic();
-	}
 #endif
 	file_ts = ts;
-	if (delta_nsec < 1000000000LL)
+	if (delta_nsec >= 0 && delta_nsec < 1000000000LL)
 		timo_update(delta_nsec / 1000);
 	else {
 #ifdef DEBUG
-		dbg_puts("ignored huge clock delta\n");
+		if (debug_level >= 1)
+			dbg_puts("ignored huge clock delta\n");
 #endif
 	}
 	if (res <= 0)

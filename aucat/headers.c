@@ -241,7 +241,7 @@ wav_writehdr(int fd, struct aparams *par, off_t *startpos, off_t datasz)
 		struct wavchunk fmt_hdr;
 		struct wavfmt fmt;
 		struct wavchunk data_hdr;
-	} hdr;
+	} __packed hdr;
 
 	/*
 	 * Check that encoding is supported by .wav file format.
@@ -274,8 +274,8 @@ wav_writehdr(int fd, struct aparams *par, off_t *startpos, off_t datasz)
 	hdr.fmt.nch = htole16(nch);
 	hdr.fmt.rate = htole32(par->rate);
 	hdr.fmt.byterate = htole32(par->rate * par->bps * nch);
-	hdr.fmt.bits = htole16(par->bits);
 	hdr.fmt.blkalign = par->bps * nch;
+	hdr.fmt.bits = htole16(par->bits);
 
 	memcpy(hdr.data_hdr.id, wav_id_data, 4);
 	hdr.data_hdr.size = htole32(datasz);

@@ -52,8 +52,10 @@ extern volatile sig_atomic_t debug_level;
 #define MODE_MIDIIN	0x08	/* allowed to write midi */
 #define MODE_MON	0x10	/* allowed to monitor */
 #define MODE_LOOP	0x20	/* deviceless mode */
+#define MODE_THRU	0x40	/* pass thru insted of device control */
+#define MODE_PLAYREC	(MODE_PLAY | MODE_REC)
 #define MODE_RECMASK	(MODE_REC | MODE_MON)
-#define MODE_AUDIOMASK	(MODE_REC | MODE_MON | MODE_PLAY)
+#define MODE_AUDIOMASK	(MODE_PLAY | MODE_REC | MODE_MON)
 #define MODE_MIDIMASK	(MODE_MIDIIN | MODE_MIDIOUT)
 
 /*

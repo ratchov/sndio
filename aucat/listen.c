@@ -36,6 +36,7 @@
 #include "conf.h"
 #include "listen.h"
 #include "sock.h"
+#include "dbg.h"
 #include "bsd-compat.h"
 
 struct fileops listen_ops = {
@@ -50,6 +51,8 @@ struct fileops listen_ops = {
 	listen_pollfd,
 	listen_revents
 };
+
+struct listen *listen_list = NULL;
 
 void
 listen_new_un(char *path)
@@ -76,10 +79,6 @@ listen_new_un(char *path)
 		goto bad_close;
 	}
 	umask(oldumask);
-	if (listen(sock, 1) < 0) {
-		perror("listen");
-		goto bad_close;
-	}
 	f = (struct listen *)file_new(&listen_ops, path, 1);
 	if (f == NULL)
 		goto bad_close;
@@ -89,6 +88,8 @@ listen_new_un(char *path)
 		exit(1);
 	}
 	f->fd = sock;
+	f->next = listen_list;
+	listen_list = f;
 	return;
  bad_close:
 	close(sock);
@@ -137,10 +138,6 @@ listen_new_tcp(char *addr, unsigned port)
 			perror("bind");
 			goto bad_close;
 		}
-		if (listen(s, 1) < 0) {
-			perror("listen");
-			goto bad_close;
-		}
 		f = (struct listen *)file_new(&listen_ops, addr, 1);
 		if (f == NULL) {
 		bad_close:
@@ -149,11 +146,23 @@ listen_new_tcp(char *addr, unsigned port)
 		}
 		f->path = NULL;
 		f->fd = s;
+		f->next = listen_list;
+		listen_list = f;
 		n++;
 	}
 	freeaddrinfo(ailist);
 	if (n == 0)
 		exit(1);
+}
+
+int
+listen_init(struct listen *f)
+{
+	if (listen(f->fd, 1) < 0) {
+		perror("listen");
+		return 0;
+	}
+	return 1;
 }
 
 int
@@ -212,23 +221,20 @@ listen_revents(struct file *file, struct pollfd *pfd)
 void
 listen_close(struct file *file)
 {
-	struct listen *f = (struct listen *)file;
+	struct listen *f = (struct listen *)file, **pf;
 
 	if (f->path != NULL) {
 		unlink(f->path);
 		free(f->path);
 	}
 	close(f->fd);
-}
-
-void
-listen_closeall(void)
-{
-	struct file *f, *fnext;
-
-	for (f = LIST_FIRST(&file_list); f != NULL; f = fnext) {
-		fnext = LIST_NEXT(f, entry);
-		if (f->ops == &listen_ops)
-			file_close(f);
+	for (pf = &listen_list; *pf != f; pf = &(*pf)->next) {
+#ifdef DEBUG
+		if (*pf == NULL) {
+			dbg_puts("listen_close: not on list\n");
+			dbg_panic();
+		}
+#endif
 	}
+	*pf = f->next;
 }

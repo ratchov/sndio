@@ -793,7 +793,7 @@ ctl_slotnew(struct aproc *p, char *who, struct ctl_ops *ops, void *arg, int tr)
 
 	if (!APROC_OK(p)) {
 #ifdef DEBUG
-		if (debug_level >= 1) {
+		if (debug_level >= 2) {
 			dbg_puts(who);
 			dbg_puts(": MIDI control not available\n");
 		}
