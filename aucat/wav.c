@@ -771,7 +771,7 @@ wav_autohdr(char *name, struct dev *dev, unsigned *hdr, unsigned *mode)
 struct wav *
 wav_new_in(struct fileops *ops, struct dev *dev,
     unsigned mode, char *name, unsigned hdr,
-    struct aparams *par, unsigned xrun, unsigned volctl, int tr, int join)
+    struct aparams *par, unsigned xrun, unsigned volctl, int mmc, int join)
 {
 	int fd;
 	struct wav *f;
@@ -816,7 +816,7 @@ wav_new_in(struct fileops *ops, struct dev *dev,
 		f->map = NULL;
 	}
 	f->dev = dev;
-	f->mmc = tr;
+	f->mmc = mmc;
 	f->join = join;
 	f->mode = mode;
 	f->hpar = *par;
@@ -855,7 +855,7 @@ wav_new_in(struct fileops *ops, struct dev *dev,
 struct wav *
 wav_new_out(struct fileops *ops, struct dev *dev,
     unsigned mode, char *name, unsigned hdr,
-    struct aparams *par, unsigned xrun, int tr, int join)
+    struct aparams *par, unsigned xrun, int mmc, int join)
 {
 	int fd;
 	struct wav *f;
@@ -895,7 +895,7 @@ wav_new_out(struct fileops *ops, struct dev *dev,
 		f->startpos = f->endpos = 0;
 	}
 	f->dev = dev;
-	f->mmc = tr;
+	f->mmc = mmc;
 	f->join = join;
 	f->mode = mode;
 	f->hpar = *par;
