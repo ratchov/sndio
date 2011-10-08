@@ -385,8 +385,8 @@ main(int argc, char **argv)
 	hdr = HDR_AUTO;
 	xrun = XRUN_IGNORE;
 	vol = MIDI_MAXCTL;
-	hold = join = 1;
-	mmc = autovol = 0;
+	hold = join = autovol = 1;
+	mmc = 0;
 	bufsz = 0;
 	round = 0;
 	unit = 0;
