@@ -19,7 +19,7 @@
 .Os
 .Sh NAME
 .Nm aucat
-.Nd audio and MIDI server and stream manipulation tool
+.Nd audio/MIDI server and stream manipulation tool
 .Sh SYNOPSIS
 .Nm aucat
 .Bk -words
@@ -114,11 +114,11 @@ audio device to devices used for playing and/or recording.
 Preceding per-device options
 .Pq Fl abwz
 apply to this device.
-Following streams
+Streams
 .Pq Fl ios
 and control MIDI ports
-.Pq Fl q ,
-will be attached to this device.
+.Pq Fl q
+that are applied after will be attached to this device.
 Device mode and parameters are determined from streams
 attached to it.
 .It Fl h Ar fmt
@@ -164,7 +164,7 @@ will accept connections from any address.
 Detach and become a daemon.
 .It Fl M
 Create a MIDI thru box
-.Pq "i.e. MIDI only pseudo device" .
+.Pq i.e. MIDI-only pseudo device .
 It merges any number of MIDI inputs and broadcasts the result
 to any number of MIDI outputs, similarly to a hardware MIDI thru box.
 Only MIDI ports
@@ -201,7 +201,7 @@ The default is
 Create a loopback pseudo audio device.
 Send input streams
 to the output, processing them on the fly.
-This pseudo-device is useful to mix, demultiplex, resample or reencode
+This pseudo-device is useful to mix, demultiplex, resample or re-encode
 audio files offline.
 It requires at least one input
 .Pq Fl i

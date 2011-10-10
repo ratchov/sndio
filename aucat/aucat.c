@@ -82,7 +82,7 @@ char aucat_usage[] = "usage: " PROG_AUCAT " [-dlMn] [-a flag] [-b nframes] "
     "[-C min:max] [-c min:max] [-e enc]\n\t"
     "[-f device] [-h fmt] [-i file] [-j flag] [-L addr] [-m mode] "
     "[-o file]\n\t"
-    "[-q device] [-r rate] [-s name] [-t mode] [-U unit] [-v volume]\n\t"
+    "[-q port] [-r rate] [-s name] [-t mode] [-U unit] [-v volume]\n\t"
     "[-w flag] [-x policy] [-z nframes]\n";
 
 char midicat_usage[] = "usage: " PROG_MIDICAT " [-dlM] [-a flag] "
