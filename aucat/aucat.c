@@ -358,7 +358,7 @@ mkopt(char *path, struct dev *d, struct aparams *rpar, struct aparams *ppar,
 		mode = MODE_MIDIMASK;
 	if (!rpar->rate)
 		ppar->rate = rpar->rate = DEFAULT_RATE;
-	o = opt_new(path, d, ppar, rpar, MIDI_TO_ADATA(vol), mmc, join, mode);
+	o = opt_new(path, d, rpar, ppar, MIDI_TO_ADATA(vol), mmc, join, mode);
 	if (o == NULL)
 		errx(1, "%s: couldn't create subdev", path);
 	dev_adjpar(d, o->mode, rpar, ppar);
@@ -501,7 +501,7 @@ main(int argc, char **argv)
 			break;
 		case 's':
 			d = mkdev(NULL, 0, bufsz, round, 1, autovol);
-			mkopt(optarg, d, &ppar, &rpar,
+			mkopt(optarg, d, &rpar, &ppar,
 			    mode, vol, mmc, join);
 			/* XXX: set device rate, if never set */
 			server = 1;
