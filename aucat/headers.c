@@ -209,7 +209,7 @@ wav_readhdr(int fd, struct aparams *par, off_t *startpos, off_t *datasz, short *
 		} else {
 #ifdef DEBUG
 			if (debug_level >= 2) 
-				warnx("ignoring chuck <%.4s>\n", chunk.id);
+				warnx("ignoring chunk <%.4s>\n", chunk.id);
 #endif
 		}
 
