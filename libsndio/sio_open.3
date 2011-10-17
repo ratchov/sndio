@@ -722,7 +722,7 @@ and
 .Fn sio_write
 functions return the number of bytes transferred.
 .Sh ENVIRONMENT
-.Bl -tag -width "AUDIODEVICEXXX" -compact
+.Bl -tag -width "SNDIO_DEBUGXXX" -compact
 .It Ev AUDIODEVICE
 Device to use if
 .Fn sio_open
@@ -734,8 +734,8 @@ The debug level:
 may be a value between 0 and 2.
 .El
 .Sh FILES
-.Bl -tag -width "/tmp/aucat-<uid>/softaudio0" -compact
-.It Pa /tmp/aucat-<uid>/softaudio0
+.Bl -tag -width "/tmp/aucat-<uid>/aucat0" -compact
+.It Pa /tmp/aucat-<uid>/aucat0
 Default path to
 .Xr aucat 1
 socket to connect to.

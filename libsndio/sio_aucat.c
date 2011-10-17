@@ -157,7 +157,7 @@ sio_aucat_open(const char *str, unsigned mode, int nbio)
 	hdl = malloc(sizeof(struct sio_aucat_hdl));
 	if (hdl == NULL)
 		return NULL;
-	if (!aucat_open(&hdl->aucat, str, mode, 1)) {
+	if (!aucat_open(&hdl->aucat, str, mode)) {
 		free(hdl);
 		return NULL;
 	}

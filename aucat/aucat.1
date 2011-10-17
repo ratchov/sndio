@@ -590,10 +590,10 @@ For instance, the following command will play a file on the
 .Va aucat:0.mmc
 audio device, and give full control to MIDI software or hardware
 connected to the
-.Va midithru:0
-MIDI device:
+.Va aucat:0.thru
+MIDI port:
 .Bd -literal -offset indent
-$ aucat -f aucat:0.mmc -t slave -q midithru:0 -i file.wav
+$ aucat -f aucat:0.mmc -t slave -q aucat:0.thru -i file.wav
 .Ed
 .Pp
 At this stage,

@@ -50,7 +50,7 @@ mio_open(const char *str, unsigned mode, int nbio)
 	if (str == NULL && !issetugid())
 		str = getenv("MIDIDEVICE");
 	if (str == NULL) {
-		hdl = mio_midithru_open("0", mode, nbio);
+		hdl = mio_aucat_open("0", mode, nbio);
 		if (hdl != NULL)
 			return hdl;
 		return mio_rmidi_open("0", mode, nbio);
@@ -63,7 +63,7 @@ mio_open(const char *str, unsigned mode, int nbio)
 	len = sep - str;
 	if (len == (sizeof(prefix_midithru) - 1) &&
 	    memcmp(str, prefix_midithru, len) == 0)
-		return mio_midithru_open(sep + 1, mode, nbio);
+		return mio_aucat_open(sep + 1, mode, nbio);
 	if (len == (sizeof(prefix_aucat) - 1) &&
 	    memcmp(str, prefix_aucat, len) == 0)
 		return mio_aucat_open(sep + 1, mode, nbio);

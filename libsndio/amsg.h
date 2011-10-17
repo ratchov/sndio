@@ -24,8 +24,6 @@
  */
 #define AUCAT_PATH		"aucat"
 #define AUCAT_PORT		11025
-#define MIDICAT_PATH		"midicat"
-#define MIDICAT_PORT		11041
 #define DEFAULT_OPT		"default"
 
 /*

@@ -23,15 +23,15 @@ MAN1_DIR = @mandir@/man1
 #
 # programs to build
 #
-PROG = aucat midicat
-MAN1 = aucat.1 midicat.1
+PROG = aucat
+MAN1 = aucat.1
 
 all:		${PROG}
 
 install:
 		mkdir -p ${DESTDIR}${BIN_DIR} ${DESTDIR}${MAN1_DIR}
 		cp aucat ${DESTDIR}${BIN_DIR}
-		cd ${DESTDIR}${BIN_DIR} && ln -f aucat midicat
+		cd ${DESTDIR}${BIN_DIR}
 		cp ${MAN1} ${DESTDIR}${MAN1_DIR}
 
 uninstall:
@@ -50,9 +50,6 @@ wav.o
 
 aucat:		${OBJS}
 		${CC} ${LDFLAGS} ${LIB} -o aucat ${OBJS} ${LDADD} 
-
-midicat:	aucat
-		ln -f aucat midicat
 
 .c.o:
 		${CC} ${CFLAGS} ${INCLUDE} ${DEFS} -c $<

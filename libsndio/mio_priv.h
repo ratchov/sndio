@@ -42,7 +42,6 @@ struct mio_ops {
 };
 
 struct mio_hdl *mio_rmidi_open(const char *, unsigned, int);
-struct mio_hdl *mio_midithru_open(const char *, unsigned, int);
 struct mio_hdl *mio_aucat_open(const char *, unsigned, int);
 void mio_create(struct mio_hdl *, struct mio_ops *, unsigned, int);
 void mio_destroy(struct mio_hdl *);

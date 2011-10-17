@@ -52,15 +52,15 @@ static struct mio_ops mio_aucat_ops = {
 	mio_aucat_revents,
 };
 
-static struct mio_hdl *
-mio_xxx_open(const char *str, unsigned mode, int nbio, int isaudio)
+struct mio_hdl *
+mio_aucat_open(const char *str, unsigned mode, int nbio)
 {
 	struct mio_aucat_hdl *hdl;
 
 	hdl = malloc(sizeof(struct mio_aucat_hdl));
 	if (hdl == NULL)
 		return NULL;
-	if (!aucat_open(&hdl->aucat, str, mode, isaudio))
+	if (!aucat_open(&hdl->aucat, str, mode))
 		goto bad;
 	mio_create(&hdl->mio, &mio_aucat_ops, mode, nbio);
 	if (!aucat_setfl(&hdl->aucat, nbio, &hdl->mio.eof))
@@ -69,18 +69,6 @@ mio_xxx_open(const char *str, unsigned mode, int nbio, int isaudio)
 bad:
 	free(hdl);
 	return NULL;
-}
-
-struct mio_hdl *
-mio_midithru_open(const char *str, unsigned mode, int nbio)
-{
-	return mio_xxx_open(str, mode, nbio, 0);
-}
-
-struct mio_hdl *
-mio_aucat_open(const char *str, unsigned mode, int nbio)
-{
-	return mio_xxx_open(str, mode, nbio, 1);
 }
 
 static void

@@ -322,7 +322,7 @@ bad_gen:
 }
 
 int
-aucat_connect_tcp(struct aucat *hdl, char *host, char *unit, int isaudio)
+aucat_connect_tcp(struct aucat *hdl, char *host, char *unit)
 {
 	int s, error, opt;
 	struct addrinfo *ailist, *ai, aihints;
@@ -333,11 +333,7 @@ aucat_connect_tcp(struct aucat *hdl, char *host, char *unit, int isaudio)
 		DPRINTF("%s: bad unit number\n", unit);
 		return 0;
 	}
-	if (isaudio)
-		port += AUCAT_PORT;
-	else
-		port += MIDICAT_PORT;
-	snprintf(serv, sizeof(serv), "%u", port);
+	snprintf(serv, sizeof(serv), "%u", port + AUCAT_PORT);
 	memset(&aihints, 0, sizeof(struct addrinfo));
 	aihints.ai_socktype = SOCK_STREAM;
 	aihints.ai_protocol = IPPROTO_TCP;
@@ -378,18 +374,16 @@ aucat_connect_tcp(struct aucat *hdl, char *host, char *unit, int isaudio)
 }
 
 int
-aucat_connect_un(struct aucat *hdl, char *unit, int isaudio)
+aucat_connect_un(struct aucat *hdl, char *unit)
 {
 	struct sockaddr_un ca;
 	socklen_t len = sizeof(struct sockaddr_un);
-	char *sock;
 	uid_t uid;
 	int s;
 
 	uid = geteuid();
-	sock = isaudio ? AUCAT_PATH : MIDICAT_PATH;
 	snprintf(ca.sun_path, sizeof(ca.sun_path),
-	    "/tmp/aucat-%u/%s%s", uid, sock, unit);
+	    "/tmp/aucat-%u/%s%s", uid, AUCAT_PATH, unit);
 	ca.sun_family = AF_UNIX;
 	s = socket(AF_UNIX, SOCK_STREAM, 0);
 	if (s < 0)
@@ -400,7 +394,7 @@ aucat_connect_un(struct aucat *hdl, char *unit, int isaudio)
 		DPERROR(ca.sun_path);
 		/* try shared server */
 		snprintf(ca.sun_path, sizeof(ca.sun_path),
-		    "/tmp/aucat/%s%s", sock, unit);
+		    "/tmp/aucat/%s%s", AUCAT_PATH, unit);
 		while (connect(s, (struct sockaddr *)&ca, len) < 0) {
 			if (errno == EINTR)
 				continue;
@@ -415,7 +409,7 @@ aucat_connect_un(struct aucat *hdl, char *unit, int isaudio)
 }
 
 int
-aucat_open(struct aucat *hdl, const char *str, unsigned mode, int isaudio)
+aucat_open(struct aucat *hdl, const char *str, unsigned mode)
 {
 	extern char *__progname;
 	int eof, hashost;
@@ -451,10 +445,10 @@ aucat_open(struct aucat *hdl, const char *str, unsigned mode, int isaudio)
 	}
 	DPRINTF("aucat_init: trying %s -> %s.%s\n", str, unit, opt);
 	if (hashost) {
-		if (!aucat_connect_tcp(hdl, host, unit, isaudio))
+		if (!aucat_connect_tcp(hdl, host, unit))
 			return 0;
 	} else {
-		if (!aucat_connect_un(hdl, unit, isaudio))
+		if (!aucat_connect_un(hdl, unit))
 			return 0;
 	}
 	if (fcntl(hdl->fd, F_SETFD, FD_CLOEXEC) < 0) {
