@@ -388,6 +388,7 @@ main(int argc, char **argv)
 	background = 0;
 	aparams_init(&ppar, 0, 1, DEFAULT_RATE);
 	aparams_init(&rpar, 0, 1, DEFAULT_RATE);
+	mode = MODE_MIDIMASK | MODE_PLAY | MODE_REC;
 	server = 0;
 
 #ifdef DEBUG
@@ -402,8 +403,7 @@ main(int argc, char **argv)
 	else
 		prog++;
 	if (strcmp(prog, PROG_AUCAT) == 0) {
-		mode = MODE_MIDIMASK | MODE_PLAY | MODE_REC;
-		optstr = "a:b:c:C:de:f:h:i:j:lL:m:Mno:q:r:s:t:U:v:w:x:z:t:j:z:";
+		optstr = "a:b:c:C:de:f:h:i:j:lL:m:Mno:q:r:s:t:U:v:w:x:z:";
 		usagestr = aucat_usage;
 	} else {
 		fprintf(stderr, "%s: can't determine program to run\n", prog);
