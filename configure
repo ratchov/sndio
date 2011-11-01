@@ -118,7 +118,7 @@ bindir="${bindir:-$prefix/bin}"
 datadir="${datadir:-$prefix/share}"
 includedir="${includedir:-$prefix/include}"
 libdir="${libdir:-$prefix/lib}"
-mandir="${mandir:-$prefix/man}"
+mandir="${mandir:-$prefix/share/man}"
 
 #
 # if using ALSA, add corresponding parameters
