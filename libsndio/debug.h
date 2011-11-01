@@ -20,6 +20,12 @@
 #ifdef DEBUG
 #include <stdio.h>
 
+#define DPRINTFN(n, ...)					\
+	do {							\
+		if (sndio_debug >= (n))				\
+			fprintf(stderr, __VA_ARGS__);		\
+	} while(0)
+
 #define DPRINTF(...)						\
 	do {							\
 		if (sndio_debug > 0)				\
@@ -36,6 +42,7 @@ void sndio_debug_init(void);
 extern int sndio_debug;
 #else
 #define DPRINTF(...) do {} while(0)
+#define DPRINTFN(...) do {} while(0)
 #define DPERROR(s) do {} while(0)
 #endif
 

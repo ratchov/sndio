@@ -82,8 +82,10 @@ struct amsg {
 			uint16_t mode;		/* bitmap of MODE_XXX */
 #define AMSG_VERSION	5
 			uint8_t version;	/* protocol version */
-			uint8_t reserved1[5];	/* for future use */
-			char opt[12];		/* profile name */
+			uint8_t devnum;		/* device number */
+			uint32_t _reserved[1];	/* for future use */
+#define AMSG_OPTMAX	12
+			char opt[AMSG_OPTMAX];	/* profile name */
 			char who[12];		/* hint for leases */
 		} hello;
 		struct amsg_auth {

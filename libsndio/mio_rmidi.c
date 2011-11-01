@@ -56,6 +56,15 @@ mio_rmidi_open(const char *str, unsigned mode, int nbio)
 	struct mio_rmidi_hdl *hdl;
 	char path[PATH_MAX];
 
+	switch (*str) {
+	case '/':
+	case ':': /* XXX: for backward compat */
+		str++;
+		break;
+	default:
+		DPRINTF("sio_sun_open: %s: '/<devnum>' expected\n", str);
+		return NULL;
+	}
 	hdl = malloc(sizeof(struct mio_rmidi_hdl));
 	if (hdl == NULL)
 		return NULL;

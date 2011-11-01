@@ -32,15 +32,13 @@
 #include "mio_priv.h"
 #include "bsd-compat.h"
 
+#define ISSEP(c)	((c) == '/' || (c) == ':' || \
+			 (c) == '.' || (c) == '@' || (c) == '\0')
 struct mio_hdl *
 mio_open(const char *str, unsigned mode, int nbio)
 {
-	static char prefix_midithru[] = "midithru";
-	static char prefix_rmidi[] = "rmidi";
-	static char prefix_aucat[] = "aucat";
 	struct mio_hdl *hdl;
-	char *sep;
-	int len;
+	size_t len;
 
 #ifdef DEBUG
 	sndio_debug_init();
@@ -50,26 +48,20 @@ mio_open(const char *str, unsigned mode, int nbio)
 	if (str == NULL && !issetugid())
 		str = getenv("MIDIDEVICE");
 	if (str == NULL) {
-		hdl = mio_aucat_open("0", mode, nbio);
+		hdl = mio_aucat_open("/0", mode, nbio, 1);
 		if (hdl != NULL)
 			return hdl;
-		return mio_rmidi_open("0", mode, nbio);
+		return mio_rmidi_open("/0", mode, nbio);
 	}
-	sep = strchr(str, ':');
-	if (sep == NULL) {
-		DPRINTF("mio_open: %s: ':' missing in device name\n", str);
-		return NULL;
-	}
-	len = sep - str;
-	if (len == (sizeof(prefix_midithru) - 1) &&
-	    memcmp(str, prefix_midithru, len) == 0)
-		return mio_aucat_open(sep + 1, mode, nbio);
-	if (len == (sizeof(prefix_aucat) - 1) &&
-	    memcmp(str, prefix_aucat, len) == 0)
-		return mio_aucat_open(sep + 1, mode, nbio);
-	if (len == (sizeof(prefix_rmidi) - 1) &&
-	    memcmp(str, prefix_rmidi, len) == 0)
-		return mio_rmidi_open(sep + 1, mode, nbio);
+	for (len = 0; !ISSEP(str[len]); len++)
+		; /* nothing */
+	if (strncmp("snd", str, len) == 0 ||
+	    strncmp("aucat", str, len) == 0)
+		return mio_aucat_open(str + len, mode, nbio, 0);
+	if (strncmp("midithru", str, len) == 0)
+		return mio_aucat_open(str + len, mode, nbio, 1);
+	if (strncmp("rmidi", str, len) == 0)
+		return mio_rmidi_open(str + len, mode, nbio);
 	DPRINTF("mio_open: %s: unknown device type\n", str);
 	return NULL;
 }

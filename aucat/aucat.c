@@ -72,6 +72,13 @@
 #define DEFAULT_ROUND	(44100 / 15)
 #endif
 
+/*
+ * default device in server mode
+ */
+#ifndef DEFAULT_DEV
+#define DEFAULT_DEV "rsnd/0"
+#endif
+
 #ifdef DEBUG
 volatile sig_atomic_t debug_level = 1;
 #endif
@@ -338,7 +345,10 @@ mkdev(char *path, int mode, int bufsz, int round, int hold, int autovol)
 		bufsz = round * 4;
 	} else if (!round)
 		round = bufsz / 4;
-	return dev_new(path, mode, bufsz, round, hold, autovol);
+	d = dev_new(path, mode, bufsz, round, hold, autovol);
+	if (d == NULL)
+		exit(1);
+	return d;
 }
 
 struct opt *
@@ -538,16 +548,20 @@ main(int argc, char **argv)
 		fputs(usagestr, stderr);
 		exit(1);
 	}
-	if (wav_list == NULL) {
-		if (opt_list == NULL) {
-			d = mkdev(NULL, 0, bufsz, round, 1, autovol);
-			mkopt("default", d, &rpar, &ppar,
-			    mode, vol, mmc, join);
-			server = 1;
-		}
-	} else {
-		d = mkdev(NULL, 0, bufsz, round, 1, autovol);
-		if ((d->reqmode & MODE_THRU) && !d->ctl_list) {
+	if (dev_list == NULL)
+		mkdev(DEFAULT_DEV, 0, bufsz, round, hold, autovol);
+	for (d = dev_list; d != NULL; d = d->next) {
+		if ((d->reqmode & (MODE_PLAYREC | MODE_MIDIMASK)) != 0)
+			continue;
+		mkopt("default", d, &rpar, &ppar, mode, vol, mmc, join);
+		server = 1;
+	}
+	if (wav_list) {
+		if (server)
+			errx(1, "-io not allowed in server mode");
+		if ((d = dev_list) && d->next)
+			errx(1, "single device required in non-server mode");
+		if ((d->reqmode & MODE_THRU) && d->ctl_list == NULL) {
 			if (!devctl_add(d, "default", MODE_MIDIMASK))
 				errx(1, "%s: can't open port", optarg);
 			d->reqmode |= MODE_MIDIMASK;

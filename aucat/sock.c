@@ -1033,7 +1033,7 @@ sock_hello(struct sock *f)
 #endif
 		return 0;
 	}
-	f->opt = opt_byname(p->opt);
+	f->opt = opt_byname(p->opt, AMSG_ISSET(p->devnum) ? p->devnum : 0);
 	if (f->opt == NULL)
 		return 0;
 	if (!dev_ref(f->opt->dev))

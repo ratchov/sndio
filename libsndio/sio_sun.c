@@ -345,8 +345,24 @@ sio_sun_open(const char *str, unsigned mode, int nbio)
 	struct sio_par par;
 	char path[PATH_MAX];
 
-	if (str == NULL) 
-		str = "";
+	switch (*str) {
+	case '/':
+	case ':':
+		/* XXX: for backward compat */
+		str++;
+		break;
+	case '\0':
+		/*
+		 * XXX: allow ``rsnd'' to map to /dev/audio symlink for
+		 *      compatibility, remove this once aucat is enabled
+		 *      by default and default device selection is done
+		 *      using aucat
+		 */
+		break;
+	default:
+		DPRINTF("sio_sun_open: %s: '/<devnum>' expected\n", str);
+		return NULL;
+	}
 	hdl = malloc(sizeof(struct sio_sun_hdl));
 	if (hdl == NULL)
 		return NULL;

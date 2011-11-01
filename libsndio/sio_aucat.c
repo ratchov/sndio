@@ -110,7 +110,7 @@ sio_aucat_runmsg(struct sio_aucat_hdl *hdl)
 		delta = ntohl(hdl->aucat.rmsg.u.ts.delta);
 		hdl->maxwrite += delta * hdl->wbpf;
 		hdl->delta += delta;
-		DPRINTF("aucat: move = %d, delta = %d, maxwrite = %d\n",
+		DPRINTFN(2, "aucat: move = %d, delta = %d, maxwrite = %d\n",
 		    delta, hdl->delta, hdl->maxwrite);
 		if (hdl->delta >= 0) {
 			sio_onmove_cb(&hdl->sio, hdl->delta);
@@ -157,7 +157,7 @@ sio_aucat_open(const char *str, unsigned mode, int nbio)
 	hdl = malloc(sizeof(struct sio_aucat_hdl));
 	if (hdl == NULL)
 		return NULL;
-	if (!aucat_open(&hdl->aucat, str, mode)) {
+	if (!aucat_open(&hdl->aucat, str, mode, 0)) {
 		free(hdl);
 		return NULL;
 	}
@@ -467,7 +467,7 @@ sio_aucat_revents(struct sio_hdl *sh, struct pollfd *pfd)
 	}
 	if (hdl->sio.eof)
 		return POLLHUP;
-	DPRINTF("sio_aucat_revents: %x\n", revents & hdl->events);
+	DPRINTFN(2, "sio_aucat_revents: %x\n", revents & hdl->events);
 	return revents & (hdl->events | POLLHUP);
 }
 

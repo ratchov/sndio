@@ -40,6 +40,6 @@ extern struct opt *opt_list;
 struct opt *opt_new(char *, struct dev *, struct aparams *, struct aparams *,
     int, int, int, unsigned);
 int opt_bind(struct opt *);
-struct opt *opt_byname(char *);
+struct opt *opt_byname(char *, unsigned);
 
 #endif /* !defined(OPT_H) */
