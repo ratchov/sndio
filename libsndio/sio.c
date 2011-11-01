@@ -34,8 +34,7 @@
 
 #define SIO_PAR_MAGIC	0x83b905a4
 
-#define ISSEP(c)	((c) == '/' || (c) == ':' || \
-			 (c) == '.' || (c) == '@' || (c) == '\0')
+#define ISSEP(c) ((c) == '/' || (c) == ',' || (c) == '@' || (c) == '\0')
 
 void
 sio_initpar(struct sio_par *par)
@@ -49,6 +48,7 @@ sio_open(const char *str, unsigned mode, int nbio)
 {
 	struct sio_hdl *hdl;
 	size_t len;
+	int c;
 
 #ifdef DEBUG
 	sndio_debug_init();
@@ -69,8 +69,11 @@ sio_open(const char *str, unsigned mode, int nbio)
 		return NULL;
 #endif
 	}
-	for (len = 0; !ISSEP(str[len]); len++)
-		; /* nothing */
+	for (len = 0; ; len++) {
+		c = str[len];
+		if (ISSEP(c) || c == ':')  /* XXX: remove ':' compat bits */
+			break;
+	}
 	if (strncmp("snd", str, len) == 0 ||
 	    strncmp("aucat", str, len) == 0)
 		return sio_aucat_open(str + len, mode, nbio);

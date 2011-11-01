@@ -32,13 +32,14 @@
 #include "mio_priv.h"
 #include "bsd-compat.h"
 
-#define ISSEP(c)	((c) == '/' || (c) == ':' || \
-			 (c) == '.' || (c) == '@' || (c) == '\0')
+#define ISSEP(c) ((c) == '/' || (c) == ',' || (c) == '@' || (c) == '\0')
+
 struct mio_hdl *
 mio_open(const char *str, unsigned mode, int nbio)
 {
 	struct mio_hdl *hdl;
 	size_t len;
+	int c;
 
 #ifdef DEBUG
 	sndio_debug_init();
@@ -53,8 +54,11 @@ mio_open(const char *str, unsigned mode, int nbio)
 			return hdl;
 		return mio_rmidi_open("/0", mode, nbio);
 	}
-	for (len = 0; !ISSEP(str[len]); len++)
-		; /* nothing */
+	for (len = 0; ; len++) {
+		c = str[len];
+		if (ISSEP(c) || c == ':') /* XXX: remove ':' compat bits */
+			break;
+	}
 	if (strncmp("snd", str, len) == 0 ||
 	    strncmp("aucat", str, len) == 0)
 		return mio_aucat_open(str + len, mode, nbio, 0);

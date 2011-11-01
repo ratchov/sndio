@@ -405,6 +405,45 @@ aucat_connect_un(struct aucat *hdl, unsigned unit)
 	return 1;
 }
 
+static const char *
+parsedev(const char *str, unsigned *rval)
+{
+	const char *p = str;
+	unsigned val;
+
+	if (*p < '0' || *p > '9') {
+		DPRINTF("%s: number expected\n", str);
+		return NULL;
+	}
+	for (val = 0; *p >= '0' && *p <= '9'; p++) {
+		val = 10 * val + (*p - '0');
+		if (val >= 16) {
+			DPRINTF("%s: number too large\n", str);
+			return NULL;
+		}
+	}
+	*rval = val;
+	return p;
+}
+
+#define ISSEP(c) ((c) == '/' || (c) == ',' || (c) == '@' || (c) == '\0')
+
+static const char *
+parsestr(const char *str, char *rstr, unsigned max)
+{
+	const char *p = str;
+
+	while (!ISSEP(*p)) {
+		if (--max == 0) {
+			DPRINTF("%s: too long\n", str);
+			return 0;
+		}
+		*rstr++ = *p++;
+	}
+	*rstr = '\0';
+	return p;
+}
+
 int
 aucat_open(struct aucat *hdl, const char *str, unsigned mode, unsigned type)
 {
@@ -412,67 +451,33 @@ aucat_open(struct aucat *hdl, const char *str, unsigned mode, unsigned type)
 	int eof;
 	char host[NI_MAXHOST], opt[AMSG_OPTMAX];
 	const char *p;
-	unsigned unit, optlen, hostlen, devnum;
+	unsigned unit, devnum;
 
 	p = str;
-	hostlen = 0;
 	if (*p == '@') {
-		p++;
-		while (*p != '\0' && *p != ',' && *p != '/') {
-			if (hostlen == NI_MAXHOST - 1) {
-				DPRINTF("%s: host too long\n", str);
-				return 0;
-			}
-			host[hostlen++] = *p++;
-		}
-	}
-	host[hostlen++] = 0;
-	unit = 0;
+		p = parsestr(++p, host, NI_MAXHOST);
+		if (p == NULL)
+			return 0;
+	} else
+		host[0] = '\0';
 	if (*p == ',') {
-		/* XXX : use strtol(3) */
-		p++;
-		if (*p < '0' || *p > '9') {
-			DPRINTF("%s: unit expected after ','\n", str);
+		p = parsedev(++p, &unit);
+		if (p == NULL)
 			return 0;
-		}
-		for (unit = 0; *p >= '0' && *p <= '9'; p++) {
-			unit = 10 * unit + (*p - '0');
-			if (unit >= 16) { /* XXX */
-				DPRINTF("%s: unit too large\n", str);
-				return 0;
-			}
-		}
-	}
-	devnum = 0;
-	if (*p == '/' || *p == ':') { /* XXX: backward comapt, remove ':' */
-		/* XXX : use strtol(3) */
-		p++;
-		if (*p < '0' || *p > '9') {
-			DPRINTF("%s: devnum expected after '/'\n", str);
+	} else
+		unit = 0;
+	if (*p == '/' || *p == ':') {
+		p = parsedev(++p, &devnum);
+		if (p == NULL)
 			return 0;
-		}
-		for (devnum = 0; *p >= '0' && *p <= '9'; p++) {
-			devnum = 10 * devnum + (*p - '0');
-			if (devnum >= 16) { /* XXX */
-				DPRINTF("%s: devnum too large\n", str);
-				return 0;
-			}
-		}
-	}
+	} else
+		devnum = 0;
 	if (type)
 		devnum += 16; /* XXX */
-	optlen = 0;
 	if (*p == '.') {
-		p++;
-		while ((*p >= 'a' && *p <= 'z') || (*p >= 'A' && *p <= 'Z') ||
-		       (*p >= '0' && *p <= '9') || *p == '_') {
-			if (optlen == AMSG_OPTMAX - 1) {
-				DPRINTF("%s: opt too long\n", str);
-				return 0;
-			}
-			opt[optlen++] = *p++;
-		}
-		opt[optlen++] = '\0';
+		p = parsestr(++p, opt, AMSG_OPTMAX);
+		if (p == NULL)
+			return 0;
 	} else
 		strlcpy(opt, "default", AMSG_OPTMAX);
 	if (*p != '\0') {
