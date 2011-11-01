@@ -121,7 +121,8 @@ dev_new(char *path, unsigned mode,
 	pnum = (mode & MODE_THRU) ? &dev_midnum : &dev_sndnum;
 	if (*pnum == DEV_NMAX) {
 #ifdef DEBUG
-		dbg_puts("too many devices\n");
+		if (debug_level >= 1)
+			dbg_puts("too many devices\n");
 #endif
 		return NULL;
 	}
