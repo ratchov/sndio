@@ -426,14 +426,12 @@ parsedev(const char *str, unsigned *rval)
 	return p;
 }
 
-#define ISSEP(c) ((c) == '/' || (c) == ',' || (c) == '@' || (c) == '\0')
-
 static const char *
 parsestr(const char *str, char *rstr, unsigned max)
 {
 	const char *p = str;
 
-	while (!ISSEP(*p)) {
+	while (*p != '\0' && *p != ',') {
 		if (--max == 0) {
 			DPRINTF("%s: too long\n", str);
 			return 0;

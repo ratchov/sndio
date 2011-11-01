@@ -34,8 +34,6 @@
 
 #define SIO_PAR_MAGIC	0x83b905a4
 
-#define ISSEP(c) ((c) == '/' || (c) == ',' || (c) == '@' || (c) == '\0')
-
 void
 sio_initpar(struct sio_par *par)
 {
@@ -69,9 +67,9 @@ sio_open(const char *str, unsigned mode, int nbio)
 		return NULL;
 #endif
 	}
-	for (len = 0; ; len++) {
-		c = str[len];
-		if (ISSEP(c) || c == ':')  /* XXX: remove ':' compat bits */
+	for (len = 0; (c = str[len]) != '\0'; len++) {
+		/* XXX: remove ':' compat bits */
+		if (c == ':' || c == '@' || c == '/' || c == ',')
 			break;
 	}
 	if (strncmp("snd", str, len) == 0 ||
