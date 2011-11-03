@@ -81,7 +81,7 @@ sio_open(const char *str, unsigned mode, int nbio)
 #if defined(USE_SUN)
 		return sio_sun_open(str + len, mode, nbio);
 #elif defined(USE_ALSA)
-		return sio_sun_open(str + len, mode, nbio);
+		return sio_alsa_open(str + len, mode, nbio);
 #endif
 	}
 #endif

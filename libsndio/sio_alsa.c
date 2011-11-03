@@ -295,8 +295,15 @@ sio_alsa_open(const char *str, unsigned mode, int nbio)
 	struct sio_par par;
 	int err;
 
-	if (str == NULL)
-		str = "0";
+	switch (*str) {
+	case '/':
+	case ':': /* XXX: for backward compat */
+		str++;
+		break;
+	default:
+		DPRINTF("sio_sun_open: %s: '/<devnum>' expected\n", str);
+		return NULL;
+	}
 	hdl = malloc(sizeof(struct sio_alsa_hdl));
 	if (hdl == NULL)
 		return NULL;
