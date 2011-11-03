@@ -87,14 +87,14 @@ void dev_clear(struct dev *);
 int  devctl_open(struct dev *, struct devctl *);
 
 struct dev *dev_list = NULL;
-unsigned dev_sndnum = 0, dev_midnum = 0;
+unsigned dev_sndnum = 0, dev_thrnum = 0;
 
 #ifdef DEBUG
 void
 dev_dbg(struct dev *d)
 {
 	if (d->num >= DEV_NMAX) {
-		dbg_puts("mid");
+		dbg_puts("thr");
 		dbg_putu(d->num - DEV_NMAX);
 	} else {
 		dbg_puts("snd");
@@ -118,7 +118,7 @@ dev_new(char *path, unsigned mode,
 		perror("malloc");
 		exit(1);
 	}
-	pnum = (mode & MODE_THRU) ? &dev_midnum : &dev_sndnum;
+	pnum = (mode & MODE_THRU) ? &dev_thrnum : &dev_sndnum;
 	if (*pnum == DEV_NMAX) {
 #ifdef DEBUG
 		if (debug_level >= 1)
