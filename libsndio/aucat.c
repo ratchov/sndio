@@ -411,16 +411,16 @@ parsedev(const char *str, unsigned *rval)
 	const char *p = str;
 	unsigned val;
 
-	if (*p < '0' || *p > '9') {
-		DPRINTF("%s: number expected\n", str);
-		return NULL;
-	}
 	for (val = 0; *p >= '0' && *p <= '9'; p++) {
 		val = 10 * val + (*p - '0');
 		if (val >= 16) {
 			DPRINTF("%s: number too large\n", str);
 			return NULL;
 		}
+	}
+	if (p == str) {
+		DPRINTF("%s: number expected\n", str);
+		return NULL;
 	}
 	*rval = val;
 	return p;
@@ -431,12 +431,16 @@ parsestr(const char *str, char *rstr, unsigned max)
 {
 	const char *p = str;
 
-	while (*p != '\0' && *p != ',') {
+	while (*p != '\0' && *p != ',' && *p != '/') {
 		if (--max == 0) {
-			DPRINTF("%s: too long\n", str);
-			return 0;
+			DPRINTF("%s: string too long\n", str);
+			return NULL;
 		}
 		*rstr++ = *p++;
+	}
+	if (str == p) {
+		DPRINTF("%s: string expected\n", str);
+		return NULL;
 	}
 	*rstr = '\0';
 	return p;
@@ -448,30 +452,28 @@ aucat_open(struct aucat *hdl, const char *str, unsigned mode, unsigned type)
 	extern char *__progname;
 	int eof;
 	char host[NI_MAXHOST], opt[AMSG_OPTMAX];
-	const char *p;
+	const char *p = str;
 	unsigned unit, devnum;
 
-	p = str;
 	if (*p == '@') {
 		p = parsestr(++p, host, NI_MAXHOST);
 		if (p == NULL)
 			return 0;
 	} else
-		host[0] = '\0';
+		*host = '\0';
 	if (*p == ',') {
 		p = parsedev(++p, &unit);
 		if (p == NULL)
 			return 0;
 	} else
 		unit = 0;
-	if (*p == '/' || *p == ':') {
-		p = parsedev(++p, &devnum);
-		if (p == NULL)
-			return 0;
-	} else
-		devnum = 0;
-	if (type)
-		devnum += 16; /* XXX */
+	if (*p != '/' && *p != ':') {
+		DPRINTF("%s: '/' expected\n", str);
+		return 0;
+	}
+	p = parsedev(++p, &devnum);
+	if (p == NULL)
+		return 0;
 	if (*p == '.') {
 		p = parsestr(++p, opt, AMSG_OPTMAX);
 		if (p == NULL)
@@ -482,6 +484,8 @@ aucat_open(struct aucat *hdl, const char *str, unsigned mode, unsigned type)
 		DPRINTF("%s: junk at end of dev name\n", p);
 		return 0;
 	}
+	if (type)
+		devnum += 16; /* XXX */
 	DPRINTF("aucat_open: host=%s unit=%u devnum=%u opt=%s\n",
 	    host, unit, devnum, opt);
 	if (host[0] != '\0') {

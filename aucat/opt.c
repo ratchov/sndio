@@ -42,10 +42,8 @@ opt_new(char *name, struct dev *dev,
 			exit(1);
 		}
 		c = name[len];
-		if (c < 'a' && c > 'z' &&
-		    c < 'A' && c > 'Z' &&
-		    c < '0' && c > '9' && 
-		    c != '_') {
+		if ((c < 'a' || c > 'z') &&
+		    (c < 'A' || c > 'Z')) {
 			fprintf(stderr, "%s: '%c' not allowed\n", name, c);
 			exit(1);
 		}
