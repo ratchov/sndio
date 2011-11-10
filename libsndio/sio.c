@@ -45,8 +45,7 @@ struct sio_hdl *
 sio_open(const char *str, unsigned mode, int nbio)
 {
 	struct sio_hdl *hdl;
-	size_t len;
-	int c;
+	const char *p;
 
 #ifdef DEBUG
 	sndio_debug_init();
@@ -60,28 +59,23 @@ sio_open(const char *str, unsigned mode, int nbio)
 		if (hdl != NULL)
 			return hdl;
 #if defined(USE_SUN)
-		return sio_sun_open("", mode, nbio);
+		return sio_sun_open("/", mode, nbio);
 #elif defined(USE_ALSA)
 		return sio_alsa_open("/0", mode, nbio);
 #else
 		return NULL;
 #endif
 	}
-	for (len = 0; (c = str[len]) != '\0'; len++) {
-		/* XXX: remove ':' compat bits */
-		if (c == ':' || c == '@' || c == '/' || c == ',')
-			break;
-	}
-	if (strncmp("snd", str, len) == 0 ||
-	    strncmp("aucat", str, len) == 0)
-		return sio_aucat_open(str + len, mode, nbio);
+	if ((p = sndio_parsetype(str, "snd")) != NULL ||
+	    (p = sndio_parsetype(str, "aucat")) != NULL)
+		return sio_aucat_open(p, mode, nbio);
 #if defined(USE_ALSA) || defined(USE_SUN)
-	if (strncmp("rsnd", str, len) == 0 ||
-	    strncmp("sun", str, len) == 0) {
+	if ((p = sndio_parsetype(str, "rsnd")) != NULL ||
+	    (p = sndio_parsetype(str, "sun")) != NULL) {
 #if defined(USE_SUN)
-		return sio_sun_open(str + len, mode, nbio);
+		return sio_sun_open(p, mode, nbio);
 #elif defined(USE_ALSA)
-		return sio_alsa_open(str + len, mode, nbio);
+		return sio_alsa_open(p, mode, nbio);
 #endif
 	}
 #endif

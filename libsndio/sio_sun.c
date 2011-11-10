@@ -347,17 +347,8 @@ sio_sun_open(const char *str, unsigned mode, int nbio)
 
 	switch (*str) {
 	case '/':
-	case ':':
-		/* XXX: for backward compat */
+	case ':': /* XXX: for backward compat */
 		str++;
-		break;
-	case '\0':
-		/*
-		 * XXX: allow ``rsnd'' to map to /dev/audio symlink for
-		 *      compatibility, remove this once aucat is enabled
-		 *      by default and default device selection is done
-		 *      using aucat
-		 */
 		break;
 	default:
 		DPRINTF("sio_sun_open: %s: '/<devnum>' expected\n", str);

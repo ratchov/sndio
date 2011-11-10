@@ -36,8 +36,7 @@ struct mio_hdl *
 mio_open(const char *str, unsigned mode, int nbio)
 {
 	struct mio_hdl *hdl;
-	size_t len;
-	int c;
+	const char *p;
 
 #ifdef DEBUG
 	sndio_debug_init();
@@ -52,18 +51,13 @@ mio_open(const char *str, unsigned mode, int nbio)
 			return hdl;
 		return mio_rmidi_open("/0", mode, nbio);
 	}
-	for (len = 0; (c = str[len]) != '\0'; len++) {
-		/* XXX: remove ':' compat bits */
-		if (c == ':' || c == '@' || c == '/' || c == ',')
-			break;
-	}
-	if (strncmp("snd", str, len) == 0 ||
-	    strncmp("aucat", str, len) == 0)
-		return mio_aucat_open(str + len, mode, nbio, 0);
-	if (strncmp("midithru", str, len) == 0)
-		return mio_aucat_open(str + len, mode, nbio, 1);
-	if (strncmp("rmidi", str, len) == 0)
-		return mio_rmidi_open(str + len, mode, nbio);
+	if ((p = sndio_parsetype(str, "snd")) != NULL ||
+	    (p = sndio_parsetype(str, "aucat")) != NULL)
+		return mio_aucat_open(p, mode, nbio, 0);
+	if ((p = sndio_parsetype(str, "midithru")) != NULL)
+		return mio_aucat_open(p, mode, nbio, 1);
+	if ((p = sndio_parsetype(str, "rmidi")) != NULL)
+		return mio_rmidi_open(p, mode, nbio);
 	DPRINTF("mio_open: %s: unknown device type\n", str);
 	return NULL;
 }
