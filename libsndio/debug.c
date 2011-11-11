@@ -44,16 +44,13 @@ sndio_debug_init(void)
 const char *
 sndio_parsetype(const char *str, char *type)
 {
-	int c;
-
-	while ((c = *type++) != '\0') {
-		if (*str != c)
+	while (*type) {
+		if (*type != *str)
 			return NULL;
+		type++;
 		str++;
 	}
-	c = *str;
-	if (c != '/' && c != ',' && c != '@' && c != ':' && c != '\0')
+	if (*str >= 'a' && *str <= 'z')
 		return NULL;
 	return str;
 }
-
