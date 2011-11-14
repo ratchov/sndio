@@ -122,26 +122,9 @@ opt_byname(char *name, unsigned num)
 	for (o = opt_list; o != NULL; o = o->next) {
 		if (o->dev->num != num)
 			continue;
-		if (strcmp(name, o->name) == 0) {
-#ifdef DEBUG
-			if (debug_level >= 3) {
-				dbg_putu(num);
-				dbg_puts(".");
-				dbg_puts(name);
-				dbg_puts(": option found\n");
-			}
-#endif
+		if (strcmp(name, o->name) == 0)
 			return o;
-		}
 	}
-#ifdef DEBUG
-	if (debug_level >= 3) {
-		dbg_putu(num);
-		dbg_puts(".");
-		dbg_puts(name);
-		dbg_puts(": option not found\n");
-	}
-#endif
 	return NULL;
 }
 

@@ -1036,6 +1036,16 @@ sock_hello(struct sock *f)
 	f->opt = opt_byname(p->opt, AMSG_ISSET(p->devnum) ? p->devnum : 0);
 	if (f->opt == NULL)
 		return 0;
+#ifdef DEBUG
+	if (debug_level >= 3) {
+		sock_dbg(f);
+		dbg_puts(": using ");
+		dev_dbg(f->opt->dev);
+		dbg_puts(".");
+		dbg_puts(f->opt->name);
+		dbg_puts("\n");
+	}
+#endif
 	if (!dev_ref(f->opt->dev))
 		return 0;
 	if ((mode & MODE_REC) && (f->opt->mode & MODE_MON)) {

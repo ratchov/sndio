@@ -548,23 +548,24 @@ main(int argc, char **argv)
 		fputs(usagestr, stderr);
 		exit(1);
 	}
-	if (dev_list == NULL)
-		mkdev(DEFAULT_DEV, 0, bufsz, round, hold, autovol);
-	for (d = dev_list; d != NULL; d = d->next) {
-		if ((d->reqmode & (MODE_PLAYREC | MODE_MIDIMASK)) != 0)
-			continue;
-		mkopt("default", d, &rpar, &ppar, mode, vol, mmc, join);
-		server = 1;
-	}
 	if (wav_list) {
 		if (server)
 			errx(1, "-io not allowed in server mode");
 		if ((d = dev_list) && d->next)
-			errx(1, "single device required in non-server mode");
+			errx(1, "only one device allowed in non-server mode");
 		if ((d->reqmode & MODE_THRU) && d->ctl_list == NULL) {
 			if (!devctl_add(d, "default", MODE_MIDIMASK))
 				errx(1, "%s: can't open port", optarg);
 			d->reqmode |= MODE_MIDIMASK;
+		}
+	} else {
+		if (dev_list == NULL)
+			mkdev(DEFAULT_DEV, 0, bufsz, round, hold, autovol);
+		for (d = dev_list; d != NULL; d = d->next) {
+			if (opt_byname("default", d->num))
+				continue;
+			mkopt("default", d, &rpar, &ppar, mode, vol, mmc, join);
+			server = 1;
 		}
 	}
 	if (server) {
