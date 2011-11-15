@@ -74,6 +74,9 @@ struct abuf {
 			unsigned xrun;	/* overrun policy, one of XRUN_XXX */
 			int silence;	/* silence to add on next write */
 		} sub;
+		struct {
+			struct abuf *owner;	/* current input stream */
+		} midi;
 	} w;
 };
 

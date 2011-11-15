@@ -172,7 +172,6 @@ struct aproc {
 			int snext;		/* to reach the next sample */
 		} conv;
 		struct {
-			struct abuf *owner;	/* current input stream */
 			struct timo timo;	/* timout for throtteling */
 		} thru;
 		struct {
