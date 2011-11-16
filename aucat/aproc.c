@@ -279,6 +279,8 @@ aproc_depend(struct aproc *p, struct aproc *dep)
 
 	if (p == dep)
 		return 1;
+	if (p == NULL)
+		return 0;
 	LIST_FOREACH(i, &p->ins, ient) {
 		if (i->wproc && aproc_depend(i->wproc, dep))
 			return 1;
