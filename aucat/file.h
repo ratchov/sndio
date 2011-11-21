@@ -38,7 +38,7 @@ struct fileops {
 	void (*close)(struct file *);
 	unsigned (*read)(struct file *, unsigned char *, unsigned);
 	unsigned (*write)(struct file *, unsigned char *, unsigned);
-	void (*start)(struct file *);
+	void (*start)(struct file *, void (*)(void *, int), void *);
 	void (*stop)(struct file *);
 	int (*nfds)(struct file *);
 	int (*pollfd)(struct file *, struct pollfd *, int);
