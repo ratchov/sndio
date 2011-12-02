@@ -532,7 +532,7 @@ main(int argc, char **argv)
 			mkdev("loopback", MODE_LOOP, bufsz, round, 1, autovol);
 			break;
 		case 'M':
-			mkdev("midithru", MODE_THRU, 0, 0, 1, 0);
+			mkdev("midithru", MODE_THRU, 0, 0, hold, 0);
 			break;
 		case 'l':
 			background = 1;
@@ -609,7 +609,7 @@ main(int argc, char **argv)
 			dnext = d->next;
 			if (!dev_run(d))
 				goto fatal;
-			if (!dev_idle(d))
+			if (d->refcnt > 0)
 				active = 1;
 		}
 		if (dev_list == NULL)

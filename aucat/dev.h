@@ -32,7 +32,6 @@ struct dev {
 	struct aparams reqipar, reqopar;	/* parameters */
 	unsigned reqbufsz;			/* buffer size */
 	unsigned reqround;			/* block size */
-	unsigned reqrate;			/* sample rate */
 	unsigned hold;				/* hold the device open ? */
 	unsigned autovol;			/* auto adjust playvol ? */
 	unsigned autostart;			/* don't wait for MMC start */
@@ -120,6 +119,5 @@ void dev_slotstop(struct dev *, int);
 void dev_mmcstart(struct dev *);
 void dev_mmcstop(struct dev *);
 void dev_loc(struct dev *, unsigned);
-int  dev_idle(struct dev *);
 
 #endif /* !define(DEV_H) */

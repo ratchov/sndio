@@ -170,10 +170,8 @@ struct aproc {
 			int snext;		/* to reach the next sample */
 		} conv;
 		struct {
-			struct timo timo;	/* timout for throtteling */
-		} thru;
-		struct {
 			struct dev *dev;	/* controlled device */
+			struct timo timo;	/* timout for throtteling */
 			unsigned fps;		/* MTC frames per second */
 #define MTC_FPS_24	0
 #define MTC_FPS_25	1
@@ -185,7 +183,7 @@ struct aproc {
 			unsigned fr;		/* MTC frames */
 			unsigned qfr;		/* MTC quarter frames */
 			int delta;		/* rel. to the last MTC tick */
-		} ctl;
+		} midi;
 	} u;
 };
 

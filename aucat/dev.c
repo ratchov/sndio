@@ -141,6 +141,7 @@ dev_new(char *path, unsigned mode,
 	d->hold = hold;
 	d->autovol = autovol;
 	d->autostart = 0;
+	d->refcnt = 0;
 	d->pstate = DEV_CLOSED;
 	d->serial = 0;
 	for (i = 0; i < CTL_NSLOT; i++) {
@@ -395,8 +396,7 @@ dev_open(struct dev *d)
 	 * if there's no device
 	 */
 	if (d->mode & MODE_MIDIMASK) {
-		d->midi = (d->mode & MODE_THRU) ?
-		    thru_new("thru") : ctl_new("ctl", d);
+		d->midi = midi_new("midi", (d->mode & MODE_THRU) ? NULL : d);
 		d->midi->refs++;
 	}
 
@@ -1450,8 +1450,9 @@ dev_slotnew(struct dev *d, char *who, struct ctl_ops *ops, void *arg, int mmc)
 	s->ops->vol(s->arg, s->vol);
 
 	if (APROC_OK(d->midi)) {
-		ctl_slot(d->midi, slot);
-		ctl_vol(d->midi, slot, s->vol);
+		midi_send_slot(d->midi, slot);
+		midi_send_vol(d->midi, slot, s->vol);
+		midi_flush(d->midi);
 	} else {
 #ifdef DEBUG
 		if (debug_level >= 2) {
@@ -1495,38 +1496,10 @@ dev_slotvol(struct dev *d, int slot, unsigned vol)
 	}
 #endif
 	d->slot[slot].vol = vol;
-	if (APROC_OK(d->midi))
-		ctl_vol(d->midi, slot, vol);
-}
-
-
-/*
- * check if there are controlled streams
- */
-int
-dev_idle(struct dev *d)
-{
-	unsigned i;
-	struct ctl_slot *s;
-
-	/*
-	 * XXX: this conditions breaks -aoff for thru boxes
-	 */
-	if (d->mode & MODE_THRU)
-		return 0;
-
-	if (d->pstate != DEV_CLOSED)
-		return 0;
-
-	/*
-	 * XXX: if the device is closed, we're sure there are no
-	 *	slots in use, so the following test is useless
-	 */
-	for (i = 0, s = d->slot; i < CTL_NSLOT; i++, s++) {
-		if (s->ops)
-			return 0;
+	if (APROC_OK(d->midi)) {
+		midi_send_vol(d->midi, slot, vol);
+		midi_flush(d->midi);
 	}
-	return 1;
 }
 
 /*
@@ -1578,8 +1551,11 @@ dev_try(struct dev *d, int slot)
 	if (slot >= 0)
 		d->slot[slot].tstate = CTL_RUN;
 	d->tstate = CTL_RUN;
-	if (APROC_OK(d->midi))
-		ctl_full(d->midi, d->origin, d->rate, d->round, dev_getpos(d));
+	if (APROC_OK(d->midi)) {
+		midi_send_full(d->midi,
+		    d->origin, d->rate, d->round, dev_getpos(d));
+		midi_flush(d->midi);
+	}
 	dev_wakeup(d);
 	return 1;
 }
@@ -1726,6 +1702,8 @@ dev_onmove(void *arg, int delta)
 	 */
 	if (d->tstate != CTL_RUN)
 		return;
-	if (APROC_OK(d->midi))
-		ctl_qfr(d->midi, d->rate, delta);
+	if (APROC_OK(d->midi)) {
+		midi_send_qfr(d->midi, d->rate, delta);
+		midi_flush(d->midi);
+	}
 }
