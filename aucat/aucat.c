@@ -374,7 +374,7 @@ int
 main(int argc, char **argv)
 {
 	char *prog, *optstr, *usagestr;
-	int c, background, unit, server, active;
+	int c, background, unit, active;
 	char base[PATH_MAX], path[PATH_MAX];
 	unsigned mode, hdr, xrun, rate, join, mmc, vol;
 	unsigned hold, autovol, bufsz, round;
@@ -401,7 +401,6 @@ main(int argc, char **argv)
 	aparams_init(&ppar, 0, 1, DEFAULT_RATE);
 	aparams_init(&rpar, 0, 1, DEFAULT_RATE);
 	mode = MODE_MIDIMASK | MODE_PLAY | MODE_REC;
-	server = 0;
 
 #ifdef DEBUG
 	atexit(dbg_flush);
@@ -431,16 +430,14 @@ main(int argc, char **argv)
 #endif
 			break;
 		case 'U':
-			if (server)
-				errx(1, "-U must come before server options");
+			if (listen_list)
+				errx(1, "-U must come before -L");
 			unit = strtonum(optarg, 0, MIDI_MAXCTL, &str);
 			if (str)
 				errx(1, "%s: unit number is %s", optarg, str);
-			server = 1;
 			break;
 		case 'L':
 			listen_new_tcp(optarg, AUCAT_PORT + unit);
-			server = 1;
 			break;
 		case 'm':
 			mode = opt_mode();
@@ -501,7 +498,6 @@ main(int argc, char **argv)
 			mkopt(optarg, d, &rpar, &ppar,
 			    mode, vol, mmc, join);
 			/* XXX: set device rate, if never set */
-			server = 1;
 			break;
 		case 'q':
 			d = mkdev(NULL, mode, bufsz, round, 1, autovol);
@@ -549,7 +545,7 @@ main(int argc, char **argv)
 		exit(1);
 	}
 	if (wav_list) {
-		if (server)
+		if (opt_list || listen_list)
 			errx(1, "-io not allowed in server mode");
 		if ((d = dev_list) && d->next)
 			errx(1, "only one device allowed in non-server mode");
@@ -565,10 +561,9 @@ main(int argc, char **argv)
 			if (opt_byname("default", d->num))
 				continue;
 			mkopt("default", d, &rpar, &ppar, mode, vol, mmc, join);
-			server = 1;
 		}
 	}
-	if (server) {
+	if (opt_list) {
 		getbasepath(base, sizeof(base));
 		snprintf(path, PATH_MAX, "%s/%s%u", base, AUCAT_PATH, unit);
 		listen_new_un(path);
@@ -614,7 +609,7 @@ main(int argc, char **argv)
 		}
 		if (dev_list == NULL)
 			break;
-		if (!server && !active)
+		if (!opt_list && !active)
 			break;
 		if (!file_poll())
 			break;
@@ -634,7 +629,7 @@ main(int argc, char **argv)
 	while (dev_list)
 		dev_del(dev_list);
 	filelist_done();
-	if (server) {
+	if (opt_list) {
 		if (rmdir(base) < 0 && errno != ENOTEMPTY && errno != EPERM)
 			warn("rmdir(\"%s\")", base);
 	}
