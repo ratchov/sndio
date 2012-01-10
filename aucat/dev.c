@@ -836,7 +836,7 @@ dev_run(struct dev *d)
 	    ((d->mode & MODE_REC)  && !APROC_OK(d->sub)) ||
 	    ((d->mode & MODE_MON)  && !APROC_OK(d->submon))) {
 #ifdef DEBUG
-		if (debug_level >= 1) {
+		if (debug_level >= 2) {
 			dev_dbg(d);
 			dbg_puts(": device disappeared\n");
 		}
