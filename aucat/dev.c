@@ -283,7 +283,7 @@ dev_open(struct dev *d)
 	else
 		d->opar.rate = d->ipar.rate;
 	if (d->opar.rate == 0)
-		d->opar.rate = d->ipar.rate = 44100; /* XXX */
+		d->opar.rate = d->ipar.rate = 48000; /* XXX */
 
 	if (d->mode & MODE_THRU)
 		d->mode &= ~MODE_AUDIOMASK;

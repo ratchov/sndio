@@ -111,6 +111,9 @@ The buffer size of the audio device in frames.
 A frame consists of one sample for each channel in the stream.
 This is the number of frames that will be buffered before being played
 and thus controls the playback latency.
+The default is 7680 or twice the block size
+.Pq Fl z ,
+if the block size is set.
 .It Xo
 .Fl C Ar min : Ns Ar max ,
 .Fl c Ar min : Ns Ar max
@@ -244,7 +247,7 @@ Control (MMC) slave mode
 .Pq Fl t .
 .It Fl r Ar rate
 Sample rate in Hertz of the stream.
-The default is 44100Hz.
+The default is 48000.
 .It Fl s Ar name
 Add
 .Ar name
@@ -354,8 +357,11 @@ option,
 and MTC is used for synchronization, the clock
 resolution must be 96, 100 or 120 ticks per second for maximum
 accuracy.
-For instance, 120 ticks per second at 48000Hz corresponds
-to a 400 frame block size.
+For instance, 100 ticks per second at 48000Hz corresponds
+to a 480 frame block size.
+The default is 960 or half of the buffer size
+.Pq Fl b ,
+if the buffer size is set.
 .El
 .Pp
 On the command line,

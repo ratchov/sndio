@@ -63,14 +63,21 @@
  * sample rate if no ``-r'' is used
  */
 #ifndef DEFAULT_RATE
-#define DEFAULT_RATE	44100
+#define DEFAULT_RATE	48000
 #endif
 
 /*
- * block size if no ``-z'' is used
+ * block size if neither ``-z'' nor ``-b'' is used
  */
 #ifndef DEFAULT_ROUND
-#define DEFAULT_ROUND	(44100 / 15)
+#define DEFAULT_ROUND	960
+#endif
+
+/*
+ * buffer size if neither ``-z'' nor ``-b'' is used
+ */
+#ifndef DEFAULT_BUFSZ
+#define DEFAULT_BUFSZ	7860
 #endif
 
 /*
@@ -345,12 +352,13 @@ mkdev(char *path, int mode, int bufsz, int round, int hold, int autovol)
 			return dev_list;
 		path = "default";
 	}
-	if (!bufsz) {
-		if (!round)
-			round = DEFAULT_ROUND;
-		bufsz = round * 4;
+	if (!bufsz && !round) {
+		round = DEFAULT_ROUND;
+		bufsz = DEFAULT_BUFSZ;
+	} else if (!bufsz) {
+		bufsz = round * 2;
 	} else if (!round)
-		round = bufsz / 4;
+		round = bufsz / 2;
 	d = dev_new(path, mode, bufsz, round, hold, autovol);
 	if (d == NULL)
 		exit(1);
