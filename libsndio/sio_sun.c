@@ -50,7 +50,7 @@ struct sio_sun_hdl {
 	int fd;
 	int filling;
 	unsigned ibpf, obpf;		/* bytes per frame */
-	unsigned ibytes, obytes;	/* bytes the hw transfered */
+	unsigned ibytes, obytes;	/* bytes the hw transferred */
 	unsigned ierr, oerr;		/* frames the hw dropped */
 	int offset;			/* frames play is ahead of record */
 	int idelta, odelta;		/* position reported to client */
