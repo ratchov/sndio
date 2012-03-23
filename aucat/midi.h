@@ -24,6 +24,7 @@ struct aproc *midi_new(char *, struct dev *);
 void midi_ontick(struct aproc *, int);
 void midi_send_slot(struct aproc *, int);
 void midi_send_vol(struct aproc *, int, unsigned);
+void midi_send_master(struct aproc *);
 void midi_send_full(struct aproc *, unsigned, unsigned, unsigned, unsigned);
 void midi_send_qfr(struct aproc *, unsigned, int);
 void midi_flush(struct aproc *);

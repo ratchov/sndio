@@ -85,6 +85,7 @@ struct dev {
 #define CTL_RUN		3			/* started */
 	unsigned tstate;			/* one of above */
 	unsigned origin;			/* MTC start time */
+	unsigned master;			/* master volume controller */
 };
 
 extern struct dev *dev_list;
@@ -119,5 +120,6 @@ void dev_slotstop(struct dev *, int);
 void dev_mmcstart(struct dev *);
 void dev_mmcstop(struct dev *);
 void dev_loc(struct dev *, unsigned);
+void dev_master(struct dev *, unsigned);
 
 #endif /* !define(DEV_H) */

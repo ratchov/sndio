@@ -126,6 +126,21 @@ midi_msg_vol(struct aproc *p, int slot, char *msg)
 	msg[2] = s->vol;
 }
 
+void
+midi_msg_master(struct aproc *p, char *msg)
+{
+	struct sysex *x = (struct sysex *)msg;
+
+	memset(x, 0, sizeof(struct sysex));
+	x->start = SYSEX_START;
+	x->type = SYSEX_TYPE_RT;
+	x->id0 = SYSEX_CONTROL;
+	x->id1 = SYSEX_MASTER;
+	x->u.master.fine = 0;
+	x->u.master.coarse = p->u.midi.dev->master;
+	x->u.master.end = SYSEX_END;
+}
+
 /*
  * send a message to the given output
  */
@@ -331,6 +346,8 @@ midi_copy_dump(struct aproc *p, struct abuf *obuf)
 	unsigned char msg[sizeof(struct sysex)];
 	struct ctl_slot *s;
 
+	midi_msg_master(p, msg);
+	midi_copy(NULL, obuf, msg, SYSEX_SIZE(master));
 	for (i = 0, s = p->u.midi.dev->slot; i < CTL_NSLOT; i++, s++) {
 		midi_msg_info(p, i, msg);
 		midi_copy(NULL, obuf, msg, SYSEX_SIZE(mixinfo));
@@ -358,6 +375,15 @@ midi_send_vol(struct aproc *p, int slot, unsigned vol)
 
 	midi_msg_vol(p, slot, msg);
 	midi_send(p, NULL, msg, 3);
+}
+
+void
+midi_send_master(struct aproc *p)
+{
+	unsigned char msg[sizeof(struct sysex)];
+	
+	midi_msg_master(p, msg);
+	midi_send(p, NULL, msg, SYSEX_SIZE(master));
 }
 
 void
@@ -432,6 +458,11 @@ midi_onsysex(struct aproc *p, struct abuf *ibuf)
 		return;
 	switch (x->type) {
 	case SYSEX_TYPE_RT:
+		if (x->id0 == SYSEX_CONTROL && x->id1 == SYSEX_MASTER) {
+			if (len == SYSEX_SIZE(master))
+				dev_master(p->u.midi.dev, x->u.master.coarse);
+			return;
+		}
 		if (x->id0 != SYSEX_MMC)
 			return;
 		switch (x->id1) {
