@@ -68,6 +68,7 @@ struct file {
 LIST_HEAD(filelist,file);
 
 extern struct filelist file_list;
+extern int file_slowaccept;
 
 #ifdef DEBUG
 extern long long file_wtime, file_utime;

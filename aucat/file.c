@@ -73,6 +73,7 @@ struct timespec file_ts;
 struct filelist file_list;
 struct timo *timo_queue;
 unsigned timo_abstime;
+int file_slowaccept = 0;
 #ifdef DEBUG
 long long file_wtime, file_utime;
 #endif
