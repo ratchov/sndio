@@ -21,7 +21,7 @@ struct file;
 struct fileops;
 struct miofile;
 
-struct miofile *miofile_new(struct fileops *, char *, unsigned);
+struct miofile *miofile_new(struct fileops *, char *, unsigned int);
 
 extern struct fileops miofile_ops;
 

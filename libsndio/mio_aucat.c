@@ -53,7 +53,8 @@ static struct mio_ops mio_aucat_ops = {
 };
 
 struct mio_hdl *
-mio_aucat_open(const char *str, unsigned mode, int nbio, unsigned type)
+mio_aucat_open(const char *str, unsigned int mode,
+    int nbio, unsigned int type)
 {
 	struct mio_aucat_hdl *hdl;
 

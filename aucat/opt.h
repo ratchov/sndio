@@ -31,15 +31,15 @@ struct opt {
 	struct aparams rpar;	/* template for clients read params */
 	int mmc;		/* true if MMC control enabled */
 	int join;		/* true if join/expand enabled */
-	unsigned mode;		/* bitmap of MODE_XXX */
+	unsigned int mode;	/* bitmap of MODE_XXX */
 	struct dev *dev;	/* device to which we're attached */
 };
 
 extern struct opt *opt_list;
 
 struct opt *opt_new(char *, struct dev *, struct aparams *, struct aparams *,
-    int, int, int, unsigned);
+    int, int, int, unsigned int);
 int opt_bind(struct opt *);
-struct opt *opt_byname(char *, unsigned);
+struct opt *opt_byname(char *, unsigned int);
 
 #endif /* !defined(OPT_H) */

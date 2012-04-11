@@ -35,10 +35,10 @@
 struct sio_aucat_hdl {
 	struct sio_hdl sio;
 	struct aucat aucat;
-	unsigned rbpf, wbpf;		/* read and write bytes-per-frame */
+	unsigned int rbpf, wbpf;		/* read and write bytes-per-frame */
 	int maxwrite;			/* latency constraint */
 	int events;			/* events the user requested */
-	unsigned curvol, reqvol;	/* current and requested volume */
+	unsigned int curvol, reqvol;	/* current and requested volume */
 	int delta;			/* some of received deltas */
 #define PSTATE_INIT	0
 #define PSTATE_RUN	1
@@ -56,7 +56,7 @@ static size_t sio_aucat_write(struct sio_hdl *, const void *, size_t);
 static int sio_aucat_nfds(struct sio_hdl *);
 static int sio_aucat_pollfd(struct sio_hdl *, struct pollfd *, int);
 static int sio_aucat_revents(struct sio_hdl *, struct pollfd *);
-static int sio_aucat_setvol(struct sio_hdl *, unsigned);
+static int sio_aucat_setvol(struct sio_hdl *, unsigned int);
 static void sio_aucat_getvol(struct sio_hdl *);
 
 static struct sio_ops sio_aucat_ops = {
@@ -82,7 +82,7 @@ static int
 sio_aucat_runmsg(struct sio_aucat_hdl *hdl)
 {
 	int delta;
-	unsigned size, ctl;
+	unsigned int size, ctl;
 
 	if (!aucat_rmsg(&hdl->aucat, &hdl->sio.eof))
 		return 0;
@@ -150,7 +150,7 @@ sio_aucat_buildmsg(struct sio_aucat_hdl *hdl)
 }
 
 struct sio_hdl *
-sio_aucat_open(const char *str, unsigned mode, int nbio)
+sio_aucat_open(const char *str, unsigned int mode, int nbio)
 {
 	struct sio_aucat_hdl *hdl;
 
@@ -215,7 +215,7 @@ sio_aucat_stop(struct sio_hdl *sh)
 #define ZERO_MAX 0x400
 	static unsigned char zero[ZERO_MAX];
 	struct sio_aucat_hdl *hdl = (struct sio_aucat_hdl *)sh;
-	unsigned n, count;
+	unsigned int n, count;
 
 	if (!aucat_setfl(&hdl->aucat, 0, &hdl->sio.eof))
 		return 0;
@@ -328,8 +328,8 @@ sio_aucat_getpar(struct sio_hdl *sh, struct sio_par *par)
 static int
 sio_aucat_getcap(struct sio_hdl *sh, struct sio_cap *cap)
 {
-	unsigned i, bps, le, sig, chan, rindex, rmult;
-	static unsigned rates[] = { 8000, 11025, 12000 };
+	unsigned int i, bps, le, sig, chan, rindex, rmult;
+	static unsigned int rates[] = { 8000, 11025, 12000 };
 
 	bps = 1;
 	sig = le = 0;
@@ -390,7 +390,7 @@ sio_aucat_getcap(struct sio_hdl *sh, struct sio_cap *cap)
 		cap->rate[i] = rates[rindex] * rmult;
 		cap->confs[0].rate |= 1 << i;
 		rindex++;
-		if (rindex == sizeof(rates) / sizeof(unsigned)) {
+		if (rindex == sizeof(rates) / sizeof(unsigned int)) {
 			rindex = 0;
 			rmult *= 2;
 		}
@@ -472,7 +472,7 @@ sio_aucat_revents(struct sio_hdl *sh, struct pollfd *pfd)
 }
 
 static int
-sio_aucat_setvol(struct sio_hdl *sh, unsigned vol)
+sio_aucat_setvol(struct sio_hdl *sh, unsigned int vol)
 {
 	struct sio_aucat_hdl *hdl = (struct sio_aucat_hdl *)sh;
 

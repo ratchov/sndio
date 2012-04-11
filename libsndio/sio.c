@@ -42,7 +42,7 @@ sio_initpar(struct sio_par *par)
 }
 
 struct sio_hdl *
-sio_open(const char *str, unsigned mode, int nbio)
+sio_open(const char *str, unsigned int mode, int nbio)
 {
 	struct sio_hdl *hdl;
 	const char *p;
@@ -84,7 +84,8 @@ sio_open(const char *str, unsigned mode, int nbio)
 }
 
 void
-sio_create(struct sio_hdl *hdl, struct sio_ops *ops, unsigned mode, int nbio)
+sio_create(struct sio_hdl *hdl, struct sio_ops *ops,
+    unsigned int mode, int nbio)
 {
 	hdl->ops = ops;
 	hdl->mode = mode;
@@ -239,7 +240,7 @@ sio_psleep(struct sio_hdl *hdl, int event)
 size_t
 sio_read(struct sio_hdl *hdl, void *buf, size_t len)
 {
-	unsigned n;
+	unsigned int n;
 	char *data = buf;
 	size_t todo = len;
 
@@ -277,12 +278,12 @@ sio_read(struct sio_hdl *hdl, void *buf, size_t len)
 size_t
 sio_write(struct sio_hdl *hdl, const void *buf, size_t len)
 {
-	unsigned n;
+	unsigned int n;
 	const unsigned char *data = buf;
 	size_t todo = len;
 #ifdef DEBUG
 	struct timeval tv0, tv1, dtv;
-	unsigned us;
+	unsigned int us;
 
 	if (sndio_debug >= 2)
 		gettimeofday(&tv0, NULL);
@@ -354,7 +355,7 @@ sio_revents(struct sio_hdl *hdl, struct pollfd *pfd)
 	int revents;
 #ifdef DEBUG
 	struct timeval tv0, tv1, dtv;
-	unsigned us;
+	unsigned int us;
 
 	if (sndio_debug >= 2)
 		gettimeofday(&tv0, NULL);
@@ -428,7 +429,7 @@ sio_onmove_cb(struct sio_hdl *hdl, int delta)
 }
 
 int
-sio_setvol(struct sio_hdl *hdl, unsigned ctl)
+sio_setvol(struct sio_hdl *hdl, unsigned int ctl)
 {
 	if (hdl->eof)
 		return 0;
@@ -441,7 +442,7 @@ sio_setvol(struct sio_hdl *hdl, unsigned ctl)
 }
 
 int
-sio_onvol(struct sio_hdl *hdl, void (*cb)(void *, unsigned), void *addr)
+sio_onvol(struct sio_hdl *hdl, void (*cb)(void *, unsigned int), void *addr)
 {
 	if (hdl->started) {
 		DPRINTF("sio_onvol: already started\n");
@@ -457,7 +458,7 @@ sio_onvol(struct sio_hdl *hdl, void (*cb)(void *, unsigned), void *addr)
 }
 
 void
-sio_onvol_cb(struct sio_hdl *hdl, unsigned ctl)
+sio_onvol_cb(struct sio_hdl *hdl, unsigned int ctl)
 {
 	if (hdl->vol_cb)
 		hdl->vol_cb(hdl->vol_addr, ctl);

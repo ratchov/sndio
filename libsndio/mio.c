@@ -33,7 +33,7 @@
 #include "bsd-compat.h"
 
 struct mio_hdl *
-mio_open(const char *str, unsigned mode, int nbio)
+mio_open(const char *str, unsigned int mode, int nbio)
 {
 	struct mio_hdl *hdl;
 	const char *p;
@@ -63,7 +63,8 @@ mio_open(const char *str, unsigned mode, int nbio)
 }
 
 void
-mio_create(struct mio_hdl *hdl, struct mio_ops *ops, unsigned mode, int nbio)
+mio_create(struct mio_hdl *hdl, struct mio_ops *ops,
+    unsigned int mode, int nbio)
 {
 	hdl->ops = ops;
 	hdl->mode = mode;

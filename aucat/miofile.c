@@ -37,8 +37,8 @@ struct miofile {
 };
 
 void miofile_close(struct file *);
-unsigned miofile_read(struct file *, unsigned char *, unsigned);
-unsigned miofile_write(struct file *, unsigned char *, unsigned);
+unsigned int miofile_read(struct file *, unsigned char *, unsigned int);
+unsigned int miofile_write(struct file *, unsigned char *, unsigned int);
 void miofile_start(struct file *);
 void miofile_stop(struct file *);
 int miofile_nfds(struct file *);
@@ -62,7 +62,7 @@ struct fileops miofile_ops = {
  * open the device
  */
 struct miofile *
-miofile_new(struct fileops *ops, char *path, unsigned mode)
+miofile_new(struct fileops *ops, char *path, unsigned int mode)
 {
 	char *siopath;
 	struct mio_hdl *hdl;
@@ -82,11 +82,11 @@ miofile_new(struct fileops *ops, char *path, unsigned mode)
 	return NULL;
 }
 
-unsigned
-miofile_read(struct file *file, unsigned char *data, unsigned count)
+unsigned int
+miofile_read(struct file *file, unsigned char *data, unsigned int count)
 {
 	struct miofile *f = (struct miofile *)file;
-	unsigned n;
+	unsigned int n;
 	
 	n = mio_read(f->hdl, data, count);
 	if (n == 0) {
@@ -111,11 +111,11 @@ miofile_read(struct file *file, unsigned char *data, unsigned count)
 
 }
 
-unsigned
-miofile_write(struct file *file, unsigned char *data, unsigned count)
+unsigned int
+miofile_write(struct file *file, unsigned char *data, unsigned int count)
 {
 	struct miofile *f = (struct miofile *)file;
-	unsigned n;
+	unsigned int n;
 
 	n = mio_write(f->hdl, data, count);
 	if (n == 0) {

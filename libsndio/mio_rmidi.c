@@ -50,7 +50,7 @@ static struct mio_ops mio_rmidi_ops = {
 };
 
 struct mio_hdl *
-mio_rmidi_open(const char *str, unsigned mode, int nbio)
+mio_rmidi_open(const char *str, unsigned int mode, int nbio)
 {
 	int fd, flags;
 	struct mio_rmidi_hdl *hdl;

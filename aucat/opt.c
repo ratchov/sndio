@@ -30,10 +30,10 @@ struct opt *opt_list = NULL;
 struct opt *
 opt_new(char *name, struct dev *dev,
     struct aparams *wpar, struct aparams *rpar,
-    int maxweight, int mmc, int join, unsigned mode)
+    int maxweight, int mmc, int join, unsigned int mode)
 {
 	struct opt *o, **po;
-	unsigned len;
+	unsigned int len;
 	char c;
 
 	for (len = 0; name[len] != '\0'; len++) {
@@ -115,7 +115,7 @@ opt_new(char *name, struct dev *dev,
 }
 
 struct opt *
-opt_byname(char *name, unsigned num)
+opt_byname(char *name, unsigned int num)
 {
 	struct opt *o;
 

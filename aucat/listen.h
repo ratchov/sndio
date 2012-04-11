@@ -32,7 +32,7 @@ struct listen {
 extern struct listen *listen_list;
 
 void listen_new_un(char *);
-void listen_new_tcp(char *, unsigned);
+void listen_new_tcp(char *, unsigned int);
 int listen_init(struct listen *);
 int listen_nfds(struct file *);
 int listen_pollfd(struct file *, struct pollfd *, int);
