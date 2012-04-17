@@ -173,6 +173,12 @@ aproc_del(struct aproc *p)
 {
 	struct abuf *i;
 
+#ifdef DEBUG
+	if (!p) {
+		dbg_puts("aproc_del: called with NULL argument\n");
+		dbg_panic();
+	}
+#endif
 	if (!(p->flags & APROC_ZOMB)) {
 #ifdef DEBUG
 		if (debug_level >= 3) {
