@@ -59,7 +59,7 @@ sio_open(const char *str, unsigned int mode, int nbio)
 		if (hdl != NULL)
 			return hdl;
 #if defined(USE_SUN)
-		return sio_sun_open("/", mode, nbio);
+		return sio_sun_open("/0", mode, nbio);
 #elif defined(USE_ALSA)
 		return sio_alsa_open("/0", mode, nbio);
 #else
