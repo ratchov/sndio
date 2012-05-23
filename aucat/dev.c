@@ -1350,7 +1350,7 @@ dev_mkslot(struct dev *d, char *who)
 		if (slot->ops == NULL)
 			continue;
 		if (strcmp(slot->name, name) == 0)
-			umap |= (1 << i);
+			umap |= (1 << slot->unit);
 	} 
 	for (unit = 0; ; unit++) {
 		if (unit == CTL_NSLOT) {
