@@ -84,7 +84,7 @@ main(int argc, char **argv) {
 		}
 	}
 
-	hdl = sio_open(NULL, SIO_REC, 0);
+	hdl = sio_open(SIO_DEVANY, SIO_REC, 0);
 	if (hdl == NULL) {
 		fprintf(stderr, "sio_open() failed\n");
 		exit(1);

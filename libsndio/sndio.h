@@ -20,6 +20,12 @@
 #include <sys/param.h>
 
 /*
+ * default audio device and MIDI port
+ */
+#define SIO_DEVANY	"default"
+#define MIO_PORTANY	"default"
+
+/*
  * private ``handle'' structure
  */
 struct sio_hdl;

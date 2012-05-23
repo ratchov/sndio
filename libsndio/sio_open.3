@@ -106,7 +106,7 @@ The
 .Ar name
 parameter gives the device string discussed in
 .Xr sndio 7 .
-In most cases it should be set to NULL to allow
+In most cases it should be set to SIO_DEVANY to allow
 the user to select it using the
 .Ev AUDIODEVICE
 environment variable.
@@ -726,7 +726,7 @@ functions return the number of bytes transferred.
 .It Ev AUDIODEVICE
 Device to use if
 .Fn sio_open
-is called with a NULL
+is called with SIO_DEVANY
 .Va name
 argument.
 .It Ev SNDIO_DEBUG

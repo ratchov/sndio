@@ -64,12 +64,10 @@ struct fileops miofile_ops = {
 struct miofile *
 miofile_new(struct fileops *ops, char *path, unsigned int mode)
 {
-	char *siopath;
 	struct mio_hdl *hdl;
 	struct miofile *f;
 
-	siopath = (strcmp(path, "default") == 0) ? NULL : path;
-	hdl = mio_open(siopath, mode, 1);
+	hdl = mio_open(path, mode, 1);
 	if (hdl == NULL)
 		return NULL;
 	f = (struct miofile *)file_new(ops, path, mio_nfds(hdl));

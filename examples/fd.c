@@ -265,7 +265,7 @@ main(int argc, char **argv)
 		fprintf(stderr, "-i or -o option required\n");
 		exit(0);
 	}
-	hdl = sio_open(NULL, mode, 1);
+	hdl = sio_open(SIO_DEVANY, mode, 1);
 	if (hdl == NULL) {
 		fprintf(stderr, "sio_open() failed\n");
 		exit(1);
