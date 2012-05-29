@@ -84,8 +84,8 @@ static struct sio_ops sio_alsa_ops = {
 	sio_alsa_nfds,
 	sio_alsa_pollfd,
 	sio_alsa_revents,
-	sio_alsa_setvol,
-	sio_alsa_getvol
+	NULL,
+	NULL
 };
 
 /*
@@ -271,20 +271,6 @@ sio_alsa_getcap(struct sio_hdl *sh, struct sio_cap *cap)
 	DPRINTF("sio_alsa_getcap: not implemented\n");
 	hdl->sio.eof = 1;
 	return 0;
-}
-
-static void
-sio_alsa_getvol(struct sio_hdl *sh)
-{
-	struct sio_alsa_hdl *hdl = (struct sio_alsa_hdl *)sh;
-
-	sio_onvol_cb(&hdl->sio, SIO_MAXVOL);
-}
-
-int
-sio_alsa_setvol(struct sio_hdl *sh, unsigned vol)
-{
-	return 1;
 }
 
 struct sio_hdl *
