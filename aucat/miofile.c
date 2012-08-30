@@ -158,5 +158,5 @@ miofile_revents(struct file *file, struct pollfd *pfd)
 void
 miofile_close(struct file *file)
 {
-	return mio_close(((struct miofile *)file)->hdl);
+	mio_close(((struct miofile *)file)->hdl);
 }

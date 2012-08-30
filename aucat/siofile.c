@@ -479,5 +479,5 @@ siofile_close(struct file *file)
 
 	if (f->started)
 		siofile_stop(&f->file);
-	return sio_close(((struct siofile *)file)->hdl);
+	sio_close(((struct siofile *)file)->hdl);
 }
