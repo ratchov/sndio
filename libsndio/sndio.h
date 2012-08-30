@@ -17,7 +17,7 @@
 #ifndef SNDIO_H
 #define SNDIO_H
 
-#include <sys/param.h>
+#include <sys/types.h>
 
 /*
  * default audio device and MIDI port
@@ -51,7 +51,7 @@ struct sio_par {
 	unsigned int round;	/* optimal bufsz divisor */
 	unsigned int appbufsz;	/* minimum buffer size */
 	int __pad[3];		/* for future use */
-	int __magic;		/* for internal/debug purposes only */
+	unsigned int __magic;	/* for internal/debug purposes only */
 };
 
 /*
