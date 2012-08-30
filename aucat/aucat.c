@@ -429,17 +429,15 @@ main(int argc, char **argv)
 	else
 		prog++;
 	if (strcmp(prog, PROG_AUCAT) == 0) {
-		optstr = "a:b:c:C:de:f:h:i:j:lL:m:Mno:q:r:s:t:U:v:w:x:z:";
+		optstr = "b:c:C:de:f:h:i:j:m:no:q:r:t:v:w:x:z:";
 		usagestr = aucat_usage;
 	} else if (strcmp(prog, PROG_SNDIOD) == 0) {
 		optstr = "a:b:c:C:de:f:j:L:m:Mq:r:s:t:U:v:w:x:z:";
 		usagestr = sndiod_usage;
 		background = 1;
 		hold = 0;
-	} else {
-		fprintf(stderr, "%s: can't determine program to run\n", prog);
-		return 1;
-	}
+	} else
+		errx(1, "%s: can't determine program to run", prog);
 
 	while ((c = getopt(argc, argv, optstr)) != -1) {
 		switch (c) {
@@ -552,9 +550,6 @@ main(int argc, char **argv)
 			break;
 		case 'M':
 			mkdev("midithru", MODE_THRU, 0, 0, hold, 0);
-			break;
-		case 'l':
-			background = 1;
 			break;
 		default:
 			fputs(usagestr, stderr);

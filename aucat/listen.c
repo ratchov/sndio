@@ -62,10 +62,8 @@ listen_new_un(char *path)
 	struct listen *f;
 
 	sock = socket(AF_UNIX, SOCK_STREAM, 0);
-	if (sock < 0) {
-		perror("socket");
-		exit(1);
-	}
+	if (sock < 0)
+		err(1, "socket");
 	if (unlink(path) < 0 && errno != ENOENT) {
 		perror("unlink");
 		goto bad_close;
@@ -83,10 +81,8 @@ listen_new_un(char *path)
 	if (f == NULL)
 		goto bad_close;
 	f->path = strdup(path);
-	if (f->path == NULL) {
-		perror("strdup");
-		exit(1);
-	}
+	if (f->path == NULL)
+		err(1, "strdup");
 	f->fd = sock;
 	f->next = listen_list;
 	listen_list = f;
@@ -114,10 +110,8 @@ listen_new_tcp(char *addr, unsigned int port)
 	aihints.ai_socktype = SOCK_STREAM;
 	aihints.ai_protocol = IPPROTO_TCP;
 	error = getaddrinfo(host, serv, &aihints, &ailist);
-	if (error) {
-		fprintf(stderr, "%s: %s\n", addr, gai_strerror(error));
-		exit(1);
-	}
+	if (error)
+		errx(1, "%s: %s", addr, gai_strerror(error));
 
 	/* 
 	 * for each address, try create a listening socket bound on

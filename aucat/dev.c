@@ -373,7 +373,12 @@ dev_open(struct dev *d)
 		d->ipar = par;
 		d->opar = par;
 		d->rate = rate;
-		d->round = rate;
+		/* 
+		 * block sizes in the resampling code are limited to
+		 * 2^15, so use 1/15 of the rate, since all standard
+		 * sample rates are multiple of 15
+		 */
+		d->round = rate / 15;
 		d->bufsz = 2 * d->round;
 	}
 #ifdef DEBUG
