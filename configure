@@ -12,7 +12,7 @@ Usage: configure [options]
 --includedir=DIR		install header files in DIR [\$prefix/include]
 --libdir=DIR			install libraries in DIR [\$prefix/lib]
 --mandir=DIR			install man pages in DIR [\$prefix/man]
---precision=NUMBER		aucat processing precision [$precision]
+--precision=NUMBER		aucat/sndiod processing precision [$precision]
 --enable-alsa			enable alsa backend [$alsa]
 --disable-alsa			disable alsa backend
 --enable-sun			enable sun backend [$sun]
@@ -27,7 +27,7 @@ prefix=/usr/local			# where to install sndio
 so="libsndio.so.\${MAJ}.\${MIN}"	# shared libs to build
 alsa=no					# do we want alsa support ?
 sun=no					# do we want sun support ?
-precision=16				# aucat arithmetic precision
+precision=16				# aucat/sndiod arithmetic precision
 unset vars				# variables passed as arguments
 unset bindir				# path where to install binaries
 unset datadir				# path where to install doc
@@ -135,7 +135,7 @@ if [ $sun = yes ]; then
 	defs="$defs -DUSE_SUN"
 fi
 
-for makefile in Makefile aucat/Makefile libsndio/Makefile examples/Makefile
+for makefile in Makefile aucat/Makefile sndiod/Makefile libsndio/Makefile examples/Makefile
 do
 	sed \
 	-e "s:@bindir@:$bindir:" \

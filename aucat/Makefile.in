@@ -23,8 +23,8 @@ MAN1_DIR = @mandir@/man1
 #
 # programs to build
 #
-PROG = aucat sndiod
-MAN1 = aucat.1 sndiod.1
+PROG = aucat
+MAN1 = aucat.1
 
 all:		${PROG} ${MAN1}
 
@@ -32,15 +32,13 @@ install:
 		mkdir -p ${DESTDIR}${BIN_DIR} ${DESTDIR}${MAN1_DIR}
 		cp aucat ${DESTDIR}${BIN_DIR}
 		cp aucat.1 ${DESTDIR}${MAN1_DIR}
-		ln -sf aucat ${DESTDIR}${BIN_DIR}/sndiod
-		ln -sf aucat.1 ${DESTDIR}${MAN1_DIR}/sndiod.1
 
 uninstall:
 		cd ${DESTDIR}${BIN_DIR} && rm -f ${PROG}
 		cd ${DESTDIR}${MAN1_DIR} && rm -f ${MAN1}
 
 clean:
-		rm -f -- *.o aucat sndiod sndiod.1
+		rm -f -- *.o aucat
 
 # ---------------------------------------------------------- dependencies ---
 
@@ -51,12 +49,6 @@ wav.o
 
 aucat:		${OBJS}
 		${CC} ${LDFLAGS} ${LIB} -o aucat ${OBJS} ${LDADD} 
-
-sndiod:
-		ln -sf aucat sndiod
-
-sndiod.1:
-		ln -sf aucat.1 sndiod.1
 
 .c.o:
 		${CC} ${CFLAGS} ${INCLUDE} ${DEFS} -c $<
