@@ -40,7 +40,6 @@
 .Op Fl U Ar unit
 .Op Fl v Ar volume
 .Op Fl w Ar flag
-.Op Fl x Ar policy
 .Op Fl z Ar nframes
 .Ek
 .Sh DESCRIPTION
@@ -102,14 +101,11 @@ The user selects the configuration a given program will use
 by selecting the sub-device the program uses.
 .Pp
 .Nm
-can expose a MIDI port that can be used as a MIDI thru box
-(aka a
-.Dq hub
+exposes MIDI thru boxes (aka a
+.Dq hubs
 for MIDI messages),
-allowing any program to send MIDI messages to
-MIDI hardware or to another program in a uniform way.
-Hardware ports can be subscribed to such MIDI thru boxes,
-allowing multiple programs to share the MIDI port.
+allowing programs to send MIDI messages to each other
+or to hardware MIDI ports in a uniform way.
 .Pp
 Finally,
 .Nm
@@ -163,8 +159,32 @@ Increase log verbosity.
 logs on
 .Em stderr .
 .It Fl e Ar enc
-Audio device encoding (see below).
-The default is signed, 16-bit, native byte order.
+Attempt to configure the device to use this encoding.
+The default is
+.Va s16 .
+Encoding names use the follwing scheme: signedness
+.Po
+.Va s
+or
+.Va u
+.Pc
+followed
+by the precision in bits, the byte-order
+.Po
+.Va le
+or
+.Va be
+.Pc ,
+the number of
+bytes per sample, and the alignement
+.Po 
+.Va msb
+or
+.Va lsb
+.Pc .
+Only the signedness and the precision are mandatory.
+Examples:
+.Va u8 , s16le , s24le3 , s24le4lsb.
 .It Fl f Ar device
 Add this
 .Xr sndio 7
@@ -227,12 +247,9 @@ The default is
 (i.e. full-duplex).
 .It Fl q Ar port
 Expose the given MIDI port.
-This allows multiple programs
-.Nm
-instead of the given physical MIDI port which can be used
-by only one program.
+This allows multiple programs to share the port.
 .It Fl r Ar rate
-Audio device sample rate in Hertz of the stream.
+Attempt to force the device to use this sample rate in Hertz.
 The default is 48000.
 .It Fl s Ar name
 Add
@@ -265,7 +282,7 @@ additionally, the server clock is exposed as MIDI Time Code (MTC)
 messages allowing MTC-capable software or hardware to be synchronized
 to audio programs.
 .It Fl U Ar unit
-Unit number to use when running in server mode.
+Unit number.
 Each
 .Nm
 server instance has an unique unit number,
@@ -280,7 +297,7 @@ is used.
 Software volume attenuation of playback.
 The value must be between 1 and 127,
 corresponding to \-42dB and \-0dB attenuation in 1/3dB steps.
-In server mode, clients inherit this parameter.
+Clients inherit this parameter.
 Reducing the volume in advance allows a client's volume to stay independent
 from the number of clients as long as their number is small enough.
 18 volume units (i.e. \-6dB attenuation) allows the number
@@ -302,31 +319,6 @@ Using
 makes sense in the rare situation where all programs lower their volumes.
 The default is
 .Va on .
-.It Fl x Ar policy
-Action when the program cannot accept
-recorded data fast enough or cannot provide data to play fast enough.
-If the policy is
-.Dq ignore
-(the default) then samples that cannot be written are discarded
-and samples that cannot be read are replaced by silence.
-If the policy is
-.Dq sync
-then recorded samples are discarded,
-but the same amount of silence will be written
-once the program is unblocked, in order to reach the right position in time.
-Similarly silence is played, but the same amount of samples will be discarded
-once the program is unblocked.
-If the policy is
-.Dq error
-then the program is disconnected.
-.Pp
-If a sub-device is created with the
-.Fl t
-option,
-the
-.Dq ignore
-action is disabled for any program connected to it
-to ensure proper synchronization.
 .It Fl z Ar nframes
 The audio device block size in frames.
 This is the number of frames between audio clock ticks,
@@ -363,11 +355,9 @@ If no audio devices
 are specified,
 settings are applied as if
 the default device is specified.
-If no
-.Nm
-sub-devices
+If no sub-devices
 .Pq Fl s
-are specified for a device, a default server sub-device is
+are specified for a device, a default sub-device is
 created attached to it.
 If a device
 .Pq Fl f
@@ -395,80 +385,18 @@ or
 .Dv SIGTERM ,
 it terminates.
 .Pp
-Encodings are specified using the
-.Fl e
-option.
-The following encodings are supported:
-.Pp
-.Bl -tag -width s32lexxx -offset indent -compact
-.It s8
-signed 8-bit
-.It u8
-unsigned 8-bit
-.It s16le
-signed 16-bit, little endian
-.It u16le
-unsigned 16-bit, little endian
-.It s16be
-signed 16-bit, big endian
-.It u16be
-unsigned 16-bit, big endian
-.It s24le
-signed 24-bit, stored in 4 bytes, little endian
-.It u24le
-unsigned 24-bit, stored in 4 bytes, little endian
-.It s24be
-signed 24-bit, stored in 4 bytes, big endian
-.It u24be
-unsigned 24-bit, stored in 4 bytes, big endian
-.It s32le
-signed 32-bit, little endian
-.It u32le
-unsigned 32-bit, little endian
-.It s32be
-signed 32-bit, big endian
-.It u32be
-unsigned 32-bit, big endian
-.It s24le3
-signed 24-bit, packed in 3 bytes, little endian
-.It u24le3
-unsigned 24-bit, packed in 3 bytes, big endian
-.It s24be3
-signed 24-bit, packed in 3 bytes, little endian
-.It u24be3
-unsigned 24-bit, packed in 3 bytes, big endian
-.It s20le3
-signed 20-bit, packed in 3 bytes, little endian
-.It u20le3
-unsigned 20-bit, packed in 3 bytes, big endian
-.It s20be3
-signed 20-bit, packed in 3 bytes, little endian
-.It u20be3
-unsigned 20-bit, packed in 3 bytes, big endian
-.It s18le3
-signed 18-bit, packed in 3 bytes, little endian
-.It u18le3
-unsigned 18-bit, packed in 3 bytes, big endian
-.It s18be3
-signed 18-bit, packed in 3 bytes, little endian
-.It u18be3
-unsigned 18-bit, packed in 3 bytes, big endian
-.El
-.Sh SERVER MODE
-.Nm
-can be used
-to overcome hardware limitations and allow applications
-to run on fixed sample rate devices or on devices
-supporting only unusual encodings.
-.Pp
-Certain applications, such as synthesis software,
-require a low latency audio setup.
-To reduce the probability of buffer underruns or overruns, especially
-on busy machines, the server can be started by the super-user, in which
-case it will run with higher priority.
-Any user will still be able to connect to it,
-but for privacy reasons only one user may have
-connections to it at a given time.
+By default, when the program cannot accept
+recorded data fast enough or cannot provide data to play fast enough,
+the program is paused, i.e. samples that cannot be written are discarded
+and samples that cannot be read are replaced by silence.
+If a sub-device is created with the
+.Fl t
+option, then recorded samples are discarded,
+but the same amount of silence will be written
+once the program is unblocked, in order to reach the right position in time.
+Similarly silence is played, but the same amount of samples will be discarded
+once the program is unblocked.
+This ensures proper synchronization between programs.
 .Sh MIDI CONTROL
 .Nm
 creates a MIDI port with the same name as the exposed audio
@@ -602,6 +530,7 @@ when recording.
 Processing is done using 16-bit arithmetic,
 thus samples with more than 16 bits are rounded.
 16 bits (i.e. 97dB dynamic) are largely enough for most applications though.
+Processing precision can be increased to 24-bit at compilation time though.
 .Pp
 If
 .Fl a Ar off
@@ -613,11 +542,5 @@ Technically, this allows
 .Nm
 to attempt to use one of the sub-devices it exposes as an audio device,
 creating a deadlock.
-To avoid this,
-.Fl a Ar off
-is disabled for the default audio device, but nothing prevents the user
-from shooting himself in the foot by creating a similar deadlock.
-.Pp
-The ability to merge multiple inputs is provided to allow multiple
-applications producing MIDI data to keep their connection open while
-idling; it does not replace a fully featured MIDI merger.
+There's nothing to prevent the user
+from shooting himself in the foot by creating such a deadlock.

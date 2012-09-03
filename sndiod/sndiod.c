@@ -87,8 +87,7 @@ volatile sig_atomic_t quit_flag = 0;
 char usagestr[] = "usage: sndiod [-d] [-a flag] [-b nframes] "
     "[-C min:max] [-c min:max] [-e enc]\n\t"
     "[-f device] [-j flag] [-L addr] [-m mode] [-q port] [-r rate]\n\t"
-    "[-s name] [-t mode] [-U unit] [-v volume] [-w flag] [-x policy]\n\t"
-    "[-z nframes]\n";
+    "[-s name] [-t mode] [-U unit] [-v volume] [-w flag] [-z nframes]\n";
 
 /*
  * SIGINT handler, it raises the quit flag. If the flag is already set,
@@ -153,18 +152,6 @@ opt_onoff(void)
 	if (strcmp("on", optarg) == 0)
 		return 1;
 	errx(1, "%s: on/off expected", optarg);
-}
-
-int
-opt_xrun(void)
-{
-	if (strcmp("ignore", optarg) == 0)
-		return XRUN_IGNORE;
-	if (strcmp("sync", optarg) == 0)
-		return XRUN_SYNC;
-	if (strcmp("error", optarg) == 0)
-		return XRUN_ERROR;
-	errx(1, "%s: bad underrun/overrun policy", optarg);
 }
 
 unsigned int
@@ -317,7 +304,7 @@ main(int argc, char **argv)
 	int c, background, unit;
 	int pmin, pmax, rmin, rmax;
 	char base[PATH_MAX], path[PATH_MAX];
-	unsigned int mode, xrun, dup, mmc, vol;
+	unsigned int mode, dup, mmc, vol;
 	unsigned int hold, autovol, bufsz, round, rate;
 	const char *str;
 	struct aparams par;
@@ -330,7 +317,6 @@ main(int argc, char **argv)
 	/*
 	 * global options defaults
 	 */
-	xrun = XRUN_IGNORE;
 	vol = MIDI_MAXCTL;
 	dup = 1;
 	mmc = 0;
