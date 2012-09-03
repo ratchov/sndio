@@ -128,7 +128,6 @@ void aparams_init(struct aparams *);
 void aparams_log(struct aparams *);
 int aparams_strtoenc(struct aparams *, char *);
 int aparams_enctostr(struct aparams *, char *);
-int aparams_eq(struct aparams *, struct aparams *);
-void aparams_copy(struct aparams *, struct aparams *);
+int aparams_native(struct aparams *);
 
 #endif /* !defined(APARAMS_H) */

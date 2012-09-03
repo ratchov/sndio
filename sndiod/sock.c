@@ -1071,23 +1071,28 @@ sock_execmsg(struct sock *f)
 		f->rtodo = sizeof(struct amsg);
 		if (log_level >= 2) {
 			slot_log(f->slot);
-			log_puts(": buffer size = ");
-			log_putu(s->appbufsz);
-			log_puts(", enc =  ");
+
+			log_puts(": ");
+			log_putu(s->rate);
+			log_puts("Hz, ");
 			aparams_log(&s->par);
 			if (s->mode & MODE_PLAY) {
-				log_puts(", play: ");
+				log_puts(", play ");
 				log_puti(s->mix.slot_cmin);
 				log_puts(":");
 				log_puti(s->mix.slot_cmax);
 			}
 			if (s->mode & MODE_RECMASK) {
-				log_puts(", rec: ");
+				log_puts(", rec ");
 				log_puti(s->sub.slot_cmin);
 				log_puts(":");
 				log_puti(s->sub.slot_cmax);
 			}
-			log_puts("\n");
+			log_puts(", ");
+			log_putu(s->appbufsz / s->round);
+			log_puts(" blocks of ");
+			log_putu(s->round);
+			log_puts(" frames\n");
 		}
 		break;
 	case AMSG_STOP:

@@ -39,11 +39,6 @@ int aparams_ctltovol[128] = {
 };
 
 /*
- * Fake parameters for byte-streams
- */
-struct aparams aparams_none = {1, 0, 0, 0, 0};
-
-/*
  * Generate a string corresponding to the encoding in par,
  * return the length of the resulting string.
  */
@@ -192,28 +187,12 @@ aparams_log(struct aparams *par)
 }
 
 /*
- * Return true if both encodings are the same.
+ * Return true if encoding can be represented as adata_t
  */
 int
-aparams_eq(struct aparams *par1, struct aparams *par2)
+aparams_native(struct aparams *par)
 {
-	if (par1->bps != par2->bps ||
-	    par1->bits != par2->bits ||
-	    par1->sig != par2->sig)
-		return 0;
-	if ((par1->bits != 8 * par1->bps) && par1->msb != par2->msb)
-		return 0;
-	if (par1->bps > 1 && par1->le != par2->le)
-		return 0;
-	return 1;
-}
-
-void
-aparams_copy(struct aparams *dst, struct aparams *src)
-{
-	dst->sig = src->sig;
-	dst->le = src->le;
-	dst->msb = src->msb;
-	dst->bits = src->bits;
-	dst->bps = src->bps;
+	return par->bps == sizeof(adata_t) && par->bits == ADATA_BITS &&
+	    (par->bps > 1 || par->le == ADATA_LE) &&
+	    (par->bits < par->bps * 8 || !par->msb);
 }

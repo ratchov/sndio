@@ -1013,8 +1013,6 @@ dev_adjpar(struct dev *d, int mode,
 int
 dev_open(struct dev *d)
 {
-	struct aparams par;
-	
 	d->mode = d->reqmode;
 	d->round = d->reqround;
 	d->bufsz = d->reqbufsz;
@@ -1037,8 +1035,6 @@ dev_open(struct dev *d)
 		return 0;
 	}
 	if (d->mode & MODE_REC) {
-		aparams_init(&par);
-
 		/*
 		 * Create device <-> demuxer buffer
 		 */
@@ -1047,16 +1043,13 @@ dev_open(struct dev *d)
 		/*
 		 * Insert a converter, if needed.
 		 */
-		if (!aparams_eq(&d->par, &par)) {
+		if (!aparams_native(&d->par)) {
 			dec_init(&d->dec, &d->par, d->rchan);
 			d->decbuf = xmalloc(d->round * d->rchan * d->par.bps);
-			memrnd(d->decbuf, d->round * d->rchan * d->par.bps);
 		} else
 			d->decbuf = NULL;
 	}
 	if (d->mode & MODE_PLAY) {
-		aparams_init(&par);
-
 		/*
 		 * Create device <-> mixer buffer
 		 */
@@ -1067,10 +1060,9 @@ dev_open(struct dev *d)
 		/*
 		 * Append a converter, if needed.
 		 */
-		if (!aparams_eq(&par, &d->par)) {
+		if (!aparams_native(&d->par)) {
 			enc_init(&d->enc, &d->par, d->pchan);
 			d->encbuf = xmalloc(d->round * d->pchan * d->par.bps);
-			memrnd(d->encbuf, d->round * d->pchan * d->par.bps);
 		} else
 			d->encbuf = NULL;
 	}
@@ -1079,24 +1071,21 @@ dev_open(struct dev *d)
 		dev_log(d);
 		log_puts(": ");
 		log_putu(d->rate);
-		log_puts("Hz");
+		log_puts("Hz, ");
+		aparams_log(&d->par);
 		if (d->mode & MODE_PLAY) {
-			log_puts(", ");
-			log_puti(d->pchan);
-			log_puts(" play chans");
+			log_puts(", play 0:");
+			log_puti(d->pchan - 1);
 		}
 		if (d->mode & MODE_REC) {
-			log_puts(", ");
-			log_puti(d->rchan);
-			log_puts(" rec chans");
+			log_puts(", rec 0:");
+			log_puti(d->rchan - 1);
 		}
 		log_puts(", ");
-		aparams_log(&d->par);
-		log_puts(", ");
 		log_putu(d->bufsz / d->round);
-		log_puts("x");
+		log_puts(" blocks of ");
 		log_putu(d->round);
-		log_puts(" buffer\n");
+		log_puts(" frames\n");
 	}
 	return 1;
 }
@@ -1255,7 +1244,7 @@ dev_wakeup(struct dev *d)
 #endif
 		if (log_level >= 2) {
 			dev_log(d);
-			log_puts(" device started\n");
+			log_puts(": device started\n");
 		}
 		if (d->mode & MODE_PLAY) {
 			d->prime = d->bufsz;
@@ -1667,7 +1656,7 @@ slot_attach(struct slot *s)
 		    s->mix.slot_cmin, s->mix.slot_cmax,
 		    0, d->pchan - 1,
 		    s->mix.dev_cmin, s->mix.dev_cmax);
-		if (!aparams_eq(&s->par, &d->par)) {
+		if (!aparams_native(&s->par)) {
 			dec_init(&s->mix.dec, &s->par, slot_nch);
 			s->mix.dec.data =
 			    xmalloc(d->round * slot_nch * sizeof(adata_t));
@@ -1677,25 +1666,27 @@ slot_attach(struct slot *s)
 			s->mix.resamp.data =
 			    xmalloc(d->round * slot_nch * sizeof(adata_t));
 		}
-
-		log_puts("mix: cc = ");
-		log_puti(s->mix.cmap.nch);
-		log_puts(", dev_nch = ");
-		log_puti(dev_nch);
-		log_puts(", slot = ");
-		log_puti(s->mix.slot_cmin);
-		log_puts(":");
-		log_puti(s->mix.slot_cmax);
-		log_puts(", dev = ");
-		log_puti(s->mix.dev_cmin);
-		log_puts(":");
-		log_puti(s->mix.dev_cmax);
-		log_puts(", join = ");
-		log_puti(s->mix.join);
-		log_puts(", expand = ");
-		log_puti(s->mix.expand);
-		log_puts("\n");
-
+#ifdef DEBUG
+		if (log_level >= 3) {
+			log_puts("play: cc = ");
+			log_puti(s->mix.cmap.nch);
+			log_puts(", dev_nch = ");
+			log_puti(dev_nch);
+			log_puts(", slot = ");
+			log_puti(s->mix.slot_cmin);
+			log_puts(":");
+			log_puti(s->mix.slot_cmax);
+			log_puts(", dev = ");
+			log_puti(s->mix.dev_cmin);
+			log_puts(":");
+			log_puti(s->mix.dev_cmax);
+			log_puts(", join = ");
+			log_puti(s->mix.join);
+			log_puts(", expand = ");
+			log_puti(s->mix.expand);
+			log_puts("\n");
+		}
+#endif
 		s->mix.drop = 0;
 		s->mix.vol = MIDI_TO_ADATA(s->vol);
 		dev_mix_setmaster(d);
@@ -1726,30 +1717,33 @@ slot_attach(struct slot *s)
 			s->sub.resamp.data =
 			    xmalloc(d->round * slot_nch * sizeof(adata_t));
 		}
-		if (!aparams_eq(&s->par, &d->par)) {
+		if (!aparams_native(&s->par)) {
 			enc_init(&s->sub.enc, &s->par, slot_nch);
 			s->sub.enc.data =
 			    xmalloc(d->round * slot_nch * sizeof(adata_t));
 		}
 		
-		log_puts("sub: cc = ");
-		log_puti(s->sub.cmap.nch);
-		log_puts(", dev_nch = ");
-		log_puti(dev_nch);
-		log_puts(", slot ");
-		log_puti(s->sub.slot_cmin);
-		log_puts(":");
-		log_puti(s->sub.slot_cmax);
-		log_puts(", join = ");
-		log_puti(s->sub.join);
-		log_puts(", expand = ");
-		log_puti(s->sub.expand);
-		log_puts(", dev = ");
-		log_puti(s->sub.dev_cmin);
-		log_puts(":");
-		log_puti(s->sub.dev_cmax);
-		log_puts("\n");
-
+#ifdef DEBUG
+		if (log_level >= 3) {
+			log_puts("sub: cc = ");
+			log_puti(s->sub.cmap.nch);
+			log_puts(", dev_nch = ");
+			log_puti(dev_nch);
+			log_puts(", slot ");
+			log_puti(s->sub.slot_cmin);
+			log_puts(":");
+			log_puti(s->sub.slot_cmax);
+			log_puts(", join = ");
+			log_puti(s->sub.join);
+			log_puts(", expand = ");
+			log_puti(s->sub.expand);
+			log_puts(", dev = ");
+			log_puti(s->sub.dev_cmin);
+			log_puts(":");
+			log_puti(s->sub.dev_cmax);
+			log_puts("\n");
+		}
+#endif
 		/*
 		 * N-th recorded block is the N-th played block
 		 */
