@@ -1071,7 +1071,6 @@ sock_execmsg(struct sock *f)
 		f->rtodo = sizeof(struct amsg);
 		if (log_level >= 2) {
 			slot_log(f->slot);
-
 			log_puts(": ");
 			log_putu(s->rate);
 			log_puts("Hz, ");
