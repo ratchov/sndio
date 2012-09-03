@@ -18,7 +18,6 @@
 #define DEV_H
 
 #include "abuf.h"
-#include "aparams.h"
 #include "dsp.h"
 
 struct siofile;

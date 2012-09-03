@@ -24,10 +24,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "aparams.h"
 #include "abuf.h"
 #include "defs.h"
 #include "dev.h"
+#include "dsp.h"
 #include "file.h"
 #include "siofile.h"
 #include "utils.h"

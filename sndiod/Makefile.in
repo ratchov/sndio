@@ -43,7 +43,7 @@ clean:
 # ---------------------------------------------------------- dependencies ---
 
 OBJS = \
-abuf.o aparams.o utils.o dev.o dsp.o file.o listen.o midi.o miofile.o opt.o \
+abuf.o utils.o dev.o dsp.o file.o listen.o midi.o miofile.o opt.o \
 siofile.o sndiod.o sock.o
 
 sndiod:		${OBJS}
@@ -52,23 +52,24 @@ sndiod:		${OBJS}
 .c.o:
 		${CC} ${CFLAGS} ${INCLUDE} ${DEFS} -c $<
 
+### cdeps begin
 abuf.o:		abuf.c abuf.h defs.h utils.h
-aparams.o:	aparams.c aparams.h utils.h
-dev.o:		dev.c abuf.h defs.h dev.h aparams.h dsp.h miofile.h \
-		siofile.h midi.h opt.h sysex.h utils.h
-dsp.o:		dsp.c aparams.h defs.h dsp.h utils.h
+dev.o:		dev.c abuf.h defs.h dev.h dsp.h miofile.h siofile.h \
+		midi.h opt.h sysex.h utils.h
+dsp.o:		dsp.c defs.h dsp.h utils.h
 file.o:		file.c defs.h file.h utils.h
 listen.o:	listen.c listen.h file.h sock.h ../libsndio/amsg.h \
 		utils.h ../bsd-compat/bsd-compat.h
-midi.o:		midi.c abuf.h defs.h dev.h aparams.h dsp.h file.h midi.h \
-		miofile.h sysex.h utils.h ../bsd-compat/bsd-compat.h
+midi.o:		midi.c abuf.h defs.h dev.h dsp.h file.h midi.h miofile.h \
+		sysex.h utils.h ../bsd-compat/bsd-compat.h
 miofile.o:	miofile.c defs.h file.h midi.h abuf.h miofile.h utils.h
-opt.o:		opt.c dev.h abuf.h aparams.h dsp.h defs.h opt.h utils.h
-siofile.o:	siofile.c aparams.h abuf.h defs.h dev.h dsp.h file.h \
-		siofile.h utils.h
-sndiod.o:	sndiod.c ../libsndio/amsg.h aparams.h defs.h dev.h \
-		abuf.h dsp.h file.h listen.h midi.h opt.h sock.h utils.h \
+opt.o:		opt.c dev.h abuf.h dsp.h defs.h opt.h utils.h
+siofile.o:	siofile.c abuf.h defs.h dev.h dsp.h file.h siofile.h \
+		utils.h
+sndiod.o:	sndiod.c ../libsndio/amsg.h defs.h dev.h abuf.h dsp.h \
+		file.h listen.h midi.h opt.h sock.h utils.h \
 		../bsd-compat/bsd-compat.h
-sock.o:		sock.c abuf.h defs.h dev.h aparams.h dsp.h file.h midi.h \
-		opt.h sock.h ../libsndio/amsg.h utils.h
+sock.o:		sock.c abuf.h defs.h dev.h dsp.h file.h midi.h opt.h \
+		sock.h ../libsndio/amsg.h utils.h
 utils.o:	utils.c utils.h
+### cdeps end

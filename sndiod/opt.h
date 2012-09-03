@@ -17,9 +17,6 @@
 #ifndef OPT_H
 #define OPT_H
 
-#include <sys/queue.h>
-#include "aparams.h"
-
 struct dev;
 
 struct opt {

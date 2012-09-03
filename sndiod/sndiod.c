@@ -33,7 +33,6 @@
 #include <unistd.h>
 
 #include "amsg.h"
-#include "aparams.h"
 #include "defs.h"
 #include "dev.h"
 #include "file.h"

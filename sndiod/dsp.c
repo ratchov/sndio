@@ -15,10 +15,188 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 #include <string.h>
-#include "aparams.h"
 #include "defs.h"
 #include "dsp.h"
 #include "utils.h"
+
+int aparams_ctltovol[128] = {
+	    0,
+	  256,	  266,	  276,	  287,	  299,	  310,	  323,	  335,
+	  348,	  362,	  376,	  391,	  406,	  422,	  439,	  456,
+	  474,	  493,	  512,	  532,	  553,	  575,	  597,	  621,
+	  645,	  670,	  697,	  724,	  753,	  782,	  813,	  845,
+	  878,	  912,	  948,	  985,	 1024,	 1064,	 1106,	 1149,
+	 1195,	 1241,	 1290,	 1341,	 1393,	 1448,	 1505,	 1564,
+	 1625,	 1689,	 1756,	 1825,	 1896,	 1971,	 2048,	 2128,
+	 2212,	 2299,	 2389,	 2483,	 2580,	 2682,	 2787,	 2896,
+	 3010,	 3128,	 3251,	 3379,	 3511,	 3649,	 3792,	 3941,
+	 4096,	 4257,	 4424,	 4598,	 4778,	 4966,	 5161,	 5363,
+	 5574,	 5793,	 6020,	 6256,	 6502,	 6757,	 7023,	 7298,
+	 7585,	 7883,	 8192,	 8514,	 8848,	 9195,	 9556,	 9931,
+	10321,	10726,	11148,	11585,	12040,	12513,	13004,	13515,
+	14045,	14596,	15170,	15765,	16384,	17027,	17696,	18390,
+	19112,	19863,	20643,	21453,	22295,	23170,	24080,	25025,
+	26008,	27029,	28090,	29193,	30339,	31530,	32768
+};
+
+/*
+ * Generate a string corresponding to the encoding in par,
+ * return the length of the resulting string.
+ */
+int
+aparams_enctostr(struct aparams *par, char *ostr)
+{
+	char *p = ostr;
+
+	*p++ = par->sig ? 's' : 'u';
+	if (par->bits > 9)
+		*p++ = '0' + par->bits / 10;
+	*p++ = '0' + par->bits % 10;
+	if (par->bps > 1) {
+		*p++ = par->le ? 'l' : 'b';
+		*p++ = 'e';
+		if (par->bps != APARAMS_BPS(par->bits) ||
+		    par->bits < par->bps * 8) {
+			*p++ = par->bps + '0';
+			if (par->bits < par->bps * 8) {
+				*p++ = par->msb ? 'm' : 'l';
+				*p++ = 's';
+				*p++ = 'b';
+			}
+		}
+	}
+	*p++ = '\0';
+	return p - ostr - 1;
+}
+
+/*
+ * Parse an encoding string, examples: s8, u8, s16, s16le, s24be ...
+ * set *istr to the char following the encoding. Return the number
+ * of bytes consumed.
+ */
+int
+aparams_strtoenc(struct aparams *par, char *istr)
+{
+	char *p = istr;
+	int i, sig, bits, le, bps, msb;
+
+#define IS_SEP(c)			\
+	(((c) < 'a' || (c) > 'z') &&	\
+	 ((c) < 'A' || (c) > 'Z') &&	\
+	 ((c) < '0' || (c) > '9'))
+
+	/*
+	 * get signedness
+	 */
+	if (*p == 's') {
+		sig = 1;
+	} else if (*p == 'u') {
+		sig = 0;
+	} else
+		return 0;
+	p++;
+
+	/*
+	 * get number of bits per sample
+	 */
+	bits = 0;
+	for (i = 0; i < 2; i++) {
+		if (*p < '0' || *p > '9')
+			break;
+		bits = (bits * 10) + *p - '0';
+		p++;
+	}
+	if (bits < BITS_MIN || bits > BITS_MAX)
+		return 0;
+	bps = APARAMS_BPS(bits);
+	msb = 1;
+	le = ADATA_LE;
+
+	/*
+	 * get (optional) endianness
+	 */
+	if (p[0] == 'l' && p[1] == 'e') {
+		le = 1;
+		p += 2;
+	} else if (p[0] == 'b' && p[1] == 'e') {
+		le = 0;
+		p += 2;
+	} else if (IS_SEP(*p)) {
+		goto done;
+	} else
+		return 0;
+
+	/*
+	 * get (optional) number of bytes
+	 */
+	if (*p >= '0' && *p <= '9') {
+		bps = *p - '0';
+		if (bps < (bits + 7) / 8 ||
+		    bps > (BITS_MAX + 7) / 8)
+			return 0;
+		p++;
+
+		/*
+		 * get (optional) alignement
+		 */
+		if (p[0] == 'm' && p[1] == 's' && p[2] == 'b') {
+			msb = 1;
+			p += 3;
+		} else if (p[0] == 'l' && p[1] == 's' && p[2] == 'b') {
+			msb = 0;
+			p += 3;
+		} else if (IS_SEP(*p)) {
+			goto done;
+		} else
+			return 0;
+	} else if (!IS_SEP(*p))
+		return 0;
+
+done:
+       	par->msb = msb;
+	par->sig = sig;
+	par->bits = bits;
+	par->bps = bps;
+	par->le = le;
+	return p - istr;
+}
+
+/*
+ * Initialise parameters structure with the defaults natively supported
+ * by the machine.
+ */
+void
+aparams_init(struct aparams *par)
+{
+	par->bps = sizeof(adata_t);
+	par->bits = ADATA_BITS;
+	par->le = ADATA_LE;
+	par->sig = 1;
+	par->msb = 0;
+}
+
+/*
+ * Print the format/channels/encoding on stderr.
+ */
+void
+aparams_log(struct aparams *par)
+{
+	char enc[ENCMAX];
+
+	aparams_enctostr(par, enc);
+	log_puts(enc);
+}
+
+/*
+ * Return true if encoding can be represented as adata_t
+ */
+int
+aparams_native(struct aparams *par)
+{
+	return par->bps == sizeof(adata_t) && par->bits == ADATA_BITS &&
+	    (par->bps > 1 || par->le == ADATA_LE) &&
+	    (par->bits < par->bps * 8 || !par->msb);
+}
 
 int
 resamp_do(struct resamp *p, adata_t *in, adata_t *out, int todo)

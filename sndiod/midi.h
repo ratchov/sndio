@@ -43,6 +43,11 @@
 #define MIDI_CTL_VOL	7		/* volume */
 
 /*
+ * Max coarse value
+ */
+#define MIDI_MAXCTL		127
+
+/*
  * midi stream state structure
  */
 

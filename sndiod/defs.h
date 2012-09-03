@@ -59,9 +59,12 @@ extern unsigned int log_level;
 #define XRUN_ERROR	2	/* xruns are errors, eof/hup buffer */
 
 /*
- * device types
+ * limits
  */
-#define TYPE_AUDIO	0
-#define TYPE_MIDI	1
+#define NCHAN_MAX	16		/* max channel in a stream */
+#define RATE_MIN	4000		/* min sample rate */
+#define RATE_MAX	192000		/* max sample rate */
+#define BITS_MIN	1		/* min bits per sample */
+#define BITS_MAX	32		/* max bits per sample */
 
 #endif /* !defined(DEFS_H) */
