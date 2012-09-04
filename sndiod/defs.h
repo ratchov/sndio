@@ -39,8 +39,8 @@ extern unsigned int log_level;
 #define MTC_SEC			2400	/* 1 second is 2400 ticks */
 
 /*
- * device or sub-device mode, must be a superset of corresponding SIO_XXX
- * and MIO_XXX constants
+ * device or sub-device mode, must be a superset of corresponding SIO_
+ * and MIO_ constants
  */
 #define MODE_PLAY	0x01	/* allowed to play */
 #define MODE_REC	0x02	/* allowed to rec */
@@ -52,7 +52,7 @@ extern unsigned int log_level;
 #define MODE_MIDIMASK	(MODE_MIDIIN | MODE_MIDIOUT)
 
 /*
- * underrun/overrun policies, must be the same as SIO_XXX
+ * underrun/overrun policies, must be the same as SIO_ constants
  */
 #define XRUN_IGNORE	0	/* on xrun silently insert/discard samples */
 #define XRUN_SYNC	1	/* catchup to sync to the mix/sub */
