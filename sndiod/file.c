@@ -440,14 +440,12 @@ filelist_init(void)
 	it.it_interval.tv_usec = TIMER_USEC;
 	it.it_value.tv_sec = 0;
 	it.it_value.tv_usec = TIMER_USEC;
-#if 0
 	if (setitimer(ITIMER_REAL, &it, NULL) < 0) {
 		perror("setitimer");
 		exit(1);
 	}
-#endif
 	timo_init();
-	//log_sync = 0;
+	log_sync = 0;
 }
 
 void
