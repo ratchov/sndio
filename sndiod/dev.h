@@ -56,8 +56,9 @@ struct slot {
 		struct cmap cmap;		/* channel mapper state */
 		struct resamp resamp;		/* resampler state */
 		struct conv dec;		/* format decoder params */
-		int join;			/* remix count */
-		int expand;			/* remix count */
+		int join;			/* channel join factor */
+		int expand;			/* channel expand factor */
+		void *resampbuf, *decbuf;	/* tmp buffers */
 	} mix;
 	struct {
 		int silence;			/* to add on next write */
@@ -67,8 +68,9 @@ struct slot {
 		struct cmap cmap;		/* channel mapper state */
 		struct resamp resamp;		/* buffer for resampling */
 		struct conv enc;		/* buffer for encoding */
-		int join;			/* remix count */
-		int expand;			/* remix count */
+		int join;			/* channel join factor */
+		int expand;			/* channel expand factor */
+		void *resampbuf, *encbuf;	/* tmp buffers */
 	} sub;
 	int xrun;				/* underrun policy */
 	int dup;				/* mono-to-stereo and alike */

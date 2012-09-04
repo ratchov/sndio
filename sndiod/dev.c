@@ -444,7 +444,7 @@ dev_midi_omsg(void *arg, unsigned char *msg, int len)
 				fps = 30;
 				break;
 			default:
-				/* XXX: should dev_mmcstop() here */
+				dev_mmcstop(d);
 				return;
 			}
 			dev_mmcloc(d,
@@ -509,8 +509,10 @@ slot_sub_sil(struct slot *s)
 			log_puts(": inserted a rec block of silence\n");
 		}
 #endif
-		/* XXX: this is not silence for all encodings */
-		memset(data, 0, s->round * s->sub.buf.bpf);
+		if (s->sub.encbuf)
+			enc_sil_do(&s->sub.enc, data, s->round);
+		else
+			memset(data, 0, s->round * s->sub.buf.bpf);
 		abuf_wcommit(&s->sub.buf, s->round);
 		s->sub.silence--;
 	}
@@ -531,10 +533,10 @@ play_filt_resamp(struct slot *s, void *res_in, void *out, int todo)
 	int i, offs, vol, nch;
 	void *in;
 
-	if (s->mix.resamp.data) {
+	if (s->mix.resampbuf) {
 		todo = resamp_do(&s->mix.resamp,
-		    res_in, s->mix.resamp.data, todo);
-		in = s->mix.resamp.data;
+		    res_in, s->mix.resampbuf, todo);
+		in = s->mix.resampbuf;
 	} else
 		in = res_in;
 
@@ -564,7 +566,7 @@ play_filt_dec(struct slot *s, void *in, void *out, int todo)
 {
 	void *tmp;
 
-	tmp = s->mix.dec.data;
+	tmp = s->mix.decbuf;
 	if (tmp)
 		dec_do(&s->mix.dec, in, tmp, todo);
 	return play_filt_resamp(s, tmp ? tmp : in, out, todo);
@@ -735,7 +737,7 @@ rec_filt_resamp(struct slot *s, void *in, void *res_out, int todo)
 	int i, vol, offs, nch;
 	void *out = res_out;
 
-	out = (s->sub.resamp.data) ? s->sub.resamp.data : res_out;
+	out = (s->sub.resampbuf) ? s->sub.resampbuf : res_out;
 
 	nch = s->sub.slot_cmax - s->sub.slot_cmin + 1;
 	vol = ADATA_UNIT / s->sub.join;
@@ -751,9 +753,9 @@ rec_filt_resamp(struct slot *s, void *in, void *res_out, int todo)
 		offs += nch;
 		cmap_copy(&s->sub.cmap, in, (adata_t *)out + offs, vol, todo);
 	}
-	if (s->sub.resamp.data) {
+	if (s->sub.resampbuf) {
 		todo = resamp_do(&s->sub.resamp,
-		    s->sub.resamp.data, res_out, todo);
+		    s->sub.resampbuf, res_out, todo);
 	}
 	return todo;
 }
@@ -763,7 +765,7 @@ rec_filt_enc(struct slot *s, void *in, void *out, int todo)
 {
 	void *tmp;
 
-	tmp = s->sub.enc.data;
+	tmp = s->sub.encbuf;
 	todo = rec_filt_resamp(s, in, tmp ? tmp : out, todo);
 	if (tmp)
 		enc_do(&s->sub.enc, tmp, out, todo);
@@ -1641,8 +1643,8 @@ slot_attach(struct slot *s)
 		round = dev_roundof(d, s->rate);
 		slot_nch = s->mix.slot_cmax - s->mix.slot_cmin + 1;
 		dev_nch = s->mix.dev_cmax - s->mix.dev_cmin + 1;
-		s->mix.dec.data = NULL;
-		s->mix.resamp.data = NULL;
+		s->mix.decbuf = NULL;
+		s->mix.resampbuf = NULL;
 		s->mix.join = 1;
 		s->mix.expand = 1;
 		if (s->dup) {
@@ -1658,12 +1660,12 @@ slot_attach(struct slot *s)
 		    s->mix.dev_cmin, s->mix.dev_cmax);
 		if (!aparams_native(&s->par)) {
 			dec_init(&s->mix.dec, &s->par, slot_nch);
-			s->mix.dec.data =
+			s->mix.decbuf =
 			    xmalloc(d->round * slot_nch * sizeof(adata_t));
 		}
 		if (s->rate != d->rate) {
 			resamp_init(&s->mix.resamp, s->round, d->round, slot_nch);
-			s->mix.resamp.data =
+			s->mix.resampbuf =
 			    xmalloc(d->round * slot_nch * sizeof(adata_t));
 		}
 #ifdef DEBUG
@@ -1696,8 +1698,8 @@ slot_attach(struct slot *s)
 		nblk = (d->bufsz / d->round + 3) / 4;
 		slot_nch = s->sub.slot_cmax - s->sub.slot_cmin + 1;
 		dev_nch = s->sub.dev_cmax - s->sub.dev_cmin + 1;
-		s->sub.enc.data = NULL;
-		s->sub.resamp.data = NULL;
+		s->sub.encbuf = NULL;
+		s->sub.resampbuf = NULL;
 		s->sub.join = 1;
 		s->sub.expand = 1;
 		if (s->dup) {
@@ -1714,12 +1716,12 @@ slot_attach(struct slot *s)
 		if (s->rate != d->rate) {
 			resamp_init(&s->sub.resamp, d->round, s->round,
 			    slot_nch);
-			s->sub.resamp.data =
+			s->sub.resampbuf =
 			    xmalloc(d->round * slot_nch * sizeof(adata_t));
 		}
 		if (!aparams_native(&s->par)) {
 			enc_init(&s->sub.enc, &s->par, slot_nch);
-			s->sub.enc.data =
+			s->sub.encbuf =
 			    xmalloc(d->round * slot_nch * sizeof(adata_t));
 		}
 		

@@ -111,7 +111,6 @@ struct aparams {
 };
 
 struct resamp {
-	void *data;
 #define RESAMP_NCTX	2
 	unsigned int ctx_start;
 	adata_t ctx[NCHAN_MAX * RESAMP_NCTX];
@@ -122,7 +121,6 @@ struct resamp {
 };
 
 struct conv {
-	void *data;
 	int bfirst;			/* bytes to skip at startup */
 	unsigned int bps;		/* bytes per sample */
 	unsigned int shift;		/* shift to get 32bit MSB */
