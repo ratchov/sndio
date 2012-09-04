@@ -96,7 +96,6 @@ struct slot {
 	unsigned int serial;			/* global unique number */
 	unsigned int vol;			/* current (midi) volume */
 	unsigned int tstate;			/* mmc state */
-	unsigned int midichan;			/* for volume messages */
 };
 
 /*

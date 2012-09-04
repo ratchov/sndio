@@ -295,7 +295,7 @@ dev_midi_vol(struct dev *d, struct slot *s)
 {
 	char msg[3];
 
-	msg[0] = MIDI_CTL | s->midichan;
+	msg[0] = MIDI_CTL | (s - d->slot);
 	msg[1] = MIDI_CTL_VOL;
 	msg[2] = s->vol;
 	midi_send(d->midi, msg, 3);
@@ -1501,7 +1501,6 @@ slot_new(struct dev *d, char *who, struct slotops *ops, void *arg, int mode)
 	strlcpy(s->name, name, SLOT_NAMEMAX);
 	s->serial = d->serial++;
 	s->unit = unit;
-	s->midichan = bestidx;
 #ifdef DEBUG
 	if (log_level >= 3) {
 		log_puts(name);
