@@ -221,8 +221,7 @@ file_new(struct fileops *ops, void *arg, char *name, unsigned int nfds)
 {
 	struct file *f;
 
-	file_nfds += nfds;
-	if (file_nfds > MAXFDS) {
+	if (file_nfds + nfds > MAXFDS) {
 #ifdef DEBUG
 		if (log_level >= 1) {
 			log_puts(name);
@@ -232,6 +231,7 @@ file_new(struct fileops *ops, void *arg, char *name, unsigned int nfds)
 		return NULL;
 	}
 	f = xmalloc(sizeof(struct file));
+	f->nfds = nfds;
 	f->ops = ops;
 	f->arg = arg;
 	f->name = name;
@@ -244,6 +244,7 @@ file_new(struct fileops *ops, void *arg, char *name, unsigned int nfds)
 		log_puts(": created\n");
 	}
 #endif
+	file_nfds += f->nfds;
 	return f;
 }
 
@@ -256,6 +257,7 @@ file_del(struct file *f)
 		panic();
 	}
 #endif	
+	file_nfds -= f->nfds;
 	f->state = FILE_ZOMB;
 #ifdef DEBUG
 	if (log_level >= 3) {
