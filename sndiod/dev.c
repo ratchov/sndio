@@ -865,13 +865,13 @@ void
 dev_onmove(struct dev *d, int delta)
 {
 	long long pos;
-	struct slot *s;
+	struct slot *s, *snext;
 
 	/*
-	 * XXX: - what about the start signal
-	 *      - can s->ops->onmove() reorder the list?
+	 * s->ops->onmove() may remove the slot
 	 */
-	for (s = d->slot_list; s != NULL; s = s->next) {
+	for (s = d->slot_list; s != NULL; s = snext) {
+		snext = s->next;
 		pos = (long long)delta * s->round + s->delta_rem;
 		s->delta_rem = pos % d->round;
 		s->delta += pos / (int)d->round;
@@ -1592,8 +1592,6 @@ slot_setvol(struct slot *s, unsigned int vol)
 	if (s->ops == NULL)
 		return;
 	s->mix.vol = MIDI_TO_ADATA(s->vol);
-	dev_mix_setmaster(s->dev);
-	dev_midi_vol(s->dev, s);
 }
 
 void
@@ -1812,8 +1810,6 @@ slot_start(struct slot *s)
 		abuf_init(&s->sub.buf, bufsz,
 		    s->par.bps * (s->sub.slot_cmax - s->sub.slot_cmin + 1));
 	}
-	/* XXX: maxweight should be set by the socket layer */
-	s->mix.maxweight = MIDI_TO_ADATA(MIDI_MAXCTL);
 	s->mix.weight = MIDI_TO_ADATA(MIDI_MAXCTL);
 #ifdef DEBUG
 	if (log_level >= 3) {

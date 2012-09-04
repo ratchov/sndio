@@ -933,6 +933,7 @@ sock_hello(struct sock *f)
 		s->xrun = XRUN_IGNORE;
 		s->tstate = MMC_OFF;
 	}
+	s->mix.maxweight = f->opt->maxweight;
 	s->dup = f->opt->dup;
 	/* XXX: must convert to slot rate */
 	f->pstate = SOCK_INIT;
@@ -1212,6 +1213,7 @@ sock_execmsg(struct sock *f)
 		f->rtodo = sizeof(struct amsg);
 		f->rstate = SOCK_RMSG;
 		f->lastvol = ctl; /* dont trigger feedback message */
+		dev_midi_vol(s->dev, s);
 		slot_setvol(s, ctl);
 		break;
 	case AMSG_AUTH:

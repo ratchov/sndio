@@ -94,7 +94,7 @@ struct slot {
 	char name[SLOT_NAMEMAX];		/* name matching [a-z]+ */
 	unsigned int unit;			/* instance of name */
 	unsigned int serial;			/* global unique number */
-	unsigned int vol;			/* saved midi volume */
+	unsigned int vol;			/* current (midi) volume */
 	unsigned int tstate;			/* mmc state */
 	unsigned int midichan;			/* for volume messages */
 };
@@ -208,12 +208,13 @@ void dev_onmove(struct dev *, int);
 void dev_cycle(struct dev *);
 
 /*
- * midi call-backs
+ * midi & midi call-backs
  */
 void dev_mmcstart(struct dev *);
 void dev_mmcstop(struct dev *);
 void dev_mmcloc(struct dev *, unsigned int);
 void dev_master(struct dev *, unsigned int);
+void dev_midi_vol(struct dev *, struct slot *);
 
 /*
  * sio_open(3) like interface for clients
