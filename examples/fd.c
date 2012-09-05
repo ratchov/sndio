@@ -180,10 +180,11 @@ usage(void)
 int
 main(int argc, char **argv)
 {
-	int ch, recfd, playfd, events, revents;
+	int ch, recfd, playfd, nfds, events, revents;
 	char *recpath, *playpath;
 	struct sio_hdl *hdl;
-	struct pollfd pfd;
+#define NFDS 10
+	struct pollfd pfd[NFDS];
 	struct timeval tv, otv, ntv;
 	unsigned mode, done;
 	
@@ -270,6 +271,10 @@ main(int argc, char **argv)
 		fprintf(stderr, "sio_open() failed\n");
 		exit(1);
 	}
+	if (sio_nfds(hdl) > NFDS) {
+		fprintf(stderr, "too many descriptors to poll\n");
+		exit(1);
+	}
 	sio_onmove(hdl, cb, NULL);
 	if (!sio_setpar(hdl, &par)) {
 		fprintf(stderr, "sio_setpar() failed\n");
@@ -322,14 +327,14 @@ main(int argc, char **argv)
 #endif
 		//fprintf(stderr, "%ld.%06ld: polling for %d\n",
 		//    tv.tv_sec, tv.tv_usec, events);
-		sio_pollfd(hdl, &pfd, events);
-		while (poll(&pfd, 1, 1000) < 0) {
+		nfds = sio_pollfd(hdl, pfd, events);
+		while (poll(pfd, nfds, 1000) < 0) {
 			if (errno == EINTR)
 				continue;
 			perror("poll");
 			exit(1);
 		}
-		revents = sio_revents(hdl, &pfd);
+		revents = sio_revents(hdl, pfd);
 		gettimeofday(&ntv, NULL);
 		timersub(&ntv, &otv, &tv);
 		//fprintf(stderr, "%ld.%06ld: got %d\n",
