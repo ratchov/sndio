@@ -902,6 +902,30 @@ sio_sun_revents(struct sio_hdl *sh, struct pollfd *pfd)
 
 	if (!hdl->sio.started)
 		return pfd->revents;
+	if ((revents & POLLOUT) && (hdl->sio.mode & SIO_PLAY)) {
+		if (ioctl(hdl->fd, AUDIO_GETOOFFS, &ao) < 0) {
+			DPERROR("sio_sun_revents: GETOOFFS");
+			hdl->sio.eof = 1;
+			return POLLHUP;
+		}
+		delta = (ao.samples - hdl->obytes) / hdl->obpf;
+		hdl->obytes = ao.samples;
+		hdl->odelta += delta;
+		if (!(hdl->sio.mode & SIO_REC))
+			hdl->idelta += delta;
+	}
+	if ((revents & POLLIN) && (hdl->sio.mode & SIO_REC)) {
+		if (ioctl(hdl->fd, AUDIO_GETIOFFS, &ao) < 0) {
+			DPERROR("sio_sun_revents: GETIOFFS");
+			hdl->sio.eof = 1;
+			return POLLHUP;
+		}
+		delta = (ao.samples - hdl->ibytes) / hdl->ibpf;
+		hdl->ibytes = ao.samples;
+		hdl->idelta += delta;
+		if (!(hdl->sio.mode & SIO_PLAY))
+			hdl->odelta += delta;
+	}
 	if (hdl->sio.mode & SIO_PLAY) {
 		if (ioctl(hdl->fd, AUDIO_PERROR, &xrun) < 0) {
 			DPERROR("sio_sun_revents: PERROR");
@@ -929,30 +953,6 @@ sio_sun_revents(struct sio_hdl *sh, struct pollfd *pfd)
 	hdl->idelta -= dmove;
 	hdl->odelta -= dmove;
 
-	if ((revents & POLLOUT) && (hdl->sio.mode & SIO_PLAY)) {
-		if (ioctl(hdl->fd, AUDIO_GETOOFFS, &ao) < 0) {
-			DPERROR("sio_sun_revents: GETOOFFS");
-			hdl->sio.eof = 1;
-			return POLLHUP;
-		}
-		delta = (ao.samples - hdl->obytes) / hdl->obpf;
-		hdl->obytes = ao.samples;
-		hdl->odelta += delta;
-		if (!(hdl->sio.mode & SIO_REC))
-			hdl->idelta += delta;
-	}
-	if ((revents & POLLIN) && (hdl->sio.mode & SIO_REC)) {
-		if (ioctl(hdl->fd, AUDIO_GETIOFFS, &ao) < 0) {
-			DPERROR("sio_sun_revents: GETIOFFS");
-			hdl->sio.eof = 1;
-			return POLLHUP;
-		}
-		delta = (ao.samples - hdl->ibytes) / hdl->ibpf;
-		hdl->ibytes = ao.samples;
-		hdl->idelta += delta;
-		if (!(hdl->sio.mode & SIO_PLAY))
-			hdl->odelta += delta;
-	}
 	delta = (hdl->idelta > hdl->odelta) ? hdl->idelta : hdl->odelta;
 	if (delta > 0) {
 		sio_onmove_cb(&hdl->sio, delta);
