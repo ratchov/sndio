@@ -1,13 +1,13 @@
 all:
 	cd libsndio && ${MAKE}
 	cd aucat && ${MAKE}
-	cd sndiod && ${MAKE}
+#	cd sndiod && ${MAKE}
 	cd examples && ${MAKE}
 
 install:
 	cd libsndio && ${MAKE} install
 	cd aucat && ${MAKE} install
-	cd sndiod && ${MAKE} install
+#	cd sndiod && ${MAKE} install
 
 uninstall:
 	cd libsndio && ${MAKE} uninstall
@@ -25,4 +25,3 @@ distclean:	clean
 		Makefile libsndio/Makefile \
 		aucat/Makefile sndiod/Makefile \
 		examples/Makefile
-
