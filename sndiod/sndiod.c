@@ -81,7 +81,7 @@
 #define DEFAULT_DEV "rsnd/0"
 #endif
 
-unsigned int log_level = 1;
+unsigned int log_level = 0;
 volatile sig_atomic_t quit_flag = 0;
 
 char usagestr[] = "usage: sndiod [-d] [-a flag] [-b nframes] "

@@ -877,12 +877,9 @@ sock_hello(struct sock *f)
 			d = dev_bynum(p->devnum);
 			if (d == NULL)
 				return 0;
-			if (mode & MODE_MIDIOUT)
-				f->midi->txmask = d->midi->rxmask;
-			if (mode & MODE_MIDIIN)
-				d->midi->txmask |= f->midi->rxmask;
+			midi_tag(f->midi, p->devnum);
 		} else if (p->devnum < 32) {
-			midi_tag(f->midi, p->devnum - 16);
+			midi_tag(f->midi, p->devnum);
 		} else
 			return 0;
 		return 1;

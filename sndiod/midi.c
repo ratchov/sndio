@@ -60,7 +60,7 @@ unsigned int midi_portnum = 0;
 
 struct midithru {
 	unsigned txmask;
-#define MIDITHRU_NMAX 16
+#define MIDITHRU_NMAX 32
 } midithru[MIDITHRU_NMAX];
 
 /*
@@ -214,10 +214,14 @@ midi_send(struct midi *iep, unsigned char *msg, int size)
 		if ((iep->txmask & (1 << i)) == 0)
 			continue;
 		oep = midi_ep + i;
-		if (msg[0] == SYSEX_START)
+		if (msg[0] <= 0x7f) {
+			/* data (sysex continuation) */
+			if (oep->owner != iep)
+				continue;
+		} else if (msg[0] <= 0xf7) {
+			/* new running status */
 			oep->owner = iep;
-		else if (oep->owner != iep)
-			continue;
+		}
 #ifdef DEBUG
 		if (log_level >= 4) {
 			midi_log(iep);

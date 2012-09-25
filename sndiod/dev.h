@@ -45,6 +45,9 @@ struct slot {
 	struct dev *dev;			/* device this belongs to */
 	void *arg;				/* user data for callbacks */
 	struct aparams par;			/* socket side params */
+#ifdef DEBUG
+	int delay;
+#endif
 	struct {
 		int weight;			/* dynamic range */	
 		int maxweight;			/* max dynamic range allowed */

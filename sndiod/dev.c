@@ -634,13 +634,14 @@ dev_mix_cycle(struct dev *d)
 			continue;
 		}
 #ifdef DEBUG
+		s->delay -= s->round;
 		if (log_level >= 4) {
 			slot_log(s);
 			log_puts(": mixing, drop = ");
 			log_puti(s->mix.drop);
 			log_puts(" cycles\n");
 		}
-#endif
+#endif		
 		slot_mix_drop(s);
 		if (s->mix.drop < 0) {
 			s->mix.drop++;
@@ -875,6 +876,9 @@ dev_onmove(struct dev *d, int delta)
 		pos = (long long)delta * s->round + s->delta_rem;
 		s->delta_rem = pos % d->round;
 		s->delta += pos / (int)d->round;
+#ifdef DEBUG
+		s->delay += pos / (int)d->round;
+#endif
 		if (s->delta >= 0)
 			s->ops->onmove(s->arg, delta);
 	}
@@ -960,6 +964,7 @@ dev_new(char *path, struct aparams *par,
 	d = xmalloc(sizeof(struct dev));
 	d->num = dev_sndnum++;
 	d->midi = midi_new(&dev_midiops, d, MODE_MIDIIN | MODE_MIDIOUT);
+	midi_tag(d->midi, d->num);
 	d->path = path;
 	d->reqpar = *par;
 	d->reqmode = mode;
@@ -1613,6 +1618,7 @@ slot_attach(struct slot *s)
 	s->delta_rem = 0;
 	s->pstate = SLOT_RUN;
 #ifdef DEBUG
+	s->delay = 0;
 	if (log_level >= 3) {
 		slot_log(s);
 		log_puts(": attached at ");

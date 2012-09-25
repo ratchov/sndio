@@ -38,6 +38,7 @@ struct siofile {
 #ifdef DEBUG
 	long long wtime, utime;
 	long long sum_wtime, sum_utime;
+	int delay;
 #endif
 	struct dev *dev;
 	struct file *file;
@@ -97,6 +98,16 @@ siofile_onmove(void *arg, int delta)
 	f->sum_wtime += file_wtime - f->wtime;
 	f->wtime = file_wtime;
 	f->utime = file_utime;
+	f->delay += delta;
+	if (f->delay > 0) {
+		siofile_log(f);
+		log_puts(": clock ahead of buffer: delay = ");
+		log_puti(f->delay);
+		log_puts(", bufsz = \n");
+		log_puti(f->dev->bufsz);
+		log_puts("\n");
+		panic();
+	}
 #endif
 	dev_onmove(f->dev, delta);
 }
@@ -165,7 +176,7 @@ siofile_play(struct siofile *f)
 	if (n == 0 && data == base && !sio_eof(f->hdl)) {
 		siofile_log(f);
 		log_puts(": write blocked at cycle start, sync error\n");
-		panic();
+		/* don't panic since playback might be ahead of recording */
 	}
 	if (log_level >= 4) {
 		siofile_log(f);
@@ -295,6 +306,7 @@ siofile_start(struct siofile *f)
 		f->todo = d->round * d->rchan * d->par.bps;
 	}
 #ifdef DEBUG
+	f->delay = 0;
 	f->sum_utime = 0;
 	f->sum_wtime = 0;
 	f->wtime = file_wtime;
@@ -368,6 +380,9 @@ siofile_run(void *arg)
 			f->state = STATE_CYCLE;
 			break;
 		case STATE_CYCLE:
+#ifdef DEBUG
+			f->delay -= d->round;
+#endif
 			dev_cycle(d);
 			if (d->mode & MODE_PLAY) {
 				f->state = STATE_PLAY;
