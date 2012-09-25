@@ -1728,8 +1728,4 @@ dev_master(struct dev *d, unsigned int master)
 		d->mix->u.mix.master = MIDI_TO_ADATA(master);
 		mix_setmaster(d->mix);
 	}
-	if (APROC_OK(d->midi)) {
-		midi_send_master(d->midi);
-		midi_flush(d->midi);
-	}
 }
