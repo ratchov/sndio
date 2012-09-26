@@ -1121,8 +1121,9 @@ sio_alsa_revents(struct sio_hdl *sh, struct pollfd *pfd)
 		while (hdl->odelta > 0) {
 #ifdef DEBUG
 			hdl->realpos += hdl->odelta;
+			if (sndio_debug)
+				sio_alsa_printpos(hdl, hdl->odelta);
 #endif
-			sio_alsa_printpos(hdl, hdl->odelta);
 			sio_onmove_cb(&hdl->sio, hdl->odelta);
 			hdl->odelta = 0;
 		}
@@ -1141,8 +1142,9 @@ sio_alsa_revents(struct sio_hdl *sh, struct pollfd *pfd)
 		if (hdl->idelta > 0) {
 #ifdef DEBUG
 			hdl->realpos += hdl->idelta;
+			if (sndio_debug)
+				sio_onmove_cb(&hdl->sio, hdl->idelta);
 #endif
-			sio_onmove_cb(&hdl->sio, hdl->idelta);
 			hdl->idelta = 0;
 		}
 	}
