@@ -373,10 +373,14 @@ sio_alsa_start(struct sio_hdl *sh)
 			return 0;
 		}
 	}
-	if (hdl->sio.mode & SIO_REC)
-		snd_pcm_dump(hdl->ipcm, output);
-	if (hdl->sio.mode & SIO_PLAY)
-		snd_pcm_dump(hdl->opcm, output);
+#ifdef DEBUG
+	if (sndio_debug > 1) {
+		if (hdl->sio.mode & SIO_REC)
+			snd_pcm_dump(hdl->ipcm, output);
+		if (hdl->sio.mode & SIO_PLAY)
+			snd_pcm_dump(hdl->opcm, output);
+	}
+#endif
 	return 1;
 }
 
