@@ -56,7 +56,7 @@ struct sio_alsa_hdl {
 	int nfds, infds, onfds;
 	int running;
 #ifdef DEBUG
-	long long writepos, readpos, realpos;
+	long long wpos, rpos, cpos;
 #endif
 };
 
@@ -318,6 +318,41 @@ sio_alsa_close(struct sio_hdl *sh)
 	free(hdl);
 }
 
+#ifdef DEBUG
+void
+sio_alsa_printpos(struct sio_alsa_hdl *hdl, int delta)
+{	
+	long long rpos, rdiff;
+	long long cpos, cdiff;
+	long long wpos, wdiff;
+
+	cdiff = hdl->cpos % hdl->par.round;
+	cpos  = hdl->cpos / hdl->par.round;
+	if (cdiff > hdl->par.round / 2) {
+		cpos++;
+		cdiff = cdiff - hdl->par.round;
+	}
+
+	rdiff = hdl->rpos % hdl->par.round;
+	rpos  = hdl->rpos / hdl->par.round;
+	if (rdiff > hdl->par.round / 2) {
+		rpos++;
+		rdiff = rdiff - hdl->par.round;
+	}
+
+	wdiff = hdl->wpos % hdl->par.round;
+	wpos  = hdl->wpos / hdl->par.round;
+	if (wdiff > hdl->par.round / 2) {
+		wpos++;
+		wdiff = wdiff - hdl->par.round;
+	}
+
+	fprintf(stderr,
+	    "clk: %+4lld %+4lld, wr %+4lld %+4lld rd: %+4lld %+4lld\n",
+	    cpos, cdiff, wpos, wdiff, rpos, rdiff);
+}
+#endif
+
 static int
 sio_alsa_start(struct sio_hdl *sh)
 {
@@ -338,7 +373,7 @@ sio_alsa_start(struct sio_hdl *sh)
 	hdl->idrop = 0;
 	hdl->running = 0;
 #ifdef DEBUG
-	hdl->realpos = hdl->readpos = hdl->writepos = 0;
+	hdl->cpos = hdl->rpos = hdl->wpos = 0;
 #endif
 
 	if (hdl->sio.mode & SIO_PLAY) {
@@ -374,7 +409,7 @@ sio_alsa_start(struct sio_hdl *sh)
 		}
 	}
 #ifdef DEBUG
-	if (sndio_debug > 1) {
+	if (sndio_debug) {
 		if (hdl->sio.mode & SIO_REC)
 			snd_pcm_dump(hdl->ipcm, output);
 		if (hdl->sio.mode & SIO_PLAY)
@@ -415,6 +450,73 @@ sio_alsa_stop(struct sio_hdl *sh)
 		}
 	}
 	DPRINTF("stopped");
+	return 1;
+}
+
+static int
+sio_alsa_xrun(struct sio_alsa_hdl *hdl)
+{
+	long long _wpos, _rpos, _cpos;
+	int wdiff, rdiff, cdiff;
+
+	fprintf(stderr, "xrun: idelta = %d, odelta = %d\n", hdl->idelta, hdl->odelta);
+	fprintf(stderr, "xrun: stop ");
+	sio_alsa_printpos(hdl, 0);
+
+	cdiff = hdl->par.round - (hdl->cpos % hdl->par.round);
+	if (cdiff == hdl->par.round)
+		cdiff = 0;
+	if (hdl->sio.mode & SIO_PLAY) {
+		hdl->odelta += cdiff;
+		if (hdl->odelta) {
+			fprintf(stderr, "xrun: advancing by %d\n", hdl->odelta);
+			hdl->cpos += hdl->odelta;
+			sio_onmove_cb(&hdl->sio, hdl->odelta);
+			hdl->odelta = 0;
+		}
+	} else {
+		hdl->idelta += cdiff;
+		if (hdl->idelta) {
+			fprintf(stderr, "xrun: advancing by %d\n", hdl->idelta);
+			hdl->cpos += hdl->idelta;
+			sio_onmove_cb(&hdl->sio, hdl->idelta);
+			hdl->idelta = 0;
+		}
+	}
+
+	fprintf(stderr, "xrun: tick ");
+	sio_alsa_printpos(hdl, 0);
+	
+	if (hdl->sio.mode & SIO_PLAY) {
+		wdiff = hdl->wpos - hdl->cpos;
+	} else {
+		/* XXX */
+	}
+
+	_wpos = hdl->wpos;
+	_rpos = hdl->rpos;
+	_cpos = hdl->cpos;
+	if (!sio_alsa_stop(&hdl->sio))
+		return 0;
+	if (!sio_alsa_start(&hdl->sio))
+		return 0;
+	hdl->running = 1;
+
+	if (hdl->sio.mode & SIO_PLAY) {
+		fprintf(stderr, "xrun: inserting silence: %d\n", wdiff);
+		hdl->osil = wdiff;
+		if (hdl->sio.mode & SIO_REC) {
+			hdl->idrop = wdiff;
+			hdl->osil += _wpos - _rpos;
+			/* XXX */
+		}
+		hdl->cpos -= hdl->odelta; 
+	} else {
+		/* XXX */
+	}
+	fprintf(stderr, "xrun: osil = %d, idrop = %d\n", hdl->osil, hdl->idrop);
+	fprintf(stderr, "xrun: corr ");
+	sio_alsa_printpos(hdl, 0);
 	return 1;
 }
 
@@ -841,6 +943,8 @@ sio_alsa_rdrop(struct sio_alsa_hdl *hdl)
 		while ((n = snd_pcm_readi(hdl->ipcm, buf, todo)) < 0) {
 			if (n == -EINTR)
 				continue;
+			if (n == -EPIPE && sio_alsa_xrun(hdl))
+				continue;
 			if (n != -EAGAIN) {
 				DALSA("couldn't read data to drop", n);
 				hdl->sio.eof = 1;
@@ -853,6 +957,9 @@ sio_alsa_rdrop(struct sio_alsa_hdl *hdl)
 			return 0;
 		}
 		hdl->idrop -= n;
+#ifdef DEBUG
+		hdl->rpos += n;
+#endif
 		DPRINTF("sio_alsa_rdrop: dropped %ld/%ld frames\n", n, todo);
 	}
 	return 1;
@@ -869,8 +976,8 @@ sio_alsa_read(struct sio_hdl *sh, void *buf, size_t len)
 	while ((n = snd_pcm_readi(hdl->ipcm, buf, todo)) < 0) {
 		if (n == -EINTR)
 			continue;
-		//if (n == -ESTRPIPE)
-		//	continue;
+		if (n == -EPIPE && sio_alsa_xrun(hdl))
+			continue;
 		if (n != -EAGAIN) {
 			DALSA("couldn't read data", n);
 			hdl->sio.eof = 1;
@@ -883,7 +990,7 @@ sio_alsa_read(struct sio_hdl *sh, void *buf, size_t len)
 		return 0;
 	}
 #ifdef DEBUG
-	hdl->readpos += n;
+	hdl->rpos += n;
 #endif
 	hdl->idelta += n;
 	n *= hdl->ibpf;
@@ -908,12 +1015,17 @@ sio_alsa_wsil(struct sio_alsa_hdl *hdl)
 		while ((n = snd_pcm_writei(hdl->opcm, zero, todo)) < 0) {
 			if (n == -EINTR)
 				continue;
+			if (n == -ESTRPIPE && sio_alsa_xrun(hdl))
+				continue;
 			if (n != -EAGAIN) {
 				DALSA("couldn't write silence", n);
 				hdl->sio.eof = 1;
 			}
 			return 0;
 		}
+#ifdef DEBUG
+		hdl->wpos += n;
+#endif
 		hdl->osil -= n;
 		DPRINTF("sio_alsa_wsil: inserted %ld/%ld frames\n", n, todo);
 	}
@@ -943,6 +1055,8 @@ sio_alsa_write(struct sio_hdl *sh, const void *buf, size_t len)
 	while ((n = snd_pcm_writei(hdl->opcm, buf, todo)) < 0) {
 		if (n == -EINTR)
 			continue;
+		if ((n == -ESTRPIPE || n == -EPIPE) && sio_alsa_xrun(hdl))
+			continue;
 		if (n != -EAGAIN) {
 			DALSA("couldn't write data", n);
 			hdl->sio.eof = 1;
@@ -951,7 +1065,7 @@ sio_alsa_write(struct sio_hdl *sh, const void *buf, size_t len)
 	}
 	DPRINTF("wrote %zd\n", n);
 #ifdef DEBUG
-	hdl->writepos += n;
+	hdl->wpos += n;
 #endif
 	hdl->odelta += n;
 	n *= hdl->obpf;
@@ -973,10 +1087,6 @@ sio_alsa_pollfd(struct sio_hdl *sh, struct pollfd *pfd, int events)
 
 	if (hdl->sio.eof)
 		return 0;
-
-	DPRINTF("sio_alsa_pollfd: count = %d, nfds = %d\n", 
-	    snd_pcm_poll_descriptors_count(hdl->opcm),
-	    hdl->nfds);
 
 	memset(pfd, 0, sizeof(struct pollfd) * hdl->nfds);
 	if ((hdl->sio.mode & SIO_PLAY) && hdl->sio.started) {
@@ -1020,41 +1130,6 @@ sio_alsa_pollfd(struct sio_hdl *sh, struct pollfd *pfd, int events)
 	return hdl->onfds + hdl->infds;
 }
 
-#ifdef DEBUG
-void
-sio_alsa_printpos(struct sio_alsa_hdl *hdl, int delta)
-{	
-	long long rpos, rdiff;
-	long long cpos, cdiff;
-	long long wpos, wdiff;
-
-	cdiff = hdl->realpos % hdl->par.round;
-	cpos  = hdl->realpos / hdl->par.round;
-	if (cdiff > hdl->par.round / 2) {
-		cpos++;
-		cdiff = cdiff - hdl->par.round;
-	}
-
-	rdiff = hdl->readpos % hdl->par.round;
-	rpos  = hdl->readpos / hdl->par.round;
-	if (rdiff > hdl->par.round / 2) {
-		rpos++;
-		rdiff = rdiff - hdl->par.round;
-	}
-
-	wdiff = hdl->writepos % hdl->par.round;
-	wpos  = hdl->writepos / hdl->par.round;
-	if (wdiff > hdl->par.round / 2) {
-		wpos++;
-		wdiff = wdiff - hdl->par.round;
-	}
-
-	fprintf(stderr,
-	    "clk: %+4lld %+4lld, wr %+4lld %+4lld rd: %+4lld %+4lld\n",
-	    cpos, cdiff, wpos, wdiff, rpos, rdiff);
-}
-#endif
-
 int
 sio_alsa_revents(struct sio_hdl *sh, struct pollfd *pfd)
 {
@@ -1080,9 +1155,9 @@ sio_alsa_revents(struct sio_hdl *sh, struct pollfd *pfd)
 	if (hdl->sio.mode & SIO_PLAY) {
 		ostate = snd_pcm_state(hdl->opcm);
 		if (ostate == SND_PCM_STATE_XRUN) {
-			fprintf(stderr, "sio_alsa_revents: play xrun\n");
-			hdl->sio.eof = 1;
-			return POLLHUP;
+			if (!sio_alsa_xrun(hdl))
+				return POLLHUP;
+			return 0;
 		}
 		err = snd_pcm_poll_descriptors_revents(hdl->opcm, pfd, hdl->onfds, &r);
 		if (err < 0) {
@@ -1115,6 +1190,11 @@ sio_alsa_revents(struct sio_hdl *sh, struct pollfd *pfd)
 	     ostate == SND_PCM_STATE_PREPARED)) {
 		oavail = snd_pcm_avail_update(hdl->opcm);
 		if (oavail < 0) {
+			if (oavail == -EPIPE) {
+				if (!sio_alsa_xrun(hdl))
+					return POLLHUP;
+				return 0;
+			}
 			DALSA("couldn't get play buffer pointer", oavail);
 			hdl->sio.eof = 1;
 			return POLLHUP;
@@ -1124,7 +1204,7 @@ sio_alsa_revents(struct sio_hdl *sh, struct pollfd *pfd)
 		hdl->oused = oused;
 		while (hdl->odelta > 0) {
 #ifdef DEBUG
-			hdl->realpos += hdl->odelta;
+			hdl->cpos += hdl->odelta;
 			if (sndio_debug)
 				sio_alsa_printpos(hdl, hdl->odelta);
 #endif
@@ -1137,6 +1217,11 @@ sio_alsa_revents(struct sio_hdl *sh, struct pollfd *pfd)
 	     istate == SND_PCM_STATE_PREPARED)) {
 		iused = snd_pcm_avail_update(hdl->ipcm);
 		if (iused < 0) {
+			if (iused == -EPIPE) {
+				if (!sio_alsa_xrun(hdl))
+					return POLLHUP;
+				return 0;
+			}
 			DALSA("couldn't get rec buffer pointer", iused);
 			hdl->sio.eof = 1;
 			return POLLHUP;
@@ -1145,7 +1230,7 @@ sio_alsa_revents(struct sio_hdl *sh, struct pollfd *pfd)
 		hdl->iused = iused;
 		if (hdl->idelta > 0) {
 #ifdef DEBUG
-			hdl->realpos += hdl->idelta;
+			hdl->cpos += hdl->idelta;
 			if (sndio_debug)
 				sio_onmove_cb(&hdl->sio, hdl->idelta);
 #endif
