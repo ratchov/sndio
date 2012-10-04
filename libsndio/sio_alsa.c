@@ -456,32 +456,17 @@ sio_alsa_stop(struct sio_hdl *sh)
 static int
 sio_alsa_xrun(struct sio_alsa_hdl *hdl)
 {
-	long long _wpos, _rpos, _cpos;
-	int wdiff, rdiff, cdiff;
+	int wdiff, cdiff, rdiff, offs;
 
-	fprintf(stderr, "xrun: idelta = %d, odelta = %d\n", hdl->idelta, hdl->odelta);
 	fprintf(stderr, "xrun: stop ");
 	sio_alsa_printpos(hdl, 0);
 
 	cdiff = hdl->par.round - (hdl->cpos % hdl->par.round);
 	if (cdiff == hdl->par.round)
 		cdiff = 0;
-	if (hdl->sio.mode & SIO_PLAY) {
-		hdl->odelta += cdiff;
-		if (hdl->odelta) {
-			fprintf(stderr, "xrun: advancing by %d\n", hdl->odelta);
-			hdl->cpos += hdl->odelta;
-			sio_onmove_cb(&hdl->sio, hdl->odelta);
-			hdl->odelta = 0;
-		}
-	} else {
-		hdl->idelta += cdiff;
-		if (hdl->idelta) {
-			fprintf(stderr, "xrun: advancing by %d\n", hdl->idelta);
-			hdl->cpos += hdl->idelta;
-			sio_onmove_cb(&hdl->sio, hdl->idelta);
-			hdl->idelta = 0;
-		}
+	if (cdiff > 0) {
+		hdl->cpos += cdiff;
+		sio_onmove_cb(&hdl->sio, cdiff);
 	}
 
 	fprintf(stderr, "xrun: tick ");
@@ -489,13 +474,12 @@ sio_alsa_xrun(struct sio_alsa_hdl *hdl)
 	
 	if (hdl->sio.mode & SIO_PLAY) {
 		wdiff = hdl->wpos - hdl->cpos;
+		if (hdl->sio.mode & SIO_REC)
+			offs = hdl->wpos - hdl->rpos;
 	} else {
-		/* XXX */
+		rdiff = hdl->par.bufsz - (hdl->cpos - hdl->rpos);
 	}
 
-	_wpos = hdl->wpos;
-	_rpos = hdl->rpos;
-	_cpos = hdl->cpos;
 	if (!sio_alsa_stop(&hdl->sio))
 		return 0;
 	if (!sio_alsa_start(&hdl->sio))
@@ -503,16 +487,25 @@ sio_alsa_xrun(struct sio_alsa_hdl *hdl)
 	hdl->running = 1;
 
 	if (hdl->sio.mode & SIO_PLAY) {
+		if (hdl->sio.mode & SIO_REC) {
+			while (wdiff < offs) {
+				wdiff += hdl->par.round;
+				hdl->odelta -= hdl->par.round;
+				hdl->cpos += hdl->par.round;
+			}
+		}
 		fprintf(stderr, "xrun: inserting silence: %d\n", wdiff);
 		hdl->osil = wdiff;
-		if (hdl->sio.mode & SIO_REC) {
-			hdl->idrop = wdiff;
-			hdl->osil += _wpos - _rpos;
-			/* XXX */
-		}
-		hdl->cpos -= hdl->odelta; 
+		if (hdl->sio.mode & SIO_REC)
+			hdl->idrop = wdiff - offs;
 	} else {
-		/* XXX */
+		while (rdiff > (int)hdl->par.bufsz) {
+			rdiff -= hdl->par.round;
+			hdl->idelta -= hdl->par.round;
+			hdl->cpos += hdl->par.round;
+		}
+		fprintf(stderr, "xrun: dropping: %d\n", rdiff);
+		hdl->idrop = rdiff;
 	}
 	fprintf(stderr, "xrun: osil = %d, idrop = %d\n", hdl->osil, hdl->idrop);
 	fprintf(stderr, "xrun: corr ");
@@ -960,6 +953,7 @@ sio_alsa_rdrop(struct sio_alsa_hdl *hdl)
 #ifdef DEBUG
 		hdl->rpos += n;
 #endif
+		hdl->idelta += n;
 		DPRINTF("sio_alsa_rdrop: dropped %ld/%ld frames\n", n, todo);
 	}
 	return 1;
@@ -1026,6 +1020,7 @@ sio_alsa_wsil(struct sio_alsa_hdl *hdl)
 #ifdef DEBUG
 		hdl->wpos += n;
 #endif
+		hdl->odelta += n;
 		hdl->osil -= n;
 		DPRINTF("sio_alsa_wsil: inserted %ld/%ld frames\n", n, todo);
 	}
@@ -1171,9 +1166,9 @@ sio_alsa_revents(struct sio_hdl *sh, struct pollfd *pfd)
 	if (hdl->sio.mode & SIO_REC) {
 		istate = snd_pcm_state(hdl->ipcm);
 		if (istate == SND_PCM_STATE_XRUN) {
-			fprintf(stderr, "sio_alsa_revents: record xrun\n");
-			hdl->sio.eof = 1;
-			return POLLHUP;
+			if (!sio_alsa_xrun(hdl))
+				return POLLHUP;
+			return 0;
 		}
 		err = snd_pcm_poll_descriptors_revents(hdl->ipcm, pfd + nfds, hdl->infds, &r);
 		if (err < 0) {
