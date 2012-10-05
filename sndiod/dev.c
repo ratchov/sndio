@@ -702,6 +702,8 @@ dev_mix_setmaster(struct dev *d)
 	int weight;
 
 	for (i = d->slot_list; i != NULL; i = i->next) {
+		if (!(i->mode & MODE_PLAY))
+			continue;
 		weight = ADATA_UNIT;
 		if (d->autovol) {
 			/*
@@ -710,11 +712,12 @@ dev_mix_setmaster(struct dev *d)
 			 */
 			n = 0;
 			for (j = d->slot_list; j != NULL; j = j->next) {
+				if (!(j->mode & MODE_PLAY))
+					continue;
 				if (i->mix.slot_cmin <= j->mix.slot_cmax &&
 				    i->mix.slot_cmax >= j->mix.slot_cmin)
 					n++;
 			}
-			weight /= n;
 		}
 		if (weight > i->mix.maxweight)
 			weight = i->mix.maxweight;
@@ -942,7 +945,7 @@ dev_cycle(struct dev *d)
 int
 dev_getpos(struct dev *d)
 {
-	return -(d->bufsz - d->prime);
+	return (d->mode & MODE_PLAY) ? -(d->bufsz - d->prime) : 0;
 }
 
 /*
@@ -1602,7 +1605,7 @@ void
 slot_attach(struct slot *s)
 {
 	struct dev *d = s->dev;
-	unsigned int round, nblk, slot_nch, dev_nch;
+	unsigned int slot_nch, dev_nch;
 
 	/*
 	 * start the device if not started
@@ -1642,8 +1645,6 @@ slot_attach(struct slot *s)
 	s->next = d->slot_list;
 	d->slot_list = s;
 	if (s->mode & MODE_PLAY) {
-		nblk = (d->bufsz / d->round + 3) / 4;
-		round = dev_roundof(d, s->rate);
 		slot_nch = s->mix.slot_cmax - s->mix.slot_cmin + 1;
 		dev_nch = s->mix.dev_cmax - s->mix.dev_cmin + 1;
 		s->mix.decbuf = NULL;
@@ -1667,7 +1668,8 @@ slot_attach(struct slot *s)
 			    xmalloc(d->round * slot_nch * sizeof(adata_t));
 		}
 		if (s->rate != d->rate) {
-			resamp_init(&s->mix.resamp, s->round, d->round, slot_nch);
+			resamp_init(&s->mix.resamp, s->round, d->round,
+			    slot_nch);
 			s->mix.resampbuf =
 			    xmalloc(d->round * slot_nch * sizeof(adata_t));
 		}
@@ -1697,8 +1699,6 @@ slot_attach(struct slot *s)
 		dev_mix_setmaster(d);
 	}
 	if (s->mode & MODE_RECMASK) {
-		round = dev_roundof(d, s->rate);
-		nblk = (d->bufsz / d->round + 3) / 4;
 		slot_nch = s->sub.slot_cmax - s->sub.slot_cmin + 1;
 		dev_nch = s->sub.dev_cmax - s->sub.dev_cmin + 1;
 		s->sub.encbuf = NULL;
