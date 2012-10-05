@@ -348,8 +348,7 @@ sio_alsa_printpos(struct sio_alsa_hdl *hdl, int delta)
 		wdiff = wdiff - hdl->par.round;
 	}
 
-	DPRINTFN(2,
-	    "clk: %+4lld %+4lld, wr %+4lld %+4lld rd: %+4lld %+4lld\n",
+	DPRINTF("clk: %+4lld %+4lld, wr %+4lld %+4lld rd: %+4lld %+4lld\n",
 	    cpos, cdiff, wpos, wdiff, rpos, rdiff);
 }
 #endif
@@ -409,14 +408,6 @@ sio_alsa_start(struct sio_hdl *sh)
 			return 0;
 		}
 	}
-#ifdef DEBUG
-	if (sndio_debug) {
-		if (hdl->sio.mode & SIO_REC)
-			snd_pcm_dump(hdl->ipcm, output);
-		if (hdl->sio.mode & SIO_PLAY)
-			snd_pcm_dump(hdl->opcm, output);
-	}
-#endif
 	return 1;
 }
 
@@ -921,7 +912,14 @@ sio_alsa_setpar(struct sio_hdl *sh, struct sio_par *par)
 			return 0;
 		}
 	}
-	DPRINTF("sio_alsa_setpar: done\n");
+#ifdef DEBUG
+	if (sndio_debug) {
+		if (hdl->sio.mode & SIO_REC)
+			snd_pcm_dump(hdl->ipcm, output);
+		if (hdl->sio.mode & SIO_PLAY)
+			snd_pcm_dump(hdl->opcm, output);
+	}
+#endif
 	return 1;
 }
 
@@ -1232,10 +1230,11 @@ sio_alsa_revents(struct sio_hdl *sh, struct pollfd *pfd)
 			hdl->iused = iused;
 		}
 		delta = hdl->odelta > hdl->idelta ? hdl->odelta : hdl->idelta;
+		//delta = hdl->odelta;
 		if (delta > 0) {
 #ifdef DEBUG
 			hdl->cpos += delta;
-			if (sndio_debug)
+			if (sndio_debug >= 2)
 				sio_alsa_printpos(hdl, delta);
 #endif
 			sio_onmove_cb(&hdl->sio, delta);
