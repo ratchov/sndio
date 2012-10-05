@@ -215,13 +215,10 @@ midi_send(struct midi *iep, unsigned char *msg, int size)
 			continue;
 		oep = midi_ep + i;
 		if (msg[0] <= 0x7f) {
-			/* data (sysex continuation) */
 			if (oep->owner != iep)
 				continue;
-		} else if (msg[0] <= 0xf7) {
-			/* new running status */
+		} else if (msg[0] <= 0xf7)
 			oep->owner = iep;
-		}
 #ifdef DEBUG
 		if (log_level >= 4) {
 			midi_log(iep);
