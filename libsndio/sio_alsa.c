@@ -55,6 +55,7 @@ struct sio_alsa_hdl {
 	int idelta, odelta;		/* position reported to client */
 	int nfds, infds, onfds;
 	int running;
+	int events;
 #ifdef DEBUG
 	long long wpos, rpos, cpos;
 #endif
@@ -1079,12 +1080,14 @@ static int
 sio_alsa_pollfd(struct sio_hdl *sh, struct pollfd *pfd, int events)
 {
 	struct sio_alsa_hdl *hdl = (struct sio_alsa_hdl *)sh;
+	int i;
 
 	if (hdl->sio.eof)
 		return 0;
 
+	hdl->events = events;
 	memset(pfd, 0, sizeof(struct pollfd) * hdl->nfds);
-	if ((hdl->sio.mode & SIO_PLAY) && hdl->sio.started) {
+	if ((events & POLLOUT) && (hdl->sio.mode & SIO_PLAY) && hdl->sio.started) {
 		if (!hdl->running &&
 		    snd_pcm_state(hdl->opcm) == SND_PCM_STATE_RUNNING) {
 			hdl->running = 1;
@@ -1099,7 +1102,7 @@ sio_alsa_pollfd(struct sio_hdl *sh, struct pollfd *pfd, int events)
 		}
 	} else
 		hdl->onfds = 0;
-	if ((hdl->sio.mode & SIO_REC) && hdl->sio.started) {
+	if ((events & POLLIN) && (hdl->sio.mode & SIO_REC) && hdl->sio.started) {
 		if (!hdl->running &&
 		    snd_pcm_state(hdl->ipcm) == SND_PCM_STATE_RUNNING) {
 			hdl->running = 1;
@@ -1134,20 +1137,19 @@ sio_alsa_revents(struct sio_hdl *sh, struct pollfd *pfd)
 	int nfds;
 	unsigned short revents, r;
 	int err;
-
-	if (hdl->sio.eof)
-		return POLLHUP;
-#if 0
-	int i
+#if 1
+	int i;
 
 	for (i = 0; i < hdl->onfds + hdl->infds; i++) {
 		DPRINTF("sio_alsa_revents: pfds[%d].events = %x\n",
 		    i, pfd[i].revents);
 	}
 #endif
+	if (hdl->sio.eof)
+		return POLLHUP;
 
 	revents = nfds = 0;
-	if (hdl->sio.mode & SIO_PLAY) {
+	if ((hdl->events & POLLOUT) && (hdl->sio.mode & SIO_PLAY)) {
 		ostate = snd_pcm_state(hdl->opcm);
 		if (ostate == SND_PCM_STATE_XRUN) {
 			if (!sio_alsa_xrun(hdl))
@@ -1163,7 +1165,7 @@ sio_alsa_revents(struct sio_hdl *sh, struct pollfd *pfd)
 		revents |= r;
 		nfds += hdl->onfds;
 	}
-	if (hdl->sio.mode & SIO_REC) {
+	if ((hdl->events & POLLIN) && (hdl->sio.mode & SIO_REC)) {
 		istate = snd_pcm_state(hdl->ipcm);
 		if (istate == SND_PCM_STATE_XRUN) {
 			if (!sio_alsa_xrun(hdl))
@@ -1221,14 +1223,16 @@ sio_alsa_revents(struct sio_hdl *sh, struct pollfd *pfd)
 			hdl->sio.eof = 1;
 			return POLLHUP;
 		}
+		//fprintf(stderr, "iused = %d -> %d, idelta = %d\n", hdl->iused, iused, hdl->idelta);
 		hdl->idelta += iused - hdl->iused;
 		hdl->iused = iused;
 		if (hdl->idelta > 0) {
 #ifdef DEBUG
 			hdl->cpos += hdl->idelta;
 			if (sndio_debug)
-				sio_onmove_cb(&hdl->sio, hdl->idelta);
+				sio_alsa_printpos(hdl, hdl->odelta);
 #endif
+			sio_onmove_cb(&hdl->sio, hdl->idelta);
 			hdl->idelta = 0;
 		}
 	}
