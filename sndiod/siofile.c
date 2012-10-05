@@ -374,7 +374,9 @@ siofile_run(void *arg)
 #ifdef DEBUG
 			if (!(f->events & POLLIN)) {
 				siofile_log(f);
-				log_puts(": recording, but POLLIN not set\n");
+				log_puts(": recording, but POLLIN not set: ");
+				log_putx(f->events);
+				log_puts("\n");
 				panic();
 			}
 			if (f->rused < d->round) {
