@@ -1132,7 +1132,7 @@ sio_alsa_pollfd(struct sio_hdl *sh, struct pollfd *pfd, int events)
 		}
 	} else
 		hdl->infds = 0;
-	DPRINTF("sio_alsa_pollfd: events = %x, nfds = %d + %d\n",
+	DPRINTFN(2, "sio_alsa_pollfd: events = %x, nfds = %d + %d\n",
 	    events, hdl->onfds, hdl->infds);
 
 	for (i = 0; i < hdl->onfds + hdl->infds; i++) {
