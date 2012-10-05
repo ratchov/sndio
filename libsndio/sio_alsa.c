@@ -522,7 +522,7 @@ sio_alsa_setpar(struct sio_hdl *sh, struct sio_par *par)
 	snd_pcm_sw_params_t *oswp, *iswp;
 	snd_pcm_uframes_t iround, oround, ibufsz, obufsz;
 	snd_pcm_format_t ifmt, ofmt;
-	unsigned bufsz, round, periods;
+	unsigned bufsz, round, periods, min_periods = 2;
 	unsigned irate, orate, req_rate;
 	unsigned ich, och;
 	int err, dir;
@@ -712,6 +712,19 @@ sio_alsa_setpar(struct sio_hdl *sh, struct sio_par *par)
 	DPRINTF("sio_alsa_setpar: trying bufsz = %u, round = %u\n", bufsz, round);
 	oround = round;
 	if (hdl->sio.mode & SIO_PLAY) {
+		err = snd_pcm_hw_params_set_periods_integer(hdl->opcm, ohwp);
+		if (err < 0) {
+			DALSA("couldn't set play periods to integer", err);
+			hdl->sio.eof = 1;
+			return 0;
+		}
+		err = snd_pcm_hw_params_set_periods_min(hdl->opcm, ohwp,
+		    &min_periods, NULL);
+		if (err < 0) {
+			DALSA("couldn't set play minimum periods", err);
+			hdl->sio.eof = 1;
+			return 0;
+		}
 		err = snd_pcm_hw_params_set_period_size_integer(hdl->opcm, ohwp);
 		if (err < 0) {
 			DALSA("couldn't set play period to integer", err);
@@ -727,6 +740,19 @@ sio_alsa_setpar(struct sio_hdl *sh, struct sio_par *par)
 	}
 	iround = oround;
 	if (hdl->sio.mode & SIO_REC) {
+		err = snd_pcm_hw_params_set_periods_integer(hdl->ipcm, ihwp);
+		if (err < 0) {
+			DALSA("couldn't set rec periods to integer", err);
+			hdl->sio.eof = 1;
+			return 0;
+		}
+		err = snd_pcm_hw_params_set_periods_min(hdl->ipcm, ihwp,
+		    &min_periods, NULL);
+		if (err < 0) {
+			DALSA("couldn't set rec minimum periods", err);
+			hdl->sio.eof = 1;
+			return 0;
+		}
 		err = snd_pcm_hw_params_set_period_size_integer(hdl->ipcm, ihwp);
 		if (err < 0) {
 			DALSA("couldn't set rec period to integer", err);
@@ -760,12 +786,6 @@ sio_alsa_setpar(struct sio_hdl *sh, struct sio_par *par)
 	
 	obufsz = bufsz;
 	if (hdl->sio.mode & SIO_PLAY) {
-		err = snd_pcm_hw_params_set_periods_integer(hdl->opcm, ohwp);
-		if (err < 0) {
-			DALSA("couldn't set play periods to integer", err);
-			hdl->sio.eof = 1;
-			return 0;
-		}
 		err = snd_pcm_hw_params_set_buffer_size_near(hdl->opcm,
 		    ohwp, &obufsz);
 		if (err < 0) {
@@ -776,12 +796,6 @@ sio_alsa_setpar(struct sio_hdl *sh, struct sio_par *par)
 	}
 	ibufsz = obufsz;
 	if (hdl->sio.mode & SIO_REC) {
-		err = snd_pcm_hw_params_set_periods_integer(hdl->ipcm, ihwp);
-		if (err < 0) {
-			DALSA("couldn't set rec periods to integer", err);
-			hdl->sio.eof = 1;
-			return 0;
-		}
 		err = snd_pcm_hw_params_set_buffer_size_near(hdl->ipcm,
 		    ihwp, &ibufsz);
 		if (err < 0) {
