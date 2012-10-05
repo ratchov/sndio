@@ -348,7 +348,7 @@ sio_alsa_printpos(struct sio_alsa_hdl *hdl, int delta)
 		wdiff = wdiff - hdl->par.round;
 	}
 
-	fprintf(stderr,
+	DPRINTFN(2,
 	    "clk: %+4lld %+4lld, wr %+4lld %+4lld rd: %+4lld %+4lld\n",
 	    cpos, cdiff, wpos, wdiff, rpos, rdiff);
 }
@@ -459,7 +459,7 @@ sio_alsa_xrun(struct sio_alsa_hdl *hdl)
 {
 	int wdiff, cdiff, rdiff, offs;
 
-	fprintf(stderr, "xrun: stop ");
+	DPRINTF("xrun: stop ");
 	sio_alsa_printpos(hdl, 0);
 
 	cdiff = hdl->par.round - (hdl->cpos % hdl->par.round);
@@ -470,7 +470,7 @@ sio_alsa_xrun(struct sio_alsa_hdl *hdl)
 		sio_onmove_cb(&hdl->sio, cdiff);
 	}
 
-	fprintf(stderr, "xrun: tick ");
+	DPRINTF("xrun: tick ");
 	sio_alsa_printpos(hdl, 0);
 	
 	if (hdl->sio.mode & SIO_PLAY) {
@@ -492,10 +492,11 @@ sio_alsa_xrun(struct sio_alsa_hdl *hdl)
 			while (wdiff < offs) {
 				wdiff += hdl->par.round;
 				hdl->odelta -= hdl->par.round;
+				hdl->idelta -= hdl->par.round;
 				hdl->cpos += hdl->par.round;
 			}
 		}
-		fprintf(stderr, "xrun: inserting silence: %d\n", wdiff);
+		DPRINTF("xrun: inserting silence: %d\n", wdiff);
 		hdl->osil = wdiff;
 		if (hdl->sio.mode & SIO_REC)
 			hdl->idrop = wdiff - offs;
@@ -505,11 +506,11 @@ sio_alsa_xrun(struct sio_alsa_hdl *hdl)
 			hdl->idelta -= hdl->par.round;
 			hdl->cpos += hdl->par.round;
 		}
-		fprintf(stderr, "xrun: dropping: %d\n", rdiff);
+		DPRINTF("xrun: dropping: %d\n", rdiff);
 		hdl->idrop = rdiff;
 	}
-	fprintf(stderr, "xrun: osil = %d, idrop = %d\n", hdl->osil, hdl->idrop);
-	fprintf(stderr, "xrun: corr ");
+	DPRINTF("xrun: osil = %d, idrop = %d\n", hdl->osil, hdl->idrop);
+	DPRINTF("xrun: corr ");
 	sio_alsa_printpos(hdl, 0);
 	return 1;
 }
@@ -969,7 +970,7 @@ sio_alsa_rdrop(struct sio_alsa_hdl *hdl)
 		hdl->rpos += n;
 #endif
 		hdl->idelta += n;
-		DPRINTF("sio_alsa_rdrop: dropped %ld/%ld frames\n", n, todo);
+		DPRINTF("sio_alsa_rdrop: dropped %zu/%zu frames\n", n, todo);
 	}
 	return 1;
 }
@@ -1037,7 +1038,7 @@ sio_alsa_wsil(struct sio_alsa_hdl *hdl)
 #endif
 		hdl->odelta += n;
 		hdl->osil -= n;
-		DPRINTF("sio_alsa_wsil: inserted %ld/%ld frames\n", n, todo);
+		DPRINTF("sio_alsa_wsil: inserted %zu/%zu frames\n", n, todo);
 	}
 	return 1;
 }
@@ -1056,12 +1057,12 @@ sio_alsa_write(struct sio_hdl *sh, const void *buf, size_t len)
 		 * forever. Fix this by saving partial samples in a
 		 * temporary buffer.
 		 */
-		fprintf(stderr, "sio_alsa_write: wrong chunk size\n");
+		DPRINTF("sio_alsa_write: wrong chunk size\n");
 		hdl->sio.eof = 1;
 		return 0;
 	}
 	todo = len / hdl->obpf;
-	DPRINTF("sio_alsa_write: len = %zd, todo = %zd\n", len, todo);
+	DPRINTFN(2, "sio_alsa_write: len = %zd, todo = %zd\n", len, todo);
 	while ((n = snd_pcm_writei(hdl->opcm, buf, todo)) < 0) {
 		if (n == -EINTR)
 			continue;
@@ -1073,7 +1074,7 @@ sio_alsa_write(struct sio_hdl *sh, const void *buf, size_t len)
 		}
 		return 0;
 	}
-	DPRINTF("wrote %zd\n", n);
+	DPRINTFN(2, "sio_alsa_write: wrote %zd\n", n);
 #ifdef DEBUG
 	hdl->wpos += n;
 #endif
@@ -1133,12 +1134,11 @@ sio_alsa_pollfd(struct sio_hdl *sh, struct pollfd *pfd, int events)
 		hdl->infds = 0;
 	DPRINTF("sio_alsa_pollfd: events = %x, nfds = %d + %d\n",
 	    events, hdl->onfds, hdl->infds);
-#if 0
+
 	for (i = 0; i < hdl->onfds + hdl->infds; i++) {
-		DPRINTF("sio_alsa_pollfd: pfds[%d].events = %x\n",
+		DPRINTFN(3, "sio_alsa_pollfd: pfds[%d].events = %x\n",
 		    i, pfd[i].events);
 	}
-#endif
 	return hdl->onfds + hdl->infds;
 }
 
@@ -1150,17 +1150,16 @@ sio_alsa_revents(struct sio_hdl *sh, struct pollfd *pfd)
 	snd_pcm_state_t istate, ostate;
 	int nfds;
 	unsigned short revents, r;
-	int err;
-#if 1
+	int delta, err;
 	int i;
 
-	for (i = 0; i < hdl->onfds + hdl->infds; i++) {
-		DPRINTF("sio_alsa_revents: pfds[%d].events = %x\n",
-		    i, pfd[i].revents);
-	}
-#endif
 	if (hdl->sio.eof)
 		return POLLHUP;
+
+	for (i = 0; i < hdl->onfds + hdl->infds; i++) {
+		DPRINTFN(3, "sio_alsa_revents: pfds[%d].events = %x\n",
+		    i, pfd[i].revents);
+	}
 
 	revents = nfds = 0;
 	if ((hdl->events & POLLOUT) && (hdl->sio.mode & SIO_PLAY)) {
@@ -1195,59 +1194,53 @@ sio_alsa_revents(struct sio_hdl *sh, struct pollfd *pfd)
 		revents |= r;
 		nfds += hdl->infds;
 	}
-	DPRINTF("sio_alsa_revents: revents = %x\n", revents);
-	if ((revents & POLLOUT) && (hdl->sio.mode & SIO_PLAY) &&
-	    (ostate == SND_PCM_STATE_RUNNING ||
-	     ostate == SND_PCM_STATE_PREPARED)) {
-		oavail = snd_pcm_avail_update(hdl->opcm);
-		if (oavail < 0) {
-			if (oavail == -EPIPE) {
-				if (!sio_alsa_xrun(hdl))
-					return POLLHUP;
-				return 0;
+	DPRINTFN(2, "sio_alsa_revents: revents = %x\n", revents);
+	if (revents & (POLLIN | POLLOUT)) {
+		if ((hdl->sio.mode & SIO_PLAY) &&
+		    (ostate == SND_PCM_STATE_RUNNING ||
+			ostate == SND_PCM_STATE_PREPARED)) {
+			oavail = snd_pcm_avail_update(hdl->opcm);
+			if (oavail < 0) {
+				if (oavail == -EPIPE) {
+					if (!sio_alsa_xrun(hdl))
+						return POLLHUP;
+					return 0;
+				}
+				DALSA("couldn't get play buffer pointer", oavail);
+				hdl->sio.eof = 1;
+				return POLLHUP;
 			}
-			DALSA("couldn't get play buffer pointer", oavail);
-			hdl->sio.eof = 1;
-			return POLLHUP;
+			oused = hdl->par.bufsz - oavail;
+			hdl->odelta += oused - hdl->oused;
+			hdl->oused = oused;
 		}
-		oused = hdl->par.bufsz - oavail;
-		hdl->odelta += oused - hdl->oused;
-		hdl->oused = oused;
-		while (hdl->odelta > 0) {
-#ifdef DEBUG
-			hdl->cpos += hdl->odelta;
-			if (sndio_debug)
-				sio_alsa_printpos(hdl, hdl->odelta);
-#endif
-			sio_onmove_cb(&hdl->sio, hdl->odelta);
-			hdl->odelta = 0;
-		}
-	}
-	if ((revents & POLLIN) && !(hdl->sio.mode & SIO_PLAY) &&
-	    (istate == SND_PCM_STATE_RUNNING ||
-	     istate == SND_PCM_STATE_PREPARED)) {
-		iused = snd_pcm_avail_update(hdl->ipcm);
-		if (iused < 0) {
-			if (iused == -EPIPE) {
-				if (!sio_alsa_xrun(hdl))
-					return POLLHUP;
-				return 0;
+		if ((hdl->sio.mode & SIO_REC) &&
+		    (istate == SND_PCM_STATE_RUNNING ||
+			istate == SND_PCM_STATE_PREPARED)) {
+			iused = snd_pcm_avail_update(hdl->ipcm);
+			if (iused < 0) {
+				if (iused == -EPIPE) {
+					if (!sio_alsa_xrun(hdl))
+						return POLLHUP;
+					return 0;
+				}
+				DALSA("couldn't get rec buffer pointer", iused);
+				hdl->sio.eof = 1;
+				return POLLHUP;
 			}
-			DALSA("couldn't get rec buffer pointer", iused);
-			hdl->sio.eof = 1;
-			return POLLHUP;
+			hdl->idelta += iused - hdl->iused;
+			hdl->iused = iused;
 		}
-		//fprintf(stderr, "iused = %d -> %d, idelta = %d\n", hdl->iused, iused, hdl->idelta);
-		hdl->idelta += iused - hdl->iused;
-		hdl->iused = iused;
-		if (hdl->idelta > 0) {
+		delta = hdl->odelta > hdl->idelta ? hdl->odelta : hdl->idelta;
+		if (delta > 0) {
 #ifdef DEBUG
-			hdl->cpos += hdl->idelta;
+			hdl->cpos += delta;
 			if (sndio_debug)
-				sio_alsa_printpos(hdl, hdl->odelta);
+				sio_alsa_printpos(hdl, delta);
 #endif
-			sio_onmove_cb(&hdl->sio, hdl->idelta);
-			hdl->idelta = 0;
+			sio_onmove_cb(&hdl->sio, delta);
+			hdl->odelta -= delta;
+			hdl->idelta -= delta;
 		}
 	}
 	if ((hdl->sio.mode & SIO_PLAY) && !sio_alsa_wsil(hdl))
