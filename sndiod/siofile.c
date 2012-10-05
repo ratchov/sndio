@@ -38,7 +38,7 @@ struct siofile {
 #ifdef DEBUG
 	long long wtime, utime;
 	long long sum_wtime, sum_utime;
-	int delay;
+	int pused, rused;
 #endif
 	struct dev *dev;
 	struct file *file;
@@ -98,16 +98,10 @@ siofile_onmove(void *arg, int delta)
 	f->sum_wtime += file_wtime - f->wtime;
 	f->wtime = file_wtime;
 	f->utime = file_utime;
-	f->delay += delta;
-	if (f->delay > 0) {
-		siofile_log(f);
-		log_puts(": clock ahead of buffer: delay = ");
-		log_puti(f->delay);
-		log_puts(", bufsz = \n");
-		log_puti(f->dev->bufsz);
-		log_puts("\n");
-		panic();
-	}
+	if (f->dev->mode & MODE_PLAY)
+		f->pused -= f->dev->round;
+	if (f->dev->mode & MODE_REC)
+		f->rused += f->dev->round;
 #endif
 	dev_onmove(f->dev, delta);
 }
@@ -306,7 +300,8 @@ siofile_start(struct siofile *f)
 		f->todo = d->round * d->rchan * d->par.bps;
 	}
 #ifdef DEBUG
-	f->delay = 0;
+	f->pused = 0;
+	f->rused = 0;
 	f->sum_utime = 0;
 	f->sum_wtime = 0;
 	f->wtime = file_wtime;
@@ -377,12 +372,29 @@ siofile_run(void *arg)
 		case STATE_REC:
 			if (!siofile_rec(f))
 				return;
+#ifdef DEBUG
+			f->rused -= d->round;
+			if (f->rused < 0 || f->rused > d->bufsz) {
+				siofile_log(f);
+				log_puts(": out of bounds rused = ");
+				log_puti(f->rused);
+				log_puts("/");
+				log_puti(d->bufsz);
+				log_puts("\n");
+				panic();
+			}
+			if (f->rused >= 2 * d->round) {
+				siofile_log(f);
+				log_puts(": rec hw xrun, rused = ");
+				log_puti(f->rused);
+				log_puts("/");
+				log_puti(d->bufsz);
+				log_puts("\n");
+			}
+#endif
 			f->state = STATE_CYCLE;
 			break;
 		case STATE_CYCLE:
-#ifdef DEBUG
-			f->delay -= d->round;
-#endif
 			dev_cycle(d);
 			if (d->mode & MODE_PLAY) {
 				f->state = STATE_PLAY;
@@ -396,6 +408,26 @@ siofile_run(void *arg)
 		case STATE_PLAY:
 			if (!siofile_play(f))
 				return;
+#ifdef DEBUG
+			f->pused += d->round;
+			if (f->pused < 0 || f->pused > d->bufsz) {
+				siofile_log(f);
+				log_puts(": out of bounds pused = ");
+				log_puti(f->pused);
+				log_puts("/");
+				log_puti(d->bufsz);
+				log_puts("\n");
+				panic();
+			}
+			if (f->pused <= d->bufsz - 2 * d->round) {
+				siofile_log(f);
+				log_puts(": play hw xrun, pused = ");
+				log_puti(f->pused);
+				log_puts("/");
+				log_puti(d->bufsz);
+				log_puts("\n");
+			}
+#endif
 			d->poffs += d->round;
 			if (d->poffs == d->bufsz)
 				d->poffs = 0;
