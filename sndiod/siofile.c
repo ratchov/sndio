@@ -38,7 +38,7 @@ struct siofile {
 #ifdef DEBUG
 	long long wtime, utime;
 	long long sum_wtime, sum_utime;
-	int pused, rused;
+	int pused, rused, events;
 #endif
 	struct dev *dev;
 	struct file *file;
@@ -99,9 +99,9 @@ siofile_onmove(void *arg, int delta)
 	f->wtime = file_wtime;
 	f->utime = file_utime;
 	if (f->dev->mode & MODE_PLAY)
-		f->pused -= f->dev->round;
+		f->pused -= delta;
 	if (f->dev->mode & MODE_REC)
-		f->rused += f->dev->round;
+		f->rused += delta;
 #endif
 	dev_onmove(f->dev, delta);
 }
@@ -350,7 +350,8 @@ siofile_revents(void *arg, struct pollfd *pfd)
 {
 	struct siofile *f = arg;
 
-	return sio_revents(f->hdl, pfd);
+	f->events = sio_revents(f->hdl, pfd);
+	return f->events;
 }
 
 void
@@ -370,11 +371,28 @@ siofile_run(void *arg)
 			return;
 		switch (f->state) {
 		case STATE_REC:
+#ifdef DEBUG
+			if (!(f->events & POLLIN)) {
+				siofile_log(f);
+				log_puts(": recording, but POLLIN not set\n");
+				panic();
+			}
+			if (f->rused < d->round) {
+				siofile_log(f);
+				log_puts(": missed clock tick, rused = ");
+				log_puti(f->rused);
+				log_puts("/");
+				log_puti(d->bufsz);
+				log_puts("\n");
+				panic();
+			}
+#endif
 			if (!siofile_rec(f))
 				return;
 #ifdef DEBUG
 			f->rused -= d->round;
-			if (f->rused < 0 || f->rused > d->bufsz) {
+			if (f->rused < 0) {
+				/* rec buffer size is not known */
 				siofile_log(f);
 				log_puts(": out of bounds rused = ");
 				log_puti(f->rused);
