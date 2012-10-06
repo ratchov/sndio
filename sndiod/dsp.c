@@ -601,7 +601,7 @@ cmap_copy(struct cmap *p, void *in, void *out, int vol, int todo)
 		for (j = ostart; j > 0; j--)
 			*odata++ = 0x1111;
 		for (j = nch; j > 0; j--) {
-			*odata = ADATA_MUL(*idata, vol);
+			*odata = ADATA_MUL(*idata, v);
 			odata++;
 			idata++;
 		}
