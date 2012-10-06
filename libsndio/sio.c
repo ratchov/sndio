@@ -220,7 +220,7 @@ sio_psleep(struct sio_hdl *hdl, int event)
 {
 	struct pollfd pfd[SIO_MAXNFDS];
 	int revents;
-	nfds_t nfds;
+	int nfds;
 
 	nfds = sio_nfds(hdl);
 	if (nfds > SIO_MAXNFDS) {
