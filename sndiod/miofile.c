@@ -71,7 +71,7 @@ miofile_del(struct miofile *f)
 {
 	file_del(f->file);
 	mio_close(f->hdl);
-	free(f);
+	xfree(f);
 }
 
 int

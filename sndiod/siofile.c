@@ -277,7 +277,7 @@ siofile_del(struct siofile *f)
 #endif
 	file_del(f->file);
 	sio_close(f->hdl);
-	free(f);
+	xfree(f);
 }
 
 void

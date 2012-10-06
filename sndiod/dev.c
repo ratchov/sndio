@@ -1231,7 +1231,7 @@ dev_del(struct dev *d)
 #endif
 	}
 	*p = d->next;
-	free(d);
+	xfree(d);
 }
 
 unsigned int
@@ -1464,7 +1464,7 @@ slot_new(struct dev *d, char *who, struct slotops *ops, void *arg, int mode)
 	}
 
 	/*
-	 * find a free controller slot with the same name/unit
+	 * find a xfree controller slot with the same name/unit
 	 */
 	for (i = 0, s = d->slot; i < DEV_NSLOT; i++, s++) {
 		if (s->ops == NULL &&
@@ -1482,7 +1482,7 @@ slot_new(struct dev *d, char *who, struct slotops *ops, void *arg, int mode)
 	}
 
 	/*
-	 * couldn't find a matching slot, pick oldest free slot
+	 * couldn't find a matching slot, pick oldest xfree slot
 	 * and set its name/unit
 	 */
 	bestser = 0;

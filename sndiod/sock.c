@@ -154,7 +154,7 @@ sock_close(struct sock *f)
 	}
 	file_del(f->file);
 	close(f->fd);
-	free(f);
+	xfree(f);
 }
 
 void
@@ -295,7 +295,7 @@ sock_new(int fd)
 	f->file = file_new(&sock_fileops, f, "sock", 1);
 	f->fd = fd;
 	if (f->file == NULL) {
-		free(f);
+		xfree(f);
 		return NULL;
 	}
 	f->next = sock_list;

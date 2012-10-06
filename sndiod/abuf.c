@@ -64,7 +64,7 @@ abuf_done(struct abuf *buf)
 		}
 	}
 #endif
-	free(buf->data);
+	xfree(buf->data);
 	buf->data = (void *)0xdeadbeef;
 }
 

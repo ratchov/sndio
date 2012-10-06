@@ -24,7 +24,14 @@ void log_puti(long);
 void panic(void);
 void log_flush(void);
 
-void *xmalloc(size_t);
+//void *xmalloc(size_t);
+void	*mem_alloc(unsigned, char *);
+void	 mem_free(void *);
+void	 mem_stats(void);
+
+#define xmalloc(s) (mem_alloc((s), (char *)__func__))
+#define xfree(p) (mem_free((p)))
+
 void memrnd(void *, size_t);
 
 extern unsigned int log_sync;

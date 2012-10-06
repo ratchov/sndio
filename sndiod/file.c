@@ -289,7 +289,7 @@ file_poll(void)
 	while ((f = *pf) != NULL) {
 		if (f->state == FILE_ZOMB) {
 			*pf = f->next;
-			free(f);
+			xfree(f);
 		} else
 			pf = &f->next;
 	}

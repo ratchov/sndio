@@ -430,7 +430,7 @@ port_del(struct port *c)
 #endif
 	}
 	*p = c->next;
-	free(c);
+	xfree(c);
 }
 
 /*
