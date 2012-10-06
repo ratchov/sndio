@@ -79,6 +79,7 @@
 #ifdef DEBUG
 #include "dbg.h"
 #endif
+#include "bsd-compat.h"
 
 int  dev_open(struct dev *);
 void dev_close(struct dev *);
