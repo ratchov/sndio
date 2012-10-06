@@ -18,6 +18,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include "bsd-compat.h"
 
 #include "abuf.h"
 #include "defs.h"
@@ -293,7 +294,7 @@ dev_midi_full(struct dev *d)
 void
 dev_midi_vol(struct dev *d, struct slot *s)
 {
-	char msg[3];
+	unsigned char msg[3];
 
 	msg[0] = MIDI_CTL | (s - d->slot);
 	msg[1] = MIDI_CTL_VOL;
@@ -328,7 +329,7 @@ dev_midi_mixinfo(struct dev *d, struct slot *s)
 	x.id0 = SYSEX_AUCAT;
 	x.id1 = SYSEX_AUCAT_MIXINFO;
 	if (*s->name != '\0') {
-		snprintf(x.u.mixinfo.name, SYSEX_NAMELEN,
+		snprintf((char *)x.u.mixinfo.name, SYSEX_NAMELEN,
 		    "%s%u", s->name, s->unit);
 	}
 	x.u.mixinfo.chan = s - d->slot;

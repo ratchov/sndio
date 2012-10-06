@@ -25,6 +25,7 @@
  */
 
 #include <sys/types.h>
+#include <arpa/inet.h>
 #include <errno.h>
 #include <poll.h>
 #include <stdio.h>
