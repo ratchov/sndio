@@ -817,7 +817,7 @@ dev_sub_cycle(struct dev *d)
 		log_puts(": dev_sub_cycle\n");
 	}
 #endif
-	if (d->decbuf)
+	if ((d->mode & MODE_REC) && d->decbuf)
 		dec_do(&d->dec, d->decbuf, (unsigned char *)d->rbuf, d->round);
 	ps = &d->slot_list;
 	while ((s = *ps) != NULL) {
