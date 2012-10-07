@@ -46,12 +46,16 @@
 /*
  * unprivileged user name
  */
+#ifndef SNDIO_USER
 #define SNDIO_USER	"_sndio"
+#endif
 
 /*
  * priority when run as root
  */
+#ifndef SNDIO_PRIO
 #define SNDIO_PRIO	(-20)
+#endif
 
 /*
  * sample rate if no ``-r'' is used
@@ -244,14 +248,9 @@ void
 privdrop(void)
 {
 	struct passwd *pw;
-	struct stat sb;
 
 	if ((pw = getpwnam(SNDIO_USER)) == NULL)
 		errx(1, "unknown user %s", SNDIO_USER);
-	if (stat(pw->pw_dir, &sb) < 0)
-		err(1, "stat(\"%s\")", pw->pw_dir);
-	if (sb.st_uid != 0 || (sb.st_mode & 022) != 0)
-		errx(1, "%s has wrong permissions", pw->pw_dir);
 	if (setpriority(PRIO_PROCESS, 0, SNDIO_PRIO) < 0)
 		err(1, "setpriority");
 	if (setgroups(1, &pw->pw_gid) ||
