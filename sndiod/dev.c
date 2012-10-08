@@ -719,6 +719,7 @@ dev_mix_setmaster(struct dev *d)
 				    i->mix.slot_cmax >= j->mix.slot_cmin)
 					n++;
 			}
+			weight /= n;
 		}
 		if (weight > i->mix.maxweight)
 			weight = i->mix.maxweight;
