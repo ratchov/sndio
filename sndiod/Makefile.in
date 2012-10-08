@@ -30,6 +30,7 @@ all:		${PROG} ${MAN1}
 
 install:
 		mkdir -p ${DESTDIR}${BIN_DIR} ${DESTDIR}${MAN1_DIR}
+		rm -f ${DESTDIR}${BIN_DIR}/${PROG} ${DESTDIR}${MAN1_DIR}/${MAN1}
 		cp ${PROG} ${DESTDIR}${BIN_DIR}
 		cp ${MAN1} ${DESTDIR}${MAN1_DIR}
 
