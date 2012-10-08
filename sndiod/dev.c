@@ -101,10 +101,12 @@ slot_log(struct slot *s)
 	if (log_level >= 3) {
 		log_puts(",vol=");
 		log_putu(s->vol);
-		log_puts(",pst=");
-		log_puts(pstates[s->pstate]);
-		log_puts(",mmc=");
-		log_puts(tstates[s->tstate]);
+		if (s->ops) {
+			log_puts(",pst=");
+			log_puts(pstates[s->pstate]);
+			log_puts(",mmc=");
+			log_puts(tstates[s->tstate]);
+		}
 	}
 #endif
 }
