@@ -377,6 +377,10 @@ siofile_run(void *arg)
 				log_puts(": recording, but POLLIN not set\n");
 				panic();
 			}
+#endif
+			if (!siofile_rec(f))
+				return;
+#ifdef DEBUG
 			if (f->rused < d->round) {
 				siofile_log(f);
 				log_puts(": missed clock tick, rused = ");
@@ -386,10 +390,6 @@ siofile_run(void *arg)
 				log_puts("\n");
 				panic();
 			}
-#endif
-			if (!siofile_rec(f))
-				return;
-#ifdef DEBUG
 			f->rused -= d->round;
 			if (f->rused < 0) {
 				/* rec buffer size is not known */
@@ -400,14 +400,6 @@ siofile_run(void *arg)
 				log_puti(d->bufsz);
 				log_puts("\n");
 				panic();
-			}
-			if (f->rused >= 2 * d->round) {
-				siofile_log(f);
-				log_puts(": rec hw xrun, rused = ");
-				log_puti(f->rused);
-				log_puts("/");
-				log_puti(d->bufsz);
-				log_puts("\n");
 			}
 #endif
 			f->state = STATE_CYCLE;
