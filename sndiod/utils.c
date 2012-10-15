@@ -253,3 +253,15 @@ mem_stats(void)
 		log_puts("\n");
 	}
 }
+
+char *
+mem_strdup(const char *s, char *tag)
+{
+	size_t size;
+	void *p;
+
+	size = strlen(s) + 1;
+	p = mem_alloc(size, tag);
+	memcpy(p, s, size);
+	return p;
+}

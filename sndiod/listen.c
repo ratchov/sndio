@@ -73,10 +73,11 @@ listen_close(struct listen *f)
 
 	if (f->path != NULL) {
 		unlink(f->path);
-		free(f->path);
+		xfree(f->path);
 	}
 	file_del(f->file);
 	close(f->fd);
+	xfree(f);
 }
 
 void
@@ -108,7 +109,7 @@ listen_new_un(char *path)
 	f->file = file_new(&listen_fileops, f, path, 1);
 	if (f->file == NULL)
 		goto bad_close;
-	f->path = strdup(path);
+	f->path = xstrdup(path);
 	if (f->path == NULL) {
 		perror("strdup");
 		exit(1);

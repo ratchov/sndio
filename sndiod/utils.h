@@ -28,10 +28,12 @@ void log_flush(void);
 
 //void *xmalloc(size_t);
 void	*mem_alloc(size_t, char *);
+char	*mem_strdup(const char *, char *);
 void	 mem_free(void *);
 void	 mem_stats(void);
 
 #define xmalloc(s) (mem_alloc((s), (char *)__func__))
+#define xstrdup(s) (mem_strdup((s), (char *)__func__))
 #define xfree(p) (mem_free((p)))
 
 void memrnd(void *, size_t);

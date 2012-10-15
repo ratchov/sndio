@@ -36,7 +36,7 @@ extern struct opt *opt_list;
 
 struct opt *opt_new(char *, struct dev *, int, int, int, int,
     int, int, int, unsigned int);
-int opt_bind(struct opt *);
+void opt_del(struct opt *);
 struct opt *opt_byname(char *, unsigned int);
 
 #endif /* !defined(OPT_H) */

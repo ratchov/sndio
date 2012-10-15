@@ -471,6 +471,8 @@ main(int argc, char **argv)
 		listen_close(listen_list);
 	while (sock_list != NULL)
 		sock_close(sock_list);
+	while (opt_list != NULL)
+		opt_del(opt_list);
 	for (d = dev_list; d != NULL; d = d->next)
 		dev_done(d);
 	for (p = port_list; p != NULL; p = p->next)
@@ -485,5 +487,6 @@ main(int argc, char **argv)
 	filelist_done();
 	rmdir(base);
 	unsetsig();
+	mem_stats();
 	return 0;
 }

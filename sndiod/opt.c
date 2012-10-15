@@ -119,3 +119,20 @@ opt_byname(char *name, unsigned int num)
 	}
 	return NULL;
 }
+
+void
+opt_del(struct opt *o)
+{
+	struct opt **po;
+
+	for (po = &opt_list; *po != o; po = &(*po)->next) {
+#ifdef DEBUG
+		if (*po == NULL) {
+			log_puts("opt_del: not on list\n");
+			panic();
+		}
+#endif
+	}
+	*po = o->next;
+	xfree(o);
+}

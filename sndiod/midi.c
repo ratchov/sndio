@@ -350,7 +350,7 @@ midi_out(struct midi *oep, unsigned char *idata, int icount)
 void
 port_log(struct port *p)
 {
-	log_puts(p->path);
+	midi_log(p->midi);
 }
 #endif
 
@@ -440,8 +440,15 @@ int
 port_open(struct port *c)
 {
 	c->mio = miofile_new(c);
-	if (c->mio == NULL)
+	if (c->mio == NULL) {
+		if (log_level >= 1) {
+			port_log(c);
+			log_puts(": ");
+			log_puts(c->path);
+			log_puts(": failed to open midi port\n");
+		}
 		return 0;
+	}
 	c->state = PORT_INIT;
 	return 1;
 }
