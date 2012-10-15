@@ -17,6 +17,8 @@
 #ifndef UTILS_H
 #define UTILS_H
 
+#include <sys/types.h>
+
 void log_puts(char *);
 void log_putx(unsigned long);
 void log_putu(unsigned long);
@@ -25,7 +27,7 @@ void panic(void);
 void log_flush(void);
 
 //void *xmalloc(size_t);
-void	*mem_alloc(unsigned, char *);
+void	*mem_alloc(size_t, char *);
 void	 mem_free(void *);
 void	 mem_stats(void);
 

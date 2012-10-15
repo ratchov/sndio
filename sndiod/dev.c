@@ -478,7 +478,8 @@ dev_midi_exit(void *arg)
 		dev_log(d);
 		log_puts(": midi end point died\n");
 	}
-	dev_close(d);
+	if (d->pstate != DEV_CFG)
+		dev_close(d);
 }
 
 void
@@ -915,8 +916,7 @@ dev_cycle(struct dev *d)
 			dev_log(d);
 			log_puts(": device stopped\n");
 		}
-		if (d->sio)
-			siofile_stop(d->sio);
+		siofile_stop(d->sio);
 		d->pstate = DEV_INIT;
 		if (d->refcnt == 0)
 			dev_close(d);
@@ -998,7 +998,7 @@ dev_new(char *path, struct aparams *par,
 	d->mtc.origin = 0;
 	d->tstate = MMC_STOP;
 	d->next = dev_list;
-	dev_list = d;      
+	dev_list = d;
 	return d;
 }
 
@@ -1126,10 +1126,8 @@ dev_close(struct dev *d)
 		s->ops = NULL;
 		d->slot_list = snext;
 	}
-	if (d->sio) {
-		siofile_del(d->sio);
-		d->sio = NULL;
-	}
+	siofile_del(d->sio);
+	d->sio = NULL;
 	dev_clear(d);
 	d->pstate = DEV_CFG;
 }
@@ -1223,7 +1221,8 @@ dev_del(struct dev *d)
 		log_puts(": deleting\n");
 	}
 #endif
-	dev_close(d);
+	if (d->pstate != DEV_CFG)
+		dev_close(d);
 	for (p = &dev_list; *p != d; p = &(*p)->next) {
 #ifdef DEBUG
 		if (*p == NULL) {
@@ -1266,8 +1265,7 @@ dev_wakeup(struct dev *d)
 			d->prime = 0;
 		}
 		d->pstate = DEV_RUN;
-		if (d->sio)
-			siofile_start(d->sio);
+		siofile_start(d->sio);
 	}
 }
 

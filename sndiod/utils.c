@@ -20,6 +20,7 @@
  * slow syscalls are no longer disruptive, e.g. at the end of the poll() loop.
  */
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include "utils.h"
@@ -136,24 +137,6 @@ panic(void)
 	abort();
 }
 
-#if 0
-/*
- * allocate memory, and abort on error
- */
-void *
-xmalloc(size_t size)
-{
-	void *p;
-
-	p = malloc(size);
-	if (p == NULL) {
-		log_puts("failed to allocate memory\n");
-		panic();
-	}
-	return p;
-}
-#endif
-
 /*
  * return a random number, will be used to randomize memory bocks
  */
@@ -179,129 +162,94 @@ memrnd(void *addr, size_t size)
  * header of a memory block
  */
 struct mem_hdr {
-	char *owner;		/* who allocaed the block ? */
-	unsigned words;		/* data chunk size expressed in sizeof(int) */
-#define MAGIC_FREE 0xa55f9811	/* a (hopefully) ``rare'' number */
-	unsigned magic;		/* random number, but not MAGIC_FREE */
+	struct mem_hdr *next;		/* next allocated block */
+	char *tag;			/* hint on what allocated the block */
+	size_t size;			/* data chunk size in bytes */
+	char end[sizeof(void *)];	/* copy of trailed (random bytes) */
 };
 
-unsigned mem_nalloc = 0, mem_nfree = 0, mem_debug = 0;
+#define MEM_HDR_SIZE	((sizeof(struct mem_hdr) + 15) & ~15)
+
+struct mem_hdr *mem_list= NULL;
 
 /*
- * return a random number, will be used to randomize memory bocks
- */
-unsigned
-mem_rnd(void)
-{
-	static unsigned seed = 1989123;
-
-	seed = (seed * 1664525) + 1013904223;
-	return seed;
-}
-
-/*
- * allocate 'n' bytes of memory (with n > 0). This functions never
+ * allocate 'size' bytes of memory (with size > 0). This functions never
  * fails (and never returns NULL), if there isn't enough memory then
- * we abord the program.  The memory block is randomized to break code
+ * we abort the program.  The memory block is randomized to break code
  * that doesn't initialize the block.  We also add a footer and a
  * trailer to detect writes outside the block boundaries.
  */
 void *
-mem_alloc(unsigned bytes, char *owner)
+mem_alloc(size_t size, char *tag)
 {
-	unsigned words, i, *p;
 	struct mem_hdr *hdr;
-
-	if (bytes == 0) {
-		log_puts(owner);
+	char *p;
+	
+	if (size == 0) {
+		log_puts(tag);
 		log_puts(": mem_alloc: nbytes = 0\n");
 		panic();
 	}
-
-	/*
-	 * calculates the number of ints corresponding to ``bytes''
-	 */
-	words = (bytes + sizeof(int) - 1) / sizeof(int);
-
-	/*
-	 * allocate the header, the data chunk and the trailer
-	 */
-	hdr = malloc(sizeof(struct mem_hdr) + (words + 1) * sizeof(int));
+	hdr = malloc(size + MEM_HDR_SIZE + sizeof(hdr->end));
 	if (hdr == NULL) {
-		log_puts(owner);
+		log_puts(tag);
 		log_puts(": mem_alloc: failed to allocate ");
-		log_putx(words);
-		log_puts(" words\n");
+		log_putx(size);
+		log_puts(" bytes\n");
 		panic();
 	}
-
-	/*
-	 * find a random magic, but not MAGIC_FREE
-	 */
-	do {
-		hdr->magic = mem_rnd();
-	} while (hdr->magic == MAGIC_FREE);
-
-	/*
-	 * randomize data chunk
-	 */
-	p = (unsigned *)(hdr + 1);
-	for (i = words; i > 0; i--)
-		*p++ = mem_rnd();
-
-	/*
-	 * trailer is equal to the magic
-	 */
-	*p = hdr->magic;
-
-	hdr->owner = owner;
-	hdr->words = words;
-	mem_nalloc++;
-	return hdr + 1;
+	p = (char *)hdr + MEM_HDR_SIZE;
+	hdr->tag = tag;
+	hdr->size = size;
+	memrnd(hdr->end, sizeof(hdr->end));
+	memset(p, 0xd0, size);
+	memcpy(p + size, hdr->end, sizeof(hdr->end));	
+	hdr->next = mem_list;
+	mem_list = hdr;
+	return p;
 }
 
 /*
  * free a memory block. Also check that the header and the trailer
- * werent changed and randomise the block, so that the block is not
+ * weren't changed and randomise the block, so that the block is not
  * usable once freed
  */
 void
-mem_free(void *mem)
+mem_free(void *p)
 {
-	struct mem_hdr *hdr;
-	unsigned i, *p;
+	struct mem_hdr *hdr, **ph;
 
-	hdr = (struct mem_hdr *)mem - 1;
-	p = (unsigned *)mem;
-
-	if (hdr->magic == MAGIC_FREE) {
-		log_puts("mem_free: block seems already freed\n");
+	hdr = (struct mem_hdr *)((char *)p - MEM_HDR_SIZE);
+	if (memcmp(hdr->end, (char *)p + hdr->size, sizeof(hdr->end)) != 0) {
+		log_puts(hdr->tag);
+		log_puts(": block trailer corrupted\n");
 		panic();
 	}
-	if (hdr->magic != p[hdr->words]) {
-		log_puts("mem_free: block corrupted\n");
-		panic();
+	memset(p, 0xdf, hdr->size);
+	for (ph = &mem_list; *ph != NULL; ph = &(*ph)->next) {
+		if (*ph == hdr) {
+			*ph = hdr->next;
+			free(hdr);
+			return;
+		}
 	}
-
-	/*
-	 * randomize block, so it's not usable
-	 */
-	for (i = hdr->words; i > 0; i--)
-		*p++ = mem_rnd();
-
-	hdr->magic = MAGIC_FREE;
-	mem_nfree++;
-	free(hdr);
+	log_puts(hdr->tag);
+	log_puts(": not allocated (double free?)\n");
+	panic();
 }
 
 void
 mem_stats(void)
 {
-	if (mem_debug) {
-		log_puts("mem_stats: used=");
-		log_putu(mem_nalloc - mem_nfree);
-		log_puts(", alloc=");
-		log_putu(mem_nalloc);
+	struct mem_hdr *hdr;
+
+	if (mem_list) {
+		log_puts("allocated memory blocs: ");
+		for (hdr = mem_list; hdr != NULL; hdr = hdr->next) {
+			log_puts(hdr->tag);
+			if (hdr->next)
+				log_puts(", ");
+		}
 		log_puts("\n");
 	}
 }
