@@ -1128,6 +1128,16 @@ dev_close(struct dev *d)
 	}
 	siofile_del(d->sio);
 	d->sio = NULL;
+	if (d->mode & MODE_PLAY) {
+		if (d->encbuf != NULL)
+			xfree(d->encbuf);
+		xfree(d->pbuf);
+	}
+	if (d->mode & MODE_REC) {
+		if (d->decbuf != NULL)
+			xfree(d->decbuf);
+		xfree(d->rbuf);
+	}
 	dev_clear(d);
 	d->pstate = DEV_CFG;
 }
@@ -1232,6 +1242,7 @@ dev_del(struct dev *d)
 		}
 #endif
 	}
+	midi_del(d->midi);
 	*p = d->next;
 	xfree(d);
 }
