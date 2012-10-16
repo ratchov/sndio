@@ -499,6 +499,17 @@ sock_rdata(struct sock *f)
 		buf = &f->midi->ibuf;
 
 	data = abuf_wgetblk(buf, &count) + f->rsize - f->rtodo;
+#ifdef DEBUG
+	/*
+	 * XXX: this can happen in MIDIOUT mode, since we dont
+	 *	have flow control
+	 */
+	if (count < f->rtodo) {
+		sock_log(f);
+		log_puts(": data read buffer overrun\n");
+		panic();
+	}
+#endif
 	n = read(f->fd, data, f->rtodo);
 	if (n < 0) {
 		if (errno == EFAULT) {
