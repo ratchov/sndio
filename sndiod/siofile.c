@@ -14,7 +14,6 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-
 #include <sys/time.h>
 #include <sys/types.h>
 
@@ -88,10 +87,6 @@ siofile_onmove(void *arg, int delta)
 		siofile_log(f);
 		log_puts(": tick, delta = ");
 		log_puti(delta);
-		log_puts(", load = ");
-		log_puti((file_utime - f->utime) / 1000);
-		log_puts(" + ");
-		log_puti((file_wtime - f->wtime) / 1000);
 		log_puts("\n");
 	}
 	f->sum_utime += file_utime - f->utime;
@@ -420,7 +415,16 @@ siofile_run(void *arg)
 				return;
 #ifdef DEBUG
 			f->pused += d->round;
+			if (d->prime == 0 && f->pused < d->bufsz - d->round) {
+				siofile_log(f);
+				log_puts(": play hw xrun, pused = ");
+				log_puti(f->pused);
+				log_puts("/");
+				log_puti(d->bufsz);
+				log_puts("\n");
+			}
 			if (f->pused < 0 || f->pused > d->bufsz) {
+				/* this is a device drivers or libsndio bug */
 				siofile_log(f);
 				log_puts(": out of bounds pused = ");
 				log_puti(f->pused);
@@ -428,14 +432,6 @@ siofile_run(void *arg)
 				log_puti(d->bufsz);
 				log_puts("\n");
 				panic();
-			}
-			if (f->pused <= d->bufsz - 2 * d->round) {
-				siofile_log(f);
-				log_puts(": play hw xrun, pused = ");
-				log_puti(f->pused);
-				log_puts("/");
-				log_puti(d->bufsz);
-				log_puts("\n");
 			}
 #endif
 			d->poffs += d->round;

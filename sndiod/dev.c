@@ -61,7 +61,6 @@ struct midiops dev_midiops = {
 	dev_midi_exit
 };
 
-
 struct slotops zomb_slotops = {
 	zomb_onmove,
 	zomb_onvol,
@@ -99,7 +98,7 @@ slot_log(struct slot *s)
 	log_putu(s->unit);
 #ifdef DEBUG
 	if (log_level >= 3) {
-		log_puts(",vol=");
+		log_puts(" vol=");
 		log_putu(s->vol);
 		if (s->ops) {
 			log_puts(",pst=");
