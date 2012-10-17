@@ -950,8 +950,10 @@ sio_alsa_rdrop(struct sio_alsa_hdl *hdl)
 		while ((n = snd_pcm_readi(hdl->ipcm, buf, todo)) < 0) {
 			if (n == -EINTR)
 				continue;
-			if (n == -EPIPE && sio_alsa_xrun(hdl))
-				continue;
+			if (n == -EPIPE || n == -ESTRPIPE) {
+				sio_alsa_xrun(hdl);
+				return 0;
+			}
 			if (n != -EAGAIN) {
 				DALSA("couldn't read data to drop", n);
 				hdl->sio.eof = 1;
@@ -984,8 +986,10 @@ sio_alsa_read(struct sio_hdl *sh, void *buf, size_t len)
 	while ((n = snd_pcm_readi(hdl->ipcm, buf, todo)) < 0) {
 		if (n == -EINTR)
 			continue;
-		if (n == -EPIPE && sio_alsa_xrun(hdl))
-			continue;
+		if (n == -EPIPE || n == -ESTRPIPE) {
+			sio_alsa_xrun(hdl);
+			return 0;
+		}
 		if (n != -EAGAIN) {
 			DALSA("couldn't read data", n);
 			hdl->sio.eof = 1;
@@ -1023,8 +1027,10 @@ sio_alsa_wsil(struct sio_alsa_hdl *hdl)
 		while ((n = snd_pcm_writei(hdl->opcm, zero, todo)) < 0) {
 			if (n == -EINTR)
 				continue;
-			if (n == -ESTRPIPE && sio_alsa_xrun(hdl))
-				continue;
+			if (n == -ESTRPIPE || n == -EPIPE) {
+				sio_alsa_xrun(hdl);
+				return 0;
+			}
 			if (n != -EAGAIN) {
 				DALSA("couldn't write silence", n);
 				hdl->sio.eof = 1;
@@ -1064,8 +1070,10 @@ sio_alsa_write(struct sio_hdl *sh, const void *buf, size_t len)
 	while ((n = snd_pcm_writei(hdl->opcm, buf, todo)) < 0) {
 		if (n == -EINTR)
 			continue;
-		if ((n == -ESTRPIPE || n == -EPIPE) && sio_alsa_xrun(hdl))
-			continue;
+		if (n == -ESTRPIPE || n == -EPIPE) {
+			sio_alsa_xrun(hdl);
+			return 0;
+		}
 		if (n != -EAGAIN) {
 			DALSA("couldn't write data", n);
 			hdl->sio.eof = 1;
@@ -1199,7 +1207,7 @@ sio_alsa_revents(struct sio_hdl *sh, struct pollfd *pfd)
 			ostate == SND_PCM_STATE_PREPARED)) {
 			oavail = snd_pcm_avail_update(hdl->opcm);
 			if (oavail < 0) {
-				if (oavail == -EPIPE) {
+				if (oavail == -EPIPE || oavail == -ESTRPIPE) {
 					if (!sio_alsa_xrun(hdl))
 						return POLLHUP;
 					return 0;
@@ -1217,7 +1225,7 @@ sio_alsa_revents(struct sio_hdl *sh, struct pollfd *pfd)
 			istate == SND_PCM_STATE_PREPARED)) {
 			iused = snd_pcm_avail_update(hdl->ipcm);
 			if (iused < 0) {
-				if (iused == -EPIPE) {
+				if (iused == -EPIPE || iused == -ESTRPIPE) {
 					if (!sio_alsa_xrun(hdl))
 						return POLLHUP;
 					return 0;
@@ -1230,7 +1238,6 @@ sio_alsa_revents(struct sio_hdl *sh, struct pollfd *pfd)
 			hdl->iused = iused;
 		}
 		delta = hdl->odelta > hdl->idelta ? hdl->odelta : hdl->idelta;
-		//delta = hdl->odelta;
 		if (delta > 0) {
 #ifdef DEBUG
 			hdl->cpos += delta;
