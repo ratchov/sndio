@@ -504,7 +504,7 @@ sock_rdata(struct sock *f)
 	 * XXX: this can happen in MIDIOUT mode, since we dont
 	 *	have flow control
 	 */
-	if (count < f->rtodo) {
+	if (count * buf->bpf < f->rtodo) {
 		sock_log(f);
 		log_puts(": data read buffer overrun\n");
 		panic();
