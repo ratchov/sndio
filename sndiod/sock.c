@@ -161,31 +161,34 @@ void
 sock_slot_fill(void *arg)
 {
 	struct sock *f = arg;
+	struct slot *s = f->slot;
 
+	f->fillpending += s->round;
 #ifdef DEBUG
 	if (log_level >= 4) {
 		sock_log(f);
-		log_puts(": fill, rmax = ");
+		log_puts(": fill, rmax -> ");
 		log_puti(f->rmax);
+		log_puts(", pending -> ");
+		log_puti(f->fillpending);
 		log_puts("\n");
 	}
 #endif
-	/*
-	 * At this stage we could send a flow control message,
-	 * buf flow control is handled by clock ticks, so
-	 * there's nothing to do at this stage
-	 */
+	while (sock_write(f))
+		;
 }
 
 void
 sock_slot_flush(void *arg)
 {
 	struct sock *f = arg;
+	struct slot *s = f->slot;
 
+	f->wmax += s->round * s->sub.buf.bpf;
 #ifdef DEBUG
 	if (log_level >= 4) {
 		sock_log(f);
-		log_puts(": flush: wmax = ");
+		log_puts(": flush, wmax -> ");
 		log_puti(f->wmax);
 		log_puts("\n");
 	}
@@ -284,8 +287,8 @@ sock_new(int fd)
 	f->slot = NULL;
 	f->midi = NULL;
 	f->tickpending = 0;
+	f->fillpending = 0;
 	f->stoppending = 0;
-	f->tickfirst = 0;
 	f->wstate = SOCK_WIDLE;
 	f->wtodo = 0xdeadbeef;
 	f->rstate = SOCK_RMSG;
@@ -368,6 +371,64 @@ sock_exit(void *arg)
 	sock_close(f);
 }
 
+int
+sock_fdwrite(struct sock *f, void *data, int count)
+{
+	int n;
+
+	n = write(f->fd, data, count);
+	if (n < 0) {
+		if (errno == EFAULT) {
+			log_puts("sock_fdwrite: fault\n");
+			panic();
+		}
+		if (errno != EAGAIN) {
+			if (log_level >= 1) {
+				sock_log(f);
+				log_puts(": write filed, errno = ");
+				log_puti(errno);
+				log_puts("\n");
+			}
+			sock_close(f);
+		}
+		return 0;
+	}
+	if (n == 0) {
+		sock_close(f);
+		return 0;
+	}
+	return n;
+}
+
+int
+sock_fdread(struct sock *f, void *data, int count)
+{
+	int n;
+
+	n = read(f->fd, data, count);
+	if (n < 0) {
+		if (errno == EFAULT) {
+			log_puts("sock_fdread: fault\n");
+			panic();
+		}
+		if (errno != EAGAIN) {
+			if (log_level >= 1) {
+				sock_log(f);
+				log_puts(": read failed, errno = ");
+				log_puti(errno);
+				log_puts("\n");
+			}
+			sock_close(f);
+		}
+		return 0;
+	}
+	if (n == 0) {
+		sock_close(f);
+		return 0;
+	}
+	return n;
+}
+
 /*
  * Read a message from the file descriptor, return 1 if done, 0
  * otherwise. The message is stored in f->rmsg.
@@ -386,27 +447,9 @@ sock_rmsg(struct sock *f)
 	}
 #endif
 	data = (char *)&f->rmsg + sizeof(struct amsg) - f->rtodo;
-	n = read(f->fd, data, f->rtodo);
-	if (n < 0) {
-		if (errno == EFAULT) {
-			log_puts("sock_rmsg: fault\n");
-			panic();
-		}
-		if (errno != EAGAIN) {
-			if (log_level >= 1) {
-				sock_log(f);
-				log_puts(": msg read failed, errno = ");
-				log_puti(errno);
-				log_puts("\n");
-			}
-			sock_close(f);
-		}
+	n = sock_fdread(f, data, f->rtodo);
+	if (n == 0)
 		return 0;
-	}
-	if (n == 0) {
-		sock_close(f);
-		return 0;
-	}
 	if (n < f->rtodo) {
 		f->rtodo -= n;
 		return 0;
@@ -427,44 +470,26 @@ sock_rmsg(struct sock *f)
  * points to the f->rtodo or f->wtodo respectively.
  */
 int
-sock_wmsg(struct sock *f, struct amsg *m, unsigned int *ptodo)
+sock_wmsg(struct sock *f)
 {
 	int n;
 	char *data;
 
 #ifdef DEBUG
-	if (*ptodo == 0) {
+	if (f->wtodo == 0) {
 		sock_log(f);
 		log_puts(": sock_wmsg: already written\n");
 	}
 #endif
-	data = (char *)m + sizeof(struct amsg) - *ptodo;
-	n = write(f->fd, data, *ptodo);
-	if (n < 0) {
-		if (errno == EFAULT) {
-			log_puts("sock_wmsg: fault\n");
-			panic();
-		}
-		if (errno != EAGAIN) {
-			if (log_level >= 1) {
-				sock_log(f);
-				log_puts(": msg write filed, errno = ");
-				log_puti(errno);
-				log_puts("\n");
-			}
-			sock_close(f);
-		}
+	data = (char *)&f->wmsg + sizeof(struct amsg) - f->wtodo;
+	n = sock_fdwrite(f, data, f->wtodo);
+	if (n == 0)
+		return 0;
+	if (n < f->wtodo) {
+		f->wtodo -= n;
 		return 0;
 	}
-	if (n == 0) {
-		sock_close(f);
-		return 0;
-	}
-	if (n < *ptodo) {
-		*ptodo -= n;
-		return 0;
-	}
-	*ptodo = 0;
+	f->wtodo = 0;
 #ifdef DEBUG
 	if (log_level >= 4) {
 		sock_log(f);
@@ -497,7 +522,6 @@ sock_rdata(struct sock *f)
 		buf = &f->slot->mix.buf;
 	else
 		buf = &f->midi->ibuf;
-
 	data = abuf_wgetblk(buf, &count) + f->rsize - f->rtodo;
 #ifdef DEBUG
 	/*
@@ -510,27 +534,9 @@ sock_rdata(struct sock *f)
 		panic();
 	}
 #endif
-	n = read(f->fd, data, f->rtodo);
-	if (n < 0) {
-		if (errno == EFAULT) {
-			log_puts("sock_rdata: fault\n");
-			panic();
-		}
-		if (errno != EAGAIN) {
-			if (log_level >= 1) {
-				sock_log(f);
-				log_puts(": data read failed, errno = ");
-				log_puti(errno);
-				log_puts("\n");
-			}
-			sock_close(f);
-		}
+	n = sock_fdread(f, data, f->rtodo);
+	if (n == 0)
 		return 0;
-	}
-	if (n == 0) {
-		sock_close(f);
-		return 0;
-	}
 	if (n < f->rtodo) {
 		f->rtodo -= n;
 		return 0;
@@ -550,8 +556,20 @@ sock_rdata(struct sock *f)
 #endif
 	if (f->slot)
 		slot_write(f->slot);
-	if (f->midi)
+	if (f->midi) {
 		midi_in(f->midi);
+#ifdef DEBUG
+		if (f->midi->ibuf.used > 0) {
+			if (log_level >= 1) {
+				sock_log(f);
+				log_puts(": midi buffer not emptied\n");
+			}
+			panic();
+		}
+#endif
+		f->midi->ibuf.start = 0;
+		f->fillpending += f->rsize;
+	}
 	return 1;
 }
 
@@ -587,27 +605,9 @@ sock_wdata(struct sock *f)
 		buf = &f->midi->obuf;
 		data = abuf_rgetblk(buf, &count) + f->wsize - f->wtodo;
 	}
-	n = write(f->fd, data, f->wtodo);
-	if (n < 0) {
-		if (errno == EFAULT) {
-			log_puts("sock_wdata: fault\n");
-			panic();
-		}
-		if (errno != EAGAIN) {
-			sock_log(f);
-			if (log_level >= 1) {
-				log_puts(": data write failed, errno = ");
-				log_puti(errno);
-				log_puts("\n");
-			}
-			sock_close(f);
-		}
+	n = sock_fdwrite(f, data, f->wtodo);
+	if (n == 0)
 		return 0;
-	}
-	if (n == 0) {
-		sock_close(f);
-		return 0;
-	}
 	if (n < f->wtodo) {
 		f->wtodo -= n;
 		return 0;
@@ -894,6 +894,8 @@ sock_hello(struct sock *f)
 			midi_tag(f->midi, p->devnum);
 		} else
 			return 0;
+		if (mode & MODE_MIDIOUT)
+			f->fillpending = MIDI_BUFSZ;
 		return 1;
 	}
 	f->opt = opt_byname(p->opt, p->devnum);
@@ -979,12 +981,12 @@ sock_execmsg(struct sock *f)
 			sock_close(f);
 			return 0;
 		}
-		if (s != NULL && !(s->mode & MODE_PLAY)) {
-			/* XXX add check for midi as well */
+		if ((f->slot && !(f->slot->mode & MODE_PLAY)) ||
+		    (f->midi && !(f->midi->mode & MODE_MIDIOUT))) {
 #ifdef DEBUG
 			if (log_level >= 1) {
 				sock_log(f);
-				log_puts(": DATA not allowed in record-only mode\n");
+				log_puts(": DATA, input-only mode\n");
 			}
 #endif
 			sock_close(f);
@@ -1017,11 +1019,12 @@ sock_execmsg(struct sock *f)
 		}
 		f->rstate = SOCK_RDATA;
 		f->rsize = f->rtodo = size;
-		f->ralign -= size;
-		if (s != NULL && f->ralign == 0)
-			f->ralign = s->round * s->mix.buf.bpf;
-		if (s != NULL && f->rtodo > f->rmax) {
-			sock_log(f);
+		if (s != NULL) {
+			f->ralign -= size;
+			if (f->ralign == 0)
+				f->ralign = s->round * s->mix.buf.bpf;
+		}
+		if (f->rtodo > f->rmax) {
 #ifdef DEBUG
 			if (log_level >= 1) {
 				sock_log(f);
@@ -1035,8 +1038,7 @@ sock_execmsg(struct sock *f)
 			sock_close(f);
 			return 0;
 		}
-		if (s != NULL)
-			f->rmax -= f->rtodo;
+		f->rmax -= f->rtodo;
 		if (f->rtodo == 0) {
 #ifdef DEBUG
 			if (log_level >= 1) {
@@ -1066,9 +1068,11 @@ sock_execmsg(struct sock *f)
 			return 0;
 		}
 		f->tickpending = 0;
-		f->tickfirst = 1;
+		f->stoppending = 0;
 		slot_start(s);
 		if (s->mode & MODE_PLAY) {
+			f->fillpending = -(int)s->dev->bufsz *
+			    (int)s->round / (int)s->dev->round;
 			f->ralign = s->round * s->mix.buf.bpf;
 			f->rmax = SLOT_BUFSZ(s) * s->mix.buf.bpf;
 		}
@@ -1121,7 +1125,9 @@ sock_execmsg(struct sock *f)
 			sock_close(f);
 			return 0;
 		}
-		f->stoppending = 1;
+		f->rmax = 0;
+		if (!(s->mode & MODE_PLAY))
+			f->stoppending = 1;
 		f->pstate = SOCK_STOP;
 		f->rstate = SOCK_RMSG;
 		f->rtodo = sizeof(struct amsg);
@@ -1311,33 +1317,10 @@ sock_execmsg(struct sock *f)
 int
 sock_buildmsg(struct sock *f)
 {
-	unsigned int size;
+	unsigned int size;	
 
 	/*
-	 * Send initial position
-	 */
-	if (f->tickpending && f->tickfirst) {
-#ifdef DEBUG
-		if (log_level >= 3) {
-			sock_log(f);
-			log_puts(": building POS message, pos = ");
-			log_puti(f->slot->startpos);
-			log_puts("\n");
-		}
-#endif
-		AMSG_INIT(&f->wmsg);
-		f->wmsg.cmd = htonl(AMSG_POS);
-		f->wmsg.u.ts.delta = htonl(f->slot->startpos);
-		if (f->slot->mode & MODE_PLAY)
-			f->rmax += f->slot->startpos * f->slot->mix.buf.bpf;
-		f->wtodo = sizeof(struct amsg);
-		f->wstate = SOCK_WMSG;
-		f->tickpending = f->tickfirst = 0;
-		return 1;
-	}
-
-	/*
-	 * If pos changed, build a MOVE message.
+	 * If pos changed (or initial tick), build a MOVE message.
 	 */
 	if (f->tickpending) {
 #ifdef DEBUG
@@ -1348,17 +1331,39 @@ sock_buildmsg(struct sock *f)
 			log_puts("\n");
 		}
 #endif
-		if (f->slot->mode & MODE_PLAY)
-			f->rmax += f->slot->delta * f->slot->mix.buf.bpf;
-		if (f->slot->mode & MODE_RECMASK)
-			f->wmax += f->slot->delta * f->slot->sub.buf.bpf;
 		AMSG_INIT(&f->wmsg);
 		f->wmsg.cmd = htonl(AMSG_MOVE);
 		f->wmsg.u.ts.delta = htonl(f->slot->delta);
 		f->wtodo = sizeof(struct amsg);
 		f->wstate = SOCK_WMSG;
 		f->tickpending = 0;
+		/*
+		 * XXX: use tickpending as accumulator rather than
+		 * slot->delta
+		 */
 		f->slot->delta = 0;
+		return 1;
+	}
+
+	if (f->fillpending > 0) {
+#ifdef DEBUG
+		if (log_level >= 4) {
+			sock_log(f);
+			log_puts(": building FLOWCTL message, count = ");
+			log_puti(f->fillpending);
+			log_puts("\n");
+		}
+#endif
+		AMSG_INIT(&f->wmsg);
+		f->wmsg.cmd = htonl(AMSG_FLOWCTL);	       
+		f->wmsg.u.ts.delta = htonl(f->fillpending);
+		size = f->fillpending;
+		if (f->slot)
+			size *= f->slot->mix.buf.bpf;
+		f->rmax += size;
+		f->wtodo = sizeof(struct amsg);
+		f->wstate = SOCK_WMSG;
+		f->fillpending = 0;
 		return 1;
 	}
 
@@ -1384,7 +1389,9 @@ sock_buildmsg(struct sock *f)
 	}
 
 	if (f->midi != NULL && f->midi->obuf.used > 0) {
-		size = f->midi->obuf.used;
+		size = f->midi->obuf.len - f->midi->obuf.start;
+		if (size > f->midi->obuf.used)
+			size = f->midi->obuf.used;
 		if (size > AMSG_DATAMAX)
 			size = AMSG_DATAMAX;
 		AMSG_INIT(&f->wmsg);
@@ -1490,24 +1497,26 @@ sock_read(struct sock *f)
 		f->rtodo = sizeof(struct amsg);
 		break;
 	case SOCK_RRET:
-#ifdef DEBUG
-		if (log_level >= 4) {
-			sock_log(f);
-			log_puts(": blocked by pending RRET message\n");
-		}
-#endif
-		if (f->wstate == SOCK_WIDLE) {
-			if (!sock_wmsg(f, &f->rmsg, &f->rtodo))
-				return 0;
+		if (f->wstate != SOCK_WIDLE) {
 #ifdef DEBUG
 			if (log_level >= 4) {
 				sock_log(f);
-				log_puts(": replied RRET message\n");
+				log_puts(": read blocked by pending RRET\n");
 			}
 #endif
-			f->rstate = SOCK_RMSG;
-			f->rtodo = sizeof(struct amsg);
+			return 0;
 		}
+		f->wmsg = f->rmsg;
+		f->wstate = SOCK_WMSG;
+		f->wtodo = sizeof(struct amsg);
+		f->rstate = SOCK_RMSG;
+		f->rtodo = sizeof(struct amsg);
+#ifdef DEBUG
+		if (log_level >= 4) {
+			sock_log(f);
+			log_puts(": copied RRET message\n");
+		}
+#endif
 	}
 	return 1;
 }
@@ -1533,7 +1542,7 @@ sock_write(struct sock *f)
 #endif
 	switch (f->wstate) {
 	case SOCK_WMSG:
-		if (!sock_wmsg(f, &f->wmsg, &f->wtodo))
+		if (!sock_wmsg(f))
 			return 0;
 		if (ntohl(f->wmsg.cmd) != AMSG_DATA) {
 			f->wstate = SOCK_WIDLE;
@@ -1553,21 +1562,30 @@ sock_write(struct sock *f)
 			break;
 		f->wstate = SOCK_WIDLE;
 		f->wtodo = 0xdeadbeef;
-		if (f->pstate == SOCK_STOP)
+		if (f->pstate == SOCK_STOP) {
 			f->pstate = SOCK_INIT;
-		/* PASSTHROUGH */
-	case SOCK_WIDLE:
-		if (f->rstate == SOCK_RRET) {
-			if (!sock_wmsg(f, &f->rmsg, &f->rtodo))
-				return 0;
+			f->wmax = 0;
 #ifdef DEBUG
 			if (log_level >= 4) {
 				sock_log(f);
-				log_puts(": sent RRET message\n");
+				log_puts(": drained, moved to INIT state\n");
 			}
 #endif
+		}
+		/* PASSTHROUGH */
+	case SOCK_WIDLE:
+		if (f->rstate == SOCK_RRET) {
+			f->wmsg = f->rmsg;
+			f->wstate = SOCK_WMSG;
+			f->wtodo = sizeof(struct amsg);
 			f->rstate = SOCK_RMSG;
 			f->rtodo = sizeof(struct amsg);
+#ifdef DEBUG
+			if (log_level >= 4) {
+				sock_log(f);
+				log_puts(": copied RRET message\n");
+			}
+#endif
 			while (sock_read(f))
 				;
 		}
@@ -1615,6 +1633,13 @@ sock_in(void *arg)
 
 	while (sock_read(f))
 		;
+
+	/*
+	 * feedback counters, clock ticks and alike may have changed,
+	 * prepare a message to trigger writes
+	 */
+	if (f->wstate == SOCK_WIDLE && f->rstate != SOCK_RRET)
+		sock_buildmsg(f);
 }
 
 void

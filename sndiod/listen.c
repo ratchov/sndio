@@ -104,6 +104,10 @@ listen_new_un(char *path)
 		perror("bind");
 		goto bad_close;
 	}
+	if (listen(sock, 1) < 0) {
+		perror("listen");
+		goto bad_close;
+	}
 	umask(oldumask);
 	f = xmalloc(sizeof(struct listen));
 	f->file = file_new(&listen_fileops, f, path, 1);
@@ -166,6 +170,10 @@ listen_new_tcp(char *addr, unsigned int port)
 			perror("bind");
 			goto bad_close;
 		}
+		if (listen(s, 1) < 0) {
+			perror("listen");
+			goto bad_close;
+		}
 		f = xmalloc(sizeof(struct listen));
 		f->file = file_new(&listen_fileops, f, addr, 1);
 		if (f == NULL) {
@@ -187,10 +195,6 @@ listen_new_tcp(char *addr, unsigned int port)
 int
 listen_init(struct listen *f)
 {
-	if (listen(f->fd, 1) < 0) {
-		perror("listen");
-		return 0;
-	}
 	return 1;
 }
 

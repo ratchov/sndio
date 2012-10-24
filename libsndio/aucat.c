@@ -505,6 +505,7 @@ aucat_open(struct aucat *hdl, const char *str, unsigned int mode,
 	hdl->rtodo = sizeof(struct amsg);
 	hdl->wstate = WSTATE_IDLE;
 	hdl->wtodo = 0xdeadbeef;
+	hdl->maxwrite = 0;
 
 	/*
 	 * say hello to server

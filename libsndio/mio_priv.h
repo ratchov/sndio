@@ -20,6 +20,8 @@
 #include <sys/param.h>
 #include "sndio.h"
 
+#define MIO_MAXNFDS	16
+
 /*
  * private ``handle'' structure
  */

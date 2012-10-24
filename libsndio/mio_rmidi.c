@@ -75,8 +75,6 @@ mio_rmidi_open(const char *str, unsigned int mode, int nbio)
 		flags = O_RDWR;
 	else
 		flags = (mode & MIO_OUT) ? O_WRONLY : O_RDONLY;
-	if (nbio)
-		flags |= O_NONBLOCK;
 	while ((fd = open(path, flags)) < 0) {
 		if (errno == EINTR)
 			continue;

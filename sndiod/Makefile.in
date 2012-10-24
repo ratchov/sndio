@@ -53,10 +53,9 @@ sndiod:		${OBJS}
 .c.o:
 		${CC} ${CFLAGS} ${INCLUDE} ${DEFS} -c $<
 
-### cdeps begin
 abuf.o:		abuf.c abuf.h defs.h utils.h
-dev.o:		dev.c abuf.h defs.h dev.h dsp.h miofile.h siofile.h \
-		midi.h opt.h sysex.h utils.h
+dev.o:		dev.c ../bsd-compat/bsd-compat.h abuf.h defs.h dev.h \
+		dsp.h miofile.h siofile.h midi.h opt.h sysex.h utils.h
 dsp.o:		dsp.c defs.h dsp.h utils.h
 file.o:		file.c defs.h file.h utils.h
 listen.o:	listen.c listen.h file.h sock.h ../libsndio/amsg.h \
@@ -73,4 +72,3 @@ sndiod.o:	sndiod.c ../libsndio/amsg.h defs.h dev.h abuf.h dsp.h \
 sock.o:		sock.c abuf.h defs.h dev.h dsp.h file.h midi.h opt.h \
 		sock.h ../libsndio/amsg.h utils.h
 utils.o:	utils.c utils.h
-### cdeps end

@@ -29,8 +29,8 @@ struct sock {
 	int fd;
 	struct file *file;
 	struct amsg rmsg, wmsg;		/* messages being sent/received */
-	unsigned int wmax;		/* max frames we're allowed to write */
-	unsigned int rmax;		/* max frames we're allowed to read */
+	unsigned int wmax;		/* max bytes we're allowed to write */
+	unsigned int rmax;		/* max bytes we're allowed to read */
 	unsigned int rsize;		/* input bytes to read (DATA msg) */
 	unsigned int wsize;		/* output bytes to write (DATA msg) */
 	unsigned int rtodo;		/* input bytes not read yet */
@@ -50,8 +50,8 @@ struct sock {
 #define SOCK_START	3		/* filling play buffers */
 #define SOCK_STOP	4		/* draining rec buffers */
 	unsigned int pstate;		/* one of the above */
-	int tickpending;		/* delta waiting to be transmitted */	
-	int tickfirst;			/* initial delta to be transmitted */
+	int tickpending;		/* tick waiting to be transmitted */	
+	int fillpending;		/* flowctl waiting to be transmitted */
 	int stoppending;		/* last STOP ack to be sent */
 	unsigned int walign;		/* align written data to this */
 	unsigned int ralign;		/* read data is aligned to this */

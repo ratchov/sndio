@@ -82,7 +82,6 @@ struct slot {
 	int appbufsz;				/* slot-side buffer size */
 	int round;				/* slot-side block size */
 	int rate;				/* slot-side sample rate */
-	int startpos;				/* attach position */
 	int delta;				/* pending clock ticks */
 	int delta_rem;				/* remainder for delta */
 	int mode;				/* MODE_{PLAY,REC} */

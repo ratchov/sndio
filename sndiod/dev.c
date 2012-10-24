@@ -604,6 +604,7 @@ dev_mix_badd(struct dev *d, struct slot *s)
 		log_puts(" of ");
 		log_putu(d->round);
 		log_puts(")\n");
+		panic();
 	}
 #endif
 	if (icount > s->round)
@@ -684,7 +685,8 @@ dev_mix_cycle(struct dev *d)
 			}
 		} else {
 			dev_mix_badd(d, s);
-			s->ops->fill(s->arg);
+			if (s->pstate != SLOT_STOP)
+				s->ops->fill(s->arg);
 		}
 		ps = &s->next;
 	}
@@ -1618,6 +1620,7 @@ slot_attach(struct slot *s)
 {
 	struct dev *d = s->dev;
 	unsigned int slot_nch, dev_nch;
+	int startpos;
 
 	/*
 	 * start the device if not started
@@ -1628,8 +1631,8 @@ slot_attach(struct slot *s)
 	 * get the current position, the origin is when the first sample
 	 * played and/or recorded
 	 */
-	s->startpos = dev_getpos(d) * (int)s->round / (int)d->round;
-	s->delta = 0;
+	startpos = dev_getpos(d) * (int)s->round / (int)d->round;
+	s->delta = startpos;
 	s->delta_rem = 0;
 	s->pstate = SLOT_RUN;
 #ifdef DEBUG
@@ -1637,7 +1640,7 @@ slot_attach(struct slot *s)
 	if (log_level >= 3) {
 		slot_log(s);
 		log_puts(": attached at ");
-		log_puti(s->startpos);
+		log_puti(startpos);
 		log_puts("\n");
 	}
 #endif
@@ -1764,7 +1767,7 @@ slot_attach(struct slot *s)
 		/*
 		 * N-th recorded block is the N-th played block
 		 */
-		s->sub.silence = s->startpos / (int)s->round;
+		s->sub.silence = startpos / (int)s->round;
 	}
 }
 
@@ -1925,7 +1928,6 @@ slot_write(struct slot *s)
 		s->pstate = SLOT_READY;
 		slot_ready(s);
 	}
-
 }
 
 void

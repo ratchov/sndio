@@ -255,7 +255,7 @@ midi_in(struct midi *ep)
 #ifdef DEBUG
 	if (log_level >= 4) {
 		midi_log(ep);
-		log_puts(": in:");
+		log_puts(":  in:");
 		for (i = 0; i < icount; i++) {
 			log_puts(" ");
 			log_putx(idata[i]);
@@ -286,11 +286,8 @@ midi_in(struct midi *ep)
 			ep->st = c;
 			ep->idx = 1;
 		} else if (ep->st) {
-			if (ep->idx == 0 &&
-			    ep->st != SYSEX_START) {
-				ep->msg[ep->idx++] =
-				    ep->st;
-			}
+			if (ep->idx == 0 && ep->st != SYSEX_START)
+				ep->msg[ep->idx++] = ep->st;
 			ep->msg[ep->idx++] = c;
 			if (ep->idx == ep->len) {
 				ep->ops->imsg(ep->arg, ep->msg, ep->idx);

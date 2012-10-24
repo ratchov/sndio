@@ -55,9 +55,8 @@ struct sock {
 	struct aparams rpar;		/* read (ie play) parameters */
 	struct aparams wpar;		/* write (ie rec) parameters */
 	int delta;			/* pos. change to send */
-	int startpos;			/* initial pos. to send */
 	int tickpending;		/* delta waiting to be transmitted */
-	int startpending;		/* initial delta waiting to be transmitted */
+	int fillpending;		/* initial delta waiting to be transmitted */
 	unsigned int walign;		/* align data packets to this */
 	unsigned int bufsz;		/* total buffer size */
 	unsigned int round;		/* block size */

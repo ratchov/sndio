@@ -42,7 +42,7 @@ struct amsg {
 #define AMSG_START	3	/* request the server to start the stream */
 #define AMSG_STOP	4	/* request the server to stop the stream */
 #define AMSG_DATA	5	/* data block */
-#define AMSG_POS	6	/* initial position */
+#define AMSG_FLOWCTL	6	/* feedback about buffer usage */
 #define AMSG_MOVE	7	/* position changed */
 #define AMSG_SETVOL	9	/* set volume */
 #define AMSG_HELLO	10	/* say hello, check versions and so ... */
@@ -80,7 +80,7 @@ struct amsg {
 		} vol;
 		struct amsg_hello {
 			uint16_t mode;		/* bitmap of MODE_XXX */
-#define AMSG_VERSION	5
+#define AMSG_VERSION	6
 			uint8_t version;	/* protocol version */
 			uint8_t devnum;		/* device number */
 			uint32_t _reserved[1];	/* for future use */
