@@ -185,8 +185,7 @@ main(int argc, char **argv)
 	struct sio_hdl *hdl;
 #define NFDS 10
 	struct pollfd pfd[NFDS];
-	struct timeval tv, otv, ntv;
-	unsigned mode, done;
+	unsigned mode;
 	
 	recfd = -1;
 	recpath = NULL;
@@ -309,24 +308,7 @@ main(int argc, char **argv)
 		buf_read(&playbuf, playfd);
 		buf_play(&playbuf, hdl);
 	}
-	gettimeofday(&otv, NULL);
 	for (;;) {
-		gettimeofday(&ntv, NULL);
-		timersub(&ntv, &otv, &tv);
-#if 0 /* trigger underrun */
-		if (playpath && (tv.tv_sec % 10) < 7) {
-			events |= POLLOUT;
-		} else
-			events &= ~POLLOUT;
-#endif
-#if 0 /* trigger overrun */
-		if (recpath && (tv.tv_sec % 10) < 7) {
-			events |= POLLIN;
-		} else
-			events &= ~POLLIN;
-#endif
-		//fprintf(stderr, "%ld.%06ld: polling for %d\n",
-		//    tv.tv_sec, tv.tv_usec, events);
 		nfds = sio_pollfd(hdl, pfd, events);
 		while (poll(pfd, nfds, 1000) < 0) {
 			if (errno == EINTR)
@@ -335,39 +317,18 @@ main(int argc, char **argv)
 			exit(1);
 		}
 		revents = sio_revents(hdl, pfd);
-		gettimeofday(&ntv, NULL);
-		timersub(&ntv, &otv, &tv);
-		//fprintf(stderr, "%ld.%06ld: got %d\n",
-		//    tv.tv_sec, tv.tv_usec, revents);
 		if (revents & POLLHUP) {
 			fprintf(stderr, "device hangup\n");
 			exit(0);
 		}				
 		if (revents & POLLIN) {
-			done = buf_rec(&recbuf, hdl);
+			buf_rec(&recbuf, hdl);
 			buf_write(&recbuf, recfd);
-			//fprintf(stderr, "%ld.%06ld: recored %u\n",
-			//    tv.tv_sec, tv.tv_usec, done);
 		}
 		if (revents & POLLOUT) {
-			done = buf_play(&playbuf, hdl);
+			buf_play(&playbuf, hdl);
 			buf_read(&playbuf, playfd);
 		}
-#if 0
-		if (pos / par.rate > 2) {
-			if (!sio_stop(hdl)) {
-				fprintf(stderr, "sio_stop failed\n");
-				exit(1);
-			}
-			pos = plat = rlat = 0;
-			fprintf(stderr, "pausing...\n");
-			sleep(1);
-			if (!sio_start(hdl)) {
-				fprintf(stderr, "sio_start failed\n");
-				exit(1);
-			}
-		}
-#endif
 	}
 	sio_close(hdl);
 	return 0;
