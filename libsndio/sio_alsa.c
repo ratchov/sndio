@@ -321,7 +321,7 @@ sio_alsa_close(struct sio_hdl *sh)
 
 #ifdef DEBUG
 void
-sio_alsa_printpos(struct sio_alsa_hdl *hdl, int delta)
+sio_alsa_printpos(struct sio_alsa_hdl *hdl)
 {	
 	long long rpos, rdiff;
 	long long cpos, cdiff;
@@ -450,8 +450,9 @@ sio_alsa_xrun(struct sio_alsa_hdl *hdl)
 {
 	int wdiff, cdiff, rdiff, offs;
 
-	DPRINTF("xrun: stop ");
-	sio_alsa_printpos(hdl, 0);
+	DPRINTF("- - - - - - - - - - - - - - - - - - - - - xrun begin\n");
+	DPRINTF("osil = %d, odrop = %d, odelta = %d, idelta = %d\n", hdl->osil, hdl->idrop, hdl->odelta, hdl->idelta);
+	sio_alsa_printpos(hdl);
 
 	cdiff = hdl->par.round - (hdl->cpos % hdl->par.round);
 	if (cdiff == hdl->par.round)
@@ -462,7 +463,7 @@ sio_alsa_xrun(struct sio_alsa_hdl *hdl)
 	}
 
 	DPRINTF("xrun: tick ");
-	sio_alsa_printpos(hdl, 0);
+	sio_alsa_printpos(hdl);
 	
 	if (hdl->sio.mode & SIO_PLAY) {
 		wdiff = hdl->wpos - hdl->cpos;
@@ -500,9 +501,10 @@ sio_alsa_xrun(struct sio_alsa_hdl *hdl)
 		DPRINTF("xrun: dropping: %d\n", rdiff);
 		hdl->idrop = rdiff;
 	}
-	DPRINTF("xrun: osil = %d, idrop = %d\n", hdl->osil, hdl->idrop);
-	DPRINTF("xrun: corr ");
-	sio_alsa_printpos(hdl, 0);
+	DPRINTF("xrun: corrected\n");
+	DPRINTF("osil = %d, odrop = %d, odelta = %d, idelta = %d\n", hdl->osil, hdl->idrop, hdl->odelta, hdl->idelta);
+	sio_alsa_printpos(hdl);
+	DPRINTF("- - - - - - - - - - - - - - - - - - - - - xrun end\n");
 	return 1;
 }
 
@@ -1239,14 +1241,14 @@ sio_alsa_revents(struct sio_hdl *sh, struct pollfd *pfd)
 		}
 		delta = hdl->odelta > hdl->idelta ? hdl->odelta : hdl->idelta;
 		if (delta > 0) {
-#ifdef DEBUG
-			hdl->cpos += delta;
-			if (sndio_debug >= 2)
-				sio_alsa_printpos(hdl, delta);
-#endif
 			sio_onmove_cb(&hdl->sio, delta);
 			hdl->odelta -= delta;
 			hdl->idelta -= delta;
+#ifdef DEBUG
+			hdl->cpos += delta;
+			if (sndio_debug >= 2)
+				sio_alsa_printpos(hdl);
+#endif
 		}
 	}
 	if ((hdl->sio.mode & SIO_PLAY) && !sio_alsa_wsil(hdl))
