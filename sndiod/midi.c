@@ -235,7 +235,7 @@ int
 midi_in(struct midi *ep)
 {
 	unsigned char c, *idata;
-	unsigned int i, icount;
+	int i, icount;
 
 	if (ep->ibuf.used == 0)
 		return 0;
@@ -309,7 +309,7 @@ void
 midi_out(struct midi *oep, unsigned char *idata, int icount)	
 {
 	unsigned char *odata;
-	unsigned ocount;
+	int ocount;
 
 	while (icount > 0) {
 		if (oep->obuf.used == oep->obuf.len) {

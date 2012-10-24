@@ -72,7 +72,7 @@ abuf_done(struct abuf *buf)
  * Get a pointer to the readable block
  */
 unsigned char *
-abuf_rgetblk(struct abuf *buf, unsigned int *rsize)
+abuf_rgetblk(struct abuf *buf, int *rsize)
 {
 	unsigned int count;
 
@@ -87,10 +87,10 @@ abuf_rgetblk(struct abuf *buf, unsigned int *rsize)
  * Discard the block at the start postion.
  */
 void
-abuf_rdiscard(struct abuf *buf, unsigned int count)
+abuf_rdiscard(struct abuf *buf, int count)
 {
 #ifdef DEBUG
-	if (count > buf->used) {
+	if (count < 0 || count > buf->used) {
 		log_puts("abuf_rdiscard: bad count = ");
 		log_putu(count);
 		log_puts("\n");
@@ -107,10 +107,10 @@ abuf_rdiscard(struct abuf *buf, unsigned int count)
  * Commit the data written at the end postion.
  */
 void
-abuf_wcommit(struct abuf *buf, unsigned int count)
+abuf_wcommit(struct abuf *buf, int count)
 {
 #ifdef DEBUG
-	if (count > (buf->len - buf->used)) {
+	if (count < 0 || count > (buf->len - buf->used)) {
 		log_puts("abuf_wcommit: bad count = ");
 		log_putu(count);
 		log_puts("\n");
@@ -124,9 +124,9 @@ abuf_wcommit(struct abuf *buf, unsigned int count)
  * Get a pointer to the writable block
  */
 unsigned char *
-abuf_wgetblk(struct abuf *buf, unsigned int *rsize)
+abuf_wgetblk(struct abuf *buf, int *rsize)
 {
-	unsigned int end, avail, count;
+	int end, avail, count;
 
 	end = buf->start + buf->used;
 	if (end >= buf->len)

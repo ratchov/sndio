@@ -507,9 +507,8 @@ int
 sock_rdata(struct sock *f)
 {
 	struct abuf *buf;
-	unsigned int count;
-	char *data;
-	int n;
+	unsigned char *data;
+	int n, count;
 
 #ifdef DEBUG
 	if (f->rtodo == 0) {
@@ -581,10 +580,9 @@ int
 sock_wdata(struct sock *f)
 {
 	static unsigned char dummy[AMSG_DATAMAX];
-	int n;
-	char *data = NULL;
-	unsigned int count;
+	unsigned char *data = NULL;
 	struct abuf *buf = NULL;
+	int n, count;
 
 #ifdef DEBUG
 	if (f->wtodo == 0) {

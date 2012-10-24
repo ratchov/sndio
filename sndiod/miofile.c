@@ -102,7 +102,7 @@ miofile_in(void *arg)
 	struct miofile *f = arg;
 	struct midi *ep = f->port->midi;
 	unsigned char *data;
-	unsigned int n, count;
+	int n, count;
 
 	for (;;) {
 		data = abuf_wgetblk(&ep->ibuf, &count);
@@ -124,7 +124,7 @@ miofile_out(void *arg)
 	struct miofile *f = arg;
 	struct midi *ep = f->port->midi;
 	unsigned char *data;
-	unsigned int n, count;
+	int n, count;
 
 	for (;;) {
 		data = abuf_rgetblk(&ep->obuf, &count);

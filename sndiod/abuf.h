@@ -18,19 +18,19 @@
 #define ABUF_H
 
 struct abuf {
-	unsigned int bpf;	/* bytes per frames */
-	unsigned int start;	/* offset (frames) where stored data starts */
-	unsigned int used;	/* frames stored in the buffer */
-	unsigned int len;	/* total size of the buffer (frames) */
+	int bpf;	/* bytes per frames */
+	int start;	/* offset (frames) where stored data starts */
+	int used;	/* frames stored in the buffer */
+	int len;	/* total size of the buffer (frames) */
 	unsigned char *data;
 };
 
 void abuf_init(struct abuf *, unsigned int, unsigned int);
 void abuf_done(struct abuf *);
 void abuf_log(struct abuf *);
-unsigned char *abuf_rgetblk(struct abuf *, unsigned int *);
-unsigned char *abuf_wgetblk(struct abuf *, unsigned int *);
-void abuf_rdiscard(struct abuf *, unsigned int);
-void abuf_wcommit(struct abuf *, unsigned int);
+unsigned char *abuf_rgetblk(struct abuf *, int *);
+unsigned char *abuf_wgetblk(struct abuf *, int *);
+void abuf_rdiscard(struct abuf *, int);
+void abuf_wcommit(struct abuf *, int);
 
 #endif /* !defined(ABUF_H) */
