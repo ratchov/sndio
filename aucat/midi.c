@@ -96,7 +96,7 @@ midi_cb(void *addr)
 }
 
 void
-midi_msg_info(struct aproc *p, int slot, char *msg)
+midi_msg_info(struct aproc *p, int slot, unsigned char *msg)
 {
 	struct ctl_slot *s;
 	struct sysex *x = (struct sysex *)msg;
@@ -108,7 +108,7 @@ midi_msg_info(struct aproc *p, int slot, char *msg)
 	x->id0 = SYSEX_AUCAT;
 	x->id1 = SYSEX_AUCAT_MIXINFO;
 	if (*s->name != '\0') {
-		snprintf(x->u.mixinfo.name,
+		snprintf((char *)x->u.mixinfo.name,
 		    SYSEX_NAMELEN, "%s%u", s->name, s->unit);
 	}
 	x->u.mixinfo.chan = slot;
@@ -116,7 +116,7 @@ midi_msg_info(struct aproc *p, int slot, char *msg)
 }
 
 void
-midi_msg_vol(struct aproc *p, int slot, char *msg)
+midi_msg_vol(struct aproc *p, int slot, unsigned char *msg)
 {
 	struct ctl_slot *s;
 
@@ -127,7 +127,7 @@ midi_msg_vol(struct aproc *p, int slot, char *msg)
 }
 
 void
-midi_msg_master(struct aproc *p, char *msg)
+midi_msg_master(struct aproc *p, unsigned char *msg)
 {
 	struct sysex *x = (struct sysex *)msg;
 
