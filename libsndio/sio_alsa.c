@@ -45,7 +45,6 @@ static snd_output_t *output = NULL;
 struct sio_alsa_hdl {
 	struct sio_hdl sio;
 	struct sio_par par;
-	struct pollfd *pfds;
 	snd_pcm_t *opcm;
 	snd_pcm_t *ipcm;
 	unsigned ibpf, obpf;		/* bytes per frame */
@@ -270,13 +269,12 @@ sio_alsa_open(const char *str, unsigned mode, int nbio)
 			goto bad_free_opcm;
 		}
 	}
-	hdl->nfds = SIO_MAXNFDS;
-	hdl->pfds = malloc(sizeof(struct pollfd) * hdl->nfds);
-	if (hdl->pfds == NULL) {
-		DPERROR("couldn't allocate pollfd structures");
-		goto bad_free_ipcm;
-	}
-	DPRINTF("mode = %d, allocated %d descriptors\n", mode, hdl->nfds);
+	hdl->nfds = 0;
+	if (mode & SIO_PLAY)
+		hdl->nfds += snd_pcm_poll_descriptors_count(hdl->opcm);
+	if (mode & SIO_REC)
+		hdl->nfds += snd_pcm_poll_descriptors_count(hdl->ipcm);
+	DPRINTF("mode = %d, nfds = %d\n", mode, hdl->nfds);
 
 	/*
 	 * Default parameters may not be compatible with libsndio (eg. mulaw
