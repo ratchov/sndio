@@ -687,13 +687,13 @@ sio_alsa_setpar(struct sio_hdl *sh, struct sio_par *par)
 			round = bufsz / 2;
 		else {
 			round = round * orate / req_rate;
-			round = (bufsz + 31) & ~31;
+			round = (round + 31) & ~31;
 			bufsz += round - 1;
 			bufsz -= bufsz % round;
 		}
 	} else if (round != ~0U) {
 		round = round * orate / req_rate;
-		round = (bufsz + 31) & ~31;
+		round = (round + 31) & ~31;
 		bufsz = round * 2;
 	} else {
 		round = orate / 100;
