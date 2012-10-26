@@ -45,7 +45,7 @@ case `uname` in
 		alsa=yes
 		ldadd="-lrt"
 		so="$so libsndio.so.\${MAJ} libsndio.so"
-		defs='-DCOMPAT_ISSETUGID \\\
+		defs='-D_GNU_SOURCE -DCOMPAT_ISSETUGID \\\
 		-DCOMPAT_STRLCAT -DCOMPAT_STRLCPY -DCOMPAT_STRTONUM \\\
 		-DCOMPAT_LETOH -DDEV_RANDOM=\\"/dev/urandom\\"'
 		;;
