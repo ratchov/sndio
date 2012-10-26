@@ -269,11 +269,16 @@ sio_alsa_open(const char *str, unsigned mode, int nbio)
 			goto bad_free_opcm;
 		}
 	}
-	hdl->nfds = 0;
-	if (mode & SIO_PLAY)
-		hdl->nfds += snd_pcm_poll_descriptors_count(hdl->opcm);
-	if (mode & SIO_REC)
-		hdl->nfds += snd_pcm_poll_descriptors_count(hdl->ipcm);
+
+	/*
+	 * snd_pcm_poll_descriptors_count returns a small value
+	 * that grow later, after the stream is started
+	 */
+	hdl->nfds = SIO_MAXNFDS;
+	//if (mode & SIO_PLAY)
+	//	hdl->nfds += snd_pcm_poll_descriptors_count(hdl->opcm);
+	//if (mode & SIO_REC)
+	//	hdl->nfds += snd_pcm_poll_descriptors_count(hdl->ipcm);
 	DPRINTF("mode = %d, nfds = %d\n", mode, hdl->nfds);
 
 	/*
