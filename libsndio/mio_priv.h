@@ -39,11 +39,13 @@ struct mio_ops {
 	void (*close)(struct mio_hdl *);
 	size_t (*write)(struct mio_hdl *, const void *, size_t);
 	size_t (*read)(struct mio_hdl *, void *, size_t);
+	int (*nfds)(struct mio_hdl *);
 	int (*pollfd)(struct mio_hdl *, struct pollfd *, int);
 	int (*revents)(struct mio_hdl *, struct pollfd *);
 };
 
 struct mio_hdl *mio_rmidi_open(const char *, unsigned, int);
+struct mio_hdl *mio_alsa_open(const char *, unsigned, int);
 struct mio_hdl *mio_aucat_open(const char *, unsigned, int, unsigned);
 void mio_create(struct mio_hdl *, struct mio_ops *, unsigned, int);
 void mio_destroy(struct mio_hdl *);

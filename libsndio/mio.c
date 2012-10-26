@@ -55,15 +55,28 @@ mio_open(const char *str, unsigned int mode, int nbio)
 		hdl = mio_aucat_open("/0", mode, nbio, 1);
 		if (hdl != NULL)
 			return hdl;
+#if defined(USE_RMIDI)
 		return mio_rmidi_open("/0", mode, nbio);
+#elif defined(USE_ALSA)
+		return mio_alsa_open("/0", mode, nbio);
+#else
+		return NULL;
+#endif
 	}
 	if ((p = sndio_parsetype(str, "snd")) != NULL ||
 	    (p = sndio_parsetype(str, "aucat")) != NULL)
 		return mio_aucat_open(p, mode, nbio, 0);
 	if ((p = sndio_parsetype(str, "midithru")) != NULL)
 		return mio_aucat_open(p, mode, nbio, 1);
-	if ((p = sndio_parsetype(str, "rmidi")) != NULL)
+#if defined(USE_RMIDI) || defined(USE_ALSA)
+	if ((p = sndio_parsetype(str, "rmidi")) != NULL) {
+#if defined(USE_SUN)
 		return mio_rmidi_open(p, mode, nbio);
+#elif defined(USE_ALSA)
+		return mio_alsa_open(p, mode, nbio);
+#endif
+	}
+#endif
 	DPRINTF("mio_open: %s: unknown device type\n", str);
 	return NULL;
 }
@@ -193,7 +206,7 @@ mio_write(struct mio_hdl *hdl, const void *buf, size_t len)
 int
 mio_nfds(struct mio_hdl *hdl)
 {
-	return 1;
+	return hdl->ops->nfds(hdl);
 }
 
 int

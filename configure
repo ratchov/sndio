@@ -13,10 +13,12 @@ Usage: configure [options]
 --libdir=DIR			install libraries in DIR [\$prefix/lib]
 --mandir=DIR			install man pages in DIR [\$prefix/man]
 --precision=NUMBER		aucat/sndiod processing precision [$precision]
---enable-alsa			enable alsa backend [$alsa]
---disable-alsa			disable alsa backend
---enable-sun			enable sun backend [$sun]
---disable-sun			disable sun backend
+--enable-alsa			enable alsa audio & midi backends [$alsa]
+--disable-alsa			disable alsa audio & midi backends
+--enable-sun			enable sun audio backend [$sun]
+--disable-sun			disable sun audio backend
+--enable-rmidi			enable character device midi backend [$rmidi]
+--disable-rmidi			disable character device midi backend
 END
 }
 
@@ -27,6 +29,7 @@ prefix=/usr/local			# where to install sndio
 so="libsndio.so.\${MAJ}.\${MIN}"	# shared libs to build
 alsa=no					# do we want alsa support ?
 sun=no					# do we want sun support ?
+rmidi=no				# do we want support for raw char dev ?
 precision=16				# aucat/sndiod arithmetic precision
 unset vars				# variables passed as arguments
 unset bindir				# path where to install binaries
@@ -51,6 +54,7 @@ case `uname` in
 		;;
 	OpenBSD)
 		sun=yes
+		rmidi=yes
 		defs='-DUSE_ARC4RANDOM'
 		;;
 esac
@@ -94,6 +98,12 @@ for i; do
 	--disable-sun)
 		sun=no
 		shift;;
+	--enable-rmidi)
+		rmidi=yes
+		shift;;
+	--disable-rmidi)
+		rmidi=no
+		shift;;
 	--precision=*)
 		precision="${i#--precision=}"
 		if [ "$precision" != 16 -a "$precision" != 24 ]; then
@@ -135,6 +145,13 @@ if [ $sun = yes ]; then
 	defs="$defs -DUSE_SUN"
 fi
 
+#
+# if using raw character devices for midi, add corresponding parameters
+#
+if [ $rmidi = yes ]; then
+	defs="$defs -DUSE_RMIDI"
+fi
+
 for makefile in Makefile aucat/Makefile sndiod/Makefile libsndio/Makefile examples/Makefile
 do
 	sed \
@@ -160,6 +177,7 @@ echo "mandir................... $mandir"
 echo "precision................ $precision"
 echo "alsa..................... $alsa"
 echo "sun...................... $sun"
+echo "rmidi.................... $rmidi"
 echo
 echo "Do \"make && make install\" to compile and install sndio"
 echo

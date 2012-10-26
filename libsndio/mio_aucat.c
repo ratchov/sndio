@@ -42,6 +42,7 @@ struct mio_aucat_hdl {
 static void mio_aucat_close(struct mio_hdl *);
 static size_t mio_aucat_read(struct mio_hdl *, void *, size_t);
 static size_t mio_aucat_write(struct mio_hdl *, const void *, size_t);
+static int mio_aucat_nfds(struct mio_hdl *);
 static int mio_aucat_pollfd(struct mio_hdl *, struct pollfd *, int);
 static int mio_aucat_revents(struct mio_hdl *, struct pollfd *);
 
@@ -49,8 +50,9 @@ static struct mio_ops mio_aucat_ops = {
 	mio_aucat_close,
 	mio_aucat_write,
 	mio_aucat_read,
+	mio_aucat_nfds,
 	mio_aucat_pollfd,
-	mio_aucat_revents,
+	mio_aucat_revents
 };
 
 /*
@@ -138,6 +140,12 @@ mio_aucat_write(struct mio_hdl *sh, const void *buf, size_t len)
 	n = aucat_wdata(&hdl->aucat, buf, len, 1, &hdl->mio.eof);
 	hdl->aucat.maxwrite -= n;
 	return n;
+}
+
+static int
+mio_aucat_nfds(struct mio_hdl *sh)
+{
+	return 1;
 }
 
 static int

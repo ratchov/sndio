@@ -38,6 +38,7 @@ struct mio_rmidi_hdl {
 static void mio_rmidi_close(struct mio_hdl *);
 static size_t mio_rmidi_read(struct mio_hdl *, void *, size_t);
 static size_t mio_rmidi_write(struct mio_hdl *, const void *, size_t);
+static int mio_rmidi_nfds(struct mio_hdl *);
 static int mio_rmidi_pollfd(struct mio_hdl *, struct pollfd *, int);
 static int mio_rmidi_revents(struct mio_hdl *, struct pollfd *);
 
@@ -45,8 +46,9 @@ static struct mio_ops mio_rmidi_ops = {
 	mio_rmidi_close,
 	mio_rmidi_write,
 	mio_rmidi_read,
+	mio_rmidi_nfds,
 	mio_rmidi_pollfd,
-	mio_rmidi_revents,
+	mio_rmidi_revents
 };
 
 struct mio_hdl *
@@ -146,6 +148,12 @@ mio_rmidi_write(struct mio_hdl *sh, const void *buf, size_t len)
  		return 0;
 	}
 	return n;
+}
+
+static int
+mio_rmidi_nfds(struct mio_hdl *sh)
+{
+	return 1;
 }
 
 static int
