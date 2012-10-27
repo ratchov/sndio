@@ -13,6 +13,7 @@ Usage: configure [options]
 --libdir=DIR			install libraries in DIR [\$prefix/lib]
 --mandir=DIR			install man pages in DIR [\$prefix/man]
 --precision=NUMBER		aucat/sndiod processing precision [$precision]
+--privsep-user=USER		non-privileged user for sndio daemon [$user]
 --enable-alsa			enable alsa audio & midi backends [$alsa]
 --disable-alsa			disable alsa audio & midi backends
 --enable-sun			enable sun audio backend [$sun]
@@ -31,6 +32,7 @@ alsa=no					# do we want alsa support ?
 sun=no					# do we want sun support ?
 rmidi=no				# do we want support for raw char dev ?
 precision=16				# aucat/sndiod arithmetic precision
+user=_sndio				# non-privileged user for sndio daemon
 unset vars				# variables passed as arguments
 unset bindir				# path where to install binaries
 unset datadir				# path where to install doc
@@ -47,6 +49,7 @@ case `uname` in
 	Linux)
 		alsa=yes
 		ldadd="-lrt"
+		user=sndiod
 		so="$so libsndio.so.\${MAJ} libsndio.so"
 		defs='-D_GNU_SOURCE -DCOMPAT_ISSETUGID \\\
 		-DCOMPAT_STRLCAT -DCOMPAT_STRLCPY -DCOMPAT_STRTONUM \\\
@@ -55,6 +58,7 @@ case `uname` in
 	OpenBSD)
 		sun=yes
 		rmidi=yes
+		user=_sndiod
 		defs='-DUSE_ARC4RANDOM'
 		;;
 esac
@@ -103,6 +107,9 @@ for i; do
 		shift;;
 	--disable-rmidi)
 		rmidi=no
+		shift;;
+	--privsep-user=*)
+		user="${i#--privsep-user=}"
 		shift;;
 	--precision=*)
 		precision="${i#--precision=}"
@@ -165,6 +172,7 @@ do
 	-e "s:@so@:$so:" \
 	-e "s:@vars@:${vars}:" \
 	-e "s:@precision@:$precision:" \
+	-e "s:@user@:$user:" \
 	< $makefile.in > $makefile
 done
 
@@ -174,6 +182,7 @@ echo "datadir.................. $datadir"
 echo "includedir............... $includedir"
 echo "libdir................... $libdir"
 echo "mandir................... $mandir"
+echo "user..................... $user"
 echo "precision................ $precision"
 echo "alsa..................... $alsa"
 echo "sun...................... $sun"
