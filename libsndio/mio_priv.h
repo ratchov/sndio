@@ -45,7 +45,9 @@ struct mio_ops {
 };
 
 struct mio_hdl *mio_rmidi_open(const char *, unsigned, int);
+#ifdef USE_ALSA
 struct mio_hdl *mio_alsa_open(const char *, unsigned, int);
+#endif
 struct mio_hdl *mio_aucat_open(const char *, unsigned, int, unsigned);
 void mio_create(struct mio_hdl *, struct mio_ops *, unsigned, int);
 void mio_destroy(struct mio_hdl *);
