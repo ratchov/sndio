@@ -55,12 +55,6 @@ struct sio_sun_hdl {
 	int offset;			/* frames play is ahead of record */
 	int idelta, odelta;		/* position reported to client */
 	int mix_fd, mix_index;		/* /dev/mixerN stuff */
-#ifdef DEBUG
-	/* save these for core dumps */
-	int isamples, osamples;
-	int ixrun, oxrun;
-	int cpos, rpos, wpos;
-#endif
 };
 
 static void sio_sun_close(struct sio_hdl *);
@@ -790,9 +784,6 @@ sio_sun_read(struct sio_hdl *sh, void *buf, size_t len)
 		hdl->sio.eof = 1;
 		return 0;
 	}
-#ifdef DEBUG
-	hdl->rpos += n;
-#endif
 	return n;
 }
 
@@ -854,10 +845,6 @@ sio_sun_wsil(struct sio_sun_hdl *hdl)
 		}
 		hdl->offset += (int)n / (int)hdl->obpf;
 		DPRINTF("sio_sun_wsil: inserted %ld/%ld bytes\n", n, todo);
-#ifdef DEBUG
-		hdl->wpos += n;
-#endif
-
 	}
 	return 1;
 }
@@ -882,9 +869,6 @@ sio_sun_write(struct sio_hdl *sh, const void *buf, size_t len)
 		}
  		return 0;
 	}
-#ifdef DEBUG
-	hdl->wpos += n;
-#endif
 	if (hdl->filling) {
 		if (!sio_sun_autostart(hdl))
 			return 0;
@@ -924,9 +908,6 @@ sio_sun_revents(struct sio_hdl *sh, struct pollfd *pfd)
 			hdl->sio.eof = 1;
 			return POLLHUP;
 		}
-#ifdef DEBUG
-		hdl->osamples = ao.samples;
-#endif
 		delta = (ao.samples - hdl->obytes) / hdl->obpf;
 		hdl->obytes = ao.samples;
 		hdl->odelta += delta;
@@ -939,9 +920,6 @@ sio_sun_revents(struct sio_hdl *sh, struct pollfd *pfd)
 			hdl->sio.eof = 1;
 			return POLLHUP;
 		}
-#ifdef DEBUG
-		hdl->isamples = hdl->ibytes;
-#endif
 		delta = (ao.samples - hdl->ibytes) / hdl->ibpf;
 		hdl->ibytes = ao.samples;
 		hdl->idelta += delta;
@@ -954,9 +932,6 @@ sio_sun_revents(struct sio_hdl *sh, struct pollfd *pfd)
 			hdl->sio.eof = 1;
 			return POLLHUP;
 		}
-#ifdef DEBUG
-		hdl->oxrun = xrun;
-#endif
 		doerr = xrun - hdl->oerr;
 		hdl->oerr = xrun;
 		if (!(hdl->sio.mode & SIO_REC))
@@ -968,9 +943,6 @@ sio_sun_revents(struct sio_hdl *sh, struct pollfd *pfd)
 			hdl->sio.eof = 1;
 			return POLLHUP;
 		}
-#ifdef DEBUG
-		hdl->ixrun = xrun;
-#endif
 		dierr = xrun - hdl->ierr;
 		hdl->ierr = xrun;
 		if (!(hdl->sio.mode & SIO_PLAY))
@@ -983,9 +955,6 @@ sio_sun_revents(struct sio_hdl *sh, struct pollfd *pfd)
 
 	delta = (hdl->idelta > hdl->odelta) ? hdl->idelta : hdl->odelta;
 	if (delta > 0) {
-#ifdef DEBUG
-		hdl->cpos += delta;
-#endif
 		sio_onmove_cb(&hdl->sio, delta);
 		hdl->idelta -= delta;
 		hdl->odelta -= delta;
