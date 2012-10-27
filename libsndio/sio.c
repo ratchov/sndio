@@ -269,7 +269,6 @@ sio_read(struct sio_hdl *hdl, void *buf, size_t len)
 		return 0;
 	}
 	while (todo > 0) {
-		/* XXX: this is wrong */
 		n = hdl->ops->read(hdl, data, todo);
 		if (n == 0) {
 			if (hdl->nbio || hdl->eof || todo < len)
