@@ -551,7 +551,7 @@ sock_attach(struct sock *f, int force)
 	 */
 	f->delta = dev_getpos(f->dev) *
 	    (int)f->round / (int)f->dev->round;
-	f->fillpending = f->delta;
+	f->fillpending = 0;
 	f->pstate = SOCK_RUN;
 #ifdef DEBUG
 	if (debug_level >= 3) {
