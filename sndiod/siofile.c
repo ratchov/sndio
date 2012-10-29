@@ -384,7 +384,6 @@ siofile_run(void *arg)
 				log_puts("/");
 				log_puti(d->bufsz);
 				log_puts("\n");
-				panic();
 			}
 			if (f->rused < 0 || f->rused >= d->bufsz) {
 				/* device driver or libsndio bug */
