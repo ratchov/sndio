@@ -19,6 +19,7 @@
  * disturbing them. The buffer can be flushed on standard error later, when
  * slow syscalls are no longer disruptive, e.g. at the end of the poll() loop.
  */
+#include <signal.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -134,7 +135,8 @@ void
 panic(void)
 {
 	log_flush();
-	abort();
+	(void)kill(getpid(), SIGABRT);
+	_exit(1);
 }
 
 /*
@@ -163,14 +165,14 @@ memrnd(void *addr, size_t size)
  */
 struct mem_hdr {
 	struct mem_hdr *next;		/* next allocated block */
-	char *tag;			/* hint on what allocated the block */
+	char *tag;			/* what the block is used for */
 	size_t size;			/* data chunk size in bytes */
-	char end[sizeof(void *)];	/* copy of trailed (random bytes) */
+	char end[sizeof(void *)];	/* copy of trailer (random bytes) */
 };
 
 #define MEM_HDR_SIZE	((sizeof(struct mem_hdr) + 15) & ~15)
 
-struct mem_hdr *mem_list= NULL;
+struct mem_hdr *mem_list = NULL;
 
 /*
  * allocate 'size' bytes of memory (with size > 0). This functions never

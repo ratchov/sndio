@@ -37,7 +37,7 @@
 #include "debug.h"
 #include "bsd-compat.h"
 
-#ifndef USE_ARC4RANDOM
+#ifndef HAVE_ARC4RANDOM
 
 #ifndef DEV_RANDOM
 #define DEV_RANDOM "/dev/arandom"
@@ -288,7 +288,7 @@ bad_gen:
 	/*
 	 * generate a new cookie
 	 */
-#ifdef USE_ARC4RANDOM
+#ifdef HAVE_ARC4RANDOM
 	arc4random_buf(cookie, AMSG_COOKIELEN);
 #else
 	if (!random_bytes(cookie, AMSG_COOKIELEN))

@@ -16,7 +16,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifdef COMPAT_STRLCAT
+#ifndef HAVE_STRLCAT
 #include <sys/types.h>
 #include <string.h>
 

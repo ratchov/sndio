@@ -2,7 +2,7 @@
 #define __packed	__attribute__((packed))
 #endif
 
-#ifdef COMPAT_LETOH
+#ifndef HAVE_LETOH
 #include <byteswap.h>
 #include <endian.h>
 #if __BYTE_ORDER == __LITTLE_ENDIAN
