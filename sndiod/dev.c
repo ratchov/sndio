@@ -1888,8 +1888,13 @@ slot_stop(struct slot *s)
 		} else
 			s->pstate = SLOT_INIT;
 	}
-	if (s->mode & MODE_RECMASK)
+	if (s->mode & MODE_RECMASK) {
 		abuf_done(&s->sub.buf);
+		if (s->sub.encbuf)
+			xfree(s->sub.encbuf);
+		if (s->sub.resampbuf)
+			xfree(s->sub.resampbuf);
+	}
 	if (s->pstate == SLOT_READY) {
 #ifdef DEBUG
 		if (log_level >= 3) {
@@ -1897,8 +1902,13 @@ slot_stop(struct slot *s)
 			log_puts(": not drained (blocked by mmc)\n");
 		}
 #endif
-		if (s->mode & MODE_PLAY)
+		if (s->mode & MODE_PLAY) {
 			abuf_done(&s->mix.buf);
+			if (s->mix.decbuf)
+				xfree(s->mix.decbuf);
+			if (s->mix.resampbuf)
+				xfree(s->mix.resampbuf);
+		}
 		s->ops->eof(s->arg);
 		s->pstate = SLOT_INIT;
 	} else {
