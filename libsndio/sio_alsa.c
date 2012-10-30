@@ -369,7 +369,7 @@ sio_alsa_start(struct sio_hdl *sh)
 	hdl->iused = 0;
 	hdl->oused = 0;
 	hdl->idelta = 0;
-	hdl->odelta = -hdl->par.bufsz;
+	hdl->odelta = 0;
 	hdl->infds = 0;
 	hdl->onfds = 0;
 	hdl->osil = 0;
@@ -1222,7 +1222,7 @@ sio_alsa_revents(struct sio_hdl *sh, struct pollfd *pfd)
 				return POLLHUP;
 			}
 			oused = hdl->par.bufsz - oavail;
-			hdl->odelta += oused - hdl->oused;
+			hdl->odelta -= oused - hdl->oused;
 			hdl->oused = oused;
 		}
 		if ((hdl->sio.mode & SIO_REC) &&
@@ -1243,10 +1243,12 @@ sio_alsa_revents(struct sio_hdl *sh, struct pollfd *pfd)
 			hdl->iused = iused;
 		}
 		delta = hdl->odelta > hdl->idelta ? hdl->odelta : hdl->idelta;
-		if (delta > 0) {
+		if (delta > 0 && hdl->running) {
 			sio_onmove_cb(&hdl->sio, delta);
-			hdl->odelta -= delta;
-			hdl->idelta -= delta;
+			if (hdl->sio.mode & SIO_PLAY)
+				hdl->odelta -= delta;
+			if (hdl->sio.mode & SIO_REC)
+				hdl->idelta -= delta;
 #ifdef DEBUG
 			hdl->cpos += delta;
 			if (sndio_debug >= 2)
