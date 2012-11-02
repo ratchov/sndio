@@ -318,6 +318,19 @@ dev_sio_run(void *arg)
 			d->sio.cstate = DEV_SIO_CYCLE;
 			break;
 		case DEV_SIO_CYCLE:
+#ifdef DEBUG
+			/*
+			 * check that we're called at cycle boundary:
+			 * either after a recorded block, or when POLLOUT is
+			 * raised
+			 */
+			if (!((d->mode & MODE_REC) && d->prime == 0) &&
+			    !(d->sio.events & POLLOUT)) {
+				dev_log(d);
+				log_puts(": cycle not at block boundary\n");
+				panic();
+			}
+#endif
 			dev_cycle(d);
 			if (d->mode & MODE_PLAY) {
 				d->sio.cstate = DEV_SIO_WRITE;
@@ -331,7 +344,8 @@ dev_sio_run(void *arg)
 		case DEV_SIO_WRITE:
 #ifdef DEBUG
 			if (d->sio.todo == 0) {
-				log_puts("dev_sio_write: can't write data\n");
+				dev_log(d);
+				log_puts(": can't write data\n");
 				panic();
 			}
 #endif
