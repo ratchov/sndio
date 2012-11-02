@@ -76,86 +76,6 @@ dev_sio_onmove(void *arg, int delta)
 	dev_onmove(d, delta);
 }
 
-int
-dev_sio_read(struct dev *d)
-{
-	unsigned char *data, *base;
-	unsigned int n;
-
-#ifdef DEBUG
-	if (d->sio.todo == 0) {
-		log_puts("dev_sio_read: can't read data\n");
-		panic();
-	}
-	if (d->prime > 0) {
-		log_puts("dev_sio_read: unexpected data\n");
-		panic();
-	}
-#endif
-	base = d->decbuf ? d->decbuf : (unsigned char *)d->rbuf;
-	data = base + d->rchan * d->round * d->par.bps - d->sio.todo;
-	n = sio_read(d->sio.hdl, data, d->sio.todo);
-	d->sio.todo -= n;
-#ifdef DEBUG
-	if (n == 0 && data == base && !sio_eof(d->sio.hdl)) {
-		dev_log(d);
-		log_puts(": read blocked at cycle start, sync error\n");
-		/* don't panic since recording is slightly ahead of playback */
-	}
-	if (log_level >= 4) {
-		dev_log(d);
-		log_puts(": read ");
-		log_putu(n);
-		log_puts(": bytes, todo ");
-		log_putu(d->sio.todo);
-		log_puts("/");
-		log_putu(d->round * d->rchan * d->par.bps);
-		log_puts("\n");
-	}
-#endif
-	if (d->sio.todo > 0)
-		return 0;
-	return 1;
-}
-
-int
-dev_sio_write(struct dev *d)
-{	
-	unsigned char *data, *base;
-	unsigned int n;
-
-#ifdef DEBUG
-	if (d->sio.todo == 0) {
-		log_puts("dev_sio_write: can't write data\n");
-		panic();
-	}
-#endif
-	base = d->encbuf ? d->encbuf : (unsigned char *)DEV_PBUF(d);
-	data = base + d->pchan * d->round * d->par.bps - d->sio.todo;
-	n = sio_write(d->sio.hdl, data, d->sio.todo);
-	d->sio.todo -= n;
-#ifdef DEBUG
-	if (n == 0 && data == base && !sio_eof(d->sio.hdl)) {
-		dev_log(d);
-		log_puts(": write blocked at cycle start, sync error\n");
-		/* don't panic since playback might be ahead of recording */
-	}
-	if (log_level >= 4) {
-		dev_log(d);
-		log_puts(": wrote ");
-		log_putu(n);
-		log_puts(" bytes, todo ");
-		log_putu(d->sio.todo);
-		log_puts("/");
-		log_putu(d->round * d->pchan * d->par.bps);
-		log_puts("\n");
-	}
-#endif
-	if (d->sio.todo > 0)
-		return 0;
-	return 1;
-}
-
 /*
  * open the device.
  */
@@ -318,6 +238,8 @@ void
 dev_sio_run(void *arg)
 {
 	struct dev *d = arg;
+	unsigned char *data, *base;
+	unsigned int n;
 
 	/*
 	 * sio_read() and sio_write() would block at the end of the
@@ -336,8 +258,41 @@ dev_sio_run(void *arg)
 				log_puts(": recording, but POLLIN not set\n");
 				panic();
 			}
+			if (d->sio.todo == 0) {
+				dev_log(d);
+				log_puts(": can't read data\n");
+				panic();
+			}
+			if (d->prime > 0) {
+				dev_log(d);
+				log_puts(": unexpected data\n");
+				panic();
+			}
 #endif
-			if (!dev_sio_read(d))
+			base = d->decbuf ? d->decbuf : (unsigned char *)d->rbuf;
+			data = base +
+			    d->rchan * d->round * d->par.bps -
+			    d->sio.todo;
+			n = sio_read(d->sio.hdl, data, d->sio.todo);
+			d->sio.todo -= n;
+#ifdef DEBUG
+			if (n == 0 && data == base && !sio_eof(d->sio.hdl)) {
+				dev_log(d);
+				log_puts(": read blocked at cycle start, sync error\n");
+				/* don't panic since recording is slightly ahead of playback */
+			}
+			if (log_level >= 4) {
+				dev_log(d);
+				log_puts(": read ");
+				log_putu(n);
+				log_puts(": bytes, todo ");
+				log_putu(d->sio.todo);
+				log_puts("/");
+				log_putu(d->round * d->rchan * d->par.bps);
+				log_puts("\n");
+			}
+#endif
+			if (d->sio.todo > 0)
 				return;
 #ifdef DEBUG
 			d->sio.rused -= d->round;
@@ -374,7 +329,36 @@ dev_sio_run(void *arg)
 				return;
 			}
 		case DEV_SIO_WRITE:
-			if (!dev_sio_write(d))
+#ifdef DEBUG
+			if (d->sio.todo == 0) {
+				log_puts("dev_sio_write: can't write data\n");
+				panic();
+			}
+#endif
+			base = d->encbuf ? d->encbuf : (unsigned char *)DEV_PBUF(d);
+			data = base +
+			    d->pchan * d->round * d->par.bps -
+			    d->sio.todo;
+			n = sio_write(d->sio.hdl, data, d->sio.todo);
+			d->sio.todo -= n;
+#ifdef DEBUG
+			if (n == 0 && data == base && !sio_eof(d->sio.hdl)) {
+				dev_log(d);
+				log_puts(": write blocked at cycle start, sync error\n");
+				/* don't panic since playback might be ahead of recording */
+			}
+			if (log_level >= 4) {
+				dev_log(d);
+				log_puts(": wrote ");
+				log_putu(n);
+				log_puts(" bytes, todo ");
+				log_putu(d->sio.todo);
+				log_puts("/");
+				log_putu(d->round * d->pchan * d->par.bps);
+				log_puts("\n");
+			}
+#endif
+			if (d->sio.todo > 0)
 				return;
 #ifdef DEBUG
 			d->sio.pused += d->round;
