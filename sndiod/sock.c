@@ -184,7 +184,7 @@ sock_slot_flush(void *arg)
 	struct sock *f = arg;
 	struct slot *s = f->slot;
 
-	f->wmax += s->round * s->sub.buf.bpf;
+	f->wmax += s->round * s->sub.bpf;
 #ifdef DEBUG
 	if (log_level >= 4) {
 		sock_log(f);
@@ -527,7 +527,7 @@ sock_rdata(struct sock *f)
 	 * XXX: this can happen in MIDIOUT mode, since we dont
 	 *	have flow control
 	 */
-	if (count * buf->bpf < f->rtodo) {
+	if (count < f->rtodo) {
 		sock_log(f);
 		log_puts(": data read buffer overrun\n");
 		panic();
@@ -545,7 +545,7 @@ sock_rdata(struct sock *f)
 	 * XXX: commit data earlier, don't sacrify a full block in case
 	 * of xrun
 	 */
-	abuf_wcommit(buf, f->rsize / buf->bpf);
+	abuf_wcommit(buf, f->rsize);
 	f->rtodo = 0;
 #ifdef DEBUG
 	if (log_level >= 4) {
@@ -611,7 +611,7 @@ sock_wdata(struct sock *f)
 		return 0;
 	}
 	if (f->pstate != SOCK_STOP) {
-		abuf_rdiscard(buf, f->wsize / buf->bpf);
+		abuf_rdiscard(buf, f->wsize);
 		if (f->slot)
 			slot_read(f->slot);
 	}
@@ -960,6 +960,7 @@ sock_execmsg(struct sock *f)
 	struct slot *s = f->slot;
 	struct amsg *m = &f->rmsg;
 	unsigned int size, ctl;
+	unsigned char *data;
 
 	switch (ntohl(m->cmd)) {
 	case AMSG_DATA:
@@ -991,7 +992,7 @@ sock_execmsg(struct sock *f)
 			return 0;
 		}
 		size = ntohl(m->u.data.size);
-		if (s != NULL && size % s->mix.buf.bpf != 0) {
+		if (s != NULL && size % s->mix.bpf != 0) {
 #ifdef DEBUG
 			if (log_level >= 1) {
 				sock_log(f);
@@ -1020,7 +1021,7 @@ sock_execmsg(struct sock *f)
 		if (s != NULL) {
 			f->ralign -= size;
 			if (f->ralign == 0)
-				f->ralign = s->round * s->mix.buf.bpf;
+				f->ralign = s->round * s->mix.bpf;
 		}
 		if (f->rtodo > f->rmax) {
 #ifdef DEBUG
@@ -1071,11 +1072,11 @@ sock_execmsg(struct sock *f)
 		if (s->mode & MODE_PLAY) {
 			f->fillpending = -(int)s->dev->bufsz *
 			    (int)s->round / (int)s->dev->round;
-			f->ralign = s->round * s->mix.buf.bpf;
-			f->rmax = SLOT_BUFSZ(s) * s->mix.buf.bpf;
+			f->ralign = s->round * s->mix.bpf;
+			f->rmax = SLOT_BUFSZ(s) * s->mix.bpf;
 		}
 		if (s->mode & MODE_RECMASK) {
-			f->walign = s->round * s->sub.buf.bpf;
+			f->walign = s->round * s->sub.bpf;
 			f->wmax = 0;
 		}
 		f->pstate = SOCK_START;
@@ -1129,7 +1130,20 @@ sock_execmsg(struct sock *f)
 		f->pstate = SOCK_STOP;
 		f->rstate = SOCK_RMSG;
 		f->rtodo = sizeof(struct amsg);
-		slot_stop(s);
+		if (s->mode & MODE_PLAY) {
+			data = abuf_wgetblk(&s->mix.buf, &size);
+#ifdef DEBUG
+			if (size < f->ralign) {
+				sock_log(f);
+				log_puts(": unaligned stop\n");
+				panic();
+			}
+#endif
+			memset(data, 0, f->ralign);
+			abuf_wcommit(&s->mix.buf, f->ralign);
+			f->ralign = 0;
+		}
+		slot_stop(s);		
 		break;
 	case AMSG_SETPAR:
 #ifdef DEBUG
@@ -1357,7 +1371,7 @@ sock_buildmsg(struct sock *f)
 		f->wmsg.u.ts.delta = htonl(f->fillpending);
 		size = f->fillpending;
 		if (f->slot)
-			size *= f->slot->mix.buf.bpf;
+			size *= f->slot->mix.bpf;
 		f->rmax += size;
 		f->wtodo = sizeof(struct amsg);
 		f->wstate = SOCK_WMSG;
@@ -1404,7 +1418,8 @@ sock_buildmsg(struct sock *f)
 	 * If data available, build a DATA message.
 	 */
 	if (f->slot != NULL && f->slot->sub.buf.used > 0 && f->wmax > 0) {
-		size = f->slot->sub.buf.used * f->slot->sub.buf.bpf;
+		/* XXX: round to bpf */
+		size = f->slot->sub.buf.used;
 		if (size > AMSG_DATAMAX)
 			size = AMSG_DATAMAX;
 		if (size > f->walign)
@@ -1421,7 +1436,7 @@ sock_buildmsg(struct sock *f)
 		f->walign -= size;
 		f->wmax -= size;
 		if (f->walign == 0)
-			f->walign = f->slot->round * f->slot->sub.buf.bpf;
+			f->walign = f->slot->round * f->slot->sub.bpf;
 #ifdef DEBUG
 		if (log_level >= 4) {
 			sock_log(f);

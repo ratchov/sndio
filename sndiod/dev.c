@@ -481,14 +481,14 @@ dev_midi_exit(void *arg)
 void
 slot_mix_drop(struct slot *s)
 {
-	while (s->mix.drop > 0 && s->mix.buf.used >= s->round) {
+	while (s->mix.drop > 0 && s->mix.buf.used >= s->round * s->mix.bpf) {
 #ifdef DEBUG
 		if (log_level >= 4) {
 			slot_log(s);
 			log_puts(": dropped a play block\n");
 		}
 #endif
-		abuf_rdiscard(&s->mix.buf, s->round);
+		abuf_rdiscard(&s->mix.buf, s->round * s->mix.bpf);
 		s->mix.drop--;
 	}
 }
@@ -501,7 +501,7 @@ slot_sub_sil(struct slot *s)
 
 	while (s->sub.silence > 0) {
 		data = abuf_wgetblk(&s->sub.buf, &count);
-		if (count < s->round)
+		if (count < s->round * s->sub.bpf)
 			break;
 #ifdef DEBUG
 		if (log_level >= 4) {
@@ -512,8 +512,8 @@ slot_sub_sil(struct slot *s)
 		if (s->sub.encbuf)
 			enc_sil_do(&s->sub.enc, data, s->round);
 		else
-			memset(data, 0, s->round * s->sub.buf.bpf);
-		abuf_wcommit(&s->sub.buf, s->round);
+			memset(data, 0, s->round * s->sub.bpf);
+		abuf_wcommit(&s->sub.buf, s->round * s->sub.bpf);
 		s->sub.silence--;
 	}
 }
@@ -594,20 +594,18 @@ dev_mix_badd(struct dev *d, struct slot *s)
 	odata = DEV_PBUF(d);
 	idata = (adata_t *)abuf_rgetblk(&s->mix.buf, &icount);
 #ifdef DEBUG
-	if (icount < s->round && s->pstate != SLOT_STOP) {
+	if (icount < s->round * s->mix.bpf) {
 		slot_log(s);
 		log_puts(": not enough data to mix (");
 		log_putu(icount);
 		log_puts(" of ");
-		log_putu(d->round);
+		log_putu(d->round * s->mix.bpf);
 		log_puts(")\n");
 		panic();
 	}
 #endif
-	if (icount > s->round)
-		icount = s->round;
-	play_filt_dec(s, idata, odata, icount);
-	abuf_rdiscard(&s->mix.buf, icount);
+	play_filt_dec(s, idata, odata, s->round);
+	abuf_rdiscard(&s->mix.buf, s->round * s->mix.bpf);
 }
 
 void
@@ -649,7 +647,12 @@ dev_mix_cycle(struct dev *d)
 			ps = &s->next;
 			continue;
 		}
-		if (s->pstate == SLOT_STOP && s->mix.buf.used == 0) {
+		if (s->mix.buf.used < s->round * s->mix.bpf &&
+		    s->pstate == SLOT_STOP) {
+			/*
+			 * partial blocks are zero-filled by socket
+			 * layer
+			 */
 			s->pstate = SLOT_INIT;
 			abuf_done(&s->mix.buf);
 			if (s->mix.decbuf)
@@ -660,7 +663,8 @@ dev_mix_cycle(struct dev *d)
 			*ps = s->next;
 			continue;
 		}
-		if (s->mix.buf.used < s->round && !(s->pstate == SLOT_STOP)) {
+		if (s->mix.buf.used < s->round * s->mix.bpf && 
+		    !(s->pstate == SLOT_STOP)) {
 			if (s->xrun == XRUN_IGNORE) {
 				if (s->mode & MODE_RECMASK)
 					s->sub.silence--;
@@ -803,13 +807,13 @@ dev_sub_bcopy(struct dev *d, struct slot *s)
 	idata = (s->mode & MODE_MON) ? DEV_PBUF(d) : d->rbuf;
 	odata = (adata_t *)abuf_wgetblk(&s->sub.buf, &ocount);
 #ifdef DEBUG
-	if (ocount < s->round) {
+	if (ocount < s->round * s->sub.bpf) {
 		log_puts("dev_sub_bcopy: not enough space\n");
 		panic();
 	}
 #endif
 	ocount = rec_filt_enc(s, idata, odata, d->round);
-	abuf_wcommit(&s->sub.buf, ocount);
+	abuf_wcommit(&s->sub.buf, ocount * s->sub.bpf);
 }
 
 void
@@ -837,7 +841,7 @@ dev_sub_cycle(struct dev *d)
 			ps = &s->next;
 			continue;
 		}
-		if (s->sub.buf.len - s->sub.buf.used < s->round) {
+		if (s->sub.buf.len - s->sub.buf.used < s->round * s->sub.bpf) {
 			if (s->xrun == XRUN_IGNORE) {
 				if (s->mode & MODE_PLAY)
 					s->mix.drop--;
@@ -1812,8 +1816,9 @@ slot_start(struct slot *s)
 			log_puts("\n");
 		}
 #endif
-		abuf_init(&s->mix.buf, bufsz,
-		    s->par.bps * (s->mix.slot_cmax - s->mix.slot_cmin + 1));
+		s->mix.bpf = s->par.bps * 
+		    (s->mix.slot_cmax - s->mix.slot_cmin + 1);
+		abuf_init(&s->mix.buf, bufsz * s->mix.bpf);
 	}
 	if (s->mode & MODE_RECMASK) {
 #ifdef DEBUG
@@ -1826,8 +1831,9 @@ slot_start(struct slot *s)
 			log_puts("\n");
 	}
 #endif
-		abuf_init(&s->sub.buf, bufsz,
-		    s->par.bps * (s->sub.slot_cmax - s->sub.slot_cmin + 1));
+		s->sub.bpf = s->par.bps * 
+		    (s->sub.slot_cmax - s->sub.slot_cmin + 1);
+		abuf_init(&s->sub.buf, bufsz * s->sub.bpf);
 	}
 	s->mix.weight = MIDI_TO_ADATA(MIDI_MAXCTL);
 #ifdef DEBUG

@@ -53,6 +53,7 @@ struct slot {
 		unsigned int vol;		/* volume within the vol */
 		int drop;			/* to drop on next read */
 		struct abuf buf;		/* socket side buffer */
+		int bpf;			/* byte per frame */
 		int slot_cmin, slot_cmax;	/* slot source chans */
 		int dev_cmin, dev_cmax;		/* device destination chans */
 		struct cmap cmap;		/* channel mapper state */
@@ -65,6 +66,7 @@ struct slot {
 	struct {
 		int silence;			/* to add on next write */
 		struct abuf buf;		/* socket side buffer */
+		int bpf;			/* byte per frame */
 		int slot_cmin, slot_cmax;	/* slot destination chans */
 		int dev_cmin, dev_cmax;		/* device source chans */
 		struct cmap cmap;		/* channel mapper state */

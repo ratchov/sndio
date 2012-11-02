@@ -43,11 +43,10 @@ abuf_log(struct abuf *buf)
 #endif
 
 void
-abuf_init(struct abuf *buf, unsigned int len, unsigned int bpf)
+abuf_init(struct abuf *buf, unsigned int len)
 {
-	buf->data = xmalloc((size_t)len * bpf);
+	buf->data = xmalloc(len);
 	buf->len = len;
-	buf->bpf = bpf;
 	buf->used = 0;
 	buf->start = 0;
 }
@@ -80,7 +79,7 @@ abuf_rgetblk(struct abuf *buf, int *rsize)
 	if (count > buf->used)
 		count = buf->used;
 	*rsize = count;
-	return buf->data + buf->start * buf->bpf;
+	return buf->data + buf->start;
 }
 
 /*
@@ -136,5 +135,5 @@ abuf_wgetblk(struct abuf *buf, int *rsize)
 	if (count > avail)
 		count = avail;
 	*rsize = count;
-	return buf->data + end * buf->bpf;
+	return buf->data + end;
 }

@@ -130,10 +130,10 @@ midi_new(struct midiops *ops, void *arg, int mode)
 	 * to client input
 	 */
 	if (ep->mode & MODE_MIDIOUT) {
-		abuf_init(&ep->ibuf, MIDI_BUFSZ, 1);
+		abuf_init(&ep->ibuf, MIDI_BUFSZ);
 	}
 	if (ep->mode & MODE_MIDIIN) {
-		abuf_init(&ep->obuf, MIDI_BUFSZ, 1);
+		abuf_init(&ep->obuf, MIDI_BUFSZ);
 	}
 	return ep;
 }

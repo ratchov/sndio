@@ -18,14 +18,13 @@
 #define ABUF_H
 
 struct abuf {
-	int bpf;	/* bytes per frames */
 	int start;	/* offset (frames) where stored data starts */
 	int used;	/* frames stored in the buffer */
 	int len;	/* total size of the buffer (frames) */
 	unsigned char *data;
 };
 
-void abuf_init(struct abuf *, unsigned int, unsigned int);
+void abuf_init(struct abuf *, unsigned int);
 void abuf_done(struct abuf *);
 void abuf_log(struct abuf *);
 unsigned char *abuf_rgetblk(struct abuf *, int *);
