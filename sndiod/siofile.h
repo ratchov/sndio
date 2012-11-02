@@ -19,7 +19,7 @@
 
 struct dev;
 
-struct siofile {
+struct siofile_ {
 	struct sio_hdl *hdl;
 	unsigned int todo;
 #ifdef DEBUG
@@ -27,21 +27,17 @@ struct siofile {
 	long long sum_wtime, sum_utime;
 	int pused, rused, events;
 #endif
-	struct dev *dev;
 	struct file *file;
-#define SIOFILE_READ	0
-#define SIOFILE_CYCLE	1
-#define SIOFILE_WRITE	2
+#define DEV_SIO_READ	0
+#define DEV_SIO_CYCLE	1
+#define DEV_SIO_WRITE	2
 	int cstate;
 };
 
-int siofile_open(struct siofile *, struct dev *);
-void siofile_close(struct siofile *);
-void siofile_log(struct siofile *);
-void siofile_start(struct siofile *);
-void siofile_stop(struct siofile *);
-
-void siofile_read(struct siofile *, unsigned int);
-void siofile_write(struct siofile *, unsigned int);
+int dev_sio_open(struct dev *);
+void dev_sio_close(struct dev *);
+void dev_sio_log(struct dev *);
+void dev_sio_start(struct dev *);
+void dev_sio_stop(struct dev *);
 
 #endif /* !defined(SIOFILE_H) */

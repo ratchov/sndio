@@ -31,138 +31,127 @@
 #include "siofile.h"
 #include "utils.h"
 
-int siofile_pollfd(void *, struct pollfd *);
-int siofile_revents(void *, struct pollfd *);
-void siofile_run(void *);
-void siofile_hup(void *);
+int dev_sio_pollfd(void *, struct pollfd *);
+int dev_sio_revents(void *, struct pollfd *);
+void dev_sio_run(void *);
+void dev_sio_hup(void *);
 
-struct fileops siofile_ops = {
+struct fileops dev_sio_ops = {
 	"sio",
-	siofile_pollfd,
-	siofile_revents,
-	siofile_run,
-	siofile_run,
-	siofile_hup
+	dev_sio_pollfd,
+	dev_sio_revents,
+	dev_sio_run,
+	dev_sio_run,
+	dev_sio_hup
 };
 
-/*
- * print device name and cstate
- */
 void
-siofile_log(struct siofile *f)
+dev_sio_onmove(void *arg, int delta)
 {
-	dev_log(f->dev);
-}
-
-void
-siofile_onmove(void *arg, int delta)
-{
-	struct siofile *f = arg;
+	struct dev *d = arg;
 
 #ifdef DEBUG
 	if (delta < 0 || delta > (60 * RATE_MAX)) {
-		siofile_log(f);
+		dev_log(d);
 		log_puts(": ");
 		log_puti(delta);
 		log_puts(": bogus sndio delta");
 		panic();
 	}
 	if (log_level >= 4) {
-		siofile_log(f);
+		dev_log(d);
 		log_puts(": tick, delta = ");
 		log_puti(delta);
 		log_puts("\n");
 	}
-	f->sum_utime += file_utime - f->utime;
-	f->sum_wtime += file_wtime - f->wtime;
-	f->wtime = file_wtime;
-	f->utime = file_utime;
-	if (f->dev->mode & MODE_PLAY)
-		f->pused -= delta;
-	if (f->dev->mode & MODE_REC)
-		f->rused += delta;
+	d->sio.sum_utime += file_utime - d->sio.utime;
+	d->sio.sum_wtime += file_wtime - d->sio.wtime;
+	d->sio.wtime = file_wtime;
+	d->sio.utime = file_utime;
+	if (d->mode & MODE_PLAY)
+		d->sio.pused -= delta;
+	if (d->mode & MODE_REC)
+		d->sio.rused += delta;
 #endif
-	dev_onmove(f->dev, delta);
+	dev_onmove(d, delta);
 }
 
 int
-siofile_rec(struct siofile *f)
+dev_sio_read(struct dev *d)
 {
-	struct dev *d = f->dev;
 	unsigned char *data, *base;
 	unsigned int n;
 
 #ifdef DEBUG
-	if (f->todo == 0) {
-		log_puts("siofile_in: can't read data\n");
+	if (d->sio.todo == 0) {
+		log_puts("dev_sio_read: can't read data\n");
 		panic();
 	}
 	if (d->prime > 0) {
-		log_puts("siofile_in: unexpected data\n");
+		log_puts("dev_sio_read: unexpected data\n");
 		panic();
 	}
 #endif
 	base = d->decbuf ? d->decbuf : (unsigned char *)d->rbuf;
-	data = base + d->rchan * d->round * d->par.bps - f->todo;
-	n = sio_read(f->hdl, data, f->todo);
-	f->todo -= n;
+	data = base + d->rchan * d->round * d->par.bps - d->sio.todo;
+	n = sio_read(d->sio.hdl, data, d->sio.todo);
+	d->sio.todo -= n;
 #ifdef DEBUG
-	if (n == 0 && data == base && !sio_eof(f->hdl)) {
-		siofile_log(f);
+	if (n == 0 && data == base && !sio_eof(d->sio.hdl)) {
+		dev_log(d);
 		log_puts(": read blocked at cycle start, sync error\n");
 		/* don't panic since recording is slightly ahead of playback */
 	}
 	if (log_level >= 4) {
-		siofile_log(f);
+		dev_log(d);
 		log_puts(": read ");
 		log_putu(n);
 		log_puts(": bytes, todo ");
-		log_putu(f->todo);
+		log_putu(d->sio.todo);
 		log_puts("/");
 		log_putu(d->round * d->rchan * d->par.bps);
 		log_puts("\n");
 	}
 #endif
-	if (f->todo > 0)
+	if (d->sio.todo > 0)
 		return 0;
 	return 1;
 }
 
 int
-siofile_play(struct siofile *f)
+dev_sio_write(struct dev *d)
 {	
-	struct dev *d = f->dev;
 	unsigned char *data, *base;
 	unsigned int n;
 
 #ifdef DEBUG
-	if (f->todo == 0) {
-		log_puts("siofile_in: can't write data\n");
+	if (d->sio.todo == 0) {
+		log_puts("dev_sio_write: can't write data\n");
 		panic();
 	}
 #endif
 	base = d->encbuf ? d->encbuf : (unsigned char *)DEV_PBUF(d);
-	data = base + d->pchan * d->round * d->par.bps - f->todo;
-	n = sio_write(f->hdl, data, f->todo);
-	f->todo -= n;
+	data = base + d->pchan * d->round * d->par.bps - d->sio.todo;
+	n = sio_write(d->sio.hdl, data, d->sio.todo);
+	d->sio.todo -= n;
 #ifdef DEBUG
-	if (n == 0 && data == base && !sio_eof(f->hdl)) {
-		siofile_log(f);
+	if (n == 0 && data == base && !sio_eof(d->sio.hdl)) {
+		dev_log(d);
 		log_puts(": write blocked at cycle start, sync error\n");
 		/* don't panic since playback might be ahead of recording */
 	}
 	if (log_level >= 4) {
-		siofile_log(f);
+		dev_log(d);
 		log_puts(": wrote ");
 		log_putu(n);
 		log_puts(" bytes, todo ");
-		log_putu(f->todo);
+		log_putu(d->sio.todo);
 		log_puts("/");
 		log_putu(d->round * d->pchan * d->par.bps);
 		log_puts("\n");
 	}
 #endif
-	if (f->todo > 0)
+	if (d->sio.todo > 0)
 		return 0;
 	return 1;
 }
@@ -171,21 +160,21 @@ siofile_play(struct siofile *f)
  * open the device.
  */
 int
-siofile_open(struct siofile *f, struct dev *d)
+dev_sio_open(struct dev *d)
 {
 	struct sio_par par;
 	unsigned int mode = d->mode & (MODE_PLAY | MODE_REC);
 
-	f->hdl = sio_open(d->path, mode, 1);
-	if (f->hdl == NULL) {
+	d->sio.hdl = sio_open(d->path, mode, 1);
+	if (d->sio.hdl == NULL) {
 		if (mode != (SIO_PLAY | SIO_REC))
 			return 0;
-		f->hdl = sio_open(d->path, SIO_PLAY, 1);
-		if (f->hdl != NULL)
+		d->sio.hdl = sio_open(d->path, SIO_PLAY, 1);
+		if (d->sio.hdl != NULL)
 			mode = SIO_PLAY;
 		else {
-			f->hdl = sio_open(d->path, SIO_REC, 1);
-			if (f->hdl != NULL)
+			d->sio.hdl = sio_open(d->path, SIO_REC, 1);
+			if (d->sio.hdl != NULL)
 				mode = SIO_REC;
 			else
 				return 0;
@@ -212,9 +201,9 @@ siofile_open(struct siofile *f, struct dev *d)
 		par.round = d->round;
 	if (d->rate)
 		par.rate = d->rate;
-	if (!sio_setpar(f->hdl, &par))
+	if (!sio_setpar(d->sio.hdl, &par))
 		goto bad_close;
-	if (!sio_getpar(f->hdl, &par))
+	if (!sio_getpar(d->sio.hdl, &par))
 		goto bad_close;
 	d->par.bits = par.bits;
 	d->par.bps = par.bps;
@@ -225,7 +214,6 @@ siofile_open(struct siofile *f, struct dev *d)
 		d->pchan = par.pchan;
 	if (mode & SIO_REC)
 		d->rchan = par.rchan;
-	f->dev = d;
 	d->bufsz = par.bufsz;
 	d->round = par.round;
 	d->rate = par.rate;
@@ -233,106 +221,103 @@ siofile_open(struct siofile *f, struct dev *d)
 		d->mode &= ~(MODE_PLAY | MODE_MON);
 	if (!(mode & MODE_REC))
 		d->mode &= ~MODE_REC;
-	sio_onmove(f->hdl, siofile_onmove, f);
-	f->file = file_new(&siofile_ops, f, d->path, sio_nfds(f->hdl));
+	sio_onmove(d->sio.hdl, dev_sio_onmove, d);
+	d->sio.file = file_new(&dev_sio_ops, d, d->path, sio_nfds(d->sio.hdl));
 	return 1;
  bad_close:
-	sio_close(f->hdl);
+	sio_close(d->sio.hdl);
 	return 0;
 }
 
 void
-siofile_close(struct siofile *f)
+dev_sio_close(struct dev *d)
 {
 #ifdef DEBUG
 	if (log_level >= 3) {
-		siofile_log(f);
+		dev_log(d);
 		log_puts(": closed\n");
 	}
 #endif
-	file_del(f->file);
-	sio_close(f->hdl);
+	file_del(d->sio.file);
+	sio_close(d->sio.hdl);
 }
 
 void
-siofile_start(struct siofile *f)
+dev_sio_start(struct dev *d)
 {
-	struct dev *d = f->dev;
-
-	if (!sio_start(f->hdl)) {
+	if (!sio_start(d->sio.hdl)) {
 		if (log_level >= 1) {
-			siofile_log(f);
+			dev_log(d);
 			log_puts(": failed to start device\n");
 		}
 		return;
 	}
 	if (d->mode & MODE_PLAY) {
-		f->cstate = SIOFILE_CYCLE;
-		f->todo = 0;
+		d->sio.cstate = DEV_SIO_CYCLE;
+		d->sio.todo = 0;
 	} else {
-		f->cstate = SIOFILE_READ;
-		f->todo = d->round * d->rchan * d->par.bps;
+		d->sio.cstate = DEV_SIO_READ;
+		d->sio.todo = d->round * d->rchan * d->par.bps;
 	}
 #ifdef DEBUG
-	f->pused = 0;
-	f->rused = 0;
-	f->sum_utime = 0;
-	f->sum_wtime = 0;
-	f->wtime = file_wtime;
-	f->utime = file_utime;
+	d->sio.pused = 0;
+	d->sio.rused = 0;
+	d->sio.sum_utime = 0;
+	d->sio.sum_wtime = 0;
+	d->sio.wtime = file_wtime;
+	d->sio.utime = file_utime;
 	if (log_level >= 3) {
-		siofile_log(f);
+		dev_log(d);
 		log_puts(": started\n");
 	}
 #endif
 }
 
 void
-siofile_stop(struct siofile *f)
+dev_sio_stop(struct dev *d)
 {
-	if (!sio_eof(f->hdl) && !sio_stop(f->hdl)) {
+	if (!sio_eof(d->sio.hdl) && !sio_stop(d->sio.hdl)) {
 		if (log_level >= 1) {
-			siofile_log(f);
+			dev_log(d);
 			log_puts(": failed to stop device\n");
 		}
 		return;
 	}
 #ifdef DEBUG
 	if (log_level >= 3) {
-		siofile_log(f);
+		dev_log(d);
 		log_puts(": stopped, load avg = ");
-		log_puti(f->sum_utime / 1000);
+		log_puti(d->sio.sum_utime / 1000);
 		log_puts(" / ");
-		log_puti(f->sum_wtime / 1000);
+		log_puti(d->sio.sum_wtime / 1000);
 		log_puts("\n");
 	}
 #endif
 }
 
 int
-siofile_pollfd(void *arg, struct pollfd *pfd)
+dev_sio_pollfd(void *arg, struct pollfd *pfd)
 {
-	struct siofile *f = arg;
+	struct dev *d = arg;
 	int events;
 	
-	events = (f->cstate == SIOFILE_READ) ? POLLIN : POLLOUT;
-	return sio_pollfd(f->hdl, pfd, events);
+	events = (d->sio.cstate == DEV_SIO_READ) ? POLLIN : POLLOUT;
+	return sio_pollfd(d->sio.hdl, pfd, events);
 }
 
 int
-siofile_revents(void *arg, struct pollfd *pfd)
+dev_sio_revents(void *arg, struct pollfd *pfd)
 {
-	struct siofile *f = arg;
+	struct dev *d = arg;
 
-	f->events = sio_revents(f->hdl, pfd);
-	return f->events;
+	d->sio.events = sio_revents(d->sio.hdl, pfd);
+	return d->sio.events;
 }
 
 void
-siofile_run(void *arg)
+dev_sio_run(void *arg)
 {
-	struct siofile *f = arg;
-	struct dev *d = f->dev;
+	struct dev *d = arg;
 
 	/*
 	 * sio_read() and sio_write() would block at the end of the
@@ -343,69 +328,69 @@ siofile_run(void *arg)
 	for (;;) {
 		if (d->pstate != DEV_RUN)
 			return;
-		switch (f->cstate) {
-		case SIOFILE_READ:
+		switch (d->sio.cstate) {
+		case DEV_SIO_READ:
 #ifdef DEBUG
-			if (!(f->events & POLLIN)) {
-				siofile_log(f);
+			if (!(d->sio.events & POLLIN)) {
+				dev_log(d);
 				log_puts(": recording, but POLLIN not set\n");
 				panic();
 			}
 #endif
-			if (!siofile_rec(f))
+			if (!dev_sio_read(d))
 				return;
 #ifdef DEBUG
-			f->rused -= d->round;
-			if (f->rused >= d->round) {
-				siofile_log(f);
+			d->sio.rused -= d->round;
+			if (d->sio.rused >= d->round) {
+				dev_log(d);
 				log_puts(": rec hw xrun, rused = ");
-				log_puti(f->rused);
+				log_puti(d->sio.rused);
 				log_puts("/");
 				log_puti(d->bufsz);
 				log_puts("\n");
 			}
-			if (f->rused < 0 || f->rused >= d->bufsz) {
+			if (d->sio.rused < 0 || d->sio.rused >= d->bufsz) {
 				/* device driver or libsndio bug */
-				siofile_log(f);
+				dev_log(d);
 				log_puts(": out of bounds rused = ");
-				log_puti(f->rused);
+				log_puti(d->sio.rused);
 				log_puts("/");
 				log_puti(d->bufsz);
 				log_puts("\n");
 				panic();
 			}
 #endif
-			f->cstate = SIOFILE_CYCLE;
+			d->sio.cstate = DEV_SIO_CYCLE;
 			break;
-		case SIOFILE_CYCLE:
+		case DEV_SIO_CYCLE:
 			dev_cycle(d);
 			if (d->mode & MODE_PLAY) {
-				f->cstate = SIOFILE_WRITE;
-				f->todo = d->round * d->pchan * d->par.bps;
+				d->sio.cstate = DEV_SIO_WRITE;
+				d->sio.todo = d->round * d->pchan * d->par.bps;
 				break;
 			} else {
-				f->cstate = SIOFILE_READ;
-				f->todo = d->round * d->rchan * d->par.bps;
+				d->sio.cstate = DEV_SIO_READ;
+				d->sio.todo = d->round * d->rchan * d->par.bps;
 				return;
 			}
-		case SIOFILE_WRITE:
-			if (!siofile_play(f))
+		case DEV_SIO_WRITE:
+			if (!dev_sio_write(d))
 				return;
 #ifdef DEBUG
-			f->pused += d->round;
-			if (d->prime == 0 && f->pused <= d->bufsz - d->round) {
-				siofile_log(f);
+			d->sio.pused += d->round;
+			if (d->prime == 0 && d->sio.pused <= d->bufsz - d->round) {
+				dev_log(d);
 				log_puts(": play hw xrun, pused = ");
-				log_puti(f->pused);
+				log_puti(d->sio.pused);
 				log_puts("/");
 				log_puti(d->bufsz);
 				log_puts("\n");
 			}
-			if (f->pused < 0 || f->pused > d->bufsz) {
+			if (d->sio.pused < 0 || d->sio.pused > d->bufsz) {
 				/* device driver or libsndio bug */
-				siofile_log(f);
+				dev_log(d);
 				log_puts(": out of bounds pused = ");
-				log_puti(f->pused);
+				log_puti(d->sio.pused);
 				log_puts("/");
 				log_puti(d->bufsz);
 				log_puts("\n");
@@ -416,20 +401,19 @@ siofile_run(void *arg)
 			if (d->poffs == d->bufsz)
 				d->poffs = 0;
 			if ((d->mode & MODE_REC) && d->prime == 0) {
-				f->cstate = SIOFILE_READ;
-				f->todo = d->round * d->rchan * d->par.bps;
+				d->sio.cstate = DEV_SIO_READ;
+				d->sio.todo = d->round * d->rchan * d->par.bps;
 			} else
-				f->cstate = SIOFILE_CYCLE;
+				d->sio.cstate = DEV_SIO_CYCLE;
 			return;
 		}
 	}
 }
 
 void
-siofile_hup(void *arg)
+dev_sio_hup(void *arg)
 {
-	struct siofile *f = arg;
-	struct dev *d = f->dev;
+	struct dev *d = arg;
 
 	dev_close(d);
 }

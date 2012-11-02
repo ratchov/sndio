@@ -917,7 +917,7 @@ dev_cycle(struct dev *d)
 			dev_log(d);
 			log_puts(": device stopped\n");
 		}
-		siofile_stop(&d->sio);
+		dev_sio_stop(d);
 		d->pstate = DEV_INIT;
 		if (d->refcnt == 0)
 			dev_close(d);
@@ -1039,7 +1039,7 @@ dev_open(struct dev *d)
 		d->pchan = 2;
 	if (d->rchan == 0)
 		d->rchan = 2;
-	if (!siofile_open(&d->sio, d)) {
+	if (!dev_sio_open(d)) {
 		if (log_level >= 1) {
 			dev_log(d);
 			log_puts(": ");
@@ -1126,7 +1126,7 @@ dev_close(struct dev *d)
 		s->ops = NULL;
 		d->slot_list = snext;
 	}
-	siofile_close(&d->sio);
+	dev_sio_close(d);
 	if (d->mode & MODE_PLAY) {
 		if (d->encbuf != NULL)
 			xfree(d->encbuf);
@@ -1275,7 +1275,7 @@ dev_wakeup(struct dev *d)
 			d->prime = 0;
 		}
 		d->pstate = DEV_RUN;
-		siofile_start(&d->sio);
+		dev_sio_start(d);
 	}
 }
 
