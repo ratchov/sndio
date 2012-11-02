@@ -267,10 +267,10 @@ siofile_start(struct siofile *f)
 		return;
 	}
 	if (d->mode & MODE_PLAY) {
-		f->state = STATE_CYCLE;
+		f->state = SIOFILE_CYCLE;
 		f->todo = 0;
 	} else {
-		f->state = STATE_REC;
+		f->state = SIOFILE_READ;
 		f->todo = d->round * d->rchan * d->par.bps;
 	}
 #ifdef DEBUG
@@ -315,7 +315,7 @@ siofile_pollfd(void *arg, struct pollfd *pfd)
 	struct siofile *f = arg;
 	int events;
 	
-	events = (f->state == STATE_REC) ? POLLIN : POLLOUT;
+	events = (f->state == SIOFILE_READ) ? POLLIN : POLLOUT;
 	return sio_pollfd(f->hdl, pfd, events);
 }
 
@@ -344,7 +344,7 @@ siofile_run(void *arg)
 		if (d->pstate != DEV_RUN)
 			return;
 		switch (f->state) {
-		case STATE_REC:
+		case SIOFILE_READ:
 #ifdef DEBUG
 			if (!(f->events & POLLIN)) {
 				siofile_log(f);
@@ -375,20 +375,20 @@ siofile_run(void *arg)
 				panic();
 			}
 #endif
-			f->state = STATE_CYCLE;
+			f->state = SIOFILE_CYCLE;
 			break;
-		case STATE_CYCLE:
+		case SIOFILE_CYCLE:
 			dev_cycle(d);
 			if (d->mode & MODE_PLAY) {
-				f->state = STATE_PLAY;
+				f->state = SIOFILE_WRITE;
 				f->todo = d->round * d->pchan * d->par.bps;
 				break;
 			} else {
-				f->state = STATE_REC;
+				f->state = SIOFILE_READ;
 				f->todo = d->round * d->rchan * d->par.bps;
 				return;
 			}
-		case STATE_PLAY:
+		case SIOFILE_WRITE:
 			if (!siofile_play(f))
 				return;
 #ifdef DEBUG
@@ -416,10 +416,10 @@ siofile_run(void *arg)
 			if (d->poffs == d->bufsz)
 				d->poffs = 0;
 			if ((d->mode & MODE_REC) && d->prime == 0) {
-				f->state = STATE_REC;
+				f->state = SIOFILE_READ;
 				f->todo = d->round * d->rchan * d->par.bps;
 			} else
-				f->state = STATE_CYCLE;
+				f->state = SIOFILE_CYCLE;
 			return;
 		}
 	}

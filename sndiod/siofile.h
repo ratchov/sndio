@@ -29,9 +29,9 @@ struct siofile {
 #endif
 	struct dev *dev;
 	struct file *file;
-#define STATE_REC	0
-#define STATE_CYCLE	1
-#define STATE_PLAY	2
+#define SIOFILE_READ	0
+#define SIOFILE_CYCLE	1
+#define SIOFILE_WRITE	2
 	int state;
 };
 

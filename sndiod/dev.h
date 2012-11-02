@@ -147,7 +147,7 @@ struct dev {
 #define DEV_CFG		0			/* closed */
 #define DEV_INIT	1			/* stopped */
 #define DEV_RUN		3			/* playin & recording */
-	unsigned int pstate;			/* one of DEV_xxx */
+	unsigned int pstate;			/* one of above */
 	char *path;				/* sio path */
 
 	/*
