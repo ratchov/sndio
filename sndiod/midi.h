@@ -18,6 +18,7 @@
 #define MIDI_H
 
 #include "abuf.h"
+#include "miofile.h"
 
 /*
  * masks to extract command and channel of status byte
@@ -81,7 +82,7 @@ struct midi {
  */
 struct port {
 	struct port *next;
-	struct miofile *mio;
+	struct port_mio mio;
 #define PORT_CFG	0
 #define PORT_INIT	1
 #define PORT_DRAIN	2
@@ -106,6 +107,7 @@ void midi_out(struct midi *, unsigned char *, int);
 void midi_send(struct midi *, unsigned char *, int);
 void midi_tag(struct midi *, unsigned int);
 void midi_untag(struct midi *, unsigned int);
+
 struct port *port_new(char *, unsigned int);
 void port_del(struct port *);
 int  port_init(struct port *);

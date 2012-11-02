@@ -436,8 +436,7 @@ port_del(struct port *c)
 int
 port_open(struct port *c)
 {
-	c->mio = miofile_new(c);
-	if (c->mio == NULL) {
+	if (!port_mio_open(c)) {
 		if (log_level >= 1) {
 			port_log(c);
 			log_puts(": ");
@@ -453,8 +452,15 @@ port_open(struct port *c)
 int
 port_close(struct port *c)
 {
-	miofile_del(c->mio);
-	c->mio = NULL;
+#ifdef DEBUG
+	if (c->state == PORT_CFG) {
+		port_log(c);
+		log_puts(": ");
+		log_puts(c->path);
+		log_puts(": failed to open midi port\n");
+	}
+#endif
+	port_mio_close(c);
 	c->state = PORT_CFG;	
 	return 1;
 }

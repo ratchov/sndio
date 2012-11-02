@@ -22,7 +22,6 @@
 #include "defs.h"
 #include "dev.h"
 #include "dsp.h"
-#include "miofile.h"
 #include "siofile.h"
 #include "midi.h"
 #include "opt.h"

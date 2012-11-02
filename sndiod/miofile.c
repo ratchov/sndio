@@ -29,78 +29,65 @@
 #include "miofile.h"
 #include "utils.h"
 
-struct miofile {
-	struct mio_hdl *hdl;
-	struct port *port;
-	struct file *file;
-};
+int  port_mio_pollfd(void *, struct pollfd *);
+int  port_mio_revents(void *, struct pollfd *);
+void port_mio_in(void *);
+void port_mio_out(void *);
+void port_mio_hup(void *);
 
-int miofile_pollfd(void *, struct pollfd *);
-int miofile_revents(void *, struct pollfd *);
-void miofile_in(void *);
-void miofile_out(void *);
-void miofile_hup(void *);
-
-struct fileops miofile_ops = {
+struct fileops port_mio_ops = {
 	"mio",
-	miofile_pollfd,
-	miofile_revents,
-	miofile_in,
-	miofile_out,
-	miofile_hup
+	port_mio_pollfd,
+	port_mio_revents,
+	port_mio_in,
+	port_mio_out,
+	port_mio_hup
 };
 
-struct miofile *
-miofile_new(struct port *p)
+int
+port_mio_open(struct port *p)
 {
-	struct mio_hdl *hdl;
-	struct miofile *f;
-
-	hdl = mio_open(p->path, p->midi->mode, 1);
-	if (hdl == NULL)
-		return NULL;
-	f = xmalloc(sizeof(struct miofile));
-	f->port = p;
-	f->hdl = hdl;
-	f->file = file_new(&miofile_ops, f, p->path, mio_nfds(f->hdl));
-	return f;
+	p->mio.hdl = mio_open(p->path, p->midi->mode, 1);
+	if (p->mio.hdl == NULL)
+		return 0;
+	p->mio.file = file_new(&port_mio_ops, p, p->path, mio_nfds(p->mio.hdl));
+	return 1;
 }
 
 void
-miofile_del(struct miofile *f)
+port_mio_close(struct port *p)
 {
-	file_del(f->file);
-	mio_close(f->hdl);
-	xfree(f);
+	file_del(p->mio.file);
+	mio_close(p->mio.hdl);
 }
 
 int
-miofile_pollfd(void *addr, struct pollfd *pfd)
+port_mio_pollfd(void *addr, struct pollfd *pfd)
 {
-	struct miofile *f = addr;
-	struct midi *ep = f->port->midi;
+	struct port *p = addr;
+	struct midi *ep = p->midi;
 	int events = 0;
 
 	if ((ep->mode & MODE_MIDIIN) && ep->ibuf.used < ep->ibuf.len)
 		events |= POLLIN;
 	if ((ep->mode & MODE_MIDIOUT) && ep->obuf.used > 0)
 		events |= POLLOUT;
-	return mio_pollfd(f->hdl, pfd, events);
+	return mio_pollfd(p->mio.hdl, pfd, events);
 }
 
 int
-miofile_revents(void *addr, struct pollfd *pfd)
+port_mio_revents(void *addr, struct pollfd *pfd)
 {
-	struct miofile *f = addr;
+	struct port *p = addr;
 
-	return mio_revents(f->hdl, pfd);
+	return mio_revents(p->mio.hdl, pfd);
 }
 
 void
-miofile_in(void *arg)
+port_mio_in(void *arg)
 {
-	struct miofile *f = arg;
-	struct midi *ep = f->port->midi;
+	struct port *p = arg;
+	struct midi *ep = p->midi;
 	unsigned char *data;
 	int n, count;
 
@@ -108,7 +95,7 @@ miofile_in(void *arg)
 		data = abuf_wgetblk(&ep->ibuf, &count);
 		if (count == 0)
 			break;
-		n = mio_read(f->hdl, data, count);
+		n = mio_read(p->mio.hdl, data, count);
 		if (n == 0)
 			break;
 		abuf_wcommit(&ep->ibuf, n);
@@ -119,10 +106,10 @@ miofile_in(void *arg)
 }
 
 void
-miofile_out(void *arg)
+port_mio_out(void *arg)
 {
-	struct miofile *f = arg;
-	struct midi *ep = f->port->midi;
+	struct port *p = arg;
+	struct midi *ep = p->midi;
 	unsigned char *data;
 	int n, count;
 
@@ -130,7 +117,7 @@ miofile_out(void *arg)
 		data = abuf_rgetblk(&ep->obuf, &count);
 		if (count == 0)
 			break;
-		n = mio_write(f->hdl, data, count);
+		n = mio_write(p->mio.hdl, data, count);
 		if (n == 0)
 			break;
 		abuf_rdiscard(&ep->obuf, n);
@@ -140,9 +127,9 @@ miofile_out(void *arg)
 }
 
 void
-miofile_hup(void *arg)
+port_mio_hup(void *arg)
 {
-	struct miofile *f = arg;
+	struct port *p = arg;
 
-	port_close(f->port);
+	port_close(p);
 }

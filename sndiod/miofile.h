@@ -18,9 +18,13 @@
 #define MIOFILE_H
 
 struct port;
-struct miofile;
 
-struct miofile *miofile_new(struct port *);
-void miofile_del(struct miofile *);
+struct port_mio {
+	struct mio_hdl *hdl;
+	struct file *file;
+};
+
+int  port_mio_open(struct port *);
+void port_mio_close(struct port *);
 
 #endif /* !defined(MIOFILE_H) */
