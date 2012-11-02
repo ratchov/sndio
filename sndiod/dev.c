@@ -653,6 +653,10 @@ dev_mix_cycle(struct dev *d)
 		if (s->pstate == SLOT_STOP && s->mix.buf.used == 0) {
 			s->pstate = SLOT_INIT;
 			abuf_done(&s->mix.buf);
+			if (s->mix.decbuf)
+				xfree(s->mix.decbuf);
+			if (s->mix.resampbuf)
+				xfree(s->mix.resampbuf);
 			s->ops->eof(s->arg);
 			*ps = s->next;
 			continue;
