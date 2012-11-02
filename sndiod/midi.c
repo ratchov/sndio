@@ -38,7 +38,7 @@
  * input data rate is XFER / TIMO (in bytes per microsecond),
  * it must be slightly larger than the MIDI standard 3125 bytes/s
  */ 
-#define MIDI_XFER 340
+#define MIDI_XFER 1
 #define MIDI_TIMO 100000
 
 int  port_open(struct port *);
@@ -82,8 +82,11 @@ midi_ontimo(void *arg)
 	int i;
 	struct midi *ep;
 	
-	for (i = MIDI_NEP, ep = midi_ep; i > 0; i--, ep++)
+	for (i = MIDI_NEP, ep = midi_ep; i > 0; i--, ep++) {
 		ep->tickets = MIDI_XFER;
+		if (ep->ibuf.used > 0)
+			midi_in(ep);
+	}
 	timo_add(&midi_timo, MIDI_TIMO);
 }
 
@@ -251,7 +254,7 @@ midi_in(struct midi *ep)
 	idata = abuf_rgetblk(&ep->ibuf, &icount);
 	if (icount > ep->tickets)
 		icount = ep->tickets;
-	//ep->tickets -= icount;
+	ep->tickets -= icount;
 #ifdef DEBUG
 	if (log_level >= 4) {
 		midi_log(ep);

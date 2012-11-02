@@ -31,7 +31,7 @@ extern unsigned int log_level;
 /*
  * MIDI buffer size
  */
-#define MIDI_BUFSZ		3125	/* 1 second at 31.25kbit/s */
+#define MIDI_BUFSZ		125	/* 1/25 second at 31.25kbit/s */
 
 /*
  * units used for MTC clock.
