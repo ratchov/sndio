@@ -32,7 +32,7 @@ struct siofile {
 #define SIOFILE_READ	0
 #define SIOFILE_CYCLE	1
 #define SIOFILE_WRITE	2
-	int state;
+	int cstate;
 };
 
 int siofile_open(struct siofile *, struct dev *);
