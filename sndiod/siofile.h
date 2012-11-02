@@ -18,10 +18,25 @@
 #define SIOFILE_H
 
 struct dev;
-struct siofile;
 
-struct siofile *siofile_new(struct dev *);
-void siofile_del(struct siofile *);
+struct siofile {
+	struct sio_hdl *hdl;
+	unsigned int todo;
+#ifdef DEBUG
+	long long wtime, utime;
+	long long sum_wtime, sum_utime;
+	int pused, rused, events;
+#endif
+	struct dev *dev;
+	struct file *file;
+#define STATE_REC	0
+#define STATE_CYCLE	1
+#define STATE_PLAY	2
+	int state;
+};
+
+int siofile_open(struct siofile *, struct dev *);
+void siofile_close(struct siofile *);
 void siofile_log(struct siofile *);
 void siofile_start(struct siofile *);
 void siofile_stop(struct siofile *);

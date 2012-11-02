@@ -19,8 +19,7 @@
 
 #include "abuf.h"
 #include "dsp.h"
-
-struct siofile;
+#include "siofile.h"
 
 /*
  * audio stream state structure
@@ -111,7 +110,7 @@ struct dev {
 	/*
 	 * audio device (while opened)
 	 */	
-	struct siofile *sio;
+	struct siofile sio;
 	struct aparams par;			/* encoding */
 	int pchan, rchan;			/* play & rec channels */
 	adata_t *rbuf;				/* rec buffer */

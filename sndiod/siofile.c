@@ -31,22 +31,6 @@
 #include "siofile.h"
 #include "utils.h"
 
-struct siofile {
-	struct sio_hdl *hdl;
-	unsigned int todo;
-#ifdef DEBUG
-	long long wtime, utime;
-	long long sum_wtime, sum_utime;
-	int pused, rused, events;
-#endif
-	struct dev *dev;
-	struct file *file;
-#define STATE_REC	0
-#define STATE_CYCLE	1
-#define STATE_PLAY	2
-	int state;
-};
-
 int siofile_pollfd(void *, struct pollfd *);
 int siofile_revents(void *, struct pollfd *);
 void siofile_run(void *);
@@ -186,27 +170,25 @@ siofile_play(struct siofile *f)
 /*
  * open the device.
  */
-struct siofile *
-siofile_new(struct dev *d)
+int
+siofile_open(struct siofile *f, struct dev *d)
 {
 	struct sio_par par;
-	struct sio_hdl *hdl;
-	struct siofile *f;
 	unsigned int mode = d->mode & (MODE_PLAY | MODE_REC);
 
-	hdl = sio_open(d->path, mode, 1);
-	if (hdl == NULL) {
+	f->hdl = sio_open(d->path, mode, 1);
+	if (f->hdl == NULL) {
 		if (mode != (SIO_PLAY | SIO_REC))
-			return NULL;
-		hdl = sio_open(d->path, SIO_PLAY, 1);
-		if (hdl != NULL)
+			return 0;
+		f->hdl = sio_open(d->path, SIO_PLAY, 1);
+		if (f->hdl != NULL)
 			mode = SIO_PLAY;
 		else {
-			hdl = sio_open(d->path, SIO_REC, 1);
-			if (hdl != NULL)
+			f->hdl = sio_open(d->path, SIO_REC, 1);
+			if (f->hdl != NULL)
 				mode = SIO_REC;
 			else
-				return NULL;
+				return 0;
 		}
 		if (log_level >= 1) {
 			log_puts("warning, device opened in ");
@@ -230,9 +212,9 @@ siofile_new(struct dev *d)
 		par.round = d->round;
 	if (d->rate)
 		par.rate = d->rate;
-	if (!sio_setpar(hdl, &par))
+	if (!sio_setpar(f->hdl, &par))
 		goto bad_close;
-	if (!sio_getpar(hdl, &par))
+	if (!sio_getpar(f->hdl, &par))
 		goto bad_close;
 	d->par.bits = par.bits;
 	d->par.bps = par.bps;
@@ -243,9 +225,7 @@ siofile_new(struct dev *d)
 		d->pchan = par.pchan;
 	if (mode & SIO_REC)
 		d->rchan = par.rchan;
-	f = xmalloc(sizeof(struct siofile));
 	f->dev = d;
-	f->hdl = hdl;
 	d->bufsz = par.bufsz;
 	d->round = par.round;
 	d->rate = par.rate;
@@ -255,14 +235,14 @@ siofile_new(struct dev *d)
 		d->mode &= ~MODE_REC;
 	sio_onmove(f->hdl, siofile_onmove, f);
 	f->file = file_new(&siofile_ops, f, d->path, sio_nfds(f->hdl));
-	return f;
+	return 1;
  bad_close:
-	sio_close(hdl);
-	return NULL;
+	sio_close(f->hdl);
+	return 0;
 }
 
 void
-siofile_del(struct siofile *f)
+siofile_close(struct siofile *f)
 {
 #ifdef DEBUG
 	if (log_level >= 3) {
@@ -272,7 +252,6 @@ siofile_del(struct siofile *f)
 #endif
 	file_del(f->file);
 	sio_close(f->hdl);
-	xfree(f);
 }
 
 void
