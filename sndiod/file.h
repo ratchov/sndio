@@ -64,8 +64,6 @@ extern int file_slowaccept;
 extern long long file_wtime, file_utime;
 #endif
 
-void *xmalloc(size_t);
-
 void timo_set(struct timo *, void (*)(void *), void *);
 void timo_add(struct timo *, unsigned int);
 void timo_del(struct timo *);

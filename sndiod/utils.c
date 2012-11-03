@@ -163,16 +163,16 @@ memrnd(void *addr, size_t size)
 /*
  * header of a memory block
  */
-struct mem_hdr {
-	struct mem_hdr *next;		/* next allocated block */
+struct xmalloc_hdr {
+	struct xmalloc_hdr *next;	/* next allocated block */
 	char *tag;			/* what the block is used for */
 	size_t size;			/* data chunk size in bytes */
 	char end[sizeof(void *)];	/* copy of trailer (random bytes) */
 };
 
-#define MEM_HDR_SIZE	((sizeof(struct mem_hdr) + 15) & ~15)
+#define XMALLOC_HDR_SIZE	((sizeof(struct xmalloc_hdr) + 15) & ~15)
 
-struct mem_hdr *mem_list = NULL;
+struct xmalloc_hdr *xmalloc_list = NULL;
 
 /*
  * allocate 'size' bytes of memory (with size > 0). This functions never
@@ -182,32 +182,32 @@ struct mem_hdr *mem_list = NULL;
  * trailer to detect writes outside the block boundaries.
  */
 void *
-mem_alloc(size_t size, char *tag)
+xmalloc(size_t size, char *tag)
 {
-	struct mem_hdr *hdr;
+	struct xmalloc_hdr *hdr;
 	char *p;
 	
 	if (size == 0) {
 		log_puts(tag);
-		log_puts(": mem_alloc: nbytes = 0\n");
+		log_puts(": xmalloc: nbytes = 0\n");
 		panic();
 	}
-	hdr = malloc(size + MEM_HDR_SIZE + sizeof(hdr->end));
+	hdr = malloc(size + XMALLOC_HDR_SIZE + sizeof(hdr->end));
 	if (hdr == NULL) {
 		log_puts(tag);
-		log_puts(": mem_alloc: failed to allocate ");
+		log_puts(": xmalloc: failed to allocate ");
 		log_putx(size);
 		log_puts(" bytes\n");
 		panic();
 	}
-	p = (char *)hdr + MEM_HDR_SIZE;
+	p = (char *)hdr + XMALLOC_HDR_SIZE;
 	hdr->tag = tag;
 	hdr->size = size;
 	memrnd(hdr->end, sizeof(hdr->end));
 	memset(p, 0xd0, size);
 	memcpy(p + size, hdr->end, sizeof(hdr->end));	
-	hdr->next = mem_list;
-	mem_list = hdr;
+	hdr->next = xmalloc_list;
+	xmalloc_list = hdr;
 	return p;
 }
 
@@ -217,18 +217,18 @@ mem_alloc(size_t size, char *tag)
  * usable once freed
  */
 void
-mem_free(void *p)
+xfree(void *p)
 {
-	struct mem_hdr *hdr, **ph;
+	struct xmalloc_hdr *hdr, **ph;
 
-	hdr = (struct mem_hdr *)((char *)p - MEM_HDR_SIZE);
+	hdr = (struct xmalloc_hdr *)((char *)p - XMALLOC_HDR_SIZE);
 	if (memcmp(hdr->end, (char *)p + hdr->size, sizeof(hdr->end)) != 0) {
 		log_puts(hdr->tag);
 		log_puts(": block trailer corrupted\n");
 		panic();
 	}
 	memset(p, 0xdf, hdr->size);
-	for (ph = &mem_list; *ph != NULL; ph = &(*ph)->next) {
+	for (ph = &xmalloc_list; *ph != NULL; ph = &(*ph)->next) {
 		if (*ph == hdr) {
 			*ph = hdr->next;
 			free(hdr);
@@ -241,13 +241,13 @@ mem_free(void *p)
 }
 
 void
-mem_stats(void)
+xmalloc_exit(void)
 {
-	struct mem_hdr *hdr;
+	struct xmalloc_hdr *hdr;
 
-	if (mem_list) {
+	if (xmalloc_list) {
 		log_puts("allocated memory blocs: ");
-		for (hdr = mem_list; hdr != NULL; hdr = hdr->next) {
+		for (hdr = xmalloc_list; hdr != NULL; hdr = hdr->next) {
 			log_puts(hdr->tag);
 			if (hdr->next)
 				log_puts(", ");
@@ -257,13 +257,13 @@ mem_stats(void)
 }
 
 char *
-mem_strdup(const char *s, char *tag)
+xstrdup(char *s, char *tag)
 {
 	size_t size;
 	void *p;
 
 	size = strlen(s) + 1;
-	p = mem_alloc(size, tag);
+	p = xmalloc(size, tag);
 	memcpy(p, s, size);
 	return p;
 }

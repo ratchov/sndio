@@ -26,18 +26,12 @@ void log_puti(long);
 void panic(void);
 void log_flush(void);
 
-//void *xmalloc(size_t);
-void	*mem_alloc(size_t, char *);
-char	*mem_strdup(const char *, char *);
-void	 mem_free(void *);
-void	 mem_stats(void);
-
-#define xmalloc(size, tag)	(mem_alloc((size), (tag)))
-#define xstrdup(str, tag)	(mem_strdup((str), (tag)))
-#define xfree(ptr)		(mem_free(ptr))
+void *xmalloc(size_t, char *);
+char *xstrdup(char *, char *);
+void xfree(void *);
+void xmalloc_exit(void);
 
 void memrnd(void *, size_t);
-
 extern unsigned int log_sync;
 
 #endif
