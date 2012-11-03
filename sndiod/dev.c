@@ -974,7 +974,7 @@ dev_new(char *path, struct aparams *par,
 			log_puts("too many devices\n");
 		return NULL;
 	}
-	d = xmalloc(sizeof(struct dev));
+	d = xmalloc(sizeof(struct dev), "dev");
 	d->num = dev_sndnum++;
 	d->midi = midi_new(&dev_midiops, d, MODE_MIDIIN | MODE_MIDIOUT);
 	midi_tag(d->midi, d->num);
@@ -1057,14 +1057,16 @@ dev_open(struct dev *d)
 		/*
 		 * Create device <-> demuxer buffer
 		 */
-		d->rbuf = xmalloc(d->round * d->rchan * sizeof(adata_t));
+		d->rbuf = xmalloc(d->round * d->rchan * sizeof(adata_t),
+		    "dev_rbuf");
 
 		/*
 		 * Insert a converter, if needed.
 		 */
 		if (!aparams_native(&d->par)) {
 			dec_init(&d->dec, &d->par, d->rchan);
-			d->decbuf = xmalloc(d->round * d->rchan * d->par.bps);
+			d->decbuf = xmalloc(d->round * d->rchan * d->par.bps,
+				"dev_dec");
 		} else
 			d->decbuf = NULL;
 	}
@@ -1072,7 +1074,7 @@ dev_open(struct dev *d)
 		/*
 		 * Create device <-> mixer buffer
 		 */
-		d->pbuf = xmalloc(d->bufsz * d->pchan * sizeof(adata_t));
+		d->pbuf = xmalloc(d->bufsz * d->pchan * sizeof(adata_t), "dev_pbuf");
 		d->poffs = 0;
 		d->mode |= MODE_MON;
 
@@ -1081,7 +1083,7 @@ dev_open(struct dev *d)
 		 */
 		if (!aparams_native(&d->par)) {
 			enc_init(&d->enc, &d->par, d->pchan);
-			d->encbuf = xmalloc(d->round * d->pchan * d->par.bps);
+			d->encbuf = xmalloc(d->round * d->pchan * d->par.bps, "dev_enc");
 		} else
 			d->encbuf = NULL;
 	}
@@ -1683,13 +1685,13 @@ slot_attach(struct slot *s)
 		if (!aparams_native(&s->par)) {
 			dec_init(&s->mix.dec, &s->par, slot_nch);
 			s->mix.decbuf =
-			    xmalloc(d->round * slot_nch * sizeof(adata_t));
+			    xmalloc(d->round * slot_nch * sizeof(adata_t), "slot_mix_dec");
 		}
 		if (s->rate != d->rate) {
 			resamp_init(&s->mix.resamp, s->round, d->round,
 			    slot_nch);
 			s->mix.resampbuf =
-			    xmalloc(d->round * slot_nch * sizeof(adata_t));
+			    xmalloc(d->round * slot_nch * sizeof(adata_t), "slot_mix_resamp");
 		}
 #ifdef DEBUG
 		if (log_level >= 3) {
@@ -1738,12 +1740,12 @@ slot_attach(struct slot *s)
 			resamp_init(&s->sub.resamp, d->round, s->round,
 			    slot_nch);
 			s->sub.resampbuf =
-			    xmalloc(d->round * slot_nch * sizeof(adata_t));
+			    xmalloc(d->round * slot_nch * sizeof(adata_t), "slot_sub_resamp");
 		}
 		if (!aparams_native(&s->par)) {
 			enc_init(&s->sub.enc, &s->par, slot_nch);
 			s->sub.encbuf =
-			    xmalloc(d->round * slot_nch * sizeof(adata_t));
+			    xmalloc(d->round * slot_nch * sizeof(adata_t), "slot_sub_enc");
 		}
 		
 #ifdef DEBUG
@@ -1818,7 +1820,7 @@ slot_start(struct slot *s)
 #endif
 		s->mix.bpf = s->par.bps * 
 		    (s->mix.slot_cmax - s->mix.slot_cmin + 1);
-		abuf_init(&s->mix.buf, bufsz * s->mix.bpf);
+		abuf_init(&s->mix.buf, bufsz * s->mix.bpf, "slot_mix");
 	}
 	if (s->mode & MODE_RECMASK) {
 #ifdef DEBUG
@@ -1833,7 +1835,7 @@ slot_start(struct slot *s)
 #endif
 		s->sub.bpf = s->par.bps * 
 		    (s->sub.slot_cmax - s->sub.slot_cmin + 1);
-		abuf_init(&s->sub.buf, bufsz * s->sub.bpf);
+		abuf_init(&s->sub.buf, bufsz * s->sub.bpf, "slot_sub");
 	}
 	s->mix.weight = MIDI_TO_ADATA(MIDI_MAXCTL);
 #ifdef DEBUG

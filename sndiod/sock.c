@@ -281,7 +281,7 @@ sock_new(int fd)
 {
 	struct sock *f;
 
-	f = xmalloc(sizeof(struct sock));
+	f = xmalloc(sizeof(struct sock), "sock");
 	f->pstate = SOCK_AUTH;
 	f->opt = NULL;
 	f->slot = NULL;
@@ -521,32 +521,16 @@ sock_rdata(struct sock *f)
 		buf = &f->slot->mix.buf;
 	else
 		buf = &f->midi->ibuf;
-	data = abuf_wgetblk(buf, &count) + f->rsize - f->rtodo;
-#ifdef DEBUG
-	/*
-	 * XXX: this can happen in MIDIOUT mode, since we dont
-	 *	have flow control
-	 */
-	if (count < f->rtodo) {
-		sock_log(f);
-		log_puts(": data read buffer overrun\n");
-		panic();
-	}
-#endif
-	n = sock_fdread(f, data, f->rtodo);
-	if (n == 0)
-		return 0;
-	if (n < f->rtodo) {
+	while (f->rtodo > 0) {
+		data = abuf_wgetblk(buf, &count);
+		if (count > f->rtodo)
+			count = f->rtodo;
+		n = sock_fdread(f, data, count);
+		if (n == 0)
+			return 0;
 		f->rtodo -= n;
-		return 0;
+		abuf_wcommit(buf, n);
 	}
-
-	/* 
-	 * XXX: commit data earlier, don't sacrify a full block in case
-	 * of xrun
-	 */
-	abuf_wcommit(buf, f->rsize);
-	f->rtodo = 0;
 #ifdef DEBUG
 	if (log_level >= 4) {
 		sock_log(f);
@@ -556,18 +540,9 @@ sock_rdata(struct sock *f)
 	if (f->slot)
 		slot_write(f->slot);
 	if (f->midi) {
-		midi_in(f->midi);
-#ifdef DEBUG
-		if (f->midi->ibuf.used > 0) {
-			if (log_level >= 1) {
-				sock_log(f);
-				log_puts(": midi buffer not emptied\n");
-			}
-			panic();
-		}
-#endif
-		f->midi->ibuf.start = 0;
-		f->fillpending += f->rsize;
+		while (midi_in(f->midi))
+			; /* nothing */
+		f->fillpending += f->midi->ibuf.len - f->midi->ibuf.used;
 	}
 	return 1;
 }
@@ -591,31 +566,37 @@ sock_wdata(struct sock *f)
 		panic();
 	}
 #endif
-	if (f->slot) {
-		buf = &f->slot->sub.buf;
-		if (f->pstate == SOCK_STOP)
-			data = dummy;
-		else {
-			data = abuf_rgetblk(buf, &count) + f->wsize - f->wtodo;
+	if (f->pstate == SOCK_STOP) {
+		while (f->wtodo > 0) {
+			n = sock_fdwrite(f, dummy, f->wtodo);
+			if (n == 0)
+				return 0;
+			f->wtodo -= n;
 		}
+#ifdef DEBUG
+		if (log_level >= 4) {
+			sock_log(f);
+			log_puts(": zero-filled remaining block\n");
+		}
+#endif
+		return 1;
 	}
-	if (f->midi) {
+	if (f->slot)
+		buf = &f->slot->sub.buf;
+	else
 		buf = &f->midi->obuf;
-		data = abuf_rgetblk(buf, &count) + f->wsize - f->wtodo;
-	}
-	n = sock_fdwrite(f, data, f->wtodo);
-	if (n == 0)
-		return 0;
-	if (n < f->wtodo) {
+	while (f->wtodo > 0) {
+		data = abuf_rgetblk(buf, &count);
+		if (count > f->wtodo)
+			count = f->wtodo;
+		n = sock_fdwrite(f, data, f->wtodo);
+		if (n == 0)
+			return 0;
 		f->wtodo -= n;
-		return 0;
+		abuf_rdiscard(buf, n);
 	}
-	if (f->pstate != SOCK_STOP) {
-		abuf_rdiscard(buf, f->wsize);
-		if (f->slot)
-			slot_read(f->slot);
-	}
-	f->wtodo = 0;
+	if (f->slot)
+		slot_read(f->slot);
 #ifdef DEBUG
 	if (log_level >= 4) {
 		sock_log(f);
@@ -877,6 +858,7 @@ sock_hello(struct sock *f)
 #endif
 		return 0;
 	}
+	f->pstate = SOCK_INIT;
 	if (mode & MODE_MIDIMASK) {
 		f->slot = NULL;
 		f->midi = midi_new(&sock_midiops, f, mode);
@@ -945,7 +927,6 @@ sock_hello(struct sock *f)
 	s->mix.maxweight = f->opt->maxweight;
 	s->dup = f->opt->dup;
 	/* XXX: must convert to slot rate */
-	f->pstate = SOCK_INIT;
 	f->slot = s;
 	return 1;
 }
@@ -1401,9 +1382,8 @@ sock_buildmsg(struct sock *f)
 	}
 
 	if (f->midi != NULL && f->midi->obuf.used > 0) {
-		size = f->midi->obuf.len - f->midi->obuf.start;
-		if (size > f->midi->obuf.used)
-			size = f->midi->obuf.used;
+		/* XXX: use tickets */
+		size = f->midi->obuf.used;		
 		if (size > AMSG_DATAMAX)
 			size = AMSG_DATAMAX;
 		AMSG_INIT(&f->wmsg);
@@ -1418,7 +1398,6 @@ sock_buildmsg(struct sock *f)
 	 * If data available, build a DATA message.
 	 */
 	if (f->slot != NULL && f->slot->sub.buf.used > 0 && f->wmax > 0) {
-		/* XXX: round to bpf */
 		size = f->slot->sub.buf.used;
 		if (size > AMSG_DATAMAX)
 			size = AMSG_DATAMAX;
@@ -1426,6 +1405,7 @@ sock_buildmsg(struct sock *f)
 			size = f->walign;
 		if (size > f->wmax)
 			size = f->wmax;
+		size -= size % f->slot->sub.bpf;
 #ifdef DEBUG
 		if (size == 0) {
 			sock_log(f);

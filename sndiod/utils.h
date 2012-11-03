@@ -32,9 +32,9 @@ char	*mem_strdup(const char *, char *);
 void	 mem_free(void *);
 void	 mem_stats(void);
 
-#define xmalloc(s) (mem_alloc((s), (char *)__func__))
-#define xstrdup(s) (mem_strdup((s), (char *)__func__))
-#define xfree(p) (mem_free((p)))
+#define xmalloc(size, tag)	(mem_alloc((size), (tag)))
+#define xstrdup(str, tag)	(mem_strdup((str), (tag)))
+#define xfree(ptr)		(mem_free(ptr))
 
 void memrnd(void *, size_t);
 

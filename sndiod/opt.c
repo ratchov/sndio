@@ -46,7 +46,7 @@ opt_new(char *name, struct dev *dev,
 			exit(1);
 		}
 	}
-	o = xmalloc(sizeof(struct opt));
+	o = xmalloc(sizeof(struct opt), "opt");
 	if (mode & MODE_PLAY) {
 		o->pmin = pmin;
 		o->pmax = pmax;

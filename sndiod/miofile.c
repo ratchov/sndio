@@ -99,7 +99,8 @@ port_mio_in(void *arg)
 		if (n == 0)
 			break;
 		abuf_wcommit(&ep->ibuf, n);
-		midi_in(ep);
+		while (midi_in(ep))
+			; /* nothing */
 		if (n < count)
 			break;
 	}

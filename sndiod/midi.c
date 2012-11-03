@@ -84,8 +84,10 @@ midi_ontimo(void *arg)
 	
 	for (i = MIDI_NEP, ep = midi_ep; i > 0; i--, ep++) {
 		ep->tickets = MIDI_XFER;
-		if (ep->ibuf.used > 0)
-			midi_in(ep);
+		if (ep->ibuf.used > 0) {
+			while (midi_in(ep))
+				; /* nothing */
+		}
 	}
 	timo_add(&midi_timo, MIDI_TIMO);
 }
@@ -130,10 +132,10 @@ midi_new(struct midiops *ops, void *arg, int mode)
 	 * to client input
 	 */
 	if (ep->mode & MODE_MIDIOUT) {
-		abuf_init(&ep->ibuf, MIDI_BUFSZ);
+		abuf_init(&ep->ibuf, MIDI_BUFSZ, "midi_ibuf");
 	}
 	if (ep->mode & MODE_MIDIIN) {
-		abuf_init(&ep->obuf, MIDI_BUFSZ);
+		abuf_init(&ep->obuf, MIDI_BUFSZ, "midi_obuf");
 	}
 	return ep;
 }
@@ -252,9 +254,9 @@ midi_in(struct midi *ep)
 		return 0;
 	}
 	idata = abuf_rgetblk(&ep->ibuf, &icount);
-	if (icount > ep->tickets)
-		icount = ep->tickets;
-	ep->tickets -= icount;
+	//if (icount > ep->tickets)
+	//	icount = ep->tickets;
+	//ep->tickets -= icount;
 #ifdef DEBUG
 	if (log_level >= 4) {
 		midi_log(ep);
@@ -404,7 +406,7 @@ port_new(char *path, unsigned int mode)
 {
 	struct port *c;
 
-	c = xmalloc(sizeof(struct port));
+	c = xmalloc(sizeof(struct port), "port");
 	c->path = path;
 	c->state = PORT_CFG;
 	c->midi = midi_new(&port_midiops, c, mode);
