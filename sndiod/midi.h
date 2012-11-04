@@ -56,6 +56,7 @@ struct midiops
 {
 	void (*imsg)(void *, unsigned char *, int);
 	void (*omsg)(void *, unsigned char *, int);
+	void (*fill)(void *, int);
 	void (*exit)(void *);
 };
 
@@ -70,7 +71,6 @@ struct midi {
 	unsigned int used;		/* bytes used in ``msg'' */
 	unsigned int idx;		/* current ``msg'' size */
 	unsigned int len;		/* expected ``msg'' length */
-	unsigned int tickets;		/* input throttling */
 	unsigned int txmask;		/* list of ep we send to */
 	unsigned int rxmask;		/* single ep we accept data for */
 	struct abuf ibuf;		/* input buffer */
@@ -105,10 +105,12 @@ void midi_log(struct midi *);
 int midi_in(struct midi *);
 void midi_out(struct midi *, unsigned char *, int);
 void midi_send(struct midi *, unsigned char *, int);
+void midi_fill(struct midi *);
 void midi_tag(struct midi *, unsigned int);
 void midi_untag(struct midi *, unsigned int);
 
 struct port *port_new(char *, unsigned int);
+struct port *port_bynum(int);
 void port_del(struct port *);
 int  port_init(struct port *);
 void port_done(struct port *);

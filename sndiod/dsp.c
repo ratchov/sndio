@@ -697,7 +697,7 @@ sqrtone(int ctx, adata_t *out, int period, int vol, int todo)
 			ctx = period / 2;
 		}
 		ctx--;
-		*(out++) = vol;
+		*(out++) += vol;
 	}
 	return ctx;
 }

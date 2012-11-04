@@ -50,6 +50,7 @@ void zomb_exit(void *);
 
 void dev_midi_imsg(void *, unsigned char *, int);
 void dev_midi_omsg(void *, unsigned char *, int);
+void dev_midi_fill(void *, int);
 void dev_midi_exit(void *);
 
 struct midiops dev_midiops = {
@@ -466,6 +467,18 @@ dev_midi_omsg(void *arg, unsigned char *msg, int len)
 }
 
 void
+dev_midi_fill(void *arg, int count)
+{
+	struct dev *d = arg;
+
+#ifdef DEBUG
+	dev_log(d);
+	log_puts(": can't receive fill input\n");
+	panic();
+#endif
+}
+
+void
 dev_midi_exit(void *arg)
 {
 	struct dev *d = arg;
@@ -663,7 +676,7 @@ dev_mix_cycle(struct dev *d)
 			*ps = s->next;
 			continue;
 		}
-		if (s->mix.buf.used < s->round * s->mix.bpf && 
+		if (s->mix.buf.used < s->round * s->mix.bpf &&
 		    !(s->pstate == SLOT_STOP)) {
 			if (s->xrun == XRUN_IGNORE) {
 				if (s->mode & MODE_RECMASK)
@@ -976,6 +989,13 @@ dev_new(char *path, struct aparams *par,
 	}
 	d = xmalloc(sizeof(struct dev), "dev");
 	d->num = dev_sndnum++;
+	/*
+	 * XXX
+	 * we don't use the input buffer, since we don't receive
+	 * raw midi data, so no need to allocate a input ibuf.
+	 * Possibly set imsg & fill callbacks to NULL and use this
+	 * to in midi_new() to check if buffers need to be allocated
+	 */
 	d->midi = midi_new(&dev_midiops, d, MODE_MIDIIN | MODE_MIDIOUT);
 	midi_tag(d->midi, d->num);
 	d->path = path;

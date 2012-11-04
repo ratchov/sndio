@@ -124,6 +124,7 @@ port_mio_out(void *arg)
 		abuf_rdiscard(&ep->obuf, n);
 		if (n < count)
 			break;
+		midi_fill(ep);
 	}
 }
 

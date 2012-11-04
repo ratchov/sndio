@@ -65,6 +65,7 @@ void sock_slot_mmcstop(void *);
 void sock_slot_mmcloc(void *, unsigned int);
 void sock_midi_imsg(void *, unsigned char *, int);
 void sock_midi_omsg(void *, unsigned char *, int);
+void sock_midi_fill(void *, int);
 void sock_exit(void *);
 
 struct fileops sock_fileops = {
@@ -91,6 +92,7 @@ struct slotops sock_slotops = {
 struct midiops sock_midiops = {
 	sock_midi_imsg,
 	sock_midi_omsg,
+	sock_midi_fill,
 	sock_exit
 };
 
@@ -268,6 +270,16 @@ sock_midi_omsg(void *arg, unsigned char *msg, int size)
 	struct sock *f = arg;
 
 	midi_out(f->midi, msg, size);
+	while (sock_write(f))
+		;
+}
+
+void
+sock_midi_fill(void *arg, int count)
+{
+	struct sock *f = arg;
+
+	f->fillpending += count;
 	while (sock_write(f))
 		;
 }
@@ -540,9 +552,11 @@ sock_rdata(struct sock *f)
 	if (f->slot)
 		slot_write(f->slot);
 	if (f->midi) {
+		count = f->midi->ibuf.used;
 		while (midi_in(f->midi))
 			; /* nothing */
-		f->fillpending += f->midi->ibuf.len - f->midi->ibuf.used;
+		count -= f->midi->ibuf.used;
+		f->fillpending += count;
 	}
 	return 1;
 }
@@ -597,6 +611,8 @@ sock_wdata(struct sock *f)
 	}
 	if (f->slot)
 		slot_read(f->slot);
+	if (f->midi)
+		midi_fill(f->midi);
 #ifdef DEBUG
 	if (log_level >= 4) {
 		sock_log(f);
@@ -814,6 +830,7 @@ sock_hello(struct sock *f)
 {
 	struct amsg_hello *p = &f->rmsg.u.hello;
 	struct slot *s;
+	struct port *c;
 	struct dev *d;
 	unsigned int mode;
 
@@ -872,6 +889,14 @@ sock_hello(struct sock *f)
 			midi_tag(f->midi, p->devnum);
 		} else if (p->devnum < 32) {
 			midi_tag(f->midi, p->devnum);
+		} else if (p->devnum < 48) {
+			c = port_bynum(p->devnum - 32);
+			if (c == NULL)
+				return 0;
+			if (mode & MODE_MIDIOUT)
+				f->midi->txmask |= c->midi->rxmask;
+			if (mode & MODE_MIDIIN)
+				c->midi->txmask |= f->midi->rxmask;
 		} else
 			return 0;
 		if (mode & MODE_MIDIOUT)
@@ -1339,14 +1364,6 @@ sock_buildmsg(struct sock *f)
 	}
 
 	if (f->fillpending > 0) {
-#ifdef DEBUG
-		if (log_level >= 4) {
-			sock_log(f);
-			log_puts(": building FLOWCTL message, count = ");
-			log_puti(f->fillpending);
-			log_puts("\n");
-		}
-#endif
 		AMSG_INIT(&f->wmsg);
 		f->wmsg.cmd = htonl(AMSG_FLOWCTL);	       
 		f->wmsg.u.ts.delta = htonl(f->fillpending);
@@ -1354,6 +1371,16 @@ sock_buildmsg(struct sock *f)
 		if (f->slot)
 			size *= f->slot->mix.bpf;
 		f->rmax += size;
+#ifdef DEBUG
+		if (log_level >= 4) {
+			sock_log(f);
+			log_puts(": building FLOWCTL message, count = ");
+			log_puti(f->fillpending);
+			log_puts(", rmax -> ");
+			log_puti(f->rmax);
+			log_puts("\n");
+		}
+#endif
 		f->wtodo = sizeof(struct amsg);
 		f->wstate = SOCK_WMSG;
 		f->fillpending = 0;

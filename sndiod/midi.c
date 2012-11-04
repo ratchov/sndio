@@ -44,11 +44,13 @@
 int  port_open(struct port *);
 void port_imsg(void *, unsigned char *, int);
 void port_omsg(void *, unsigned char *, int);
+void port_fill(void *, int);
 void port_exit(void *);
 
 struct midiops port_midiops = {
 	port_imsg,
 	port_omsg,
+	port_fill,
 	port_exit
 };
 
@@ -83,11 +85,6 @@ midi_ontimo(void *arg)
 	struct midi *ep;
 	
 	for (i = MIDI_NEP, ep = midi_ep; i > 0; i--, ep++) {
-		ep->tickets = MIDI_XFER;
-		if (ep->ibuf.used > 0) {
-			while (midi_in(ep))
-				; /* nothing */
-		}
 	}
 	timo_add(&midi_timo, MIDI_TIMO);
 }
@@ -125,7 +122,6 @@ midi_new(struct midiops *ops, void *arg, int mode)
 	ep->st = 0;
 	ep->txmask = 0;
 	ep->rxmask = 1 << i;
-	ep->tickets = MIDI_XFER;
 	ep->mode = mode;
 	/*
 	 * client output is our input (ibuf) and our output (obuf) goes
@@ -236,30 +232,55 @@ midi_send(struct midi *iep, unsigned char *msg, int size)
 	}
 }
 
+
+void
+midi_fill(struct midi *oep)
+{
+	int i, count;
+	struct midi *iep;
+
+	for (i = 0; i < MIDI_NEP ; i++) {
+		if ((oep->rxmask & (1 << i)) == 0)
+			continue;
+		iep = midi_ep + i;
+		count = midi_in(iep);
+		if (count)
+			iep->ops->fill(iep->arg, count);
+	}
+}
+
 int
-midi_in(struct midi *ep)
+midi_in(struct midi *iep)
 {
 	unsigned char c, *idata;
-	int i, icount;
+	int i, icount, maxavail, avail;
+	struct midi *oep;
 
-	if (ep->ibuf.used == 0)
-		return 0;
-	if (ep->tickets == 0) {
-#ifdef DEBUG
-		if (log_level >= 4) {
-			midi_log(ep);
-			log_puts(": out of tickets, blocking\n");
-		}
-#endif
-		return 0;
+	/*
+	 * calculate the max message size we can process
+	 */
+	maxavail = MIDI_BUFSZ;
+	for (i = 0; i < MIDI_NEP ; i++) {
+		if ((iep->txmask & (1 << i)) == 0)
+			continue;
+		oep = midi_ep + i;
+		avail = oep->obuf.len - oep->obuf.used;
+		if (maxavail > avail)
+			maxavail = avail;
 	}
-	idata = abuf_rgetblk(&ep->ibuf, &icount);
-	//if (icount > ep->tickets)
-	//	icount = ep->tickets;
-	//ep->tickets -= icount;
+	
+	/*
+	 * in the works case output message is twice the 
+	 * input message (2-byte messages with running status)
+	 */
+	maxavail /= 2;
+
+	idata = abuf_rgetblk(&iep->ibuf, &icount);
+	if (icount > maxavail)
+		icount = maxavail;
 #ifdef DEBUG
 	if (log_level >= 4) {
-		midi_log(ep);
+		midi_log(iep);
 		log_puts(":  in:");
 		for (i = 0; i < icount; i++) {
 			log_puts(" ");
@@ -272,42 +293,42 @@ midi_in(struct midi *ep)
 		c = *idata++;
 		if (c >= 0xf8) {
 			if (c != MIDI_ACK)
-				ep->ops->imsg(ep->arg, &c, 1);
+				iep->ops->imsg(iep->arg, &c, 1);
 		} else if (c == SYSEX_END) {
-			if (ep->st == SYSEX_START) {
-				ep->msg[ep->idx++] = c;
-				ep->ops->imsg(ep->arg, ep->msg, ep->idx);
+			if (iep->st == SYSEX_START) {
+				iep->msg[iep->idx++] = c;
+				iep->ops->imsg(iep->arg, iep->msg, iep->idx);
 			}
-			ep->st = 0;
-			ep->idx = 0;
+			iep->st = 0;
+			iep->idx = 0;
 		} else if (c >= 0xf0) {
-			ep->msg[0] = c;
-			ep->len = common_len[c & 7];
-			ep->st = c;
-			ep->idx = 1;
+			iep->msg[0] = c;
+			iep->len = common_len[c & 7];
+			iep->st = c;
+			iep->idx = 1;
 		} else if (c >= 0x80) {
-			ep->msg[0] = c;
-			ep->len = voice_len[(c >> 4) & 7];
-			ep->st = c;
-			ep->idx = 1;
-		} else if (ep->st) {
-			if (ep->idx == 0 && ep->st != SYSEX_START)
-				ep->msg[ep->idx++] = ep->st;
-			ep->msg[ep->idx++] = c;
-			if (ep->idx == ep->len) {
-				ep->ops->imsg(ep->arg, ep->msg, ep->idx);
-				if (ep->st >= 0xf0)
-					ep->st = 0;
-				ep->idx = 0;
-			} else if (ep->idx == MIDI_MSGMAX) {
+			iep->msg[0] = c;
+			iep->len = voice_len[(c >> 4) & 7];
+			iep->st = c;
+			iep->idx = 1;
+		} else if (iep->st) {
+			if (iep->idx == 0 && iep->st != SYSEX_START)
+				iep->msg[iep->idx++] = iep->st;
+			iep->msg[iep->idx++] = c;
+			if (iep->idx == iep->len) {
+				iep->ops->imsg(iep->arg, iep->msg, iep->idx);
+				if (iep->st >= 0xf0)
+					iep->st = 0;
+				iep->idx = 0;
+			} else if (iep->idx == MIDI_MSGMAX) {
 				/* sysex continued */
-				ep->ops->imsg(ep->arg, ep->msg, ep->idx);
-				ep->idx = 0;
+				iep->ops->imsg(iep->arg, iep->msg, iep->idx);
+				iep->idx = 0;
 			}
 		}
 	}
-	abuf_rdiscard(&ep->ibuf, icount);
-	return 1;
+	abuf_rdiscard(&iep->ibuf, icount);
+	return icount;
 }
 
 void
@@ -319,7 +340,7 @@ midi_out(struct midi *oep, unsigned char *idata, int icount)
 	while (icount > 0) {
 		if (oep->obuf.used == oep->obuf.len) {
 #ifdef DEBUG
-			if (log_level >= 3) {
+			if (log_level >= 2) {
 				midi_log(oep);
 				log_puts(": overrun, discarding ");
 				log_putu(oep->obuf.used);
@@ -386,6 +407,12 @@ port_omsg(void *arg, unsigned char *msg, int size)
 }
 
 void
+port_fill(void *arg, int count)
+{
+	/* no flow control */
+}
+
+void
 port_exit(void *arg)
 {
 	struct port *p = arg;
@@ -423,6 +450,7 @@ port_del(struct port *c)
 
 	if (c->state != PORT_CFG)
 		port_close(c);
+	midi_del(c->midi);
 	for (p = &port_list; *p != c; p = &(*p)->next) {
 #ifdef DEBUG
 		if (*p == NULL) {
@@ -435,9 +463,18 @@ port_del(struct port *c)
 	xfree(c);
 }
 
-/*
- * Open a MIDI device and connect it to the thru box
- */
+struct port *
+port_bynum(int num)
+{
+	struct port *p;
+
+	for (p = port_list; p != NULL; p = p->next) {
+		if (num-- == 0)
+			return p;
+	}
+	return NULL;
+}
+
 int
 port_open(struct port *c)
 {
@@ -480,5 +517,6 @@ void
 port_done(struct port *c)
 {
 	/* XXX: drain */
-	port_close(c);
+	if (c->state != PORT_CFG)
+		port_close(c);
 }
