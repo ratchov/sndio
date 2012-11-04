@@ -27,12 +27,12 @@
 #include "utils.h"
 
 /*
- * size of the buffer where traces are stored
+ * log buffer size
  */
 #define LOG_BUFSZ	8192
 
 /*
- * store a character in the trace buffer
+ * store a character in the log
  */
 #define LOG_PUTC(c) do {			\
 	if (log_used < LOG_BUFSZ)		\
@@ -44,7 +44,7 @@ unsigned int log_used = 0;	/* bytes used in the buffer */
 unsigned int log_sync = 1;	/* if true, flush after each '\n' */
 
 /*
- * write debug info buffer on stderr
+ * write the log buffer on stderr
  */
 void
 log_flush(void)
@@ -56,7 +56,7 @@ log_flush(void)
 }
 
 /*
- * store a string in the debug buffer
+ * store a string in the log
  */
 void
 log_puts(char *msg)
@@ -72,7 +72,7 @@ log_puts(char *msg)
 }
 
 /*
- * store a hex in the debug buffer
+ * store a hex in the log
  */
 void
 log_putx(unsigned long num)
@@ -95,7 +95,7 @@ log_putx(unsigned long num)
 }
 
 /*
- * store a decimal in the debug buffer
+ * store a unsigned decimal in the log
  */
 void
 log_putu(unsigned long num)
@@ -115,7 +115,7 @@ log_putu(unsigned long num)
 }
 
 /*
- * store a signed integer in the trace buffer
+ * store a signed decimal in the log
  */
 void
 log_puti(long num)
@@ -128,8 +128,7 @@ log_puti(long num)
 }
 
 /*
- * abort program execution after a fatal error, we should
- * put code here to backup user data
+ * abort program execution after a fatal error
  */
 void
 panic(void)
@@ -140,7 +139,7 @@ panic(void)
 }
 
 /*
- * return a random number, will be used to randomize memory bocks
+ * return a pseudo-random number
  */
 unsigned
 rnd(void)
