@@ -56,6 +56,7 @@ void dev_midi_exit(void *);
 struct midiops dev_midiops = {
 	dev_midi_imsg,
 	dev_midi_omsg,
+	dev_midi_fill,
 	dev_midi_exit
 };
 
