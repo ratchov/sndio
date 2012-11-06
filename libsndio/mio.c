@@ -68,6 +68,8 @@ mio_open(const char *str, unsigned int mode, int nbio)
 		return mio_aucat_open(p, mode, nbio, 0);
 	if ((p = sndio_parsetype(str, "midithru")) != NULL)
 		return mio_aucat_open(p, mode, nbio, 1);
+	if ((p = sndio_parsetype(str, "midi")) != NULL)
+		return mio_aucat_open(p, mode, nbio, 2);
 #if defined(USE_RMIDI) || defined(USE_ALSA)
 	if ((p = sndio_parsetype(str, "rmidi")) != NULL) {
 #if defined(USE_SUN)

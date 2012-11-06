@@ -486,8 +486,7 @@ aucat_open(struct aucat *hdl, const char *str, unsigned int mode,
 		DPRINTF("%s: junk at end of dev name\n", p);
 		return 0;
 	}
-	if (type)
-		devnum += 16; /* XXX */
+	devnum += type * 16; /* XXX */
 	DPRINTF("aucat_open: host=%s unit=%u devnum=%u opt=%s\n",
 	    host, unit, devnum, opt);
 	if (host[0] != '\0') {
