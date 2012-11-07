@@ -623,6 +623,21 @@ dev_mix_badd(struct dev *d, struct slot *s)
 }
 
 void
+dev_empty_cycle(struct dev *d)
+{
+	unsigned char *base;
+	int nsamp;
+
+	base = (unsigned char *)DEV_PBUF(d);
+	nsamp = d->round * d->pchan;
+	memset(base, 0, nsamp * sizeof(adata_t));
+	if (d->encbuf) {
+		enc_do(&d->enc, (unsigned char *)DEV_PBUF(d),
+		    d->encbuf, d->round);
+	}
+}
+
+void
 dev_mix_cycle(struct dev *d)
 {
 	struct slot *s, **ps;
@@ -954,7 +969,7 @@ dev_cycle(struct dev *d)
 #endif
 	if (d->prime > 0) {
 		d->prime -= d->round;
-		dev_mix_cycle(d);
+		dev_empty_cycle(d);
 	} else {
 		if (d->mode & MODE_RECMASK)
 			dev_sub_cycle(d);
@@ -969,7 +984,7 @@ dev_cycle(struct dev *d)
 int
 dev_getpos(struct dev *d)
 {
-	return (d->mode & MODE_PLAY) ? -(d->bufsz - d->prime) : 0;
+	return (d->mode & MODE_PLAY) ? -d->bufsz : 0;
 }
 
 /*
@@ -1827,7 +1842,7 @@ slot_start(struct slot *s)
 		panic();
 	}
 #endif
-	bufsz = SLOT_BUFSZ(s);
+	bufsz = s->appbufsz;
 	if (s->mode & MODE_PLAY) {
 #ifdef DEBUG
 		if (log_level >= 3) {
@@ -1865,7 +1880,7 @@ slot_start(struct slot *s)
 		log_puts(": allocated ");
 		log_putu(s->appbufsz);
 		log_puts("/");
-		log_putu(bufsz);
+		log_putu(SLOT_BUFSZ(s));
 		log_puts(" fr buffers\n");
 	}
 #endif

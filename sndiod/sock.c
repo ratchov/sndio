@@ -176,8 +176,8 @@ sock_slot_fill(void *arg)
 		log_puts("\n");
 	}
 #endif
-	while (sock_write(f))
-		;
+	if (f->wstate == SOCK_WIDLE && f->rstate != SOCK_RRET)
+		sock_buildmsg(f);
 }
 
 void
@@ -195,8 +195,8 @@ sock_slot_flush(void *arg)
 		log_puts("\n");
 	}
 #endif
-	while (sock_write(f))
-		;
+	if (f->wstate == SOCK_WIDLE && f->rstate != SOCK_RRET)
+		sock_buildmsg(f);
 }
 
 void
@@ -211,8 +211,8 @@ sock_slot_eof(void *arg)
 	}
 #endif
 	f->stoppending = 1;
-	while (sock_write(f))
-		;
+	if (f->wstate == SOCK_WIDLE && f->rstate != SOCK_RRET)
+		sock_buildmsg(f);
 }
 
 void
@@ -232,8 +232,8 @@ sock_slot_onmove(void *arg, int delta)
 	if (s->pstate != SOCK_START)
 		return;
 	f->tickpending++;
-	while (sock_write(f))
-		;
+	if (f->wstate == SOCK_WIDLE && f->rstate != SOCK_RRET)
+		sock_buildmsg(f);
 }
 
 void
@@ -252,8 +252,8 @@ sock_slot_onvol(void *arg, unsigned int delta)
 #endif
 	if (s->pstate != SOCK_START)
 		return;
-	while (sock_write(f))
-		;
+	if (f->wstate == SOCK_WIDLE && f->rstate != SOCK_RRET)
+		sock_buildmsg(f);
 }
 
 void
@@ -270,8 +270,8 @@ sock_midi_omsg(void *arg, unsigned char *msg, int size)
 	struct sock *f = arg;
 
 	midi_out(f->midi, msg, size);
-	while (sock_write(f))
-		;
+	if (f->wstate == SOCK_WIDLE && f->rstate != SOCK_RRET)
+		sock_buildmsg(f);
 }
 
 void
@@ -280,8 +280,8 @@ sock_midi_fill(void *arg, int count)
 	struct sock *f = arg;
 
 	f->fillpending += count;
-	while (sock_write(f))
-		;
+	if (f->wstate == SOCK_WIDLE && f->rstate != SOCK_RRET)
+		sock_buildmsg(f);
 }
 
 /*
@@ -402,6 +402,13 @@ sock_fdwrite(struct sock *f, void *data, int count)
 				log_puts("\n");
 			}
 			sock_close(f);
+		} else {
+#ifdef DEBUG			
+			if (log_level >= 4) {
+				sock_log(f);
+				log_puts(": write blocked\n");
+			}
+#endif
 		}
 		return 0;
 	}
@@ -431,6 +438,13 @@ sock_fdread(struct sock *f, void *data, int count)
 				log_puts("\n");
 			}
 			sock_close(f);
+		} else {
+#ifdef DEBUG			
+			if (log_level >= 4) {
+				sock_log(f);
+				log_puts(": read blocked\n");
+			}
+#endif
 		}
 		return 0;
 	}
@@ -998,6 +1012,16 @@ sock_execmsg(struct sock *f)
 			return 0;
 		}
 		size = ntohl(m->u.data.size);
+		if (size == 0) {
+#ifdef DEBUG
+			if (log_level >= 1) {
+				sock_log(f);
+				log_puts(": zero size payload\n");
+			}
+#endif
+			sock_close(f);
+			return 0;
+		}
 		if (s != NULL && size % s->mix.bpf != 0) {
 #ifdef DEBUG
 			if (log_level >= 1) {
@@ -1008,6 +1032,8 @@ sock_execmsg(struct sock *f)
 			sock_close(f);
 			return 0;
 		}
+		if (f->ralign == 0)
+			f->ralign = s->round * s->mix.bpf;
 		if (s != NULL && size > f->ralign) {
 #ifdef DEBUG
 			if (log_level >= 1) {
@@ -1026,8 +1052,6 @@ sock_execmsg(struct sock *f)
 		f->rsize = f->rtodo = size;
 		if (s != NULL) {
 			f->ralign -= size;
-			if (f->ralign == 0)
-				f->ralign = s->round * s->mix.bpf;
 		}
 		if (f->rtodo > f->rmax) {
 #ifdef DEBUG
@@ -1076,10 +1100,9 @@ sock_execmsg(struct sock *f)
 		f->stoppending = 0;
 		slot_start(s);
 		if (s->mode & MODE_PLAY) {
-			f->fillpending = -(int)s->dev->bufsz *
-			    (int)s->round / (int)s->dev->round;
-			f->ralign = s->round * s->mix.bpf;
-			f->rmax = SLOT_BUFSZ(s) * s->mix.bpf;
+			f->fillpending = s->appbufsz;
+			f->ralign = 0;
+			f->rmax = 0;
 		}
 		if (s->mode & MODE_RECMASK) {
 			f->walign = s->round * s->sub.bpf;
@@ -1141,7 +1164,11 @@ sock_execmsg(struct sock *f)
 #ifdef DEBUG
 			if (size < f->ralign) {
 				sock_log(f);
-				log_puts(": unaligned stop\n");
+				log_puts(": unaligned stop, size = ");
+				log_putu(size);
+				log_puts(", ralign = ");
+				log_putu(f->ralign);
+				log_puts("\n");
 				panic();
 			}
 #endif
@@ -1606,9 +1633,18 @@ sock_write(struct sock *f)
 				log_puts(": copied RRET message\n");
 			}
 #endif
+			/*
+			 * XXX: 
+			 * the rule is to not mix read code paths and
+			 * write code paths 
+			 */
 			while (sock_read(f))
 				;
 		}
+		/*
+		 * XXX: if sock_read blocks, we end-up here in
+		 * the WMSG state
+		 */
 		if (!sock_buildmsg(f))
 			return 0;
 		break;

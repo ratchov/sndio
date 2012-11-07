@@ -190,7 +190,7 @@ sio_aucat_start(struct sio_hdl *sh)
 		return 0;
 	hdl->wbpf = par.bps * par.pchan;
 	hdl->rbpf = par.bps * par.rchan;
-	hdl->aucat.maxwrite = hdl->wbpf * par.bufsz;
+	hdl->aucat.maxwrite = 0;
 	hdl->round = par.round;
 	hdl->delta = 0;
 	DPRINTF("aucat: start, maxwrite = %d\n", hdl->aucat.maxwrite);

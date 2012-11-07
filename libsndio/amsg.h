@@ -80,7 +80,7 @@ struct amsg {
 		} vol;
 		struct amsg_hello {
 			uint16_t mode;		/* bitmap of MODE_XXX */
-#define AMSG_VERSION	6
+#define AMSG_VERSION	7
 			uint8_t version;	/* protocol version */
 			uint8_t devnum;		/* device number */
 			uint32_t _reserved[1];	/* for future use */
