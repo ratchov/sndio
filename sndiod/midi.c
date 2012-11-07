@@ -249,46 +249,12 @@ midi_fill(struct midi *oep)
 	}
 }
 
-int
-midi_in(struct midi *iep)
+void
+midi_parse(struct midi *iep, unsigned char *idata, int icount)
 {
-	unsigned char c, *idata;
-	int i, icount, maxavail, avail;
-	struct midi *oep;
+	int i;
+	unsigned char c;
 
-	/*
-	 * calculate the max message size we can process
-	 */
-	maxavail = MIDI_BUFSZ;
-	for (i = 0; i < MIDI_NEP ; i++) {
-		if ((iep->txmask & (1 << i)) == 0)
-			continue;
-		oep = midi_ep + i;
-		avail = oep->obuf.len - oep->obuf.used;
-		if (maxavail > avail)
-			maxavail = avail;
-	}
-	
-	/*
-	 * in the works case output message is twice the 
-	 * input message (2-byte messages with running status)
-	 */
-	maxavail /= 2;
-
-	idata = abuf_rgetblk(&iep->ibuf, &icount);
-	if (icount > maxavail)
-		icount = maxavail;
-#ifdef DEBUG
-	if (log_level >= 4) {
-		midi_log(iep);
-		log_puts(":  in:");
-		for (i = 0; i < icount; i++) {
-			log_puts(" ");
-			log_putx(idata[i]);
-		}
-		log_puts("\n");
-	}
-#endif
 	for (i = 0; i < icount; i++) {
 		c = *idata++;
 		if (c >= 0xf8) {
@@ -327,8 +293,57 @@ midi_in(struct midi *iep)
 			}
 		}
 	}
-	abuf_rdiscard(&iep->ibuf, icount);
-	return icount;
+}
+
+int
+midi_in(struct midi *iep)
+{
+	unsigned char *idata;
+	int i, icount, maxavail, avail, idone;
+	struct midi *oep;
+
+	/*
+	 * calculate the max message size we can process
+	 */
+	maxavail = MIDI_BUFSZ;
+	for (i = 0; i < MIDI_NEP ; i++) {
+		if ((iep->txmask & (1 << i)) == 0)
+			continue;
+		oep = midi_ep + i;
+		avail = oep->obuf.len - oep->obuf.used;
+		if (maxavail > avail)
+			maxavail = avail;
+	}
+	
+	/*
+	 * in the works case output message is twice the 
+	 * input message (2-byte messages with running status)
+	 */
+	maxavail /= 2;
+	idone = 0;
+	for (;;) {
+		idata = abuf_rgetblk(&iep->ibuf, &icount);
+		if (icount > maxavail)
+			icount = maxavail;
+		if (icount == 0)
+			break;
+		maxavail -= icount;
+#ifdef DEBUG
+		if (log_level >= 4) {
+			midi_log(iep);
+			log_puts(":  in:");
+			for (i = 0; i < icount; i++) {
+				log_puts(" ");
+				log_putx(idata[i]);
+			}
+			log_puts("\n");
+		}
+#endif
+		midi_parse(iep, idata, icount);
+		abuf_rdiscard(&iep->ibuf, icount);
+		idone += icount;
+	}
+	return idone;
 }
 
 void

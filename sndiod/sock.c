@@ -565,13 +565,8 @@ sock_rdata(struct sock *f)
 #endif
 	if (f->slot)
 		slot_write(f->slot);
-	if (f->midi) {
-		count = f->midi->ibuf.used;
-		while (midi_in(f->midi))
-			; /* nothing */
-		count -= f->midi->ibuf.used;
-		f->fillpending += count;
-	}
+	if (f->midi)
+		f->fillpending += midi_in(f->midi);
 	return 1;
 }
 
