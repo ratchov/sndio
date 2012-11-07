@@ -176,17 +176,23 @@ do
 	< $makefile.in > $makefile
 done
 
-echo
-echo "bindir................... $bindir"
-echo "datadir.................. $datadir"
-echo "includedir............... $includedir"
-echo "libdir................... $libdir"
-echo "mandir................... $mandir"
-echo "user..................... $user"
-echo "precision................ $precision"
-echo "alsa..................... $alsa"
-echo "sun...................... $sun"
-echo "rmidi.................... $rmidi"
-echo
-echo "Do \"make && make install\" to compile and install sndio"
-echo
+cat <<EOF
+
+bindir................... $bindir
+datadir.................. $datadir
+includedir............... $includedir
+libdir................... $libdir
+mandir................... $mandir
+user..................... $user
+precision................ $precision
+alsa..................... $alsa
+sun...................... $sun
+rmidi.................... $rmidi
+
+Do "make && make install" to compile and install sndio
+
+Installation requires the "$libdir" directory to be part of
+the system library search path. The "$user" user must exist and
+its primary group must have access to audio and MIDI hardware.
+
+EOF
