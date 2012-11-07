@@ -974,8 +974,8 @@ sock_execmsg(struct sock *f)
 {
 	struct slot *s = f->slot;
 	struct amsg *m = &f->rmsg;
-	unsigned int size, ctl;
 	unsigned char *data;
+	int size, ctl;
 
 	switch (ntohl(m->cmd)) {
 	case AMSG_DATA:
@@ -1007,7 +1007,7 @@ sock_execmsg(struct sock *f)
 			return 0;
 		}
 		size = ntohl(m->u.data.size);
-		if (size == 0) {
+		if (size <= 0) {
 #ifdef DEBUG
 			if (log_level >= 1) {
 				sock_log(f);
@@ -1027,8 +1027,6 @@ sock_execmsg(struct sock *f)
 			sock_close(f);
 			return 0;
 		}
-		if (f->ralign == 0)
-			f->ralign = s->round * s->mix.bpf;
 		if (s != NULL && size > f->ralign) {
 #ifdef DEBUG
 			if (log_level >= 1) {
@@ -1047,6 +1045,8 @@ sock_execmsg(struct sock *f)
 		f->rsize = f->rtodo = size;
 		if (s != NULL) {
 			f->ralign -= size;
+			if (f->ralign == 0)
+				f->ralign = s->round * s->mix.bpf;
 		}
 		if (f->rtodo > f->rmax) {
 #ifdef DEBUG
@@ -1096,7 +1096,7 @@ sock_execmsg(struct sock *f)
 		slot_start(s);
 		if (s->mode & MODE_PLAY) {
 			f->fillpending = s->appbufsz;
-			f->ralign = 0;
+			f->ralign = s->round * s->mix.bpf;
 			f->rmax = 0;
 		}
 		if (s->mode & MODE_RECMASK) {
@@ -1155,21 +1155,23 @@ sock_execmsg(struct sock *f)
 		f->rstate = SOCK_RMSG;
 		f->rtodo = sizeof(struct amsg);
 		if (s->mode & MODE_PLAY) {
-			data = abuf_wgetblk(&s->mix.buf, &size);
+			if (f->ralign < s->round * s->mix.bpf) {
+				data = abuf_wgetblk(&s->mix.buf, &size);
 #ifdef DEBUG
-			if (size < f->ralign) {
-				sock_log(f);
-				log_puts(": unaligned stop, size = ");
-				log_putu(size);
-				log_puts(", ralign = ");
-				log_putu(f->ralign);
-				log_puts("\n");
-				panic();
-			}
+				if (size < f->ralign) {
+					sock_log(f);
+					log_puts(": unaligned stop, size = ");
+					log_putu(size);
+					log_puts(", ralign = ");
+					log_putu(f->ralign);
+					log_puts("\n");
+					panic();
+				}
 #endif
-			memset(data, 0, f->ralign);
-			abuf_wcommit(&s->mix.buf, f->ralign);
-			f->ralign = 0;
+				memset(data, 0, f->ralign);
+				abuf_wcommit(&s->mix.buf, f->ralign);
+				f->ralign = s->round * s->mix.bpf;
+			}
 		}
 		slot_stop(s);		
 		break;
