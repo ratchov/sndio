@@ -885,6 +885,8 @@ wav_new_out(struct fileops *ops, struct dev *dev,
 	f->mode = mode;
 	f->pstate = WAV_CFG;
 	f->endpos = f->startpos = 0;
+	f->next = wav_list;
+	wav_list = f;
 	if (hdr == HDR_WAV) {
 		par->le = 1;
 		par->sig = (par->bits <= 8) ? 0 : 1;
