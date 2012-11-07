@@ -1,7 +1,7 @@
 all:
 	cd libsndio && ${MAKE}
 	cd aucat && ${MAKE}
-#	cd sndiod && ${MAKE}
+	cd sndiod && ${MAKE}
 	cd examples && ${MAKE}
 
 install:

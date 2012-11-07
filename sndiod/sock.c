@@ -1633,20 +1633,10 @@ sock_write(struct sock *f)
 				log_puts(": copied RRET message\n");
 			}
 #endif
-			/*
-			 * XXX: 
-			 * the rule is to not mix read code paths and
-			 * write code paths 
-			 */
-			while (sock_read(f))
-				;
+		} else {
+			if (!sock_buildmsg(f))
+				return 0;
 		}
-		/*
-		 * XXX: if sock_read blocks, we end-up here in
-		 * the WMSG state
-		 */
-		if (!sock_buildmsg(f))
-			return 0;
 		break;
 #ifdef DEBUG
 	default:
