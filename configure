@@ -56,7 +56,7 @@ case `uname` in
 	OpenBSD)
 		sun=yes
 		rmidi=yes
-		user=_sndiod
+		user=_sndio
 		defs='-DHAVE_ARC4RANDOM -DHAVE_ISSETUGID \\\
 		-DHAVE_STRLCAT -DHAVE_STRLCPY -DHAVE_STRTONUM \\\
 		-DHAVE_LETOH '
