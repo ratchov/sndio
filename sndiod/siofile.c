@@ -312,7 +312,7 @@ dev_sio_run(void *arg)
 				log_puts("/");
 				log_puti(d->bufsz);
 				log_puts("\n");
-				panic();
+				//panic();
 			}
 #endif
 			d->sio.cstate = DEV_SIO_CYCLE;
@@ -392,7 +392,7 @@ dev_sio_run(void *arg)
 				log_puts("/");
 				log_puti(d->bufsz);
 				log_puts("\n");
-				panic();
+				//panic();
 			}
 #endif
 			d->poffs += d->round;
