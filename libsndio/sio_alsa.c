@@ -330,6 +330,9 @@ sio_alsa_printpos(struct sio_alsa_hdl *hdl)
 	long long cpos, cdiff;
 	long long wpos, wdiff;
 
+	rpos = hdl->rpos + hdl->idrop;
+	wpos = hdl->wpos + hdl->osil;
+
 	cdiff = hdl->cpos % hdl->par.round;
 	cpos  = hdl->cpos / hdl->par.round;
 	if (cdiff > hdl->par.round / 2) {
@@ -337,20 +340,22 @@ sio_alsa_printpos(struct sio_alsa_hdl *hdl)
 		cdiff = cdiff - hdl->par.round;
 	}
 
-	rdiff = hdl->rpos % hdl->par.round;
-	rpos  = hdl->rpos / hdl->par.round;
+	rdiff = rpos % hdl->par.round;
+	rpos  = rpos / hdl->par.round;
 	if (rdiff > hdl->par.round / 2) {
 		rpos++;
 		rdiff = rdiff - hdl->par.round;
 	}
 
-	wdiff = hdl->wpos % hdl->par.round;
-	wpos  = hdl->wpos / hdl->par.round;
+	wdiff = wpos % hdl->par.round;
+	wpos  = wpos / hdl->par.round;
 	if (wdiff > hdl->par.round / 2) {
 		wpos++;
 		wdiff = wdiff - hdl->par.round;
 	}
 
+	//DPRINTF("iused=%d idelta=%d oused=%d, odelta=%d\n",
+	//    hdl->iused, hdl->idelta, hdl->oused, hdl->odelta);
 	DPRINTF("clk: %+4lld %+4lld, wr %+4lld %+4lld rd: %+4lld %+4lld\n",
 	    cpos, cdiff, wpos, wdiff, rpos, rdiff);
 }
@@ -444,68 +449,57 @@ sio_alsa_stop(struct sio_hdl *sh)
 			return 0;
 		}
 	}
-	DPRINTF("stopped");
+	DPRINTF("sio_alsa_stop: stopped\n");
 	return 1;
 }
 
 static int
 sio_alsa_xrun(struct sio_alsa_hdl *hdl)
 {
-	int wdiff, cdiff, rdiff, offs;
+	long long wpos, rpos;
+	int wdiff, cdiff, rdiff;
+	int wsil, rdrop, cmove;
 
 	DPRINTF("- - - - - - - - - - - - - - - - - - - - - xrun begin\n");
-	DPRINTF("osil = %d, odrop = %d, odelta = %d, idelta = %d\n", hdl->osil, hdl->idrop, hdl->odelta, hdl->idelta);
 	sio_alsa_printpos(hdl);
+
+	rpos = (hdl->sio.mode & SIO_REC) ? hdl->rpos : hdl->cpos;
+	wpos = (hdl->sio.mode & SIO_PLAY) ? hdl->wpos : hdl->cpos;
 
 	cdiff = hdl->par.round - (hdl->cpos % hdl->par.round);
 	if (cdiff == hdl->par.round)
 		cdiff = 0;
-	if (cdiff > 0) {
-		hdl->cpos += cdiff;
-		sio_onmove_cb(&hdl->sio, cdiff);
-	}
 
-	DPRINTF("xrun: tick ");
-	sio_alsa_printpos(hdl);
-	
-	if (hdl->sio.mode & SIO_PLAY) {
-		wdiff = hdl->wpos - hdl->cpos;
-		if (hdl->sio.mode & SIO_REC)
-			offs = hdl->wpos - hdl->rpos;
-	} else {
-		rdiff = hdl->par.bufsz - (hdl->cpos - hdl->rpos);
-	}
+	rdiff = rpos % hdl->par.round;
+
+	wdiff = hdl->par.round - (wpos % hdl->par.round);
+	if (wdiff == hdl->par.round)
+		wdiff = 0;
+
+	DPRINTF("rdiff = %d, cdiff = %d, wdiff = %d\n", rdiff, cdiff, wdiff);
+
+	wsil = rdiff + wpos - rpos;
+	rdrop = rdiff;
+	cmove = -(rdiff + hdl->cpos - rpos);
+
+	DPRINTF("wsil = %d, cmove = %d, rdrop = %d\n", wsil, cmove, rdrop);
 
 	if (!sio_alsa_stop(&hdl->sio))
 		return 0;
 	if (!sio_alsa_start(&hdl->sio))
 		return 0;
-	hdl->running = 1;
 
 	if (hdl->sio.mode & SIO_PLAY) {
-		if (hdl->sio.mode & SIO_REC) {
-			while (wdiff < offs) {
-				wdiff += hdl->par.round;
-				hdl->odelta -= hdl->par.round;
-				hdl->idelta -= hdl->par.round;
-				hdl->cpos += hdl->par.round;
-			}
-		}
-		DPRINTF("xrun: inserting silence: %d\n", wdiff);
-		hdl->osil = wdiff;
-		if (hdl->sio.mode & SIO_REC)
-			hdl->idrop = wdiff - offs;
-	} else {
-		while (rdiff > (int)hdl->par.bufsz) {
-			rdiff -= hdl->par.round;
-			hdl->idelta -= hdl->par.round;
-			hdl->cpos += hdl->par.round;
-		}
-		DPRINTF("xrun: dropping: %d\n", rdiff);
-		hdl->idrop = rdiff;
+		hdl->osil = wsil;
+		hdl->odelta -= cmove;
+	}
+	if (hdl->sio.mode & SIO_REC) {
+		hdl->idrop = rdrop;
+		hdl->idelta -= rdiff;
 	}
 	DPRINTF("xrun: corrected\n");
-	DPRINTF("osil = %d, odrop = %d, odelta = %d, idelta = %d\n", hdl->osil, hdl->idrop, hdl->odelta, hdl->idelta);
+	DPRINTF("osil = %d, odrop = %d, odelta = %d, idelta = %d\n",
+	    hdl->osil, hdl->idrop, hdl->odelta, hdl->idelta);
 	sio_alsa_printpos(hdl);
 	DPRINTF("- - - - - - - - - - - - - - - - - - - - - xrun end\n");
 	return 1;
@@ -947,6 +941,9 @@ sio_alsa_rdrop(struct sio_alsa_hdl *hdl)
 	static char buf[DROP_NMAX];
 	ssize_t n, todo, max;
 
+	if (hdl->idrop == 0)
+		return 1;
+
 	max = DROP_NMAX / hdl->ibpf;
 	while (hdl->idrop > 0) {
 		todo = hdl->idrop;
@@ -974,10 +971,18 @@ sio_alsa_rdrop(struct sio_alsa_hdl *hdl)
 #ifdef DEBUG
 		hdl->rpos += n;
 #endif
-		hdl->idelta += n;
+		/*
+		 * dropping samples is clock-wise neutral, so we
+		 * should not bump hdl->idelta += n; but since
+		 * we dropped samples, kernel buffer usage changed
+		 * and we have to take this into account here, to
+		 * prevent sio_alsa_revents() interpretin iused
+		 * change as clock tick
+		 */
+		hdl->iused -= n;
 		DPRINTF("sio_alsa_rdrop: dropped %zu/%zu frames\n", n, todo);
 	}
-	return 1;
+	return 0;
 }
 
 static size_t
@@ -1020,9 +1025,12 @@ sio_alsa_read(struct sio_hdl *sh, void *buf, size_t len)
 static int
 sio_alsa_wsil(struct sio_alsa_hdl *hdl)
 {
-#define ZERO_NMAX 0x1000
+#define ZERO_NMAX 0x10000
 	static char zero[ZERO_NMAX];
 	ssize_t n, todo, max;
+
+	if (hdl->osil == 0)
+		return 1;
 
 	max = ZERO_NMAX / hdl->obpf;
 	while (hdl->osil > 0) {
@@ -1045,11 +1053,14 @@ sio_alsa_wsil(struct sio_alsa_hdl *hdl)
 #ifdef DEBUG
 		hdl->wpos += n;
 #endif
-		hdl->odelta += n;
+		/*
+		 * be clock-wise neutral, see end of sio_alsa_wsil()
+		 */
+		hdl->oused += n;
 		hdl->osil -= n;
 		DPRINTF("sio_alsa_wsil: inserted %zu/%zu frames\n", n, todo);
 	}
-	return 1;
+	return 0;
 }
 
 static size_t
@@ -1058,8 +1069,11 @@ sio_alsa_write(struct sio_hdl *sh, const void *buf, size_t len)
 	struct sio_alsa_hdl *hdl = (struct sio_alsa_hdl *)sh;
 	ssize_t n, todo;
 
-	if (!sio_alsa_wsil(hdl))
+	if (hdl->osil) {
+		if (!sio_alsa_wsil(hdl))
+			return 0;
 		return 0;
+	}
 	if (len < hdl->obpf) {
 		/*
 		 * we can't just return, because sio_write() will loop
@@ -1094,6 +1108,38 @@ sio_alsa_write(struct sio_hdl *sh, const void *buf, size_t len)
 	return n;
 }
 
+void
+sio_alsa_onmove(struct sio_alsa_hdl *hdl)
+{
+	int delta;
+
+	switch (hdl->sio.mode & (SIO_PLAY | SIO_REC)) {
+	case SIO_PLAY:
+		delta = hdl->odelta;
+		break;
+	case SIO_REC:
+		delta = hdl->idelta;
+		break;
+	case SIO_PLAY | SIO_REC:
+		delta = hdl->odelta > hdl->idelta ? hdl->odelta : hdl->idelta;
+		break;
+	}
+	if (delta < 0)
+		return;
+	if (delta == 0 && hdl->running)
+		return;
+#ifdef DEBUG
+	hdl->cpos += delta;
+	if (sndio_debug >= 1)
+		sio_alsa_printpos(hdl);
+#endif
+	sio_onmove_cb(&hdl->sio, delta);
+	if (hdl->sio.mode & SIO_PLAY)
+		hdl->odelta -= delta;
+	if (hdl->sio.mode & SIO_REC)
+		hdl->idelta -= delta;
+}
+
 static int
 sio_alsa_nfds(struct sio_hdl *sh)
 {
@@ -1113,11 +1159,12 @@ sio_alsa_pollfd(struct sio_hdl *sh, struct pollfd *pfd, int events)
 
 	hdl->events = events;
 	memset(pfd, 0, sizeof(struct pollfd) * hdl->nfds);
-	if ((events & POLLOUT) && (hdl->sio.mode & SIO_PLAY) && hdl->sio.started) {
+	if ((events & POLLOUT) && (hdl->sio.mode & SIO_PLAY) &&
+	    hdl->sio.started) {
 		if (!hdl->running &&
 		    snd_pcm_state(hdl->opcm) == SND_PCM_STATE_RUNNING) {
+			sio_alsa_onmove(hdl);
 			hdl->running = 1;
-			sio_onmove_cb(&hdl->sio, 0);
 		}
 		hdl->onfds = snd_pcm_poll_descriptors(hdl->opcm,
 		    pfd, hdl->nfds);
@@ -1128,11 +1175,12 @@ sio_alsa_pollfd(struct sio_hdl *sh, struct pollfd *pfd, int events)
 		}
 	} else
 		hdl->onfds = 0;
-	if ((events & POLLIN) && (hdl->sio.mode & SIO_REC) && hdl->sio.started) {
+	if ((events & POLLIN) && (hdl->sio.mode & SIO_REC) &&
+	    hdl->sio.started) {
 		if (!hdl->running &&
 		    snd_pcm_state(hdl->ipcm) == SND_PCM_STATE_RUNNING) {
+			sio_alsa_onmove(hdl);
 			hdl->running = 1;
-			sio_onmove_cb(&hdl->sio, 0);
 		}
 		hdl->infds = snd_pcm_poll_descriptors(hdl->ipcm,
 		    pfd + hdl->onfds, hdl->nfds - hdl->onfds);
@@ -1159,10 +1207,8 @@ sio_alsa_revents(struct sio_hdl *sh, struct pollfd *pfd)
 	struct sio_alsa_hdl *hdl = (struct sio_alsa_hdl *)sh;
 	snd_pcm_sframes_t iused, oavail, oused;
 	snd_pcm_state_t istate, ostate;
-	int nfds;
 	unsigned short revents, r;
-	int delta, err;
-	int i;
+	int nfds, err, i;
 
 	if (hdl->sio.eof)
 		return POLLHUP;
@@ -1171,7 +1217,6 @@ sio_alsa_revents(struct sio_hdl *sh, struct pollfd *pfd)
 		DPRINTFN(3, "sio_alsa_revents: pfds[%d].events = %x\n",
 		    i, pfd[i].revents);
 	}
-
 	revents = nfds = 0;
 	if ((hdl->events & POLLOUT) && (hdl->sio.mode & SIO_PLAY)) {
 		ostate = snd_pcm_state(hdl->opcm);
@@ -1180,7 +1225,8 @@ sio_alsa_revents(struct sio_hdl *sh, struct pollfd *pfd)
 				return POLLHUP;
 			return 0;
 		}
-		err = snd_pcm_poll_descriptors_revents(hdl->opcm, pfd, hdl->onfds, &r);
+		err = snd_pcm_poll_descriptors_revents(hdl->opcm,
+		    pfd, hdl->onfds, &r);
 		if (err < 0) {
 			DALSA("couldn't get play events", err);
 			hdl->sio.eof = 1;
@@ -1188,6 +1234,7 @@ sio_alsa_revents(struct sio_hdl *sh, struct pollfd *pfd)
 		}
 		revents |= r;
 		nfds += hdl->onfds;
+			
 	}
 	if ((hdl->events & POLLIN) && (hdl->sio.mode & SIO_REC)) {
 		istate = snd_pcm_state(hdl->ipcm);
@@ -1196,7 +1243,8 @@ sio_alsa_revents(struct sio_hdl *sh, struct pollfd *pfd)
 				return POLLHUP;
 			return 0;
 		}
-		err = snd_pcm_poll_descriptors_revents(hdl->ipcm, pfd + nfds, hdl->infds, &r);
+		err = snd_pcm_poll_descriptors_revents(hdl->ipcm,
+		    pfd + nfds, hdl->infds, &r);
 		if (err < 0) {
 			DALSA("couldn't get rec events", err);
 			hdl->sio.eof = 1;
@@ -1217,7 +1265,7 @@ sio_alsa_revents(struct sio_hdl *sh, struct pollfd *pfd)
 						return POLLHUP;
 					return 0;
 				}
-				DALSA("couldn't get play buffer pointer", oavail);
+				DALSA("couldn't get play buffer ptr", oavail);
 				hdl->sio.eof = 1;
 				return POLLHUP;
 			}
@@ -1235,26 +1283,14 @@ sio_alsa_revents(struct sio_hdl *sh, struct pollfd *pfd)
 						return POLLHUP;
 					return 0;
 				}
-				DALSA("couldn't get rec buffer pointer", iused);
+				DALSA("couldn't get rec buffer ptr", iused);
 				hdl->sio.eof = 1;
 				return POLLHUP;
 			}
 			hdl->idelta += iused - hdl->iused;
 			hdl->iused = iused;
 		}
-		delta = hdl->odelta > hdl->idelta ? hdl->odelta : hdl->idelta;
-		if (delta > 0 && hdl->running) {
-			sio_onmove_cb(&hdl->sio, delta);
-			if (hdl->sio.mode & SIO_PLAY)
-				hdl->odelta -= delta;
-			if (hdl->sio.mode & SIO_REC)
-				hdl->idelta -= delta;
-#ifdef DEBUG
-			hdl->cpos += delta;
-			if (sndio_debug >= 2)
-				sio_alsa_printpos(hdl);
-#endif
-		}
+		sio_alsa_onmove(hdl);
 	}
 	if ((hdl->sio.mode & SIO_PLAY) && !sio_alsa_wsil(hdl))
 		revents &= ~POLLOUT;
