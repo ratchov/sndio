@@ -183,7 +183,7 @@ main(int argc, char **argv)
 	int ch, recfd, playfd, nfds, events, revents;
 	char *recpath, *playpath;
 	struct sio_hdl *hdl;
-#define NFDS 10
+#define NFDS 16
 	struct pollfd pfd[NFDS];
 	unsigned mode;
 	
