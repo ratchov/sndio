@@ -55,9 +55,9 @@ struct sio_alsa_hdl {
 	int nfds, infds, onfds;
 	int running;
 	int events;
-#ifdef DEBUG
-	long long wpos, rpos, cpos;
-#endif
+	long long wpos;			/* frames written */
+	long long rpos;			/* frames read */
+	long long cpos;			/* hardware position (frames) */
 };
 
 static void sio_alsa_close(struct sio_hdl *);
@@ -380,9 +380,7 @@ sio_alsa_start(struct sio_hdl *sh)
 	hdl->osil = 0;
 	hdl->idrop = 0;
 	hdl->running = 0;
-#ifdef DEBUG
 	hdl->cpos = hdl->rpos = hdl->wpos = 0;
-#endif
 
 	if (hdl->sio.mode & SIO_PLAY) {
 		err = snd_pcm_prepare(hdl->opcm);
@@ -968,9 +966,8 @@ sio_alsa_rdrop(struct sio_alsa_hdl *hdl)
 			return 0;
 		}
 		hdl->idrop -= n;
-#ifdef DEBUG
 		hdl->rpos += n;
-#endif
+
 		/*
 		 * dropping samples is clock-wise neutral, so we
 		 * should not bump hdl->idelta += n; but since
@@ -1011,9 +1008,7 @@ sio_alsa_read(struct sio_hdl *sh, void *buf, size_t len)
 		hdl->sio.eof = 1;
 		return 0;
 	}
-#ifdef DEBUG
 	hdl->rpos += n;
-#endif
 	hdl->idelta += n;
 	n *= hdl->ibpf;
 	return n;
