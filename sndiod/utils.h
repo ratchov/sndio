@@ -1,5 +1,6 @@
+/*	$OpenBSD$	*/
 /*
- * Copyright (c) 2003-2007 Alexandre Ratchov <alex@caoua.org>
+ * Copyright (c) 2003-2012 Alexandre Ratchov <alex@caoua.org>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
