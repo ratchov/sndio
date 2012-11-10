@@ -612,7 +612,7 @@ sock_wdata(struct sock *f)
 		data = abuf_rgetblk(buf, &count);
 		if (count > f->wtodo)
 			count = f->wtodo;
-		n = sock_fdwrite(f, data, f->wtodo);
+		n = sock_fdwrite(f, data, count);
 		if (n == 0)
 			return 0;
 		f->wtodo -= n;
