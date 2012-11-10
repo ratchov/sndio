@@ -641,7 +641,7 @@ dev_empty_cycle(struct dev *d)
  * Normalize input levels.
  */
 void
-dev_mix_setmaster(struct dev *d)
+dev_mix_adjvol(struct dev *d)
 {
 	unsigned int n;
 	struct slot *i, *j;
@@ -735,7 +735,7 @@ dev_mix_cycle(struct dev *d)
 				xfree(s->mix.resampbuf);
 			s->ops->eof(s->arg);
 			*ps = s->next;
-			dev_mix_setmaster(d);
+			dev_mix_adjvol(d);
 			continue;
 		}
 		if (s->mix.buf.used < s->round * s->mix.bpf &&
@@ -941,7 +941,7 @@ dev_master(struct dev *d, unsigned int master)
 	}
 	d->master = master;
 	if (d->mode & MODE_PLAY)
-		dev_mix_setmaster(d);
+		dev_mix_adjvol(d);
 }
 
 void
@@ -1749,7 +1749,7 @@ slot_attach(struct slot *s)
 #endif
 		s->mix.drop = 0;
 		s->mix.vol = MIDI_TO_ADATA(s->vol);
-		dev_mix_setmaster(d);
+		dev_mix_adjvol(d);
 	}
 	if (s->mode & MODE_RECMASK) {
 		slot_nch = s->sub.slot_cmax - s->sub.slot_cmin + 1;
@@ -1921,7 +1921,7 @@ slot_detach(struct slot *s)
 			xfree(s->mix.decbuf);
 		if (s->mix.resampbuf)
 			xfree(s->mix.resampbuf);
-		dev_mix_setmaster(s->dev);
+		dev_mix_adjvol(s->dev);
 	}
 }
 
