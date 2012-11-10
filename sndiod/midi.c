@@ -351,7 +351,10 @@ midi_out(struct midi *oep, unsigned char *idata, int icount)
 {
 	unsigned char *odata;
 	int ocount;
-
+#ifdef DEBUG
+	int i;
+#endif
+	
 	while (icount > 0) {
 		if (oep->obuf.used == oep->obuf.len) {
 #ifdef DEBUG
@@ -369,15 +372,18 @@ midi_out(struct midi *oep, unsigned char *idata, int icount)
 		odata = abuf_wgetblk(&oep->obuf, &ocount);
 		if (ocount > icount)
 			ocount = icount;
+		memcpy(odata, idata, ocount);
 #ifdef DEBUG
 		if (log_level >= 4) {
 			midi_log(oep);
-			log_puts(": stored ");
-			log_putu(ocount);
-			log_puts(" bytes\n");
+			log_puts(":");
+			for (i = 0; i < ocount; i++) {
+				log_puts(" ");
+				log_putx(odata[i]);
+			}
+			log_puts("\n");
 		}
 #endif
-		memcpy(odata, idata, ocount);
 		abuf_wcommit(&oep->obuf, ocount);
 		icount -= ocount;
 		idata += ocount;
