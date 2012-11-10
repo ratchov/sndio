@@ -637,6 +637,51 @@ dev_empty_cycle(struct dev *d)
 	}
 }
 
+/*
+ * Normalize input levels.
+ */
+void
+dev_mix_setmaster(struct dev *d)
+{
+	unsigned int n;
+	struct slot *i, *j;
+	int weight;
+
+	for (i = d->slot_list; i != NULL; i = i->next) {
+		if (!(i->mode & MODE_PLAY))
+			continue;
+		weight = ADATA_UNIT;
+		if (d->autovol) {
+			/*
+			 * count the number of inputs that have
+			 * overlapping channel sets
+			 */
+			n = 0;
+			for (j = d->slot_list; j != NULL; j = j->next) {
+				if (!(j->mode & MODE_PLAY))
+					continue;
+				if (i->mix.slot_cmin <= j->mix.slot_cmax &&
+				    i->mix.slot_cmax >= j->mix.slot_cmin)
+					n++;
+			}
+			weight /= n;
+		}
+		if (weight > i->mix.maxweight)
+			weight = i->mix.maxweight;
+		i->mix.weight = ADATA_MUL(weight, MIDI_TO_ADATA(d->master));
+#ifdef DEBUG
+		if (log_level >= 3) {
+			slot_log(i);
+			log_puts(": set weight: ");
+			log_puti(i->mix.weight);
+			log_puts("/");
+			log_puti(i->mix.maxweight);
+			log_puts("\n");
+		}
+#endif
+	}
+}
+
 void
 dev_mix_cycle(struct dev *d)
 {
@@ -690,6 +735,7 @@ dev_mix_cycle(struct dev *d)
 				xfree(s->mix.resampbuf);
 			s->ops->eof(s->arg);
 			*ps = s->next;
+			dev_mix_setmaster(d);
 			continue;
 		}
 		if (s->mix.buf.used < s->round * s->mix.bpf &&
@@ -727,51 +773,6 @@ dev_mix_cycle(struct dev *d)
 	if (d->encbuf) {
 		enc_do(&d->enc, (unsigned char *)DEV_PBUF(d),
 		    d->encbuf, d->round);
-	}
-}
-
-/*
- * Normalize input levels.
- */
-void
-dev_mix_setmaster(struct dev *d)
-{
-	unsigned int n;
-	struct slot *i, *j;
-	int weight;
-
-	for (i = d->slot_list; i != NULL; i = i->next) {
-		if (!(i->mode & MODE_PLAY))
-			continue;
-		weight = ADATA_UNIT;
-		if (d->autovol) {
-			/*
-			 * count the number of inputs that have
-			 * overlapping channel sets
-			 */
-			n = 0;
-			for (j = d->slot_list; j != NULL; j = j->next) {
-				if (!(j->mode & MODE_PLAY))
-					continue;
-				if (i->mix.slot_cmin <= j->mix.slot_cmax &&
-				    i->mix.slot_cmax >= j->mix.slot_cmin)
-					n++;
-			}
-			weight /= n;
-		}
-		if (weight > i->mix.maxweight)
-			weight = i->mix.maxweight;
-		i->mix.weight = ADATA_MUL(weight, MIDI_TO_ADATA(d->master));
-#ifdef DEBUG
-		if (log_level >= 3) {
-			slot_log(i);
-			log_puts(": set weight: ");
-			log_puti(i->mix.weight);
-			log_puts("/");
-			log_puti(i->mix.maxweight);
-			log_puts("\n");
-		}
-#endif
 	}
 }
 
@@ -1920,6 +1921,7 @@ slot_detach(struct slot *s)
 			xfree(s->mix.decbuf);
 		if (s->mix.resampbuf)
 			xfree(s->mix.resampbuf);
+		dev_mix_setmaster(s->dev);
 	}
 }
 
