@@ -429,7 +429,7 @@ main(int argc, char **argv)
 	else
 		prog++;
 	if (strcmp(prog, PROG_AUCAT) == 0) {
-		optstr = "a:b:c:C:de:f:j:L:m:Mq:r:s:t:U:v:w:x:z:";
+ 		optstr = "a:b:c:C:de:f:h:i:j:lL:m:Mno:q:r:s:t:U:v:w:x:z:";
 		usagestr = aucat_usage;
 		hold = 1;
 	} else if (strcmp(prog, PROG_SNDIOD) == 0) {
