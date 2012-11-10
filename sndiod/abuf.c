@@ -43,9 +43,9 @@ abuf_log(struct abuf *buf)
 #endif
 
 void
-abuf_init(struct abuf *buf, unsigned int len, char *tag)
+abuf_init(struct abuf *buf, unsigned int len)
 {
-	buf->data = xmalloc(len, tag);
+	buf->data = xmalloc(len);
 	buf->len = len;
 	buf->used = 0;
 	buf->start = 0;

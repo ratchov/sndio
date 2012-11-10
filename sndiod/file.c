@@ -230,7 +230,7 @@ file_new(struct fileops *ops, void *arg, char *name, unsigned int nfds)
 #endif
 		return NULL;
 	}
-	f = xmalloc(sizeof(struct file), "file");
+	f = xmalloc(sizeof(struct file));
 	f->nfds = nfds;
 	f->ops = ops;
 	f->arg = arg;

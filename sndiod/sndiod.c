@@ -488,6 +488,5 @@ main(int argc, char **argv)
 	filelist_done();
 	rmdir(base);
 	unsetsig();
-	xmalloc_exit();
 	return 0;
 }

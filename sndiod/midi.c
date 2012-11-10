@@ -128,10 +128,10 @@ midi_new(struct midiops *ops, void *arg, int mode)
 	 * to client input
 	 */
 	if (ep->mode & MODE_MIDIOUT) {
-		abuf_init(&ep->ibuf, MIDI_BUFSZ, "midi_ibuf");
+		abuf_init(&ep->ibuf, MIDI_BUFSZ);
 	}
 	if (ep->mode & MODE_MIDIIN) {
-		abuf_init(&ep->obuf, MIDI_BUFSZ, "midi_obuf");
+		abuf_init(&ep->obuf, MIDI_BUFSZ);
 	}
 	return ep;
 }
@@ -454,7 +454,7 @@ port_new(char *path, unsigned int mode)
 {
 	struct port *c;
 
-	c = xmalloc(sizeof(struct port), "port");
+	c = xmalloc(sizeof(struct port));
 	c->path = path;
 	c->state = PORT_CFG;
 	c->midi = midi_new(&port_midiops, c, mode);

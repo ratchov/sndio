@@ -293,7 +293,7 @@ sock_new(int fd)
 {
 	struct sock *f;
 
-	f = xmalloc(sizeof(struct sock), "sock");
+	f = xmalloc(sizeof(struct sock));
 	f->pstate = SOCK_AUTH;
 	f->opt = NULL;
 	f->slot = NULL;

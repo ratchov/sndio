@@ -24,7 +24,7 @@ struct abuf {
 	unsigned char *data;
 };
 
-void abuf_init(struct abuf *, unsigned int, char *);
+void abuf_init(struct abuf *, unsigned int);
 void abuf_done(struct abuf *);
 void abuf_log(struct abuf *);
 unsigned char *abuf_rgetblk(struct abuf *, int *);

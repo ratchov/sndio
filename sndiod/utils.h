@@ -27,12 +27,10 @@ void log_puti(long);
 void panic(void);
 void log_flush(void);
 
-void *xmalloc(size_t, char *);
-char *xstrdup(char *, char *);
+void *xmalloc(size_t);
+char *xstrdup(char *);
 void xfree(void *);
-void xmalloc_exit(void);
 
-void memrnd(void *, size_t);
 extern unsigned int log_sync;
 
 #endif

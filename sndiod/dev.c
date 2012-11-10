@@ -1004,7 +1004,7 @@ dev_new(char *path, struct aparams *par,
 			log_puts("too many devices\n");
 		return NULL;
 	}
-	d = xmalloc(sizeof(struct dev), "dev");
+	d = xmalloc(sizeof(struct dev));
 	d->num = dev_sndnum++;
 	/*
 	 * XXX
@@ -1094,16 +1094,14 @@ dev_open(struct dev *d)
 		/*
 		 * Create device <-> demuxer buffer
 		 */
-		d->rbuf = xmalloc(d->round * d->rchan * sizeof(adata_t),
-		    "dev_rbuf");
+		d->rbuf = xmalloc(d->round * d->rchan * sizeof(adata_t));
 
 		/*
 		 * Insert a converter, if needed.
 		 */
 		if (!aparams_native(&d->par)) {
 			dec_init(&d->dec, &d->par, d->rchan);
-			d->decbuf = xmalloc(d->round * d->rchan * d->par.bps,
-				"dev_dec");
+			d->decbuf = xmalloc(d->round * d->rchan * d->par.bps);
 		} else
 			d->decbuf = NULL;
 	}
@@ -1111,7 +1109,7 @@ dev_open(struct dev *d)
 		/*
 		 * Create device <-> mixer buffer
 		 */
-		d->pbuf = xmalloc(d->bufsz * d->pchan * sizeof(adata_t), "dev_pbuf");
+		d->pbuf = xmalloc(d->bufsz * d->pchan * sizeof(adata_t));
 		d->poffs = 0;
 		d->mode |= MODE_MON;
 
@@ -1120,7 +1118,7 @@ dev_open(struct dev *d)
 		 */
 		if (!aparams_native(&d->par)) {
 			enc_init(&d->enc, &d->par, d->pchan);
-			d->encbuf = xmalloc(d->round * d->pchan * d->par.bps, "dev_enc");
+			d->encbuf = xmalloc(d->round * d->pchan * d->par.bps);
 		} else
 			d->encbuf = NULL;
 	}
@@ -1303,12 +1301,6 @@ void
 dev_wakeup(struct dev *d)
 {
 	if (d->pstate == DEV_INIT) {
-#ifdef DEBUG
-		if (d->mode & MODE_PLAY)
-			memrnd(d->pbuf, d->bufsz * d->pchan * sizeof(adata_t));
-		if (d->mode & MODE_REC)
-			memrnd(d->rbuf, d->round * d->rchan * sizeof(adata_t));
-#endif
 		if (log_level >= 2) {
 			dev_log(d);
 			log_puts(": device started\n");
@@ -1718,13 +1710,13 @@ slot_attach(struct slot *s)
 		if (!aparams_native(&s->par)) {
 			dec_init(&s->mix.dec, &s->par, slot_nch);
 			s->mix.decbuf =
-			    xmalloc(d->round * slot_nch * sizeof(adata_t), "slot_mix_dec");
+			    xmalloc(d->round * slot_nch * sizeof(adata_t));
 		}
 		if (s->rate != d->rate) {
 			resamp_init(&s->mix.resamp, s->round, d->round,
 			    slot_nch);
 			s->mix.resampbuf =
-			    xmalloc(d->round * slot_nch * sizeof(adata_t), "slot_mix_resamp");
+			    xmalloc(d->round * slot_nch * sizeof(adata_t));
 		}
 #ifdef DEBUG
 		if (log_level >= 3) {
@@ -1773,12 +1765,12 @@ slot_attach(struct slot *s)
 			resamp_init(&s->sub.resamp, d->round, s->round,
 			    slot_nch);
 			s->sub.resampbuf =
-			    xmalloc(d->round * slot_nch * sizeof(adata_t), "slot_sub_resamp");
+			    xmalloc(d->round * slot_nch * sizeof(adata_t));
 		}
 		if (!aparams_native(&s->par)) {
 			enc_init(&s->sub.enc, &s->par, slot_nch);
 			s->sub.encbuf =
-			    xmalloc(d->round * slot_nch * sizeof(adata_t), "slot_sub_enc");
+			    xmalloc(d->round * slot_nch * sizeof(adata_t));
 		}
 		
 #ifdef DEBUG
@@ -1853,7 +1845,7 @@ slot_start(struct slot *s)
 #endif
 		s->mix.bpf = s->par.bps * 
 		    (s->mix.slot_cmax - s->mix.slot_cmin + 1);
-		abuf_init(&s->mix.buf, bufsz * s->mix.bpf, "slot_mix");
+		abuf_init(&s->mix.buf, bufsz * s->mix.bpf);
 	}
 	if (s->mode & MODE_RECMASK) {
 #ifdef DEBUG
@@ -1868,7 +1860,7 @@ slot_start(struct slot *s)
 #endif
 		s->sub.bpf = s->par.bps * 
 		    (s->sub.slot_cmax - s->sub.slot_cmin + 1);
-		abuf_init(&s->sub.buf, bufsz * s->sub.bpf, "slot_sub");
+		abuf_init(&s->sub.buf, bufsz * s->sub.bpf);
 	}
 	s->mix.weight = MIDI_TO_ADATA(MIDI_MAXCTL);
 #ifdef DEBUG
