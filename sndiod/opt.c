@@ -91,9 +91,9 @@ opt_new(char *name, struct dev *dev,
 		}
 		if (o->mode & MODE_MON) {
 			log_puts(" mon=");
-			log_putu(o->pmin);
+			log_putu(o->rmin);
 			log_puts(":");
-			log_putu(o->pmax);
+			log_putu(o->rmax);
 		}
 		if (o->mode & (MODE_RECMASK | MODE_PLAY)) {
 			if (o->mmc)
