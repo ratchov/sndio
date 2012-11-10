@@ -1363,6 +1363,8 @@ dev_sync_attach(struct dev *d)
 			return;
 		}
 	}
+	if (!dev_ref(d))
+		return;
 	for (i = 0; i < DEV_NSLOT; i++) {
 		s = d->slot + i;
 		if (!s->ops)
@@ -1417,6 +1419,7 @@ dev_mmcstop(struct dev *d)
 		return;
 	case MMC_RUN:
 		d->tstate = MMC_STOP;
+		dev_unref(d);
 		break;
 	default:
 #ifdef DEBUG
