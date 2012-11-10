@@ -317,7 +317,7 @@ main(int argc, char **argv)
 	/*
 	 * global options defaults
 	 */
-	vol = MIDI_MAXCTL;
+	vol = 118;
 	dup = 1;
 	mmc = 0;
 	hold = 0;
