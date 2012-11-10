@@ -1500,22 +1500,15 @@ slot_new(struct dev *d, char *who, struct slotops *ops, void *arg, int mode)
 		strlcpy(name, "noname", SLOT_NAMEMAX);
 
 	/*
-	 * find the instance number of the control name
+	 * find the first unused "unit" number for this name
 	 */
 	for (i = 0, s = d->slot; i < DEV_NSLOT; i++, s++) {
 		if (s->ops == NULL)
 			continue;
 		if (strcmp(s->name, name) == 0)
 			umap |= (1 << s->unit);
-	} 
+	}
 	for (unit = 0; ; unit++) {
-		if (unit == DEV_NSLOT) {
-			if (log_level >= 1) {
-				log_puts(name);
-				log_puts(": has too many instances\n");
-			}
-			return NULL;
-		}
 		if ((umap & (1 << unit)) == 0)
 			break;
 	}
@@ -1914,8 +1907,20 @@ slot_detach(struct slot *s)
 			panic();
 		}
 #endif
-	}
+	}	
 	*ps = s->next;
+	if (s->mode & MODE_RECMASK) {
+		if (s->sub.encbuf)
+			xfree(s->sub.encbuf);
+		if (s->sub.resampbuf)
+			xfree(s->sub.resampbuf);
+	}
+	if (s->mode & MODE_PLAY) {
+		if (s->mix.decbuf)
+			xfree(s->mix.decbuf);
+		if (s->mix.resampbuf)
+			xfree(s->mix.resampbuf);
+	}
 }
 
 void
@@ -1934,13 +1939,8 @@ slot_stop(struct slot *s)
 		} else
 			s->pstate = SLOT_INIT;
 	}
-	if (s->mode & MODE_RECMASK) {
+	if (s->mode & MODE_RECMASK)
 		abuf_done(&s->sub.buf);
-		if (s->sub.encbuf)
-			xfree(s->sub.encbuf);
-		if (s->sub.resampbuf)
-			xfree(s->sub.resampbuf);
-	}
 	if (s->pstate == SLOT_READY) {
 #ifdef DEBUG
 		if (log_level >= 3) {
@@ -1948,13 +1948,8 @@ slot_stop(struct slot *s)
 			log_puts(": not drained (blocked by mmc)\n");
 		}
 #endif
-		if (s->mode & MODE_PLAY) {
+		if (s->mode & MODE_PLAY)
 			abuf_done(&s->mix.buf);
-			if (s->mix.decbuf)
-				xfree(s->mix.decbuf);
-			if (s->mix.resampbuf)
-				xfree(s->mix.resampbuf);
-		}
 		s->ops->eof(s->arg);
 		s->pstate = SLOT_INIT;
 	} else {
