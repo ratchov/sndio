@@ -98,7 +98,7 @@ volatile sig_atomic_t debug_level = 1;
 #endif
 volatile sig_atomic_t quit_flag = 0;
 
-char aucat_usage[] = "usage: " PROG_AUCAT " [-dn] [-b nframes] "
+char aucat_usage[] = "usage: " PROG_AUCAT " [-dlMn] [-a flag] [-b nframes] "
     "[-C min:max] [-c min:max] [-e enc]\n\t"
     "[-f device] [-h fmt] [-i file] [-j flag] [-m mode] [-o file]\n\t"
     "[-q port] [-r rate] [-t mode] [-v volume] [-w flag] [-x policy]\n\t"
@@ -429,13 +429,13 @@ main(int argc, char **argv)
 	else
 		prog++;
 	if (strcmp(prog, PROG_AUCAT) == 0) {
-		optstr = "b:c:C:de:f:h:i:j:m:no:q:r:t:v:w:x:z:";
+		optstr = "a:b:c:C:de:f:j:L:m:Mq:r:s:t:U:v:w:x:z:";
 		usagestr = aucat_usage;
+		hold = 1;
 	} else if (strcmp(prog, PROG_SNDIOD) == 0) {
 		optstr = "a:b:c:C:de:f:j:L:m:Mq:r:s:t:U:v:w:x:z:";
 		usagestr = sndiod_usage;
 		background = 1;
-		hold = 0;
 	} else
 		errx(1, "%s: can't determine program to run", prog);
 
