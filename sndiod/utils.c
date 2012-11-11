@@ -139,6 +139,9 @@ panic(void)
 	_exit(1);
 }
 
+/*
+ * allocate a (small) abount of memory, and abort if it fails
+ */
 void *
 xmalloc(size_t size)
 {
@@ -154,12 +157,18 @@ xmalloc(size_t size)
 	return p;
 }
 
+/*
+ * free memory allocated with xmalloc()
+ */
 void
 xfree(void *p)
 {
 	free(p);
 }
 
+/*
+ * xmalloc-style strdup(3)
+ */
 char *
 xstrdup(char *s)
 {
