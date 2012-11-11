@@ -971,12 +971,13 @@ dev_new(char *path, struct aparams *par,
 	}
 	d = xmalloc(sizeof(struct dev));
 	d->num = dev_sndnum++;
+
 	/*
-	 * XXX
-	 * we don't use the input buffer, since we don't receive
-	 * raw midi data, so no need to allocate a input ibuf.
-	 * Possibly set imsg & fill callbacks to NULL and use this
-	 * to in midi_new() to check if buffers need to be allocated
+	 * XXX: below, we allocate a midi input buffer, since we don't
+	 *	receive raw midi data, so no need to allocate a input
+	 *	ibuf.  Possibly set imsg & fill callbacks to NULL and
+	 *	use this to in midi_new() to check if buffers need to be
+	 *	allocated
 	 */
 	d->midi = midi_new(&dev_midiops, d, MODE_MIDIIN | MODE_MIDIOUT);
 	midi_tag(d->midi, d->num);
