@@ -176,8 +176,6 @@ sock_slot_fill(void *arg)
 		log_puts("\n");
 	}
 #endif
-	if (f->wstate == SOCK_WIDLE && f->rstate != SOCK_RRET)
-		sock_buildmsg(f);
 }
 
 void
@@ -195,8 +193,6 @@ sock_slot_flush(void *arg)
 		log_puts("\n");
 	}
 #endif
-	if (f->wstate == SOCK_WIDLE && f->rstate != SOCK_RRET)
-		sock_buildmsg(f);
 }
 
 void
@@ -211,8 +207,6 @@ sock_slot_eof(void *arg)
 	}
 #endif
 	f->stoppending = 1;
-	if (f->wstate == SOCK_WIDLE && f->rstate != SOCK_RRET)
-		sock_buildmsg(f);
 }
 
 void
@@ -232,8 +226,6 @@ sock_slot_onmove(void *arg, int delta)
 	if (s->pstate != SOCK_START)
 		return;
 	f->tickpending++;
-	if (f->wstate == SOCK_WIDLE && f->rstate != SOCK_RRET)
-		sock_buildmsg(f);
 }
 
 void
@@ -252,8 +244,6 @@ sock_slot_onvol(void *arg, unsigned int delta)
 #endif
 	if (s->pstate != SOCK_START)
 		return;
-	if (f->wstate == SOCK_WIDLE && f->rstate != SOCK_RRET)
-		sock_buildmsg(f);
 }
 
 void
@@ -270,8 +260,6 @@ sock_midi_omsg(void *arg, unsigned char *msg, int size)
 	struct sock *f = arg;
 
 	midi_out(f->midi, msg, size);
-	if (f->wstate == SOCK_WIDLE && f->rstate != SOCK_RRET)
-		sock_buildmsg(f);
 }
 
 void
@@ -280,8 +268,6 @@ sock_midi_fill(void *arg, int count)
 	struct sock *f = arg;
 
 	f->fillpending += count;
-	if (f->wstate == SOCK_WIDLE && f->rstate != SOCK_RRET)
-		sock_buildmsg(f);
 }
 
 /*
@@ -1535,7 +1521,7 @@ sock_read(struct sock *f)
 #ifdef DEBUG
 			if (log_level >= 4) {
 				sock_log(f);
-				log_puts(": read blocked by pending RRET\n");
+				log_puts(": can't reply, write-end blocked\n");
 			}
 #endif
 			return 0;
@@ -1545,6 +1531,7 @@ sock_read(struct sock *f)
 		f->wtodo = sizeof(struct amsg);
 		f->rstate = SOCK_RMSG;
 		f->rtodo = sizeof(struct amsg);
+		/* XXX: call sock_wmsg() ? */
 #ifdef DEBUG
 		if (log_level >= 4) {
 			sock_log(f);
@@ -1641,6 +1628,17 @@ sock_pollfd(void *arg, struct pollfd *pfd)
 	struct sock *f = arg;
 	int events = 0;
 
+	/*
+	 * feedback counters, clock ticks and alike may have changed,
+	 * prepare a message to trigger writes
+	 *
+	 * XXX: doing this at the beginning of the cycle is not optimal,
+	 * because state is changed at the end of the read cycle, and
+	 * thus counters, ret message and alike are generated then.
+	 */
+	if (f->wstate == SOCK_WIDLE && f->rstate != SOCK_RRET)
+		sock_buildmsg(f);
+
 	if (f->rstate == SOCK_RMSG ||
 	    f->rstate == SOCK_RDATA)
 		events |= POLLIN;
@@ -1666,13 +1664,6 @@ sock_in(void *arg)
 
 	while (sock_read(f))
 		;
-
-	/*
-	 * feedback counters, clock ticks and alike may have changed,
-	 * prepare a message to trigger writes
-	 */
-	if (f->wstate == SOCK_WIDLE && f->rstate != SOCK_RRET)
-		sock_buildmsg(f);
 }
 
 void
