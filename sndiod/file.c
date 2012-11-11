@@ -372,7 +372,7 @@ file_poll(void)
 	if (delta_nsec >= 0 && delta_nsec < 1000000000LL)
 		timo_update(delta_nsec / 1000);
 	else {
-		if (log_level >= 1)
+		if (log_level >= 2)
 			log_puts("ignored huge clock delta\n");
 	}
 	if (res <= 0)
