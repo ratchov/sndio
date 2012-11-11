@@ -51,13 +51,6 @@ dev_sio_onmove(void *arg, int delta)
 	struct dev *d = arg;
 
 #ifdef DEBUG
-	if (delta < 0 || delta > (60 * RATE_MAX)) {
-		dev_log(d);
-		log_puts(": ");
-		log_puti(delta);
-		log_puts(": bogus sndio delta");
-		panic();
-	}
 	if (log_level >= 4) {
 		dev_log(d);
 		log_puts(": tick, delta = ");
@@ -229,9 +222,13 @@ int
 dev_sio_revents(void *arg, struct pollfd *pfd)
 {
 	struct dev *d = arg;
+	int events;
 
+	events = sio_revents(d->sio.hdl, pfd);
+#ifdef DEBUG
 	d->sio.events = sio_revents(d->sio.hdl, pfd);
-	return d->sio.events;
+#endif
+	return events;
 }
 
 void
@@ -278,8 +275,7 @@ dev_sio_run(void *arg)
 #ifdef DEBUG
 			if (n == 0 && data == base && !sio_eof(d->sio.hdl)) {
 				dev_log(d);
-				log_puts(": read blocked at cycle start, sync error\n");
-				/* don't panic since recording is slightly ahead of playback */
+				log_puts(": read blocked at cycle start\n");
 			}
 			if (log_level >= 4) {
 				dev_log(d);
@@ -296,23 +292,24 @@ dev_sio_run(void *arg)
 				return;
 #ifdef DEBUG
 			d->sio.rused -= d->round;
-			if (d->sio.rused >= d->round) {
-				dev_log(d);
-				log_puts(": rec hw xrun, rused = ");
-				log_puti(d->sio.rused);
-				log_puts("/");
-				log_puti(d->bufsz);
-				log_puts("\n");
-			}
-			if (d->sio.rused < 0 || d->sio.rused >= d->bufsz) {
-				/* device driver or libsndio bug */
-				dev_log(d);
-				log_puts(": out of bounds rused = ");
-				log_puti(d->sio.rused);
-				log_puts("/");
-				log_puti(d->bufsz);
-				log_puts("\n");
-				//panic();
+			if (log_level >= 2) {
+				if (d->sio.rused >= d->round) {
+					dev_log(d);
+					log_puts(": rec hw xrun, rused = ");
+					log_puti(d->sio.rused);
+					log_puts("/");
+					log_puti(d->bufsz);
+					log_puts("\n");
+				}
+				if (d->sio.rused < 0 ||
+				    d->sio.rused >= d->bufsz) {
+					dev_log(d);
+					log_puts(": out of bounds rused = ");
+					log_puti(d->sio.rused);
+					log_puts("/");
+					log_puti(d->bufsz);
+					log_puts("\n");
+				}
 			}
 #endif
 			d->sio.cstate = DEV_SIO_CYCLE;
@@ -358,8 +355,7 @@ dev_sio_run(void *arg)
 #ifdef DEBUG
 			if (n == 0 && data == base && !sio_eof(d->sio.hdl)) {
 				dev_log(d);
-				log_puts(": write blocked at cycle start, sync error\n");
-				/* don't panic since playback might be ahead of recording */
+				log_puts(": write blocked at cycle start\n");
 			}
 			if (log_level >= 4) {
 				dev_log(d);
@@ -376,23 +372,26 @@ dev_sio_run(void *arg)
 				return;
 #ifdef DEBUG
 			d->sio.pused += d->round;
-			if (d->prime == 0 && d->sio.pused <= d->bufsz - d->round) {
-				dev_log(d);
-				log_puts(": play hw xrun, pused = ");
-				log_puti(d->sio.pused);
-				log_puts("/");
-				log_puti(d->bufsz);
-				log_puts("\n");
-			}
-			if (d->sio.pused < 0 || d->sio.pused > d->bufsz) {
-				/* device driver or libsndio bug */
-				dev_log(d);
-				log_puts(": out of bounds pused = ");
-				log_puti(d->sio.pused);
-				log_puts("/");
-				log_puti(d->bufsz);
-				log_puts("\n");
-				//panic();
+			if (log_level >= 2) {
+				if (d->prime == 0 &&
+				    d->sio.pused <= d->bufsz - d->round) {
+					dev_log(d);
+					log_puts(": play hw xrun, pused = ");
+					log_puti(d->sio.pused);
+					log_puts("/");
+					log_puti(d->bufsz);
+					log_puts("\n");
+				}
+				if (d->sio.pused < 0 ||
+				    d->sio.pused > d->bufsz) {
+					/* device driver or libsndio bug */
+					dev_log(d);
+					log_puts(": out of bounds pused = ");
+					log_puti(d->sio.pused);
+					log_puts("/");
+					log_puti(d->bufsz);
+					log_puts("\n");
+				}
 			}
 #endif
 			d->poffs += d->round;

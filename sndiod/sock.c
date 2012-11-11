@@ -324,9 +324,9 @@ sock_new(int fd)
 void
 sock_slot_mmcstart(void *arg)
 {
+#ifdef DEBUG
 	struct sock *f = (struct sock *)arg;
 
-#ifdef DEBUG
 	if (log_level >= 3) {
 		sock_log(f);
 		log_puts(": ignored mmc start signal\n");
@@ -672,16 +672,6 @@ sock_setpar(struct sock *f)
 			p->bps = APARAMS_BPS(p->bits);
 		s->par.bits = p->bits;
 		s->par.bps = p->bps;
-#ifdef DEBUG
-		if (log_level >= 3) {
-			sock_log(f);
-			log_puts(": using ");
-			log_putu(p->bits);
-			log_puts("bits, ");
-			log_putu(p->bps);
-			log_puts(" bytes per sample\n");
-		}
-#endif
 	}
 	if (AMSG_ISSET(p->sig))
 		s->par.sig = p->sig ? 1 : 0;
@@ -701,7 +691,7 @@ sock_setpar(struct sock *f)
 #ifdef DEBUG
 		if (log_level >= 3) {
 			sock_log(f);
-			log_puts(": using recording channels ");
+			log_puts(": recording channels ");
 			log_putu(s->sub.slot_cmin);
 			log_puts(":");
 			log_putu(s->sub.slot_cmax);
@@ -725,7 +715,7 @@ sock_setpar(struct sock *f)
 #ifdef DEBUG
 		if (log_level >= 3) {
 			sock_log(f);
-			log_puts(": using playback channels ");
+			log_puts(": playback channels ");
 			log_putu(s->mix.slot_cmin);
 			log_puts(":");
 			log_putu(s->mix.slot_cmax);
@@ -749,20 +739,20 @@ sock_setpar(struct sock *f)
 #ifdef DEBUG
 			if (log_level >= 3) {
 				sock_log(f);
-				log_puts(": using ");
+				log_puts(": ");
 				log_putu(appbufsz);
-				log_puts(" fr app buffer size\n");
+				log_puts(" frame buffer\n");
 			}
 #endif
 		}
 #ifdef DEBUG
 		if (log_level >= 3) {
 			sock_log(f);
-			log_puts(": using ");
+			log_puts(": ");
 			log_putu(rate);
 			log_puts("Hz sample rate, ");
 			log_putu(s->round);
-			log_puts(" fr block size\n");
+			log_puts(" frame blocks\n");
 		}
 #endif
 	}
@@ -786,7 +776,7 @@ sock_setpar(struct sock *f)
 #ifdef DEBUG
 		if (log_level >= 3) {
 			sock_log(f);
-			log_puts(": using 0x");
+			log_puts(": 0x");
 			log_putx(s->xrun);
 			log_puts(" xrun policy\n");
 		}
@@ -808,9 +798,9 @@ sock_setpar(struct sock *f)
 #ifdef DEBUG
 		if (log_level >= 3) {
 			sock_log(f);
-			log_puts(": using ");
+			log_puts(": ");
 			log_putu(s->appbufsz);
-			log_puts(" buffer size\n");
+			log_puts(" frame buffer\n");
 		}
 #endif
 	}

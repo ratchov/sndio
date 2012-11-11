@@ -232,6 +232,15 @@ resamp_do(struct resamp *p, adata_t *in, adata_t *out, int todo)
 	/*
 	 * Start conversion.
 	 */
+#ifdef DEBUG
+	if (log_level >= 4) {
+		log_puts("resamp: copying ");
+		log_puti(todo);
+		log_puts(" frames, diff = ");
+		log_putu(diff);
+		log_puts("\n");
+	}
+#endif
 	for (;;) {
 		if (diff < 0) {
 			if (ifr == 0)
@@ -295,6 +304,15 @@ resamp_init(struct resamp *p, unsigned int iblksz, unsigned int oblksz, int nch)
 	p->ctx_start = 0;
 	for (i = 0; i < NCHAN_MAX * RESAMP_NCTX; i++)
 		p->ctx[i] = 0;
+#ifdef DEBUG
+	if (log_level >= 3) {
+		log_puts("resamp: ");
+		log_putu(iblksz);
+		log_puts("/");
+		log_putu(oblksz);
+		log_puts("\n");
+	}
+#endif
 }
 
 void
@@ -311,6 +329,13 @@ enc_do(struct conv *p, unsigned char *in, unsigned char *out, int todo)
 	int obnext;
 	int osnext;
 
+#ifdef DEBUG
+	if (log_level >= 4) {
+		log_puts("enc: copying ");
+		log_putu(todo);
+		log_puts(" frames\n");
+	}
+#endif
 	/*
 	 * Partially copy structures into local variables, to avoid
 	 * unnecessary indirections; this also allows the compiler to
@@ -354,6 +379,13 @@ enc_sil_do(struct conv *p, unsigned char *out, int todo)
 	int obnext;
 	int osnext;
 
+#ifdef DEBUG
+	if (log_level >= 4) {
+		log_puts("enc: silence ");
+		log_putu(todo);
+		log_puts(" frames\n");
+	}
+#endif
 	/*
 	 * Partially copy structures into local variables, to avoid
 	 * unnecessary indirections; this also allows the compiler to
@@ -400,6 +432,15 @@ enc_init(struct conv *p, struct aparams *par, int nch)
 		p->bnext = 1;
 		p->snext = 0;
 	}
+#ifdef DEBUG
+	if (log_level >= 3) {
+		log_puts("enc: ");
+		aparams_log(par);
+		log_puts(", ");
+		log_puti(p->nch);
+		log_puts(" channels\n");
+	}
+#endif
 }
 
 void
@@ -416,6 +457,13 @@ dec_do(struct conv *p, unsigned char *in, unsigned char *out, int todo)
 	unsigned int ishift;
 	adata_t *odata;
 
+#ifdef DEBUG
+	if (log_level >= 4) {
+		log_puts("dec: copying ");
+		log_putu(todo);
+		log_puts(" frames\n");
+	}
+#endif
 	/*
 	 * Partially copy structures into local variables, to avoid
 	 * unnecessary indirections; this also allows the compiler to
@@ -467,6 +515,15 @@ dec_init(struct conv *p, struct aparams *par, int nch)
 		p->bnext = 1;
 		p->snext = 0;
 	}
+#ifdef DEBUG
+	if (log_level >= 3) {
+		log_puts("dec: ");
+		aparams_log(par);
+		log_puts(", ");
+		log_puti(p->nch);
+		log_puts(" channels\n");
+	}
+#endif
 }
 
 void
@@ -475,6 +532,13 @@ cmap_add(struct cmap *p, void *in, void *out, int vol, int todo)
 	adata_t *idata, *odata;
 	int i, j, nch, istart, inext, onext, ostart, y, v;
 
+#ifdef DEBUG
+	if (log_level >= 4) {
+		log_puts("cmap: adding ");
+		log_puti(todo);
+		log_puts(" frames\n");
+	}
+#endif
 	idata = in;
 	odata = out;
 	ostart = p->ostart;
@@ -511,6 +575,13 @@ cmap_copy(struct cmap *p, void *in, void *out, int vol, int todo)
 	adata_t *idata, *odata;
 	int i, j, nch, istart, inext, onext, ostart, v;
 
+#ifdef DEBUG
+	if (log_level >= 4) {
+		log_puts("cmap: copying ");
+		log_puti(todo);
+		log_puts(" frames\n");
+	}
+#endif
 	idata = in;
 	odata = out;
 	ostart = p->ostart;
@@ -570,6 +641,21 @@ cmap_init(struct cmap *p,
 	p->istart = cmin - imin;
 	p->inext = imax - cmax;
 	p->nch = cmax - cmin + 1;
+#ifdef DEBUG
+	if (log_level >= 3) {
+		log_puts("cmap: nch = ");
+		log_puti(p->nch);
+		log_puts(", ostart = ");
+		log_puti(p->ostart);
+		log_puts(", onext = ");
+		log_puti(p->onext);
+		log_puts(", istart = ");
+		log_puti(p->istart);
+		log_puts(", inext= ");
+		log_puti(p->inext);
+		log_puts("\n");
+	}
+#endif
 }
 
 /*

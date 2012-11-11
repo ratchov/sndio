@@ -376,7 +376,7 @@ midi_out(struct midi *oep, unsigned char *idata, int icount)
 #ifdef DEBUG
 		if (log_level >= 4) {
 			midi_log(oep);
-			log_puts(":");
+			log_puts(": out: ");
 			for (i = 0; i < ocount; i++) {
 				log_puts(" ");
 				log_putx(odata[i]);
@@ -411,19 +411,7 @@ void
 port_omsg(void *arg, unsigned char *msg, int size)
 {
 	struct port *p = arg;
-	int i;
 
-#ifdef DEBUG
-	if (log_level >= 4) {
-		port_log(p);
-		log_puts(": sending:");
-		for (i = 0; i < size; i++) {
-			log_puts(" ");
-			log_putx(msg[i]);
-		}
-		log_puts("\n");
-	}
-#endif
 	midi_out(p->midi, msg, size);
 }
 
@@ -436,9 +424,9 @@ port_fill(void *arg, int count)
 void
 port_exit(void *arg)
 {
+#ifdef DEBUG
 	struct port *p = arg;
 
-#ifdef DEBUG
 	if (log_level >= 3) {
 		port_log(p);
 		log_puts(": exit\n");
@@ -475,7 +463,7 @@ port_del(struct port *c)
 	for (p = &port_list; *p != c; p = &(*p)->next) {
 #ifdef DEBUG
 		if (*p == NULL) {
-			log_puts("port to delete not on the list\n");
+			log_puts("port to delete not on list\n");
 			panic();
 		}
 #endif
@@ -501,8 +489,6 @@ port_open(struct port *c)
 {
 	if (!port_mio_open(c)) {
 		if (log_level >= 1) {
-			port_log(c);
-			log_puts(": ");
 			log_puts(c->path);
 			log_puts(": failed to open midi port\n");
 		}
@@ -518,9 +504,7 @@ port_close(struct port *c)
 #ifdef DEBUG
 	if (c->state == PORT_CFG) {
 		port_log(c);
-		log_puts(": ");
-		log_puts(c->path);
-		log_puts(": failed to open midi port\n");
+		log_puts(": can't close port (not opened)\n");
 	}
 #endif
 	port_mio_close(c);

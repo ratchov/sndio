@@ -270,7 +270,7 @@ file_del(struct file *f)
 int
 file_poll(void)
 {
-	nfds_t nfds, i, n;
+	nfds_t nfds, n;
 	struct pollfd pfds[MAXFDS];
 	struct file *f, **pf;
 	struct timespec ts;
@@ -278,6 +278,7 @@ file_poll(void)
 	struct timespec sleepts;
 	struct timespec ts0, ts1;
 	long us;
+	int i;
 #endif
 	long long delta_nsec;
 	int revents, res;

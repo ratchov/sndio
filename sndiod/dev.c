@@ -161,9 +161,9 @@ zomb_mmcloc(void *arg, unsigned int pos)
 void
 zomb_exit(void *arg)
 {
+#ifdef DEBUG
 	struct slot *s = arg;
 
-#ifdef DEBUG
 	if (log_level >= 3) {
 		slot_log(s);
 		log_puts(": zomb_exit\n");
@@ -361,9 +361,9 @@ dev_midi_dump(struct dev *d)
 void
 dev_midi_imsg(void *arg, unsigned char *msg, int len)
 {
+#ifdef DEBUG
 	struct dev *d = arg;
 
-#ifdef DEBUG
 	dev_log(d);
 	log_puts(": can't receive midi messages\n");
 	panic();
@@ -376,19 +376,7 @@ dev_midi_omsg(void *arg, unsigned char *msg, int len)
 	struct dev *d = arg;
 	struct sysex *x;
 	unsigned int fps, chan;
-#ifdef DEBUG
-	unsigned int i;
 
-	if (log_level >= 3) {
-		dev_log(d);
-		log_puts(": got msg:");
-		for (i = 0; i < len; i++) {
-			log_puts(" ");
-			log_putx(msg[i]);
-		}
-		log_puts("\n");
-	}
-#endif
 	if ((msg[0] & MIDI_CMDMASK) == MIDI_CTL && msg[1] == MIDI_CTL_VOL) {
 		chan = msg[0] & MIDI_CHANMASK;
 		if (chan >= DEV_NSLOT)
@@ -470,9 +458,9 @@ dev_midi_omsg(void *arg, unsigned char *msg, int len)
 void
 dev_midi_fill(void *arg, int count)
 {
+#ifdef DEBUG
 	struct dev *d = arg;
 
-#ifdef DEBUG
 	dev_log(d);
 	log_puts(": can't receive fill input\n");
 	panic();
@@ -596,15 +584,6 @@ dev_mix_badd(struct dev *d, struct slot *s)
 	adata_t *idata, *odata;
 	int icount;
 
-#ifdef DEBUG
-	if (log_level >= 4) {
-		slot_log(s);
-		log_puts(": dev_mix_badd: drop = ");
-		log_puti(s->mix.drop);
-		log_puts("\n");
-	}
-#endif
-
 	odata = DEV_PBUF(d);
 	idata = (adata_t *)abuf_rgetblk(&s->mix.buf, &icount);
 #ifdef DEBUG
@@ -612,9 +591,7 @@ dev_mix_badd(struct dev *d, struct slot *s)
 		slot_log(s);
 		log_puts(": not enough data to mix (");
 		log_putu(icount);
-		log_puts(" of ");
-		log_putu(d->round * s->mix.bpf);
-		log_puts(")\n");
+		log_puts("bytes)\n");
 		panic();
 	}
 #endif
@@ -707,7 +684,6 @@ dev_mix_cycle(struct dev *d)
 			continue;
 		}
 #ifdef DEBUG
-		s->delay -= s->round;
 		if (log_level >= 4) {
 			slot_log(s);
 			log_puts(": mixing, drop = ");
@@ -826,14 +802,6 @@ dev_sub_bcopy(struct dev *d, struct slot *s)
 	adata_t *idata, *odata;
 	int ocount;
 
-#ifdef DEBUG
-	if (log_level >= 4) {
-		slot_log(s);
-		log_puts(": dev_sub_bcopy: silence = ");
-		log_puti(s->sub.silence);
-		log_puts("\n");
-	}
-#endif
 	idata = (s->mode & MODE_MON) ? DEV_PBUF(d) : d->rbuf;
 	odata = (adata_t *)abuf_wgetblk(&s->sub.buf, &ocount);
 #ifdef DEBUG
@@ -920,9 +888,6 @@ dev_onmove(struct dev *d, int delta)
 		pos = (long long)delta * s->round + s->delta_rem;
 		s->delta_rem = pos % d->round;
 		s->delta += pos / (int)d->round;
-#ifdef DEBUG
-		s->delay += pos / (int)d->round;
-#endif
 		if (s->delta >= 0)
 			s->ops->onmove(s->arg, delta);
 	}
@@ -1633,8 +1598,6 @@ slot_setvol(struct slot *s, unsigned int vol)
 	if (log_level >= 3) {
 		slot_log(s);
 		log_puts(": setting volume ");
-		log_putu(s->vol);
-		log_puts(" -> ");
 		log_putu(vol);
 		log_puts("\n");
 	}
@@ -1666,7 +1629,6 @@ slot_attach(struct slot *s)
 	s->delta_rem = 0;
 	s->pstate = SLOT_RUN;
 #ifdef DEBUG
-	s->delay = 0;
 	if (log_level >= 3) {
 		slot_log(s);
 		log_puts(": attached at ");
@@ -1779,10 +1741,11 @@ slot_ready(struct slot *s)
 void
 slot_start(struct slot *s)
 {
-	struct dev *d = s->dev;
 	unsigned int bufsz;
-
 #ifdef DEBUG
+	struct dev *d = s->dev;
+
+
 	if (s->pstate != SLOT_INIT) {
 		slot_log(s);
 		log_puts(": slot_start: wrong state\n");
