@@ -1718,27 +1718,6 @@ slot_attach(struct slot *s)
 			s->mix.resampbuf =
 			    xmalloc(d->round * slot_nch * sizeof(adata_t));
 		}
-#ifdef DEBUG
-		if (log_level >= 3) {
-			log_puts("play: cc = ");
-			log_puti(s->mix.cmap.nch);
-			log_puts(", dev_nch = ");
-			log_puti(dev_nch);
-			log_puts(", slot = ");
-			log_puti(s->mix.slot_cmin);
-			log_puts(":");
-			log_puti(s->mix.slot_cmax);
-			log_puts(", dev = ");
-			log_puti(s->mix.dev_cmin);
-			log_puts(":");
-			log_puti(s->mix.dev_cmax);
-			log_puts(", join = ");
-			log_puti(s->mix.join);
-			log_puts(", expand = ");
-			log_puti(s->mix.expand);
-			log_puts("\n");
-		}
-#endif
 		s->mix.drop = 0;
 		s->mix.vol = MIDI_TO_ADATA(s->vol);
 		dev_mix_adjvol(d);
@@ -1772,28 +1751,7 @@ slot_attach(struct slot *s)
 			s->sub.encbuf =
 			    xmalloc(d->round * slot_nch * sizeof(adata_t));
 		}
-		
-#ifdef DEBUG
-		if (log_level >= 3) {
-			log_puts("sub: cc = ");
-			log_puti(s->sub.cmap.nch);
-			log_puts(", dev_nch = ");
-			log_puti(dev_nch);
-			log_puts(", slot ");
-			log_puti(s->sub.slot_cmin);
-			log_puts(":");
-			log_puti(s->sub.slot_cmax);
-			log_puts(", join = ");
-			log_puti(s->sub.join);
-			log_puts(", expand = ");
-			log_puti(s->sub.expand);
-			log_puts(", dev = ");
-			log_puti(s->sub.dev_cmin);
-			log_puts(":");
-			log_puti(s->sub.dev_cmax);
-			log_puts("\n");
-		}
-#endif
+	
 		/*
 		 * N-th recorded block is the N-th played block
 		 */
