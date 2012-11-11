@@ -49,7 +49,7 @@
  * aucat-specific messages, in the "edu" namespace
  */
 #define SYSEX_AUCAT		0x23		/* aucat-specific */
-#define   SYSEX_AUCAT_MIXINFO	0x01		/* mixer info */
+#define   SYSEX_AUCAT_SLOTDESC	0x01		/* mixer info */
 #define   SYSEX_AUCAT_DUMPREQ	0x02		/* dump request */
 #define   SYSEX_AUCAT_DUMPEND	0x03		/* end of dump */
 
@@ -101,13 +101,13 @@ struct sysex {
 			uint8_t fr;
 			uint8_t end;
 		} full;
-		struct sysex_mixinfo {
+		struct sysex_slotdesc {
 			uint8_t chan;			/* channel */
 			uint8_t vol;			/* current volume */
 #define SYSEX_NAMELEN	10				/* \0 included */
 			uint8_t name[SYSEX_NAMELEN];	/* stream name */
 			uint8_t end;
-		} mixinfo;
+		} slotdesc;
 		struct sysex_dumpreq {
 			uint8_t end;
 		} dumpreq;

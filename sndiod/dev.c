@@ -291,6 +291,9 @@ dev_midi_full(struct dev *d)
 	midi_send(d->midi, (unsigned char *)&x, SYSEX_SIZE(full));
 }
 
+/*
+ * send a volume change MIDI message
+ */
 void
 dev_midi_vol(struct dev *d, struct slot *s)
 {
@@ -302,6 +305,9 @@ dev_midi_vol(struct dev *d, struct slot *s)
 	midi_send(d->midi, msg, 3);
 }
 
+/*
+ * send a master volume MIDI message
+ */
 void
 dev_midi_master(struct dev *d)
 {
@@ -318,8 +324,11 @@ dev_midi_master(struct dev *d)
 	midi_send(d->midi, (unsigned char *)&x, SYSEX_SIZE(master));
 }
 
+/*
+ * send a sndiod-specific slot description MIDI message
+ */
 void
-dev_midi_mixinfo(struct dev *d, struct slot *s)
+dev_midi_slotdesc(struct dev *d, struct slot *s)
 {
 	struct sysex x;
 
@@ -327,14 +336,14 @@ dev_midi_mixinfo(struct dev *d, struct slot *s)
 	x.start = SYSEX_START;
 	x.type = SYSEX_TYPE_EDU;
 	x.id0 = SYSEX_AUCAT;
-	x.id1 = SYSEX_AUCAT_MIXINFO;
+	x.id1 = SYSEX_AUCAT_SLOTDESC;
 	if (*s->name != '\0') {
-		snprintf((char *)x.u.mixinfo.name, SYSEX_NAMELEN,
+		snprintf((char *)x.u.slotdesc.name, SYSEX_NAMELEN,
 		    "%s%u", s->name, s->unit);
 	}
-	x.u.mixinfo.chan = s - d->slot;
-	x.u.mixinfo.end = SYSEX_END;
-	midi_send(d->midi, (unsigned char *)&x, SYSEX_SIZE(mixinfo));
+	x.u.slotdesc.chan = s - d->slot;
+	x.u.slotdesc.end = SYSEX_END;
+	midi_send(d->midi, (unsigned char *)&x, SYSEX_SIZE(slotdesc));
 }
 
 void
@@ -346,7 +355,7 @@ dev_midi_dump(struct dev *d)
 
 	dev_midi_master(d);
 	for (i = 0, s = d->slot; i < DEV_NSLOT; i++, s++) {
-		dev_midi_mixinfo(d, s);
+		dev_midi_slotdesc(d, s);
 		dev_midi_vol(d, s);
 	}
 	x.start = SYSEX_START;
@@ -1560,7 +1569,7 @@ found:
 	s->dup = 0;
 	s->appbufsz = d->bufsz;
 	s->round = d->round;
-	dev_midi_mixinfo(d, s);
+	dev_midi_slotdesc(d, s);
 	dev_midi_vol(d, s);
 	return s;
 }
@@ -1590,7 +1599,7 @@ slot_del(struct slot *s)
 }
 
 /*
- * change the slot play volume; called by the slot or by MIDI
+ * change the slot play volume; called either by the slot or by MIDI
  */
 void
 slot_setvol(struct slot *s, unsigned int vol)
@@ -1609,6 +1618,9 @@ slot_setvol(struct slot *s, unsigned int vol)
 	s->mix.vol = MIDI_TO_ADATA(s->vol);
 }
 
+/*
+ * attach the slot to the device (ie start playing & recording
+ */
 void
 slot_attach(struct slot *s)
 {
@@ -1722,6 +1734,10 @@ slot_attach(struct slot *s)
 	}
 }
 
+/*
+ * if MMC is enabled, and try to attach all slots synchronously, else
+ * simply attach the slot
+ */
 void
 slot_ready(struct slot *s)
 {
@@ -1734,10 +1750,8 @@ slot_ready(struct slot *s)
 }
 
 /*
- * notify the MMC layer that the stream is attempting
- * to start. If other streams are not ready, 0 is returned meaning 
- * that the stream should wait. If other streams are ready, they
- * are started, and the caller should start immediately.
+ * setup buffers & conversion layers, prepare the slot to receive data
+ * (for playback) or start (recording).
  */
 void
 slot_start(struct slot *s)
@@ -1803,6 +1817,9 @@ slot_start(struct slot *s)
 	}
 }
 
+/*
+ * stop playback and recording, and free conversion layers
+ */
 void
 slot_detach(struct slot *s)
 {
@@ -1839,6 +1856,10 @@ slot_detach(struct slot *s)
 	}
 }
 
+/*
+ * put the slot in stopping state (draining play buffers) or
+ * stop & detach if no data to drain.
+ */
 void
 slot_stop(struct slot *s)
 {
@@ -1882,6 +1903,10 @@ slot_stop(struct slot *s)
 		s->tstate = MMC_STOP;
 }
 
+/*
+ * notify the slot that we just wrote in the play buffer, must be called
+ * after each write
+ */
 void
 slot_write(struct slot *s)
 {
@@ -1897,7 +1922,11 @@ slot_write(struct slot *s)
 	}
 }
 
+/*
+ * notify the slot that we freed some space in the rec buffer
+ */
 void
 slot_read(struct slot *s)
 {
+	/* nothing yet */
 }

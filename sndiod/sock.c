@@ -14,16 +14,6 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-
-/*
- * XXX:
- *
- * i/o never crosses buffer/message boundary, so factor
- * sock_{wdata,wmsg} and sock_{rdata,rmsg}
- *
- * use a separate message for midi (requires protocol change)
- */
-
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <errno.h>
@@ -55,6 +45,9 @@ void sock_in(void *);
 void sock_out(void *);
 void sock_hup(void *);
 
+/*
+ * slot call-backs
+ */
 void sock_slot_onmove(void *, int);
 void sock_slot_onvol(void *, unsigned int);
 void sock_slot_fill(void *);
@@ -63,10 +56,14 @@ void sock_slot_eof(void *);
 void sock_slot_mmcstart(void *);
 void sock_slot_mmcstop(void *);
 void sock_slot_mmcloc(void *, unsigned int);
+void sock_exit(void *);
+
+/*
+ * midi call-backs
+ */
 void sock_midi_imsg(void *, unsigned char *, int);
 void sock_midi_omsg(void *, unsigned char *, int);
 void sock_midi_fill(void *, int);
-void sock_exit(void *);
 
 struct fileops sock_fileops = {
 	"sock",
@@ -270,10 +267,6 @@ sock_midi_fill(void *arg, int count)
 	f->fillpending += count;
 }
 
-/*
- * Initialise socket in the SOCK_HELLO state with default
- * parameters.
- */
 struct sock *
 sock_new(int fd)
 {
@@ -304,9 +297,6 @@ sock_new(int fd)
 	return f;
 }
 
-/*
- * Attach the stream. Callback invoked when MMC start
- */
 void
 sock_slot_mmcstart(void *arg)
 {
@@ -320,9 +310,6 @@ sock_slot_mmcstart(void *arg)
 #endif
 }
 
-/*
- * Callback invoked by MMC stop
- */
 void
 sock_slot_mmcstop(void *arg)
 {
@@ -336,9 +323,6 @@ sock_slot_mmcstop(void *arg)
 #endif
 }
 
-/*
- * Callback invoked by MMC relocate, ignored
- */
 void
 sock_slot_mmcloc(void *arg, unsigned int mmcpos)
 {
@@ -352,9 +336,6 @@ sock_slot_mmcloc(void *arg, unsigned int mmcpos)
 #endif
 }
 
-/*
- * Callback invoked when slot is gone
- */
 void
 sock_exit(void *arg)
 {
@@ -369,6 +350,9 @@ sock_exit(void *arg)
 	sock_close(f);
 }
 
+/*
+ * write on the socke fd and handle errors
+ */
 int
 sock_fdwrite(struct sock *f, void *data, int count)
 {
@@ -376,10 +360,12 @@ sock_fdwrite(struct sock *f, void *data, int count)
 
 	n = write(f->fd, data, count);
 	if (n < 0) {
+#ifdef DEBUG
 		if (errno == EFAULT) {
 			log_puts("sock_fdwrite: fault\n");
 			panic();
 		}
+#endif
 		if (errno != EAGAIN) {
 			if (log_level >= 1) {
 				sock_log(f);
@@ -405,6 +391,9 @@ sock_fdwrite(struct sock *f, void *data, int count)
 	return n;
 }
 
+/*
+ * read from the socke fd and handle errors
+ */
 int
 sock_fdread(struct sock *f, void *data, int count)
 {
@@ -412,10 +401,12 @@ sock_fdread(struct sock *f, void *data, int count)
 
 	n = read(f->fd, data, count);
 	if (n < 0) {
+#ifdef DEBUG
 		if (errno == EFAULT) {
 			log_puts("sock_fdread: fault\n");
 			panic();
 		}
+#endif
 		if (errno != EAGAIN) {
 			if (log_level >= 1) {
 				sock_log(f);
@@ -442,8 +433,7 @@ sock_fdread(struct sock *f, void *data, int count)
 }
 
 /*
- * Read a message from the file descriptor, return 1 if done, 0
- * otherwise. The message is stored in f->rmsg.
+ * read the next message into f->rmsg, return 1 on success
  */
 int
 sock_rmsg(struct sock *f)
@@ -454,7 +444,7 @@ sock_rmsg(struct sock *f)
 #ifdef DEBUG
 	if (f->rtodo == 0) {
 		sock_log(f);
-		log_puts(": sock_rmsg: already read\n");
+		log_puts(": sock_rmsg: nothing to read\n");
 		panic();
 	}
 #endif
@@ -477,9 +467,7 @@ sock_rmsg(struct sock *f)
 }
 
 /*
- * Write a message to the file descriptor, return 1 if done, 0
- * otherwise.  The "m" argument is f->rmsg or f->wmsg, and the "ptodo"
- * points to the f->rtodo or f->wtodo respectively.
+ * write the message in f->rmsg, return 1 on success
  */
 int
 sock_wmsg(struct sock *f)
@@ -512,8 +500,7 @@ sock_wmsg(struct sock *f)
 }
 
 /*
- * Read data chunk from the file descriptor, return 1 if at least one
- * byte was read, 0 if the file blocked.
+ * read data into the slot/midi ring buffer
  */
 int
 sock_rdata(struct sock *f)
@@ -557,8 +544,7 @@ sock_rdata(struct sock *f)
 }
 
 /*
- * Write data chunk to the file descriptor, return 1 if at least one
- * byte was written, 0 if the file blocked.
+ * read data into the slot/midi ring buffer
  */
 int
 sock_wdata(struct sock *f)
@@ -942,8 +928,7 @@ sock_hello(struct sock *f)
 }
 
 /*
- * Execute message in f->rmsg and change the state accordingly; return 1
- * on success, and 0 on failure, in which case the socket is destroyed.
+ * execute the message in f->rmsg, return 1 on success
  */
 int
 sock_execmsg(struct sock *f)
@@ -1330,7 +1315,8 @@ sock_execmsg(struct sock *f)
 }
 
 /*
- * Create a new data/pos message.
+ * build a message in f->wmsg, return 1 on success and 0 if
+ * there's nothing to do. Assume f->wstate is SOCK_WIDLE
  */
 int
 sock_buildmsg(struct sock *f)
@@ -1486,9 +1472,7 @@ sock_buildmsg(struct sock *f)
 }
 
 /*
- * Read from the socket file descriptor, fill input buffer and update
- * the state. Return 1 if at least one message or 1 data byte was
- * processed, 0 if something blocked.
+ * iteration of the socket reader loop, return 1 on success
  */
 int
 sock_read(struct sock *f)
@@ -1543,9 +1527,7 @@ sock_read(struct sock *f)
 }
 
 /*
- * Write messages and data on the socket file descriptor. Return 1 if
- * at least one message or one data byte was processed, 0 if something
- * blocked.
+ * iteration of the socket writer loop, return 1 on success
  */
 int
 sock_write(struct sock *f)

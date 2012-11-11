@@ -156,6 +156,9 @@ midi_del(struct midi *ep)
 	}
 }
 
+/*
+ * add the midi endpoint in the ``tag'' midi thru box
+ */
 void
 midi_tag(struct midi *ep, unsigned int tag)
 {
@@ -176,6 +179,9 @@ midi_tag(struct midi *ep, unsigned int tag)
 	}
 }
 
+/*
+ * remove the midi endpoint from the ``tag'' midi thru box
+ */
 void
 midi_untag(struct midi *ep, unsigned int tag)
 {
@@ -194,6 +200,9 @@ midi_untag(struct midi *ep, unsigned int tag)
 	}
 }
 
+/*
+ * broadcast the given message to other members of the thru box
+ */
 void
 midi_send(struct midi *iep, unsigned char *msg, int size)
 {
@@ -249,6 +258,9 @@ midi_fill(struct midi *oep)
 	}
 }
 
+/*
+ * parse the give data chunk, and calling imsg() for each message
+ */
 void
 midi_parse(struct midi *iep, unsigned char *idata, int icount)
 {
@@ -295,6 +307,9 @@ midi_parse(struct midi *iep, unsigned char *idata, int icount)
 	}
 }
 
+/*
+ * process input data stored in ep->ibuf
+ */
 int
 midi_in(struct midi *iep)
 {
@@ -346,6 +361,9 @@ midi_in(struct midi *iep)
 	return idone;
 }
 
+/*
+ * store the given message in the output buffer
+ */
 void
 midi_out(struct midi *oep, unsigned char *idata, int icount)	
 {
@@ -435,7 +453,7 @@ port_exit(void *arg)
 }
 
 /*
- * Add a MIDI port to the device
+ * create a new midi port
  */
 struct port *
 port_new(char *path, unsigned int mode)
@@ -452,6 +470,9 @@ port_new(char *path, unsigned int mode)
 	return c;
 }
 
+/*
+ * destroy the given midi port
+ */
 void
 port_del(struct port *c)
 {
@@ -521,7 +542,7 @@ port_init(struct port *c)
 void
 port_done(struct port *c)
 {
-	/* XXX: drain */
+	/* XXX: drain? */
 	if (c->state != PORT_CFG)
 		port_close(c);
 }

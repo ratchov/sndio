@@ -25,6 +25,9 @@
 
 struct opt *opt_list = NULL;
 
+/*
+ * create a new audio sub-device "configuration"
+ */
 struct opt *
 opt_new(char *name, struct dev *dev,
     int pmin, int pmax, int rmin, int rmax,

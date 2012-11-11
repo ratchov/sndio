@@ -176,7 +176,7 @@ aparams_init(struct aparams *par)
 }
 
 /*
- * Print the format/channels/encoding on stderr.
+ * log the given format/channels/encoding
  */
 void
 aparams_log(struct aparams *par)
@@ -188,7 +188,7 @@ aparams_log(struct aparams *par)
 }
 
 /*
- * Return true if encoding can be represented as adata_t
+ * return true if encoding corresponds to what we store in adata_t
  */
 int
 aparams_native(struct aparams *par)
@@ -198,6 +198,9 @@ aparams_native(struct aparams *par)
 	    (par->bits == par->bps * 8 || !par->msb);
 }
 
+/*
+ * resample the given number of frames
+ */
 int
 resamp_do(struct resamp *p, adata_t *in, adata_t *out, int todo)
 {
@@ -290,6 +293,9 @@ resamp_do(struct resamp *p, adata_t *in, adata_t *out, int todo)
 	return oblksz - ofr;
 }
 
+/*
+ * initialize resampler with ibufsz/obufsz factor and "nch" channels
+ */
 void
 resamp_init(struct resamp *p, unsigned int iblksz, unsigned int oblksz, int nch)
 {
@@ -315,6 +321,9 @@ resamp_init(struct resamp *p, unsigned int iblksz, unsigned int oblksz, int nch)
 #endif
 }
 
+/*
+ * encode "todo" frames from native to foreign encoding
+ */
 void
 enc_do(struct conv *p, unsigned char *in, unsigned char *out, int todo)
 {
@@ -367,6 +376,9 @@ enc_do(struct conv *p, unsigned char *in, unsigned char *out, int todo)
 	}
 }
 
+/*
+ * store "todo" frames of silence in foreign encoding
+ */
 void
 enc_sil_do(struct conv *p, unsigned char *out, int todo)
 {
@@ -412,6 +424,9 @@ enc_sil_do(struct conv *p, unsigned char *out, int todo)
 	}
 }
 
+/*
+ * initialize encoder from native to foreign encoding
+ */
 void
 enc_init(struct conv *p, struct aparams *par, int nch)
 {
@@ -443,6 +458,9 @@ enc_init(struct conv *p, struct aparams *par, int nch)
 #endif
 }
 
+/*
+ * decode "todo" frames from from foreign to native encoding
+ */
 void
 dec_do(struct conv *p, unsigned char *in, unsigned char *out, int todo)
 {
@@ -495,6 +513,9 @@ dec_do(struct conv *p, unsigned char *in, unsigned char *out, int todo)
 	}
 }
 
+/*
+ * initialize decoder from foreign to native encoding
+ */
 void
 dec_init(struct conv *p, struct aparams *par, int nch)
 {
@@ -526,6 +547,9 @@ dec_init(struct conv *p, struct aparams *par, int nch)
 #endif
 }
 
+/*
+ * mix "todo" input frames on the output with the given volume
+ */
 void
 cmap_add(struct cmap *p, void *in, void *out, int vol, int todo)
 {
@@ -569,6 +593,9 @@ cmap_add(struct cmap *p, void *in, void *out, int vol, int todo)
 	}
 }
 
+/*
+ * overwrite output with "todo" input frames with with the given volume
+ */
 void
 cmap_copy(struct cmap *p, void *in, void *out, int vol, int todo)
 {
@@ -609,6 +636,10 @@ cmap_copy(struct cmap *p, void *in, void *out, int vol, int todo)
 	}
 }
 
+/*
+ * initialize channel mapper, to map a subset of input channel range
+ * into a subset of the output channel range
+ */
 void
 cmap_init(struct cmap *p,
     int imin, int imax, int isubmin, int isubmax,
