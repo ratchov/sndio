@@ -68,7 +68,7 @@ abuf_done(struct abuf *buf)
 }
 
 /*
- * Get a pointer to the readable block
+ * return the reader pointer and the number of bytes available
  */
 unsigned char *
 abuf_rgetblk(struct abuf *buf, int *rsize)
@@ -83,7 +83,7 @@ abuf_rgetblk(struct abuf *buf, int *rsize)
 }
 
 /*
- * Discard the block at the start postion.
+ * discard "count" bytes at the start postion.
  */
 void
 abuf_rdiscard(struct abuf *buf, int count)
@@ -103,7 +103,7 @@ abuf_rdiscard(struct abuf *buf, int count)
 }
 
 /*
- * Commit the data written at the end postion.
+ * advance the writer pointer by "count" bytes
  */
 void
 abuf_wcommit(struct abuf *buf, int count)
@@ -120,7 +120,7 @@ abuf_wcommit(struct abuf *buf, int count)
 }
 
 /*
- * Get a pointer to the writable block
+ * get writer pointer and the number of bytes writable
  */
 unsigned char *
 abuf_wgetblk(struct abuf *buf, int *rsize)
