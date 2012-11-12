@@ -503,6 +503,45 @@ sio_alsa_xrun(struct sio_alsa_hdl *hdl)
 	return 1;
 }
 
+int
+sio_alsa_set_format(snd_pcm_t *pcm, snd_pcm_hw_params_t *hwp,
+    snd_pcm_format_t *reqfmt)
+{
+	static snd_pcm_format_t fmts[] = {
+		SND_PCM_FORMAT_S24_LE,	SND_PCM_FORMAT_S24_BE, 
+		SND_PCM_FORMAT_U24_LE,	SND_PCM_FORMAT_U24_BE,
+		SND_PCM_FORMAT_S16_LE,	SND_PCM_FORMAT_S16_BE, 
+		SND_PCM_FORMAT_U16_LE,	SND_PCM_FORMAT_U16_BE, 
+		SND_PCM_FORMAT_U8, 	SND_PCM_FORMAT_S8
+	};
+	int i, err;
+
+	err = snd_pcm_hw_params_test_format(pcm, hwp, *reqfmt);
+	if (err == 0) {
+		err = snd_pcm_hw_params_set_format(pcm, hwp, *reqfmt);
+		if (err < 0) {
+			DALSA("couldn't set fmt", err);
+			return 0;
+		}
+		return 0;
+	}
+
+	for (i = 0; i < sizeof(fmts) / sizeof(int); i++) {
+		err = snd_pcm_hw_params_test_format(pcm, hwp, fmts[i]);
+		if (err)
+			continue;
+		err = snd_pcm_hw_params_set_format(pcm, hwp, fmts[i]);
+		if (err < 0) {
+			DALSA("couldn't set fmt", err);
+			return 0;
+		}
+		*reqfmt = fmts[i];
+		return 0;
+	}	
+	DPRINTF("no known format found\n");
+	return -ENOENT;
+}
+
 static int
 sio_alsa_setpar(struct sio_hdl *sh, struct sio_par *par)
 {
@@ -516,6 +555,7 @@ sio_alsa_setpar(struct sio_hdl *sh, struct sio_par *par)
 	unsigned ich, och;
 	int err, dir;
 
+	/* XXX: alloca */
 	snd_pcm_hw_params_malloc(&ohwp);
 	snd_pcm_sw_params_malloc(&oswp);
 	snd_pcm_hw_params_malloc(&ihwp);
@@ -540,15 +580,8 @@ sio_alsa_setpar(struct sio_hdl *sh, struct sio_par *par)
 			hdl->sio.eof = 1;
 			return 0;
 		}
-		err = snd_pcm_hw_params_set_format(hdl->opcm, ohwp, ofmt);
+		err = sio_alsa_set_format(hdl->opcm, ohwp, &ofmt);
 		if (err < 0) {
-			DALSA("couldn't set play fmt", err);
-			hdl->sio.eof = 1;
-			return 0;
-		}
-		err = snd_pcm_hw_params_get_format(ohwp, &ofmt);
-		if (err < 0) {
-			DALSA("couldn't get play fmt", err);
 			hdl->sio.eof = 1;
 			return 0;
 		}
@@ -568,15 +601,8 @@ sio_alsa_setpar(struct sio_hdl *sh, struct sio_par *par)
 			hdl->sio.eof = 1;
 			return 0;
 		}
-		err = snd_pcm_hw_params_set_format(hdl->ipcm, ihwp, ifmt);
+		err = sio_alsa_set_format(hdl->ipcm, ihwp, &ifmt);
 		if (err < 0) {
-			DALSA("couldn't set rec fmt", err);
-			hdl->sio.eof = 1;
-			return 0;
-		}
-		err = snd_pcm_hw_params_get_format(ihwp, &ifmt);
-		if (err < 0) {
-			DALSA("couldn't get play fmt", err);
 			hdl->sio.eof = 1;
 			return 0;
 		}
