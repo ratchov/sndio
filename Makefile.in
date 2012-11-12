@@ -7,7 +7,7 @@ all:
 install:
 	cd libsndio && ${MAKE} install
 	cd aucat && ${MAKE} install
-#	cd sndiod && ${MAKE} install
+	cd sndiod && ${MAKE} install
 
 uninstall:
 	cd libsndio && ${MAKE} uninstall
