@@ -226,7 +226,7 @@ dev_sio_revents(void *arg, struct pollfd *pfd)
 
 	events = sio_revents(d->sio.hdl, pfd);
 #ifdef DEBUG
-	d->sio.events = sio_revents(d->sio.hdl, pfd);
+	d->sio.events = events;
 #endif
 	return events;
 }
