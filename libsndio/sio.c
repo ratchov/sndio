@@ -174,6 +174,7 @@ sio_setpar(struct sio_hdl *hdl, struct sio_par *par)
 	if (par->bufsz != ~0U) {
 		DPRINTF("sio_setpar: setting bufsz is deprecated\n");
 		par->appbufsz = par->bufsz;
+		par->bufsz = ~0U;
 	}
 	if (par->rate != ~0U && par->appbufsz == ~0U)
 		par->appbufsz = par->rate * 200 / 1000;

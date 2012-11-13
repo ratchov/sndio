@@ -504,8 +504,9 @@ sio_alsa_xrun(struct sio_alsa_hdl *hdl)
 }
 
 int
-sio_alsa_set_format(snd_pcm_t *pcm, snd_pcm_hw_params_t *hwp,
-    snd_pcm_format_t *reqfmt)
+sio_alsa_setpar_hw(snd_pcm_t *pcm, snd_pcm_hw_params_t *hwp,
+    snd_pcm_format_t *reqfmt, unsigned int *rate, unsigned int *chans,
+    snd_pcm_uframes_t *round, unsigned int *periods)
 {
 	static snd_pcm_format_t fmts[] = {
 		SND_PCM_FORMAT_S24_LE,	SND_PCM_FORMAT_S24_BE, 
@@ -514,32 +515,91 @@ sio_alsa_set_format(snd_pcm_t *pcm, snd_pcm_hw_params_t *hwp,
 		SND_PCM_FORMAT_U16_LE,	SND_PCM_FORMAT_U16_BE, 
 		SND_PCM_FORMAT_U8, 	SND_PCM_FORMAT_S8
 	};
-	int i, err;
+	int i, err, dir = 0;
+	unsigned req_rate, min_periods = 2;
 
+	req_rate = *rate;
+
+	err = snd_pcm_hw_params_any(pcm, hwp);
+	if (err < 0) {
+		DALSA("couldn't init pars", err);
+		return 0;
+	}
+	err = snd_pcm_hw_params_set_access(pcm, hwp,
+	    SND_PCM_ACCESS_RW_INTERLEAVED);
+	if (err < 0) {
+		DALSA("couldn't set interleaved access", err);
+		return 0;
+	}
 	err = snd_pcm_hw_params_test_format(pcm, hwp, *reqfmt);
-	if (err == 0) {
-		err = snd_pcm_hw_params_set_format(pcm, hwp, *reqfmt);
-		if (err < 0) {
-			DALSA("couldn't set fmt", err);
-			return 0;
+	if (err < 0) {
+		for (i = 0; ; i++) {
+			if (i == sizeof(fmts) / sizeof(snd_pcm_format_t)) {
+				DPRINTF("no known format found\n");
+				return 0;
+			}
+			err = snd_pcm_hw_params_test_format(pcm, hwp, fmts[i]);
+			if (err)
+				continue;
+			*reqfmt = fmts[i];
+			break;
 		}
+	}
+	err = snd_pcm_hw_params_set_format(pcm, hwp, *reqfmt);
+	if (err < 0) {
+		DALSA("couldn't set fmt", err);
+		return 0;
+	}
+	err = snd_pcm_hw_params_set_rate_resample(pcm, hwp, 0);
+	if (err < 0) {
+		DALSA("couldn't turn resampling off", err);
+		return 0;
+	}
+	err = snd_pcm_hw_params_set_rate_near(pcm, hwp, rate, 0);
+	if (err < 0) {
+		DALSA("couldn't set rate", err);
+		return 0;
+	}
+	err = snd_pcm_hw_params_set_channels_near(pcm, hwp, chans);
+	if (err < 0) {
+		DALSA("couldn't set channel count", err);
+		return 0;
+	}
+	err = snd_pcm_hw_params_set_periods_integer(pcm, hwp);
+	if (err < 0) {
+		DALSA("couldn't set periods to integer", err);
+		return 0;
+	}
+	err = snd_pcm_hw_params_set_periods_min(pcm, hwp, &min_periods, NULL);
+	if (err < 0) {
+		DALSA("couldn't set minimum periods", err);
+		return 0;
+	}
+	err = snd_pcm_hw_params_set_period_size_integer(pcm, hwp);
+	if (err < 0) {
+		DALSA("couldn't set period to integer", err);
 		return 0;
 	}
 
-	for (i = 0; i < sizeof(fmts) / sizeof(int); i++) {
-		err = snd_pcm_hw_params_test_format(pcm, hwp, fmts[i]);
-		if (err)
-			continue;
-		err = snd_pcm_hw_params_set_format(pcm, hwp, fmts[i]);
-		if (err < 0) {
-			DALSA("couldn't set fmt", err);
-			return 0;
-		}
-		*reqfmt = fmts[i];
+	*round = *round * *rate / req_rate;
+	*round = (*round + 31) & ~31;
+
+	err = snd_pcm_hw_params_set_period_size_near(pcm, hwp, round, &dir);
+	if (err < 0) {
+		DALSA("couldn't set period size failed", err);
 		return 0;
-	}	
-	DPRINTF("no known format found\n");
-	return -ENOENT;
+	}
+	err = snd_pcm_hw_params_set_periods_near(pcm, hwp, periods, &dir);
+	if (err < 0) {
+		DALSA("couldn't set period count", err);
+		return 0;
+	}
+	err = snd_pcm_hw_params(pcm, hwp);
+	if (err < 0) {
+		DALSA("couldn't commit params", err);
+		return 0;
+	}
+	return 1;
 }
 
 static int
@@ -548,12 +608,11 @@ sio_alsa_setpar(struct sio_hdl *sh, struct sio_par *par)
 	struct sio_alsa_hdl *hdl = (struct sio_alsa_hdl *)sh;
 	snd_pcm_hw_params_t *ohwp, *ihwp;
 	snd_pcm_sw_params_t *oswp, *iswp;
-	snd_pcm_uframes_t iround, oround, ibufsz, obufsz;
+	snd_pcm_uframes_t iround, oround;
 	snd_pcm_format_t ifmt, ofmt;
-	unsigned bufsz, round, periods, min_periods = 2;
-	unsigned irate, orate, req_rate;
-	unsigned ich, och;
-	int err, dir;
+	unsigned int iperiods, operiods;
+	unsigned irate, orate;
+	int err;
 
 	/* XXX: alloca */
 	snd_pcm_hw_params_malloc(&ohwp);
@@ -561,294 +620,74 @@ sio_alsa_setpar(struct sio_hdl *sh, struct sio_par *par)
 	snd_pcm_hw_params_malloc(&ihwp);
 	snd_pcm_sw_params_malloc(&iswp);
 
-	/*
-	 * set encoding
-	 */
 	sio_alsa_enctofmt(hdl, &ofmt, par);
-	DPRINTF("ofmt = %u\n", ofmt);
+	orate = (par->rate == ~0U) ? 48000 : par->rate;
+	if (par->appbufsz != ~0U) {
+		oround = (par->round != ~0U) ? par->round : (par->appbufsz + 1) / 2;
+		operiods = par->appbufsz / oround;
+		if (operiods < 2)
+			operiods = 2;
+	} else if (par->round != ~0U) {
+		oround = par->round;
+		operiods = 2;
+	} else {
+		operiods = 2;
+		oround = orate / 100;
+	}
+
 	if (hdl->sio.mode & SIO_PLAY) {
-		err = snd_pcm_hw_params_any(hdl->opcm, ohwp);
-		if (err < 0) {
-			DALSA("couldn't init play pars", err);
-			hdl->sio.eof = 1;
-			return 0;
-		}
-		err = snd_pcm_hw_params_set_access(hdl->opcm, ohwp,
-		    SND_PCM_ACCESS_RW_INTERLEAVED);
-		if (err < 0) {
-			DALSA("couldn't set play access", err);
-			hdl->sio.eof = 1;
-			return 0;
-		}
-		err = sio_alsa_set_format(hdl->opcm, ohwp, &ofmt);
-		if (err < 0) {
+		hdl->par.pchan = par->pchan;
+		if (!sio_alsa_setpar_hw(hdl->opcm, ohwp,
+			&ofmt, &orate, &hdl->par.pchan,
+			&oround, &operiods)) {
 			hdl->sio.eof = 1;
 			return 0;
 		}
 	}
 	ifmt = ofmt;
+	irate = orate;
+	iround = oround;
+	iperiods = operiods;
 	if (hdl->sio.mode & SIO_REC) {
-		err = snd_pcm_hw_params_any(hdl->ipcm, ihwp);
-		if (err < 0) {
-			DALSA("couldn't init rec pars", err);
+		hdl->par.rchan = par->rchan;
+		if (!sio_alsa_setpar_hw(hdl->ipcm, ihwp,
+			&ifmt, &irate, &par->rchan,
+			&iround, &iperiods)) {
 			hdl->sio.eof = 1;
 			return 0;
 		}
-		err = snd_pcm_hw_params_set_access(hdl->ipcm, ihwp,
-		    SND_PCM_ACCESS_RW_INTERLEAVED);
-		if (err < 0) {
-			DALSA("couldn't set rec access", err);
-			hdl->sio.eof = 1;
-			return 0;
-		}
-		err = sio_alsa_set_format(hdl->ipcm, ihwp, &ifmt);
-		if (err < 0) {
-			hdl->sio.eof = 1;
-			return 0;
-		}
-		if (!(hdl->sio.mode & SIO_PLAY))
+		if (!(hdl->sio.mode & SIO_PLAY)) {
 			ofmt = ifmt;
+			orate = irate;
+			iround = oround;
+			iperiods = operiods;
+		}
 	}
+
+	DPRINTF("ofmt = %u, orate = %u, oround = %u, operiods = %u\n",
+	    ofmt, orate, (unsigned int)oround, operiods);
+	
 	if (ifmt != ofmt) {
 		DPRINTF("play and rec formats differ\n");
 		hdl->sio.eof = 1;
 		return 0;
 	}
-	if (!sio_alsa_fmttopar(hdl, ofmt, &hdl->par))
-		return 0;
-
-	/*
-	 * set rate
-	 */
-	orate = (par->rate == ~0U) ? 48000 : par->rate;
-	if (hdl->sio.mode & SIO_PLAY) {
-		err = snd_pcm_hw_params_set_rate_resample(hdl->opcm, ohwp, 0);
-		if (err < 0) {
-			DALSA("couldn't turn play resampling off", err);
-			hdl->sio.eof = 1;
-			return 0;
-		}
-		err = snd_pcm_hw_params_set_rate_near(hdl->opcm,
-		    ohwp, &orate, 0);
-		if (err < 0) {
-			DALSA("couldn't set play rate", err);
-			hdl->sio.eof = 1;
-			return 0;
-		}
-	}
-	irate = orate;
-	if (hdl->sio.mode & SIO_REC) {
-		err = snd_pcm_hw_params_set_rate_resample(hdl->ipcm, ihwp, 0);
-		if (err < 0) {
-			DALSA("couldn't turn rec resampling off", err);
-			hdl->sio.eof = 1;
-			return 0;
-		}
-		err = snd_pcm_hw_params_set_rate_near(hdl->ipcm,
-		    ihwp, &irate, 0);
-		if (err < 0) {
-			DALSA("couldn't set rec rate", err);
-			hdl->sio.eof = 1;
-			return 0;
-		}
-		if (!(hdl->sio.mode & SIO_PLAY))
-			orate = irate;
-	}
 	if (irate != orate) {
-		DPRINTF("could not get matching play/record rate");
+		DPRINTF("play and rec rates differ\n");
 		hdl->sio.eof = 1;
 		return 0;
-	}
-	hdl->par.rate = orate;
-
-	/*
-	 * set number of channels
-	 */
-	if ((hdl->sio.mode & SIO_PLAY) && par->pchan != ~0U) {
-		och = par->pchan;
-		err = snd_pcm_hw_params_set_channels_near(hdl->opcm,
-		    ohwp, &och);
-		if (err < 0) {
-			DALSA("couldn't set play channel count", err);
-			hdl->sio.eof = 1;
-			return 0;
-		}
-		hdl->par.pchan = och;
-	}
-	if ((hdl->sio.mode & SIO_REC) && par->rchan != ~0U) {
-		ich = par->rchan;
-		err = snd_pcm_hw_params_set_channels_near(hdl->ipcm,
-		    ihwp, &ich);
-		if (err < 0) {
-			DALSA("couldn't set rec channel count", err);
-			hdl->sio.eof = 1;
-			return 0;
-		}
-		hdl->par.rchan = ich;
-	}
-
-	/*
-	 * If the rate that the hardware is using is different than
-	 * the requested rate, scale buffer sizes so they will be the
-	 * same time duration as what was requested.  This just gets
-	 * the rates to use for scaling, that actual scaling is done
-	 * later.
-	 */
-	req_rate = (par->rate != ~0U) ? par->rate : hdl->par.rate;
-	DPRINTF("req_rate = %u, orate = %u\n", req_rate, orate);
-
-	/*
-	 * if block size and buffer size are not both set then
-	 * set the blocksize to half the buffer size
-	 */
-	bufsz = par->appbufsz;
-	round = par->round;
-	if (bufsz != ~0U) {
-		bufsz = bufsz * orate / req_rate;
-		bufsz = (bufsz + 63) & ~63;
-		if (round == ~0U)
-			round = bufsz / 2;
-		else {
-			round = round * orate / req_rate;
-			round = (round + 31) & ~31;
-			bufsz += round - 1;
-			bufsz -= bufsz % round;
-		}
-	} else if (round != ~0U) {
-		round = round * orate / req_rate;
-		round = (round + 31) & ~31;
-		bufsz = round * 2;
-	} else {
-		round = orate / 100;
-		round = (round + 31) & ~31;
-		bufsz = round * 2;
-	}
-
-	DPRINTF("sio_alsa_setpar: trying bufsz = %u, round = %u\n", bufsz, round);
-	oround = round;
-	if (hdl->sio.mode & SIO_PLAY) {
-		err = snd_pcm_hw_params_set_periods_integer(hdl->opcm, ohwp);
-		if (err < 0) {
-			DALSA("couldn't set play periods to integer", err);
-			hdl->sio.eof = 1;
-			return 0;
-		}
-		err = snd_pcm_hw_params_set_periods_min(hdl->opcm, ohwp,
-		    &min_periods, NULL);
-		if (err < 0) {
-			DALSA("couldn't set play minimum periods", err);
-			hdl->sio.eof = 1;
-			return 0;
-		}
-		err = snd_pcm_hw_params_set_period_size_integer(hdl->opcm, ohwp);
-		if (err < 0) {
-			DALSA("couldn't set play period to integer", err);
-			hdl->sio.eof = 1;
-			return 0;
-		}
-		err = snd_pcm_hw_params_set_period_size_near(hdl->opcm, ohwp, &oround, &dir);
-		if (err < 0) {
-			DALSA("couldn't set play period size failed", err);
-			hdl->sio.eof = 1;
-			return 0;
-		}
-	}
-	iround = oround;
-	if (hdl->sio.mode & SIO_REC) {
-		err = snd_pcm_hw_params_set_periods_integer(hdl->ipcm, ihwp);
-		if (err < 0) {
-			DALSA("couldn't set rec periods to integer", err);
-			hdl->sio.eof = 1;
-			return 0;
-		}
-		err = snd_pcm_hw_params_set_periods_min(hdl->ipcm, ihwp,
-		    &min_periods, NULL);
-		if (err < 0) {
-			DALSA("couldn't set rec minimum periods", err);
-			hdl->sio.eof = 1;
-			return 0;
-		}
-		err = snd_pcm_hw_params_set_period_size_integer(hdl->ipcm, ihwp);
-		if (err < 0) {
-			DALSA("couldn't set rec period to integer", err);
-			hdl->sio.eof = 1;
-			return 0;
-		}
-		err = snd_pcm_hw_params_set_period_size_near(hdl->ipcm,
-		    ihwp, &iround, NULL);
-		if (err < 0) {
-			DALSA("couldn't set rec period size failed", err);
-			hdl->sio.eof = 1;
-			return 0;
-		}
-		if (!(hdl->sio.mode & SIO_PLAY))
-			oround = iround;
 	}
 	if (iround != oround) {
-		DPRINTF("could not get matching play/record period size");
+		DPRINTF("play and rec block sizes differ\n");
 		hdl->sio.eof = 1;
 		return 0;
 	}
+	if (!sio_alsa_fmttopar(hdl, ofmt, &hdl->par))
+		return 0;
+	hdl->par.rate = orate;
 	hdl->par.round = oround;
-
-	/*
-	 * make sure we've at least two periods
-	 */
-	periods = bufsz / round;
-	if (periods < 2)
-		periods = 2;
-	bufsz = hdl->par.round * periods;
-	
-	obufsz = bufsz;
-	if (hdl->sio.mode & SIO_PLAY) {
-		err = snd_pcm_hw_params_set_buffer_size_near(hdl->opcm,
-		    ohwp, &obufsz);
-		if (err < 0) {
-			DALSA("couldn't set play buffer size", err);
-			hdl->sio.eof = 1;
-			return 0;
-		}
-	}
-	ibufsz = obufsz;
-	if (hdl->sio.mode & SIO_REC) {
-		err = snd_pcm_hw_params_set_buffer_size_near(hdl->ipcm,
-		    ihwp, &ibufsz);
-		if (err < 0) {
-			DALSA("couldn't set rec buffer size", err);
-			hdl->sio.eof = 1;
-			return 0;
-		}
-		if (!(hdl->sio.mode & SIO_PLAY))
-			ibufsz = obufsz;
-	}
-	if (ibufsz != obufsz) {
-		DPRINTF("could not get matching play/record buffer size");
-		hdl->sio.eof = 1;
-		return 0;
-	}
-	hdl->par.appbufsz = hdl->par.bufsz = obufsz;
-
-	DPRINTF("sio_alsa_setpar: got bufsz = %u, round = %u\n",
-	    hdl->par.bufsz, hdl->par.round);
-
-	/* commit hardware params */
-
-	if (hdl->sio.mode & SIO_PLAY) {
-		err = snd_pcm_hw_params(hdl->opcm, ohwp);
-		if (err < 0) {
-			DALSA("couldn't commit play params", err);
-			hdl->sio.eof = 1;
-			return 0;
-		}
-	}
-	if (hdl->sio.mode & SIO_REC) {
-		err = snd_pcm_hw_params(hdl->ipcm, ihwp);
-		if (err < 0) {
-			DALSA("couldn't commit rec params failed", err);
-			hdl->sio.eof = 1;
-			return 0;
-		}
-	}
+	hdl->par.bufsz = oround * operiods;
+	hdl->par.appbufsz = hdl->par.bufsz;
 
 	/* software params */
 
