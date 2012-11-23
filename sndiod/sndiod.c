@@ -337,7 +337,7 @@ main(int argc, char **argv)
 	setsig();
 	filelist_init();
 
-	while ((c = getopt(argc, argv, "a:b:c:C:de:f:j:L:m:q:r:s:t:U:v:w:x:z:")) != -1) {
+	while ((c = getopt(argc, argv, "a:b:c:C:de:f:j:L:m:Mq:r:s:t:U:v:w:x:z:")) != -1) {
 		switch (c) {
 		case 'd':
 			log_level++;
@@ -412,6 +412,9 @@ main(int argc, char **argv)
 			break;
 		case 'f':
 			mkdev(optarg, &par, 0, bufsz, round, rate, hold, autovol);
+			break;
+		case 'M':
+			/* XXX: compatibility with aucat */
 			break;
 		default:
 			fputs(usagestr, stderr);
