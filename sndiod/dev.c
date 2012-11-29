@@ -467,13 +467,7 @@ dev_midi_omsg(void *arg, unsigned char *msg, int len)
 void
 dev_midi_fill(void *arg, int count)
 {
-#ifdef DEBUG
-	struct dev *d = arg;
-
-	dev_log(d);
-	log_puts(": can't receive fill input\n");
-	panic();
-#endif
+	/* nothing to do */
 }
 
 void
