@@ -519,7 +519,7 @@ port_unref(struct port *c)
 	for (rxmask = 0, i = 0; i < MIDI_NEP; i++)
 		rxmask |= midi_ep[i].txmask;
 	if ((rxmask & c->midi->self) == 0 && c->state == PORT_INIT && !c->hold)
-		port_close(c);
+		port_drain(c);
 }
 
 struct port *
@@ -572,6 +572,24 @@ port_close(struct port *c)
 	return 1;
 }
 
+void
+port_drain(struct port *c)
+{
+	struct midi *ep = c->midi;
+
+	if (!(ep->mode & MODE_MIDIOUT) || ep->obuf.used == 0)
+		port_close(c);
+	else {
+		c->state = PORT_DRAIN;
+#ifdef DEBUG
+		if (log_level >= 3) {
+			port_log(c);
+			log_puts(": draining\n");
+		}
+#endif
+	}
+}
+
 int
 port_init(struct port *c)
 {
@@ -583,7 +601,6 @@ port_init(struct port *c)
 void
 port_done(struct port *c)
 {
-	/* XXX: drain? */
-	if (c->state != PORT_CFG)
-		port_close(c);
+	if (c->state == PORT_INIT)
+		port_drain(c);
 }

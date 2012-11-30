@@ -118,6 +118,8 @@ port_mio_out(void *arg)
 		if (n < count)
 			break;
 	}
+	if (p->state == PORT_DRAIN && ep->obuf.used == 0)
+		port_close(p);
 	midi_fill(ep);
 }
 
