@@ -390,7 +390,7 @@ main(int argc, char **argv)
 			    mode, vol, mmc, dup);
 			break;
 		case 'q':
-			p = port_new(optarg, MODE_MIDIMASK);
+			p = port_new(optarg, MODE_MIDIMASK, hold);
 			if (!p)
 				errx(1, "%s: can't open port", optarg);
 			break;

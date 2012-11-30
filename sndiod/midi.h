@@ -87,7 +87,8 @@ struct port {
 #define PORT_INIT	1
 #define PORT_DRAIN	2
 	unsigned int state;
-	char *path;
+	char *path;			/* hold the port open ? */
+	int hold;
 	struct midi *midi;
 };
 
@@ -109,7 +110,7 @@ void midi_fill(struct midi *);
 void midi_tag(struct midi *, unsigned int);
 void midi_link(struct midi *, struct midi *);
 
-struct port *port_new(char *, unsigned int);
+struct port *port_new(char *, unsigned int, int);
 struct port *port_bynum(int);
 void port_del(struct port *);
 int  port_ref(struct port *);
