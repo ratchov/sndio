@@ -145,7 +145,7 @@ struct dev {
 	unsigned int num;			/* device serial number */
 #define DEV_CFG		0			/* closed */
 #define DEV_INIT	1			/* stopped */
-#define DEV_RUN		3			/* playin & recording */
+#define DEV_RUN		2			/* playin & recording */
 	unsigned int pstate;			/* one of above */
 	char *path;				/* sio path */
 
