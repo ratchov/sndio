@@ -58,7 +58,8 @@ struct sock {
 	int lastvol;			/* last volume */
 	struct opt *opt;		/* "subdevice" definition */
 	struct slot *slot;		/* audio device slot number */
-	struct midi *midi;		/* midi endpoint number */
+	struct midi *midi;		/* midi endpoint */
+	struct port *port;		/* midi port */
 	char who[12];			/* label, mostly for debugging */
 };
 

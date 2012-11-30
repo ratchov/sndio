@@ -89,7 +89,6 @@ struct port {
 	unsigned int state;
 	char *path;
 	struct midi *midi;
-	unsigned int refs;
 };
 
 /*
@@ -113,6 +112,8 @@ void midi_link(struct midi *, struct midi *);
 struct port *port_new(char *, unsigned int);
 struct port *port_bynum(int);
 void port_del(struct port *);
+int  port_ref(struct port *);
+void port_unref(struct port *);
 int  port_init(struct port *);
 void port_done(struct port *);
 int  port_close(struct port *);
