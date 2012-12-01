@@ -14,12 +14,6 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-/*
- * TODO
- *
- * use shadow variables (to save NRPNs, LSB of controller) 
- * in the midi merger
- */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -217,7 +211,7 @@ midi_tag(struct midi *ep, unsigned int tag)
 }
 
 /*
- * broadcast the given message to other members of the thru box
+ * broadcast the given message to other endpoints
  */
 void
 midi_send(struct midi *iep, unsigned char *msg, int size)
@@ -256,7 +250,6 @@ midi_send(struct midi *iep, unsigned char *msg, int size)
 		oep->ops->omsg(oep->arg, msg, size);
 	}
 }
-
 
 /*
  * determine if we have gained more input tickets, and if so call the
