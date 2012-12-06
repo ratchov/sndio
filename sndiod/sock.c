@@ -853,8 +853,8 @@ sock_hello(struct sock *f)
 		return 0;
 	}
 	f->pstate = SOCK_INIT;
+	f->port = NULL;
 	if (mode & MODE_MIDIMASK) {
-		f->port = NULL;
 		f->slot = NULL;
 		f->midi = midi_new(&sock_midiops, f, mode);
 		if (f->midi == NULL)
