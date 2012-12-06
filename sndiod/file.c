@@ -56,7 +56,6 @@
 #include <stdlib.h>
 #include <time.h>
 
-#include "defs.h"
 #include "file.h"
 #include "utils.h"
 

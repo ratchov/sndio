@@ -31,6 +31,16 @@ void *xmalloc(size_t);
 char *xstrdup(char *);
 void xfree(void *);
 
+/*
+ * Log levels:
+ *
+ * 0 - fatal errors: bugs, asserts, internal errors.
+ * 1 - warnings: bugs in clients, failed allocations, non-fatal errors.
+ * 2 - misc information (hardware parameters, incoming clients)
+ * 3 - structural changes (eg. new streams, new parameters ...)
+ * 4 - data blocks and messages
+ */
+extern unsigned int log_level;
 extern unsigned int log_sync;
 
 #endif

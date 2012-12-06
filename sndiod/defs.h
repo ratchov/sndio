@@ -18,17 +18,6 @@
 #define DEFS_H
 
 /*
- * Log levels:
- *
- * 0 - fatal errors: bugs, asserts, internal errors.
- * 1 - warnings: bugs in clients, failed allocations, non-fatal errors.
- * 2 - misc information (hardware parameters, incoming clients)
- * 3 - structural changes (new aproc structures and files stream params changes)
- * 4 - data blocks and messages
- */
-extern unsigned int log_level;
-
-/*
  * MIDI buffer size
  */
 #define MIDI_BUFSZ		3125	/* 1 second at 31.25kbit/s */
