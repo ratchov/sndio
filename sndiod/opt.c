@@ -19,7 +19,6 @@
 #include <string.h>
 
 #include "dev.h"
-#include "defs.h"
 #include "opt.h"
 #include "utils.h"
 

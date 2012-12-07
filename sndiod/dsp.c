@@ -15,7 +15,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 #include <string.h>
-#include "defs.h"
 #include "dsp.h"
 #include "utils.h"
 

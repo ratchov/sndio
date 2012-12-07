@@ -27,7 +27,6 @@
 #include <string.h>
 
 #include "abuf.h"
-#include "defs.h"
 #include "utils.h"
 
 #ifdef DEBUG

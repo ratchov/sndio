@@ -53,10 +53,10 @@ sndiod:		${OBJS}
 .c.o:
 		${CC} ${CFLAGS} ${INCLUDE} ${DEFS} -c $<
 
-abuf.o:		abuf.c abuf.h defs.h utils.h
+abuf.o:		abuf.c abuf.h utils.h
 dev.o:		dev.c ../bsd-compat/bsd-compat.h abuf.h defs.h dev.h \
 		dsp.h siofile.h midi.h miofile.h opt.h sysex.h utils.h
-dsp.o:		dsp.c defs.h dsp.h utils.h
+dsp.o:		dsp.c dsp.h defs.h utils.h
 file.o:		file.c file.h utils.h
 listen.o:	listen.c listen.h file.h sock.h ../libsndio/amsg.h \
 		utils.h ../bsd-compat/bsd-compat.h
