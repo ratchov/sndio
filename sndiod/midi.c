@@ -348,6 +348,7 @@ midi_in(struct midi *iep, unsigned char *idata, int icount)
 	iep->tickets -= icount;
 	if (iep->tickets < 0)
 		iep->tickets = 0;
+	midi_tickets(iep);
 }
 
 /*
