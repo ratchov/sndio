@@ -83,11 +83,6 @@ setmaster(int vol)
 }
 
 void
-relocate(int hr, int min, int sec, int fr, int fps)
-{
-}
-
-void
 onsysex(unsigned char *buf, int len)
 {
 	int cn, i;
@@ -103,7 +98,8 @@ onsysex(unsigned char *buf, int len)
 	if (len < SYSEX_SIZE(empty))
 		return;
 	if (x->type == SYSEX_TYPE_RT &&
-	    x->id0 == SYSEX_CONTROL && x->id1 == SYSEX_MASTER) {
+	    x->id0 == SYSEX_CONTROL &&
+	    x->id1 == SYSEX_MASTER) {
 		if (len == SYSEX_SIZE(master))
 			master = x->u.master.coarse;
 		return;
