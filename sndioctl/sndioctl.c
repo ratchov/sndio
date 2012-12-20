@@ -196,7 +196,7 @@ usage(void)
 int
 main(int argc, char **argv)
 {
-	char *dev = "snd/0";
+	char *dev = NULL;
 	unsigned char buf[MSGMAX], *lhs, *rhs;
 	int c, cn, vol, size;
 
@@ -214,6 +214,11 @@ main(int argc, char **argv)
 	}
 	argc -= optind;
 	argv += optind;
+
+	if (dev == NULL)
+		dev = getenv("AUDIODEVICE");
+	if (dev == NULL)
+		dev = "snd/0";
 
 	hdl = mio_open(dev, MIO_OUT | MIO_IN, 0);
 	if (hdl == NULL) {

@@ -36,11 +36,11 @@ The options are as follows:
 .Bl -tag -width Ds
 .It Fl f Ar port
 Specifies the name of the
-.It Fl v
-Increase log verbosity.
 .Xr sndio 7
 MIDI port to use, default is
 .Pa snd/0
+.It Fl v
+Increase log verbosity.
 .El
 .Pp
 In no expression is given,
@@ -53,23 +53,12 @@ If the expression is a stream name followed by
 .Qq =
 followed by a decimal in the 0..127 range,
 then the stream volume is set to the given value.
-.Pp
-If the stream name the percent character
-.Pq Sq \&% ,
-any stream matches,
-incuding empty server slots.
 .Sh EXAMPLES
 Set mplayer volume to 80:
 .Bd -literal -offset indent
 $ sndioctl mplayer0=80
 .Ed
-.Pp
-Set all volumes to 80, including oncoming stream volumes:
-.Bd -literal -offset indent
-$ sndioctl %=80
-.Ed
 .Sh SEE ALSO
 .Xr sndiod 1
 .Xr mio_open 3
-.Xr midi 4
 .Xr sndio 7
