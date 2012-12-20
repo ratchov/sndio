@@ -28,9 +28,9 @@
 #define MSGMAX		0x100		/* buffer size */
 
 int verbose = 0;
-struct mio_hdl *hdl;			/* handle to sndiod MIDI port */
 int mst, midx, mlen, mready;		/* midi parser state */
 unsigned char mmsg[MSGMAX];		/* resulting midi message */
+struct mio_hdl *hdl;			/* handle to sndiod MIDI port */
 
 struct ctl {
 	char name[SYSEX_NAMELEN];	/* stream name */
@@ -48,7 +48,7 @@ unsigned char dumpreq[] = {
 };
 
 void
-setvol(unsigned cn, unsigned vol)
+setvol(int cn, int vol)
 {
 #define VOLMSGLEN 3
 	char msg[VOLMSGLEN];
@@ -64,7 +64,7 @@ setvol(unsigned cn, unsigned vol)
 }
 
 void
-setmaster(unsigned vol)
+setmaster(int vol)
 {
 	struct sysex msg;
 
@@ -83,16 +83,15 @@ setmaster(unsigned vol)
 }
 
 void
-relocate(unsigned hr, unsigned min, unsigned sec, unsigned fr, unsigned fps)
+relocate(int hr, int min, int sec, int fr, int fps)
 {
 }
 
 void
-onsysex(unsigned char *buf, unsigned len)
+onsysex(unsigned char *buf, int len)
 {
-	unsigned cn, i;
+	int cn, i;
 	struct sysex *x = (struct sysex *)buf;
-	struct ctl *c;
 
 	if (verbose) {
 		fprintf(stderr, "sysex: ");
@@ -116,11 +115,11 @@ onsysex(unsigned char *buf, unsigned len)
 	case SYSEX_AUCAT_SLOTDESC:
 		cn = x->u.slotdesc.chan;
 		if (cn >= MIDI_NCHAN) {
-			fprintf(stderr, "%u: invalid channel\n");
+			fprintf(stderr, "%u: invalid channel\n", cn);
 			exit(1);
 		}
 		if (memchr(x->u.slotdesc.name, '\0', SYSEX_NAMELEN) == NULL) {
-			fprintf(stderr, "%u: invalid channel name\n");
+			fprintf(stderr, "%u: invalid channel name\n", cn);
 			exit(1);
 		}
 		strlcpy(ctls[cn].name, x->u.slotdesc.name, SYSEX_NAMELEN);
@@ -133,9 +132,9 @@ onsysex(unsigned char *buf, unsigned len)
 }
 
 void
-oncommon(unsigned char *buf, unsigned len)
+oncommon(unsigned char *buf, int len)
 {
-	unsigned cn, vol;
+	int cn, vol;
 
 	if ((buf[0] & MIDI_CMDMASK) != MIDI_CTL)
 		return;
@@ -147,11 +146,11 @@ oncommon(unsigned char *buf, unsigned len)
 }
 
 void
-oninput(unsigned char *buf, unsigned len)
+oninput(unsigned char *buf, int len)
 {
-	static unsigned voice_len[] = { 3, 3, 3, 3, 2, 2, 3 };
-	static unsigned common_len[] = { 0, 2, 3, 2, 0, 0, 1, 1 };
-	unsigned c;
+	static int voice_len[] = { 3, 3, 3, 3, 2, 2, 3 };
+	static int common_len[] = { 0, 2, 3, 2, 0, 0, 1, 1 };
+	int c;
 
 	for (; len > 0; len--) {
 		c = *buf;
@@ -203,9 +202,7 @@ main(int argc, char **argv)
 {
 	char *dev = "snd/0";
 	unsigned char buf[MSGMAX], *lhs, *rhs;
-	unsigned size;
-	unsigned cn, vol;
-	int c, sep;
+	int c, cn, vol, size;
 
 	while ((c = getopt(argc, argv, "f:v")) != -1) {
 		switch (c) {
