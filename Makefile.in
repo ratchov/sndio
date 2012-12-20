@@ -2,22 +2,26 @@ all:
 	cd libsndio && ${MAKE}
 	cd aucat && ${MAKE}
 	cd sndiod && ${MAKE}
+	cd sndioctl && ${MAKE}
 	cd examples && ${MAKE}
 
 install:
 	cd libsndio && ${MAKE} install
 	cd aucat && ${MAKE} install
 	cd sndiod && ${MAKE} install
+	cd sndioctl && ${MAKE} install
 
 uninstall:
 	cd libsndio && ${MAKE} uninstall
 	cd aucat && ${MAKE} uninstall
 	cd sndiod && ${MAKE} uninstall
+	cd sndioctl && ${MAKE} uninstall
 
 clean:
 	cd libsndio && ${MAKE} clean
 	cd aucat && ${MAKE} clean
 	cd sndiod && ${MAKE} clean
+	cd sndioctl && ${MAKE} clean
 	cd examples && ${MAKE} clean
 
 distclean:	clean

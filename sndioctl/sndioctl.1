@@ -1,0 +1,75 @@
+.\"	$OpenBSD$
+.\"
+.\" Copyright (c) 2010-2012 Alexandre Ratchov <alex@caoua.org>
+.\"
+.\" Permission to use, copy, modify, and distribute this software for any
+.\" purpose with or without fee is hereby granted, provided that the above
+.\" copyright notice and this permission notice appear in all copies.
+.\"
+.\" THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+.\" WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+.\" MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+.\" ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+.\" WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+.\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+.\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+.\"
+.Dd November 29, 2010
+.Dt SNDIOCTL 1
+.Os
+.Sh NAME
+.Nm sndioctl
+.Nd control sndiod volume
+.Sh SYNOPSIS
+.Nm sndioctl
+.Op Fl f Ar port
+.Op Ar expr ...
+.Sh DESCRIPTION
+The
+.Nm
+utility sends MIDI volume controller messages (number 7) to adjust
+the master
+.Xr sndiod 1
+volume or programs indivisual volume.
+.Pp
+The options are as follows:
+.Bl -tag -width Ds
+.It Fl f Ar port
+Specifies the name of the
+.It Fl v
+Increase log verbosity.
+.Xr sndio 7
+MIDI port to use, default is
+.Pa snd/0
+.El
+.Pp
+In no expression is given,
+.Nm
+displays the list of streams known by the server
+and their respective volumes.
+If an expression is a stream name,
+then the volume of this stream is displayed.
+If the expression is a stream name followed by
+.Qq =
+followed by a decimal in the 0..127 range,
+then the stream volume is set to the given value.
+.Pp
+If the stream name the percent character
+.Pq Sq \&% ,
+any stream matches,
+incuding empty server slots.
+.Sh EXAMPLES
+Set mplayer volume to 80:
+.Bd -literal -offset indent
+$ sndioctl mplayer0=80
+.Ed
+.Pp
+Set all volumes to 80, including oncoming stream volumes:
+.Bd -literal -offset indent
+$ sndioctl %=80
+.Ed
+.Sh SEE ALSO
+.Xr sndiod 1
+.Xr mio_open 3
+.Xr midi 4
+.Xr sndio 7

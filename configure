@@ -159,7 +159,8 @@ if [ $rmidi = yes ]; then
 	defs="$defs -DUSE_RMIDI"
 fi
 
-for makefile in Makefile aucat/Makefile sndiod/Makefile libsndio/Makefile examples/Makefile
+for makefile in Makefile aucat/Makefile sndiod/Makefile \
+libsndio/Makefile sndioctl/Makefile examples/Makefile
 do
 	sed \
 	-e "s:@bindir@:$bindir:" \
