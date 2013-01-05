@@ -17,6 +17,8 @@
 #ifndef SIOFILE_H
 #define SIOFILE_H
 
+#include "file.h"
+
 struct dev;
 
 struct siofile_ {
@@ -32,6 +34,7 @@ struct siofile_ {
 #define DEV_SIO_CYCLE	1
 #define DEV_SIO_WRITE	2
 	int cstate;
+	struct timo watchdog;
 };
 
 int dev_sio_open(struct dev *);
