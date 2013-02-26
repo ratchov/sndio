@@ -1690,7 +1690,7 @@ slot_attach(struct slot *s)
 		if (!aparams_native(&s->par)) {
 			dec_init(&s->mix.dec, &s->par, slot_nch);
 			s->mix.decbuf =
-			    xmalloc(d->round * slot_nch * sizeof(adata_t));
+			    xmalloc(s->round * slot_nch * sizeof(adata_t));
 		}
 		if (s->rate != d->rate) {
 			resamp_init(&s->mix.resamp, s->round, d->round,
@@ -1729,7 +1729,7 @@ slot_attach(struct slot *s)
 		if (!aparams_native(&s->par)) {
 			enc_init(&s->sub.enc, &s->par, slot_nch);
 			s->sub.encbuf =
-			    xmalloc(d->round * slot_nch * sizeof(adata_t));
+			    xmalloc(s->round * slot_nch * sizeof(adata_t));
 		}
 	
 		/*
