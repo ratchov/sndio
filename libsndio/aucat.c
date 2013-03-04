@@ -403,6 +403,7 @@ aucat_connect_un(struct aucat *hdl, unsigned int unit)
 		break;
 	}
 	hdl->fd = s;
+	DPRINTF("%s: connected\n", ca.sun_path);
 	return 1;
 }
 
