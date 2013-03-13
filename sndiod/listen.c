@@ -244,7 +244,7 @@ listen_in(void *arg)
 			continue;
 		if (errno == ENFILE || errno == EMFILE)
 			file_slowaccept = 1;
-		else
+		else if (errno != ECONNABORTED && errno != EWOULDBLOCK)
 			perror("accept");
 		return;
 	}
