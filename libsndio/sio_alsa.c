@@ -973,21 +973,30 @@ sio_alsa_onmove(struct sio_alsa_hdl *hdl)
 {
 	int delta;
 
-	switch (hdl->sio.mode & (SIO_PLAY | SIO_REC)) {
-	case SIO_PLAY:
-		delta = hdl->odelta;
-		break;
-	case SIO_REC:
-		delta = hdl->idelta;
-		break;
-	case SIO_PLAY | SIO_REC:
-		delta = hdl->odelta > hdl->idelta ? hdl->odelta : hdl->idelta;
-		break;
+	if (hdl->sio.mode & SIO_PLAY)
+		DPRINTF("ostate = %d\n", snd_pcm_state(hdl->opcm));
+	if (hdl->sio.mode & SIO_REC)
+		DPRINTF("istate = %d\n", snd_pcm_state(hdl->ipcm));
+
+	if (hdl->running) {
+		switch (hdl->sio.mode & (SIO_PLAY | SIO_REC)) {
+		case SIO_PLAY:
+			delta = hdl->odelta;
+			break;
+		case SIO_REC:
+			delta = hdl->idelta;
+			break;
+		case SIO_PLAY | SIO_REC:
+			delta = hdl->odelta > hdl->idelta ?
+				hdl->odelta : hdl->idelta;
+			break;
+		}
+		if (delta <= 0)
+			return;
+	} else {
+		delta = 0;
+		hdl->running = 1;
 	}
-	if (delta < 0)
-		return;
-	if (delta == 0 && hdl->running)
-		return;
 #ifdef DEBUG
 	hdl->cpos += delta;
 	if (sndio_debug >= 1)
@@ -1022,10 +1031,8 @@ sio_alsa_pollfd(struct sio_hdl *sh, struct pollfd *pfd, int events)
 	if ((events & POLLOUT) && (hdl->sio.mode & SIO_PLAY) &&
 	    hdl->sio.started) {
 		if (!hdl->running &&
-		    snd_pcm_state(hdl->opcm) == SND_PCM_STATE_RUNNING) {
+		    snd_pcm_state(hdl->opcm) == SND_PCM_STATE_RUNNING)
 			sio_alsa_onmove(hdl);
-			hdl->running = 1;
-		}
 		hdl->onfds = snd_pcm_poll_descriptors(hdl->opcm,
 		    pfd, hdl->nfds);
 		if (hdl->onfds < 0) {
@@ -1038,10 +1045,8 @@ sio_alsa_pollfd(struct sio_hdl *sh, struct pollfd *pfd, int events)
 	if ((events & POLLIN) && (hdl->sio.mode & SIO_REC) &&
 	    hdl->sio.started) {
 		if (!hdl->running &&
-		    snd_pcm_state(hdl->ipcm) == SND_PCM_STATE_RUNNING) {
+		    snd_pcm_state(hdl->ipcm) == SND_PCM_STATE_RUNNING)
 			sio_alsa_onmove(hdl);
-			hdl->running = 1;
-		}
 		hdl->infds = snd_pcm_poll_descriptors(hdl->ipcm,
 		    pfd + hdl->onfds, hdl->nfds - hdl->onfds);
 		if (hdl->infds < 0) {
@@ -1150,7 +1155,12 @@ sio_alsa_revents(struct sio_hdl *sh, struct pollfd *pfd)
 			hdl->idelta += iused - hdl->iused;
 			hdl->iused = iused;
 		}
-		sio_alsa_onmove(hdl);
+		if (hdl->running ||
+		    ((hdl->sio.mode & SIO_PLAY) &&
+		     ostate == SND_PCM_STATE_RUNNING) ||
+		    ((hdl->sio.mode & SIO_REC) &&
+		     istate == SND_PCM_STATE_RUNNING))
+			sio_alsa_onmove(hdl);
 	}
 	if ((hdl->sio.mode & SIO_PLAY) && !sio_alsa_wsil(hdl))
 		revents &= ~POLLOUT;
