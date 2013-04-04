@@ -37,10 +37,10 @@ struct sio_hdl {
 	int eof;			/* true if error occured */
 #ifdef DEBUG
 	unsigned long long pollcnt;	/* times sio_revents was called */
-	unsigned long long wcnt;	/* bytes written with sio_write() */
-	unsigned long long rcnt;	/* bytes read with sio_read() */
-	long long realpos;
-	struct timeval tv;
+	long long wcnt;			/* bytes written with sio_write() */
+	long long rcnt;			/* bytes read with sio_read() */
+	long long cpos;
+	long long start_nsec;
 	struct sio_par par;
 #endif
 };
