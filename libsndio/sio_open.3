@@ -95,14 +95,6 @@ later it will be passed as the
 .Ar hdl
 argument of most other functions.
 The
-.Fn sio_open
-function first tries to connect to the
-.Xr sndiod 1
-audio server.
-If that fails, it then tries to use the
-.Xr audio 4
-hardware device.
-The
 .Ar name
 parameter gives the device string discussed in
 .Xr sndio 7 .
