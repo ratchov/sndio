@@ -131,6 +131,7 @@ sio_start(struct sio_hdl *hdl)
 	clock_gettime(CLOCK_MONOTONIC, &ts);
 	hdl->start_nsec = 1000000000LL * ts.tv_sec + ts.tv_nsec;
 #endif
+	hdl->rdrop = hdl->wsil = 0;
 	if (!hdl->ops->start(hdl))
 		return 0;
 	hdl->started = 1;
@@ -254,6 +255,46 @@ sio_psleep(struct sio_hdl *hdl, int event)
 	return 1;
 }
 
+static int
+sio_rdrop(struct sio_hdl *hdl)
+{
+#define DROP_NMAX 0x1000
+	static char dummy[DROP_NMAX];
+	ssize_t n, todo;
+
+	while (hdl->rdrop > 0) {
+		todo = hdl->rdrop;
+		if (todo > DROP_NMAX)
+			todo = DROP_NMAX;
+		n = hdl->ops->read(hdl, dummy, todo);
+		if (n == 0)
+			return 0;
+		hdl->rdrop -= n;
+		DPRINTF("sio_rdrop: dropped %zu/%zu bytes\n", n, todo);
+	}
+	return 1;
+}
+
+static int
+sio_wsil(struct sio_hdl *hdl)
+{
+#define ZERO_NMAX 0x1000
+	static char zero[ZERO_NMAX];
+	ssize_t n, todo;
+
+	while (hdl->wsil > 0) {
+		todo = hdl->wsil;
+		if (todo > ZERO_NMAX)
+			todo = ZERO_NMAX;
+		n = hdl->ops->write(hdl, zero, todo);
+		if (n == 0)
+			return 0;
+		hdl->wsil -= n;
+		DPRINTF("sio_wsil: inserted %zu/%zu bytes\n", n, todo);
+	}
+	return 1;
+}
+
 size_t
 sio_read(struct sio_hdl *hdl, void *buf, size_t len)
 {
@@ -274,6 +315,8 @@ sio_read(struct sio_hdl *hdl, void *buf, size_t len)
 		DPRINTF("sio_read: zero length read ignored\n");
 		return 0;
 	}
+	if (!sio_rdrop(hdl))
+		return 0;
 	while (todo > 0) {
 		n = hdl->ops->read(hdl, data, todo);
 		if (n == 0) {
@@ -312,6 +355,8 @@ sio_write(struct sio_hdl *hdl, const void *buf, size_t len)
 		DPRINTF("sio_write: zero length write ignored\n");
 		return 0;
 	}
+	if (!sio_wsil(hdl))
+		return 0;
 	while (todo > 0) {
 		n = hdl->ops->write(hdl, data, todo);
 		if (n == 0) {
@@ -375,6 +420,10 @@ sio_revents(struct sio_hdl *hdl, struct pollfd *pfd)
 		    ts1.tv_nsec - ts0.tv_nsec);
 	}
 #endif
+	if ((hdl->mode & SIO_PLAY) && !sio_wsil(hdl))
+		revents &= ~POLLOUT;
+	if ((hdl->mode & SIO_REC) && !sio_rdrop(hdl))
+		revents &= ~POLLIN;
 	return revents;
 }
 
@@ -408,9 +457,9 @@ sio_printpos(struct sio_hdl *hdl)
 	clock_gettime(CLOCK_MONOTONIC, &ts);
 
 	rpos = (hdl->mode & SIO_REC) ? 
-	    hdl->rcnt / (hdl->par.bps * hdl->par.rchan) : 0;// + hdl->idrop;
+	    hdl->rcnt / (hdl->par.bps * hdl->par.rchan) : 0;
 	wpos = (hdl->mode & SIO_PLAY) ?
-	    hdl->wcnt / (hdl->par.bps * hdl->par.pchan) : 0;// + hdl->osil;
+	    hdl->wcnt / (hdl->par.bps * hdl->par.pchan) : 0;
 
 	cdiff = hdl->cpos % hdl->par.round;
 	cpos  = hdl->cpos / hdl->par.round;
@@ -442,7 +491,7 @@ sio_onmove_cb(struct sio_hdl *hdl, int delta)
 {
 #ifdef DEBUG
 	hdl->cpos += delta;
-	if (sndio_debug >= 2)
+	if (sndio_debug >= 1)
 		sio_printpos(hdl);
 #endif
 	if (hdl->move_cb)

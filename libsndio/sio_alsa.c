@@ -48,16 +48,11 @@ struct sio_alsa_hdl {
 	snd_pcm_t *opcm;
 	snd_pcm_t *ipcm;
 	unsigned ibpf, obpf;		/* bytes per frame */
-	unsigned int osil;		/* frames to insert on next write */
-	unsigned int idrop;		/* frames to discard on next read */
 	int iused, oused;		/* frames used in hardware fifos */
 	int idelta, odelta;		/* position reported to client */
 	int nfds, infds, onfds;
 	int running;
 	int events;
-	long long wpos;			/* frames written */
-	long long rpos;			/* frames read */
-	long long cpos;			/* hardware position (frames) */
 };
 
 static void sio_alsa_close(struct sio_hdl *);
@@ -275,11 +270,6 @@ sio_alsa_open(const char *str, unsigned mode, int nbio)
 	 * that grows later, after the stream is started
 	 */
 	hdl->nfds = SIO_MAXNFDS;
-	//if (mode & SIO_PLAY)
-	//	hdl->nfds += snd_pcm_poll_descriptors_count(hdl->opcm);
-	//if (mode & SIO_REC)
-	//	hdl->nfds += snd_pcm_poll_descriptors_count(hdl->ipcm);
-	DPRINTF("mode = %d, nfds = %d\n", mode, hdl->nfds);
 
 	/*
 	 * Default parameters may not be compatible with libsndio (eg. mulaw
@@ -322,45 +312,6 @@ sio_alsa_close(struct sio_hdl *sh)
 	free(hdl);
 }
 
-#ifdef DEBUG
-void
-sio_alsa_printpos(struct sio_alsa_hdl *hdl)
-{	
-	long long rpos, rdiff;
-	long long cpos, cdiff;
-	long long wpos, wdiff;
-
-	rpos = hdl->rpos + hdl->idrop;
-	wpos = hdl->wpos + hdl->osil;
-
-	cdiff = hdl->cpos % hdl->par.round;
-	cpos  = hdl->cpos / hdl->par.round;
-	if (cdiff > hdl->par.round / 2) {
-		cpos++;
-		cdiff = cdiff - hdl->par.round;
-	}
-
-	rdiff = rpos % hdl->par.round;
-	rpos  = rpos / hdl->par.round;
-	if (rdiff > hdl->par.round / 2) {
-		rpos++;
-		rdiff = rdiff - hdl->par.round;
-	}
-
-	wdiff = wpos % hdl->par.round;
-	wpos  = wpos / hdl->par.round;
-	if (wdiff > hdl->par.round / 2) {
-		wpos++;
-		wdiff = wdiff - hdl->par.round;
-	}
-
-	//DPRINTF("iused=%d idelta=%d oused=%d, odelta=%d\n",
-	//    hdl->iused, hdl->idelta, hdl->oused, hdl->odelta);
-	DPRINTF("clk: %+4lld %+4lld, wr %+4lld %+4lld rd: %+4lld %+4lld\n",
-	    cpos, cdiff, wpos, wdiff, rpos, rdiff);
-}
-#endif
-
 static int
 sio_alsa_start(struct sio_hdl *sh)
 {
@@ -377,10 +328,7 @@ sio_alsa_start(struct sio_hdl *sh)
 	hdl->odelta = 0;
 	hdl->infds = 0;
 	hdl->onfds = 0;
-	hdl->osil = 0;
-	hdl->idrop = 0;
 	hdl->running = 0;
-	hdl->cpos = hdl->rpos = hdl->wpos = 0;
 
 	if (hdl->sio.mode & SIO_PLAY) {
 		err = snd_pcm_prepare(hdl->opcm);
@@ -458,13 +406,15 @@ sio_alsa_xrun(struct sio_alsa_hdl *hdl)
 	int wdiff, cdiff, rdiff;
 	int wsil, rdrop, cmove;
 
-	DPRINTF("- - - - - - - - - - - - - - - - - - - - - xrun begin\n");
-	sio_alsa_printpos(hdl);
+	DPRINTF("sio_alsa_xrun:\n");
+	sio_printpos(&hdl->sio);
 
-	rpos = (hdl->sio.mode & SIO_REC) ? hdl->rpos : hdl->cpos;
-	wpos = (hdl->sio.mode & SIO_PLAY) ? hdl->wpos : hdl->cpos;
+	rpos = (hdl->sio.mode & SIO_REC) ?
+		hdl->sio.rcnt / hdl->ibpf : hdl->sio.cpos;
+	wpos = (hdl->sio.mode & SIO_PLAY) ?
+		hdl->sio.wcnt / hdl->obpf : hdl->sio.cpos;
 
-	cdiff = hdl->par.round - (hdl->cpos % hdl->par.round);
+	cdiff = hdl->par.round - (hdl->sio.cpos % hdl->par.round);
 	if (cdiff == hdl->par.round)
 		cdiff = 0;
 
@@ -478,7 +428,7 @@ sio_alsa_xrun(struct sio_alsa_hdl *hdl)
 
 	wsil = rdiff + wpos - rpos;
 	rdrop = rdiff;
-	cmove = -(rdiff + hdl->cpos - rpos);
+	cmove = -(rdiff + hdl->sio.cpos - rpos);
 
 	DPRINTF("wsil = %d, cmove = %d, rdrop = %d\n", wsil, cmove, rdrop);
 
@@ -486,20 +436,17 @@ sio_alsa_xrun(struct sio_alsa_hdl *hdl)
 		return 0;
 	if (!sio_alsa_start(&hdl->sio))
 		return 0;
-
 	if (hdl->sio.mode & SIO_PLAY) {
-		hdl->osil = wsil;
-		hdl->odelta -= cmove;
+		hdl->odelta += cmove;
+		hdl->sio.wsil += wsil * hdl->obpf;
 	}
 	if (hdl->sio.mode & SIO_REC) {
-		hdl->idrop = rdrop;
-		hdl->idelta -= rdiff;
+		hdl->idelta += cmove;
+		hdl->sio.rdrop += rdrop * hdl->ibpf;
 	}
 	DPRINTF("xrun: corrected\n");
-	DPRINTF("osil = %d, odrop = %d, odelta = %d, idelta = %d\n",
-	    hdl->osil, hdl->idrop, hdl->odelta, hdl->idelta);
-	sio_alsa_printpos(hdl);
-	DPRINTF("- - - - - - - - - - - - - - - - - - - - - xrun end\n");
+	DPRINTF("wsil = %d, rdrop = %d, odelta = %d, idelta = %d\n",
+		wsil, rdrop, hdl->odelta, hdl->idelta);
 	return 1;
 }
 
@@ -794,59 +741,6 @@ sio_alsa_getpar(struct sio_hdl *sh, struct sio_par *par)
 	return 1;
 }
 
-/*
- * drop recorded samples to compensate xruns
- */
-static int
-sio_alsa_rdrop(struct sio_alsa_hdl *hdl)
-{
-#define DROP_NMAX 0x1000
-	static char buf[DROP_NMAX];
-	ssize_t n, todo, max;
-
-	if (hdl->idrop == 0)
-		return 1;
-
-	max = DROP_NMAX / hdl->ibpf;
-	while (hdl->idrop > 0) {
-		todo = hdl->idrop;
-		if (todo > max)
-			todo = max;
-		while ((n = snd_pcm_readi(hdl->ipcm, buf, todo)) < 0) {
-			if (n == -EINTR)
-				continue;
-			if (n == -EPIPE || n == -ESTRPIPE) {
-				sio_alsa_xrun(hdl);
-				return 0;
-			}
-			if (n != -EAGAIN) {
-				DALSA("couldn't read data to drop", n);
-				hdl->sio.eof = 1;
-			}
-			return 0;
-		}
-		if (n == 0) {
-			DPRINTF("sio_alsa_rdrop: eof\n");
-			hdl->sio.eof = 1;
-			return 0;
-		}
-		hdl->idrop -= n;
-		hdl->rpos += n;
-
-		/*
-		 * dropping samples is clock-wise neutral, so we
-		 * should not bump hdl->idelta += n; but since
-		 * we dropped samples, kernel buffer usage changed
-		 * and we have to take this into account here, to
-		 * prevent sio_alsa_revents() interpretin iused
-		 * change as clock tick
-		 */
-		hdl->iused -= n;
-		DPRINTF("sio_alsa_rdrop: dropped %zu/%zu frames\n", n, todo);
-	}
-	return 0;
-}
-
 static size_t
 sio_alsa_read(struct sio_hdl *sh, void *buf, size_t len)
 {
@@ -873,54 +767,9 @@ sio_alsa_read(struct sio_hdl *sh, void *buf, size_t len)
 		hdl->sio.eof = 1;
 		return 0;
 	}
-	hdl->rpos += n;
 	hdl->idelta += n;
 	n *= hdl->ibpf;
 	return n;
-}
-
-/*
- * insert silence to play to compensate xruns
- */
-static int
-sio_alsa_wsil(struct sio_alsa_hdl *hdl)
-{
-#define ZERO_NMAX 0x10000
-	static char zero[ZERO_NMAX];
-	ssize_t n, todo, max;
-
-	if (hdl->osil == 0)
-		return 1;
-
-	max = ZERO_NMAX / hdl->obpf;
-	while (hdl->osil > 0) {
-		todo = hdl->osil;
-		if (todo > max)
-			todo = max;
-		while ((n = snd_pcm_writei(hdl->opcm, zero, todo)) < 0) {
-			if (n == -EINTR)
-				continue;
-			if (n == -ESTRPIPE || n == -EPIPE) {
-				sio_alsa_xrun(hdl);
-				return 0;
-			}
-			if (n != -EAGAIN) {
-				DALSA("couldn't write silence", n);
-				hdl->sio.eof = 1;
-			}
-			return 0;
-		}
-#ifdef DEBUG
-		hdl->wpos += n;
-#endif
-		/*
-		 * be clock-wise neutral, see end of sio_alsa_wsil()
-		 */
-		hdl->oused += n;
-		hdl->osil -= n;
-		DPRINTF("sio_alsa_wsil: inserted %zu/%zu frames\n", n, todo);
-	}
-	return 0;
 }
 
 static size_t
@@ -929,11 +778,6 @@ sio_alsa_write(struct sio_hdl *sh, const void *buf, size_t len)
 	struct sio_alsa_hdl *hdl = (struct sio_alsa_hdl *)sh;
 	ssize_t n, todo;
 
-	if (hdl->osil) {
-		if (!sio_alsa_wsil(hdl))
-			return 0;
-		return 0;
-	}
 	if (len < hdl->obpf) {
 		/*
 		 * we can't just return, because sio_write() will loop
@@ -960,9 +804,6 @@ sio_alsa_write(struct sio_hdl *sh, const void *buf, size_t len)
 		return 0;
 	}
 	DPRINTFN(2, "sio_alsa_write: wrote %zd\n", n);
-#ifdef DEBUG
-	hdl->wpos += n;
-#endif
 	hdl->odelta += n;
 	n *= hdl->obpf;
 	return n;
@@ -972,11 +813,6 @@ void
 sio_alsa_onmove(struct sio_alsa_hdl *hdl)
 {
 	int delta;
-
-	if (hdl->sio.mode & SIO_PLAY)
-		DPRINTF("ostate = %d\n", snd_pcm_state(hdl->opcm));
-	if (hdl->sio.mode & SIO_REC)
-		DPRINTF("istate = %d\n", snd_pcm_state(hdl->ipcm));
 
 	if (hdl->running) {
 		switch (hdl->sio.mode & (SIO_PLAY | SIO_REC)) {
@@ -997,11 +833,6 @@ sio_alsa_onmove(struct sio_alsa_hdl *hdl)
 		delta = 0;
 		hdl->running = 1;
 	}
-#ifdef DEBUG
-	hdl->cpos += delta;
-	if (sndio_debug >= 1)
-		sio_alsa_printpos(hdl);
-#endif
 	sio_onmove_cb(&hdl->sio, delta);
 	if (hdl->sio.mode & SIO_PLAY)
 		hdl->odelta -= delta;
@@ -1026,10 +857,14 @@ sio_alsa_pollfd(struct sio_hdl *sh, struct pollfd *pfd, int events)
 	if (hdl->sio.eof)
 		return 0;
 
-	hdl->events = events;
+	hdl->events = events & (POLLIN | POLLOUT);
+	if (!(hdl->sio.mode & SIO_PLAY))
+		hdl->events &= ~POLLOUT;
+	if (!(hdl->sio.mode & SIO_REC))
+		hdl->events &= ~POLLIN;
+		
 	memset(pfd, 0, sizeof(struct pollfd) * hdl->nfds);
-	if ((events & POLLOUT) && (hdl->sio.mode & SIO_PLAY) &&
-	    hdl->sio.started) {
+	if ((events & POLLOUT) && hdl->sio.started) {
 		if (!hdl->running &&
 		    snd_pcm_state(hdl->opcm) == SND_PCM_STATE_RUNNING)
 			sio_alsa_onmove(hdl);
@@ -1042,8 +877,7 @@ sio_alsa_pollfd(struct sio_hdl *sh, struct pollfd *pfd, int events)
 		}
 	} else
 		hdl->onfds = 0;
-	if ((events & POLLIN) && (hdl->sio.mode & SIO_REC) &&
-	    hdl->sio.started) {
+	if ((events & POLLIN) && hdl->sio.started) {
 		if (!hdl->running &&
 		    snd_pcm_state(hdl->ipcm) == SND_PCM_STATE_RUNNING)
 			sio_alsa_onmove(hdl);
@@ -1079,50 +913,18 @@ sio_alsa_revents(struct sio_hdl *sh, struct pollfd *pfd)
 		return POLLHUP;
 
 	for (i = 0; i < hdl->onfds + hdl->infds; i++) {
-		DPRINTFN(3, "sio_alsa_revents: pfds[%d].events = %x\n",
+		DPRINTFN(3, "sio_alsa_revents: pfds[%d].revents = %x\n",
 		    i, pfd[i].revents);
 	}
-	revents = nfds = 0;
-	if ((hdl->events & POLLOUT) && (hdl->sio.mode & SIO_PLAY)) {
+	if (hdl->sio.mode & SIO_PLAY) {
 		ostate = snd_pcm_state(hdl->opcm);
 		if (ostate == SND_PCM_STATE_XRUN) {
 			if (!sio_alsa_xrun(hdl))
 				return POLLHUP;
 			return 0;
 		}
-		err = snd_pcm_poll_descriptors_revents(hdl->opcm,
-		    pfd, hdl->onfds, &r);
-		if (err < 0) {
-			DALSA("couldn't get play events", err);
-			hdl->sio.eof = 1;
-			return POLLHUP;
-		}
-		revents |= r;
-		nfds += hdl->onfds;
-			
-	}
-	if ((hdl->events & POLLIN) && (hdl->sio.mode & SIO_REC)) {
-		istate = snd_pcm_state(hdl->ipcm);
-		if (istate == SND_PCM_STATE_XRUN) {
-			if (!sio_alsa_xrun(hdl))
-				return POLLHUP;
-			return 0;
-		}
-		err = snd_pcm_poll_descriptors_revents(hdl->ipcm,
-		    pfd + nfds, hdl->infds, &r);
-		if (err < 0) {
-			DALSA("couldn't get rec events", err);
-			hdl->sio.eof = 1;
-			return POLLHUP;
-		}
-		revents |= r;
-		nfds += hdl->infds;
-	}
-	DPRINTFN(2, "sio_alsa_revents: revents = %x\n", revents);
-	if (revents & (POLLIN | POLLOUT)) {
-		if ((hdl->sio.mode & SIO_PLAY) &&
-		    (ostate == SND_PCM_STATE_RUNNING ||
-			ostate == SND_PCM_STATE_PREPARED)) {
+		if (ostate == SND_PCM_STATE_RUNNING ||
+		    ostate == SND_PCM_STATE_PREPARED) {
 			oavail = snd_pcm_avail_update(hdl->opcm);
 			if (oavail < 0) {
 				if (oavail == -EPIPE || oavail == -ESTRPIPE) {
@@ -1138,9 +940,16 @@ sio_alsa_revents(struct sio_hdl *sh, struct pollfd *pfd)
 			hdl->odelta -= oused - hdl->oused;
 			hdl->oused = oused;
 		}
-		if ((hdl->sio.mode & SIO_REC) &&
-		    (istate == SND_PCM_STATE_RUNNING ||
-			istate == SND_PCM_STATE_PREPARED)) {
+	}
+	if (hdl->sio.mode & SIO_REC) {
+		istate = snd_pcm_state(hdl->ipcm);
+		if (istate == SND_PCM_STATE_XRUN) {
+			if (!sio_alsa_xrun(hdl))
+				return POLLHUP;
+			return 0;
+		}
+		if (istate == SND_PCM_STATE_RUNNING ||
+		    istate == SND_PCM_STATE_PREPARED) {
 			iused = snd_pcm_avail_update(hdl->ipcm);
 			if (iused < 0) {
 				if (iused == -EPIPE || iused == -ESTRPIPE) {
@@ -1155,17 +964,33 @@ sio_alsa_revents(struct sio_hdl *sh, struct pollfd *pfd)
 			hdl->idelta += iused - hdl->iused;
 			hdl->iused = iused;
 		}
-		if (hdl->running ||
-		    ((hdl->sio.mode & SIO_PLAY) &&
-		     ostate == SND_PCM_STATE_RUNNING) ||
-		    ((hdl->sio.mode & SIO_REC) &&
-		     istate == SND_PCM_STATE_RUNNING))
-			sio_alsa_onmove(hdl);
 	}
-	if ((hdl->sio.mode & SIO_PLAY) && !sio_alsa_wsil(hdl))
-		revents &= ~POLLOUT;
-	if ((hdl->sio.mode & SIO_REC) && !sio_alsa_rdrop(hdl))
-		revents &= ~POLLIN;
+	revents = nfds = 0;
+	if (hdl->events & POLLOUT) {
+		err = snd_pcm_poll_descriptors_revents(hdl->opcm,
+		    pfd, hdl->onfds, &r);
+		if (err < 0) {
+			DALSA("couldn't get play events", err);
+			hdl->sio.eof = 1;
+			return POLLHUP;
+		}
+		revents |= r;
+		nfds += hdl->onfds;
+			
+	}
+	if (hdl->events & POLLIN) {
+		err = snd_pcm_poll_descriptors_revents(hdl->ipcm,
+		    pfd + nfds, hdl->infds, &r);
+		if (err < 0) {
+			DALSA("couldn't get rec events", err);
+			hdl->sio.eof = 1;
+			return POLLHUP;
+		}
+		revents |= r;
+		nfds += hdl->infds;
+	}
+	if (revents & (POLLIN | POLLOUT))
+		sio_alsa_onmove(hdl);
 	return revents;
 }
 #endif /* defined USE_ALSA */
