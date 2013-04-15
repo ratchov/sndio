@@ -460,7 +460,7 @@ sio_alsa_setpar_hw(snd_pcm_t *pcm, snd_pcm_hw_params_t *hwp,
 		SND_PCM_FORMAT_U24_LE,	SND_PCM_FORMAT_U24_BE,
 		SND_PCM_FORMAT_S16_LE,	SND_PCM_FORMAT_S16_BE, 
 		SND_PCM_FORMAT_U16_LE,	SND_PCM_FORMAT_U16_BE, 
-		SND_PCM_FORMAT_U8, 	SND_PCM_FORMAT_S8
+		SND_PCM_FORMAT_U8,	SND_PCM_FORMAT_S8
 	};
 	int i, err, dir = 0;
 	unsigned req_rate, min_periods = 2;
