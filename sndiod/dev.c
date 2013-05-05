@@ -1574,6 +1574,7 @@ found:
 	s->dup = 0;
 	s->appbufsz = d->bufsz;
 	s->round = d->round;
+	s->rate = d->rate;
 	dev_midi_slotdesc(d, s);
 	dev_midi_vol(d, s);
 	return s;
