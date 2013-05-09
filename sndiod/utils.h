@@ -18,7 +18,7 @@
 #ifndef UTILS_H
 #define UTILS_H
 
-#include <sys/types.h>
+#include <stddef.h>
 
 void log_puts(char *);
 void log_putx(unsigned long);
