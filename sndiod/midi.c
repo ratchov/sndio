@@ -512,7 +512,7 @@ port_unref(struct port *c)
 #endif
 	for (rxmask = 0, i = 0; i < MIDI_NEP; i++)
 		rxmask |= midi_ep[i].txmask;
-	if ((rxmask & c->midi->self) == 0 && c->state == PORT_INIT && !c->hold)
+	if ((rxmask & ~c->midi->self) == 0 && c->state == PORT_INIT && !c->hold)
 		port_drain(c);
 }
 
