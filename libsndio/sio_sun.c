@@ -825,7 +825,7 @@ sio_sun_revents(struct sio_hdl *sh, struct pollfd *pfd)
 {
 	struct sio_sun_hdl *hdl = (struct sio_sun_hdl *)sh;
 	struct audio_offset ao;
-	int xrun, dmove, dierr = 0, doerr = 0, offset, delta;
+	int xrun, dierr = 0, doerr = 0, offset, delta;
 	int revents = pfd->revents;
 
 	if (!hdl->sio.started)
@@ -862,6 +862,8 @@ sio_sun_revents(struct sio_hdl *sh, struct pollfd *pfd)
 		}
 		doerr = xrun - hdl->oerr;
 		hdl->oerr = xrun;
+		if (doerr > 0)
+			DPRINTF("play xrun %d\n", doerr);
 		if (!(hdl->sio.mode & SIO_REC))
 			dierr = doerr;
 	}
@@ -872,20 +874,23 @@ sio_sun_revents(struct sio_hdl *sh, struct pollfd *pfd)
 			return POLLHUP;
 		}
 		dierr = xrun - hdl->ierr;
+		if (dierr > 0)
+			DPRINTF("rec xrun %d\n", doerr);
 		hdl->ierr = xrun;
 		if (!(hdl->sio.mode & SIO_PLAY))
 			doerr = dierr;
 	}
 	offset = doerr - dierr;
 	if (offset > 0) {
-		hdl->sio.rdrop += offset;
+		hdl->sio.rdrop += offset * hdl->ibpf;
 		hdl->idelta -= doerr;
 		hdl->odelta -= doerr;
-		dmove = doerr;
+		DPRINTF("will drop %d and pause %d\n", offset, doerr);
 	} else if (offset < 0) {
-		hdl->sio.wsil += -offset;
+		hdl->sio.wsil += -offset * hdl->obpf;
 		hdl->idelta -= dierr;
 		hdl->odelta -= dierr;
+		DPRINTF("will insert %d and pause %d\n", -offset, dierr);
 	}
 
 	delta = (hdl->idelta > hdl->odelta) ? hdl->idelta : hdl->odelta;
