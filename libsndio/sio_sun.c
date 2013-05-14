@@ -862,10 +862,10 @@ sio_sun_revents(struct sio_hdl *sh, struct pollfd *pfd)
 		}
 		doerr = xrun - hdl->oerr;
 		hdl->oerr = xrun;
-		if (doerr > 0)
-			DPRINTF("play xrun %d\n", doerr);
 		if (!(hdl->sio.mode & SIO_REC))
 			dierr = doerr;
+		if (doerr > 0)
+			DPRINTF("play xrun %d\n", doerr);
 	}
 	if (hdl->sio.mode & SIO_REC) {
 		if (ioctl(hdl->fd, AUDIO_RERROR, &xrun) < 0) {
@@ -874,11 +874,11 @@ sio_sun_revents(struct sio_hdl *sh, struct pollfd *pfd)
 			return POLLHUP;
 		}
 		dierr = xrun - hdl->ierr;
-		if (dierr > 0)
-			DPRINTF("rec xrun %d\n", doerr);
 		hdl->ierr = xrun;
 		if (!(hdl->sio.mode & SIO_PLAY))
 			doerr = dierr;
+		if (dierr > 0)
+			DPRINTF("rec xrun %d\n", dierr);
 	}
 	offset = doerr - dierr;
 	if (offset > 0) {
