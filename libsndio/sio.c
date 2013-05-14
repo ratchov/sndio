@@ -270,7 +270,7 @@ sio_rdrop(struct sio_hdl *hdl)
 		if (n == 0)
 			return 0;
 		hdl->rdrop -= n;
-		DPRINTF("sio_rdrop: dropped %zu/%zu bytes\n", n, todo);
+		DPRINTF("sio_rdrop: dropped %zu bytes\n", n);
 	}
 	return 1;
 }
@@ -290,7 +290,7 @@ sio_wsil(struct sio_hdl *hdl)
 		if (n == 0)
 			return 0;
 		hdl->wsil -= n;
-		DPRINTF("sio_wsil: inserted %zu/%zu bytes\n", n, todo);
+		DPRINTF("sio_wsil: inserted %zu bytes\n", n);
 	}
 	return 1;
 }
@@ -491,7 +491,7 @@ sio_onmove_cb(struct sio_hdl *hdl, int delta)
 {
 #ifdef DEBUG
 	hdl->cpos += delta;
-	if (sndio_debug >= 1)
+	if (sndio_debug >= 2)
 		sio_printpos(hdl);
 #endif
 	if (hdl->move_cb)
