@@ -862,9 +862,11 @@ sio_alsa_pollfd(struct sio_hdl *sh, struct pollfd *pfd, int events)
 		hdl->events &= ~POLLOUT;
 	if (!(hdl->sio.mode & SIO_REC))
 		hdl->events &= ~POLLIN;
+	if (!hdl->sio.started)
+		hdl->events = 0;
 		
 	memset(pfd, 0, sizeof(struct pollfd) * hdl->nfds);
-	if ((events & POLLOUT) && hdl->sio.started) {
+	if (hdl->events & POLLOUT) {
 		if (!hdl->running &&
 		    snd_pcm_state(hdl->opcm) == SND_PCM_STATE_RUNNING)
 			sio_alsa_onmove(hdl);
@@ -877,7 +879,7 @@ sio_alsa_pollfd(struct sio_hdl *sh, struct pollfd *pfd, int events)
 		}
 	} else
 		hdl->onfds = 0;
-	if ((events & POLLIN) && hdl->sio.started) {
+	if (hdl->events & POLLIN) {
 		if (!hdl->running &&
 		    snd_pcm_state(hdl->ipcm) == SND_PCM_STATE_RUNNING)
 			sio_alsa_onmove(hdl);
@@ -911,10 +913,35 @@ sio_alsa_revents(struct sio_hdl *sh, struct pollfd *pfd)
 
 	if (hdl->sio.eof)
 		return POLLHUP;
-
+	
 	for (i = 0; i < hdl->onfds + hdl->infds; i++) {
 		DPRINTFN(3, "sio_alsa_revents: pfds[%d].revents = %x\n",
 		    i, pfd[i].revents);
+	}
+	revents = nfds = 0;
+	if (hdl->events & POLLOUT) {
+		err = snd_pcm_poll_descriptors_revents(hdl->opcm,
+		    pfd, hdl->onfds, &r);
+		if (err < 0) {
+			DALSA("couldn't get play events", err);
+			hdl->sio.eof = 1;
+			return POLLHUP;
+		}
+		revents |= r;
+		nfds += hdl->onfds;
+			
+	}
+	if (hdl->events & POLLIN) {
+		err = snd_pcm_poll_descriptors_revents(hdl->ipcm,
+		    pfd + nfds, hdl->infds, &r);
+		DPRINTF("pfd = %p, count = %d\n", pfd + nfds, hdl->infds);
+		if (err < 0) {
+			DALSA("couldn't get rec events", err);
+			hdl->sio.eof = 1;
+			return POLLHUP;
+		}
+		revents |= r;
+		nfds += hdl->infds;
 	}
 	if (hdl->sio.mode & SIO_PLAY) {
 		ostate = snd_pcm_state(hdl->opcm);
@@ -964,30 +991,6 @@ sio_alsa_revents(struct sio_hdl *sh, struct pollfd *pfd)
 			hdl->idelta += iused - hdl->iused;
 			hdl->iused = iused;
 		}
-	}
-	revents = nfds = 0;
-	if (hdl->events & POLLOUT) {
-		err = snd_pcm_poll_descriptors_revents(hdl->opcm,
-		    pfd, hdl->onfds, &r);
-		if (err < 0) {
-			DALSA("couldn't get play events", err);
-			hdl->sio.eof = 1;
-			return POLLHUP;
-		}
-		revents |= r;
-		nfds += hdl->onfds;
-			
-	}
-	if (hdl->events & POLLIN) {
-		err = snd_pcm_poll_descriptors_revents(hdl->ipcm,
-		    pfd + nfds, hdl->infds, &r);
-		if (err < 0) {
-			DALSA("couldn't get rec events", err);
-			hdl->sio.eof = 1;
-			return POLLHUP;
-		}
-		revents |= r;
-		nfds += hdl->infds;
 	}
 	if (revents & (POLLIN | POLLOUT))
 		sio_alsa_onmove(hdl);
