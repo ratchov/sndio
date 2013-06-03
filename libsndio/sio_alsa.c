@@ -570,7 +570,8 @@ sio_alsa_setpar(struct sio_hdl *sh, struct sio_par *par)
 	sio_alsa_enctofmt(hdl, &ofmt, par);
 	orate = (par->rate == ~0U) ? 48000 : par->rate;
 	if (par->appbufsz != ~0U) {
-		oround = (par->round != ~0U) ? par->round : (par->appbufsz + 1) / 2;
+		oround = (par->round != ~0U) ?
+		    par->round : (par->appbufsz + 1) / 2;
 		operiods = par->appbufsz / oround;
 		if (operiods < 2)
 			operiods = 2;
@@ -864,7 +865,6 @@ sio_alsa_pollfd(struct sio_hdl *sh, struct pollfd *pfd, int events)
 		hdl->events &= ~POLLIN;
 	if (!hdl->sio.started)
 		hdl->events = 0;
-		
 	memset(pfd, 0, sizeof(struct pollfd) * hdl->nfds);
 	if (hdl->events & POLLOUT) {
 		if (!hdl->running &&
