@@ -607,13 +607,15 @@ sio_alsa_setpar(struct sio_hdl *sh, struct sio_par *par)
 		if (!(hdl->sio.mode & SIO_PLAY)) {
 			ofmt = ifmt;
 			orate = irate;
-			iround = oround;
-			iperiods = operiods;
+			oround = iround;
+			operiods = iperiods;
 		}
 	}
 
 	DPRINTF("ofmt = %u, orate = %u, oround = %u, operiods = %u\n",
 	    ofmt, orate, (unsigned int)oround, operiods);
+	DPRINTF("ifmt = %u, irate = %u, iround = %u, iperiods = %u\n",
+	    ifmt, irate, (unsigned int)iround, iperiods);
 	
 	if (ifmt != ofmt) {
 		DPRINTF("play and rec formats differ\n");
