@@ -934,7 +934,6 @@ sio_alsa_revents(struct sio_hdl *sh, struct pollfd *pfd)
 	if (hdl->events & POLLIN) {
 		err = snd_pcm_poll_descriptors_revents(hdl->ipcm,
 		    pfd + nfds, hdl->infds, &r);
-		DPRINTF("pfd = %p, count = %d\n", pfd + nfds, hdl->infds);
 		if (err < 0) {
 			DALSA("couldn't get rec events", err);
 			hdl->sio.eof = 1;
