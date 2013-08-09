@@ -37,7 +37,7 @@
 .Nm sio_initpar
 .Nd interface to bidirectional audio streams
 .Sh SYNOPSIS
-.Fd #include <sndio.h>
+.In sndio.h
 .Ft "struct sio_hdl *"
 .Fn "sio_open" "const char *name" "unsigned int mode" "int nbio_flag"
 .Ft "void"
@@ -725,20 +725,6 @@ argument.
 The debug level:
 may be a value between 0 and 2.
 .El
-.Sh FILES
-.Bl -tag -width "/tmp/aucat-<uid>/aucat0" -compact
-.It Pa /tmp/aucat-<uid>/aucat0
-Default path to
-.Xr sndiod 1
-socket to connect to.
-.It Pa /dev/audio
-Default
-.Xr audio 4
-device to use.
-.El
-.\".Sh EXAMPLES
-.\".Bd -literal -offset indent
-.\".Ed
 .Sh SEE ALSO
 .Xr sndiod 1 ,
 .Xr audio 4 ,
