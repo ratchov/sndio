@@ -28,13 +28,6 @@
 #include "utils.h"
 #include "bsd-compat.h"
 
-/*
- * input data rate is XFER / TIMO (in bytes per microsecond),
- * it must be slightly larger than the MIDI standard 3125 bytes/s
- */ 
-#define MIDI_XFER 1
-#define MIDI_TIMO 100000
-
 int  port_open(struct port *);
 void port_imsg(void *, unsigned char *, int);
 void port_omsg(void *, unsigned char *, int);
@@ -50,7 +43,6 @@ struct midiops port_midiops = {
 
 #define MIDI_NEP 32
 struct midi midi_ep[MIDI_NEP];
-struct timo midi_timo;
 struct port *port_list = NULL;
 unsigned int midi_portnum = 0;
 
@@ -73,27 +65,13 @@ midi_log(struct midi *ep)
 }
 
 void
-midi_ontimo(void *arg)
-{
-	int i;
-	struct midi *ep;
-	
-	for (i = MIDI_NEP, ep = midi_ep; i > 0; i--, ep++) {
-	}
-	timo_add(&midi_timo, MIDI_TIMO);
-}
-
-void
 midi_init(void)
 {
-	timo_set(&midi_timo, midi_ontimo, NULL);
-	timo_add(&midi_timo, MIDI_TIMO);
 }
 
 void
 midi_done(void)
 {
-	timo_del(&midi_timo);
 }
 
 struct midi *

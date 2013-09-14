@@ -21,7 +21,7 @@
 
 struct dev;
 
-struct siofile_ {
+struct dev_sio {
 	struct sio_hdl *hdl;
 	unsigned int todo;
 #ifdef DEBUG

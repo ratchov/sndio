@@ -109,7 +109,7 @@ struct dev {
 	/*
 	 * audio device (while opened)
 	 */	
-	struct siofile_ sio;
+	struct dev_sio sio;
 	struct aparams par;			/* encoding */
 	int pchan, rchan;			/* play & rec channels */
 	adata_t *rbuf;				/* rec buffer */
