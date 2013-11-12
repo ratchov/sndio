@@ -220,7 +220,7 @@ sio_alsa_getcap(struct sio_hdl *sh, struct sio_cap *cap)
 }
 
 struct sio_hdl *
-sio_alsa_open(const char *str, unsigned mode, int nbio)
+_sio_alsa_open(const char *str, unsigned mode, int nbio)
 {
 	struct sio_alsa_hdl *hdl;
 	char path[PATH_MAX];
@@ -233,13 +233,13 @@ sio_alsa_open(const char *str, unsigned mode, int nbio)
 		str++;
 		break;
 	default:
-		DPRINTF("sio_sun_open: %s: '/<devnum>' expected\n", str);
+		DPRINTF("_sio_sun_open: %s: '/<devnum>' expected\n", str);
 		return NULL;
 	}
 	hdl = malloc(sizeof(struct sio_alsa_hdl));
 	if (hdl == NULL)
 		return NULL;
-	sio_create(&hdl->sio, &sio_alsa_ops, mode, nbio);
+	_sio_create(&hdl->sio, &sio_alsa_ops, mode, nbio);
 
 #ifdef DEBUG
 	err = snd_output_stdio_attach(&output, stderr, 0);
@@ -407,7 +407,7 @@ sio_alsa_xrun(struct sio_alsa_hdl *hdl)
 	int wsil, rdrop, cmove;
 
 	DPRINTF("sio_alsa_xrun:\n");
-	sio_printpos(&hdl->sio);
+	_sio_printpos(&hdl->sio);
 
 	rpos = (hdl->sio.mode & SIO_REC) ?
 		hdl->sio.rcnt / hdl->ibpf : hdl->sio.cpos;
@@ -836,7 +836,7 @@ sio_alsa_onmove(struct sio_alsa_hdl *hdl)
 		delta = 0;
 		hdl->running = 1;
 	}
-	sio_onmove_cb(&hdl->sio, delta);
+	_sio_onmove_cb(&hdl->sio, delta);
 	if (hdl->sio.mode & SIO_PLAY)
 		hdl->odelta -= delta;
 	if (hdl->sio.mode & SIO_REC)

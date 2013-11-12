@@ -66,19 +66,19 @@ struct sio_ops {
 	void (*getvol)(struct sio_hdl *);
 };
 
-struct sio_hdl *sio_aucat_open(const char *, unsigned, int);
+struct sio_hdl *_sio_aucat_open(const char *, unsigned, int);
 #ifdef USE_SUN
-struct sio_hdl *sio_sun_open(const char *, unsigned, int);
+struct sio_hdl *_sio_sun_open(const char *, unsigned, int);
 #endif
 #ifdef USE_ALSA
-struct sio_hdl *sio_alsa_open(const char *, unsigned, int);
+struct sio_hdl *_sio_alsa_open(const char *, unsigned, int);
 #endif
-void sio_create(struct sio_hdl *, struct sio_ops *, unsigned, int);
-void sio_destroy(struct sio_hdl *);
-void sio_onmove_cb(struct sio_hdl *, int);
-void sio_onvol_cb(struct sio_hdl *, unsigned);
+void _sio_create(struct sio_hdl *, struct sio_ops *, unsigned, int);
+void _sio_destroy(struct sio_hdl *);
+void _sio_onmove_cb(struct sio_hdl *, int);
+void _sio_onvol_cb(struct sio_hdl *, unsigned);
 #ifdef DEBUG
-void sio_printpos(struct sio_hdl *);
+void _sio_printpos(struct sio_hdl *);
 #endif
 
 #endif /* !defined(SNDIO_PRIV_H) */

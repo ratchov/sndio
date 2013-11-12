@@ -337,7 +337,7 @@ sio_sun_getcap(struct sio_hdl *sh, struct sio_cap *cap)
 }
 
 struct sio_hdl *
-sio_sun_open(const char *str, unsigned int mode, int nbio)
+_sio_sun_open(const char *str, unsigned int mode, int nbio)
 {
 	int fd, flags, fullduplex;
 	struct audio_info aui;
@@ -351,13 +351,13 @@ sio_sun_open(const char *str, unsigned int mode, int nbio)
 		str++;
 		break;
 	default:
-		DPRINTF("sio_sun_open: %s: '/<devnum>' expected\n", str);
+		DPRINTF("_sio_sun_open: %s: '/<devnum>' expected\n", str);
 		return NULL;
 	}
 	hdl = malloc(sizeof(struct sio_sun_hdl));
 	if (hdl == NULL)
 		return NULL;
-	sio_create(&hdl->sio, &sio_sun_ops, mode, nbio);
+	_sio_create(&hdl->sio, &sio_sun_ops, mode, nbio);
 
 	snprintf(path, sizeof(path), "/dev/audio%s", str);
 	if (mode == (SIO_PLAY | SIO_REC))
@@ -472,7 +472,7 @@ sio_sun_start(struct sio_hdl *sh)
 			return 0;
 		}
 		hdl->filling = 0;
-		sio_onmove_cb(&hdl->sio, 0);
+		_sio_onmove_cb(&hdl->sio, 0);
 	}
 	return 1;
 }
@@ -775,7 +775,7 @@ sio_sun_autostart(struct sio_sun_hdl *hdl)
 			hdl->sio.eof = 1;
 			return 0;
 		}
-		sio_onmove_cb(&hdl->sio, 0);
+		_sio_onmove_cb(&hdl->sio, 0);
 	}
 	return 1;
 }
@@ -895,7 +895,7 @@ sio_sun_revents(struct sio_hdl *sh, struct pollfd *pfd)
 
 	delta = (hdl->idelta > hdl->odelta) ? hdl->idelta : hdl->odelta;
 	if (delta > 0) {
-		sio_onmove_cb(&hdl->sio, delta);
+		_sio_onmove_cb(&hdl->sio, delta);
 		hdl->idelta -= delta;
 		hdl->odelta -= delta;
 	}

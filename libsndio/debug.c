@@ -26,23 +26,23 @@
 /*
  * debug level, -1 means uninitialized
  */
-int sndio_debug = -1;
+int _sndio_debug = -1;
 
 void
-sndio_debug_init(void)
+_sndio_debug_init(void)
 {
 	char *dbg;
 
-	if (sndio_debug < 0) {
+	if (_sndio_debug < 0) {
 		dbg = issetugid() ? NULL : getenv("SNDIO_DEBUG");
-		if (!dbg || sscanf(dbg, "%u", &sndio_debug) != 1)
-			sndio_debug = 0;
+		if (!dbg || sscanf(dbg, "%u", &_sndio_debug) != 1)
+			_sndio_debug = 0;
 	}
 }
 #endif
 
 const char *
-sndio_parsetype(const char *str, char *type)
+_sndio_parsetype(const char *str, char *type)
 {
 	while (*type) {
 		if (*type != *str)

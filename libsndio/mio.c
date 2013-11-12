@@ -40,7 +40,7 @@ mio_open(const char *str, unsigned int mode, int nbio)
 	const char *p;
 
 #ifdef DEBUG
-	sndio_debug_init();
+	_sndio_debug_init();
 #endif
 	if ((mode & (MIO_OUT | MIO_IN)) == 0)
 		return NULL;
@@ -52,28 +52,28 @@ mio_open(const char *str, unsigned int mode, int nbio)
 			str = portany;
 	}
 	if (strcmp(str, portany) == 0) {
-		hdl = mio_aucat_open("/0", mode, nbio, 1);
+		hdl = _mio_aucat_open("/0", mode, nbio, 1);
 		if (hdl != NULL)
 			return hdl;
 #if defined(USE_RMIDI)
-		return mio_rmidi_open("/0", mode, nbio);
+		return _mio_rmidi_open("/0", mode, nbio);
 #elif defined(USE_ALSA)
 		return mio_alsa_open("/0", mode, nbio);
 #else
 		return NULL;
 #endif
 	}
-	if ((p = sndio_parsetype(str, "snd")) != NULL ||
-	    (p = sndio_parsetype(str, "aucat")) != NULL)
-		return mio_aucat_open(p, mode, nbio, 0);
-	if ((p = sndio_parsetype(str, "midithru")) != NULL)
-		return mio_aucat_open(p, mode, nbio, 1);
-	if ((p = sndio_parsetype(str, "midi")) != NULL)
-		return mio_aucat_open(p, mode, nbio, 2);
+	if ((p = _sndio_parsetype(str, "snd")) != NULL ||
+	    (p = _sndio_parsetype(str, "aucat")) != NULL)
+		return _mio_aucat_open(p, mode, nbio, 0);
+	if ((p = _sndio_parsetype(str, "midithru")) != NULL)
+		return _mio_aucat_open(p, mode, nbio, 1);
+	if ((p = _sndio_parsetype(str, "midi")) != NULL)
+		return _mio_aucat_open(p, mode, nbio, 2);
 #if defined(USE_RMIDI) || defined(USE_ALSA)
-	if ((p = sndio_parsetype(str, "rmidi")) != NULL) {
+	if ((p = _sndio_parsetype(str, "rmidi")) != NULL) {
 #if defined(USE_SUN)
-		return mio_rmidi_open(p, mode, nbio);
+		return _mio_rmidi_open(p, mode, nbio);
 #elif defined(USE_ALSA)
 		return mio_alsa_open(p, mode, nbio);
 #endif
@@ -84,7 +84,7 @@ mio_open(const char *str, unsigned int mode, int nbio)
 }
 
 void
-mio_create(struct mio_hdl *hdl, struct mio_ops *ops,
+_mio_create(struct mio_hdl *hdl, struct mio_ops *ops,
     unsigned int mode, int nbio)
 {
 	hdl->ops = ops;

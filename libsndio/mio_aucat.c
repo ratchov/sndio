@@ -63,7 +63,7 @@ mio_aucat_runmsg(struct mio_aucat_hdl *hdl)
 {
 	int delta;
 
-	if (!aucat_rmsg(&hdl->aucat, &hdl->mio.eof))
+	if (!_aucat_rmsg(&hdl->aucat, &hdl->mio.eof))
 		return 0;
 	switch (ntohl(hdl->aucat.rmsg.cmd)) {
 	case AMSG_DATA:
@@ -85,7 +85,7 @@ mio_aucat_runmsg(struct mio_aucat_hdl *hdl)
 }
 
 struct mio_hdl *
-mio_aucat_open(const char *str, unsigned int mode,
+_mio_aucat_open(const char *str, unsigned int mode,
     int nbio, unsigned int type)
 {
 	struct mio_aucat_hdl *hdl;
@@ -93,10 +93,10 @@ mio_aucat_open(const char *str, unsigned int mode,
 	hdl = malloc(sizeof(struct mio_aucat_hdl));
 	if (hdl == NULL)
 		return NULL;
-	if (!aucat_open(&hdl->aucat, str, mode, type))
+	if (!_aucat_open(&hdl->aucat, str, mode, type))
 		goto bad;
-	mio_create(&hdl->mio, &mio_aucat_ops, mode, nbio);
-	if (!aucat_setfl(&hdl->aucat, 1, &hdl->mio.eof))
+	_mio_create(&hdl->mio, &mio_aucat_ops, mode, nbio);
+	if (!_aucat_setfl(&hdl->aucat, 1, &hdl->mio.eof))
 		goto bad;
 	return (struct mio_hdl *)hdl;
 bad:
@@ -110,8 +110,8 @@ mio_aucat_close(struct mio_hdl *sh)
 	struct mio_aucat_hdl *hdl = (struct mio_aucat_hdl *)sh;
 
 	if (!hdl->mio.eof)
-		aucat_setfl(&hdl->aucat, 0, &hdl->mio.eof);
-	aucat_close(&hdl->aucat, hdl->mio.eof);
+		_aucat_setfl(&hdl->aucat, 0, &hdl->mio.eof);
+	_aucat_close(&hdl->aucat, hdl->mio.eof);
 	free(hdl);
 }
 
@@ -124,7 +124,7 @@ mio_aucat_read(struct mio_hdl *sh, void *buf, size_t len)
 		if (!mio_aucat_runmsg(hdl))
 			return 0;
 	}
-	return aucat_rdata(&hdl->aucat, buf, len, &hdl->mio.eof);
+	return _aucat_rdata(&hdl->aucat, buf, len, &hdl->mio.eof);
 }
 
 static size_t
@@ -137,7 +137,7 @@ mio_aucat_write(struct mio_hdl *sh, const void *buf, size_t len)
 		return 0;
 	if (len > hdl->aucat.maxwrite)
 		len = hdl->aucat.maxwrite;
-	n = aucat_wdata(&hdl->aucat, buf, len, 1, &hdl->mio.eof);
+	n = _aucat_wdata(&hdl->aucat, buf, len, 1, &hdl->mio.eof);
 	hdl->aucat.maxwrite -= n;
 	return n;
 }
@@ -156,7 +156,7 @@ mio_aucat_pollfd(struct mio_hdl *sh, struct pollfd *pfd, int events)
 	hdl->events = events;
 	if (hdl->aucat.maxwrite <= 0)
 		events &= ~POLLOUT;
-	return aucat_pollfd(&hdl->aucat, pfd, events);
+	return _aucat_pollfd(&hdl->aucat, pfd, events);
 }
 
 static int

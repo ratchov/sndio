@@ -79,7 +79,7 @@ mio_alsa_open(const char *str, unsigned int mode, int nbio)
 	hdl = malloc(sizeof(struct mio_alsa_hdl));
 	if (hdl == NULL)
 		return NULL;
-	mio_create(&hdl->mio, &mio_alsa_ops, mode, nbio);
+	_mio_create(&hdl->mio, &mio_alsa_ops, mode, nbio);
 #ifdef DEBUG
 	rc = snd_output_stdio_attach(&output, stderr, 0);
 	if (rc < 0)
