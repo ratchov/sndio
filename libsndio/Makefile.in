@@ -89,7 +89,7 @@ uninstall:
 		cd ${DESTDIR}${MAN7_DIR} && rm -f ${MAN7}
 
 clean:
-		rm -f -- *.so *.so.* *.o *~ *.bak *.core core
+		rm -f -- *.so *.so.* *.o
 
 # ---------------------------------------------------------- dependencies ---
 

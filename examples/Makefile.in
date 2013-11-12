@@ -43,4 +43,4 @@ cap.o:		cap.c tools.h
 vol.o:		vol.c tools.h
 
 clean:
-		rm -f ${PROG} *.o *~ core *.core
+		rm -f ${PROG} *.o
