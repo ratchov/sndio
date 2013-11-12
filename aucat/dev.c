@@ -75,7 +75,6 @@
 #include "miofile.h"
 #include "siofile.h"
 #include "midi.h"
-#include "opt.h"
 #ifdef DEBUG
 #include "dbg.h"
 #endif
