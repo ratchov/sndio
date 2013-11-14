@@ -72,8 +72,8 @@ random_bytes(unsigned char *buf, int len)
 	close(fd);
 	return 1;
 }
-
 #endif
+
 /*
  * read a message, return 0 if not completed
  */
