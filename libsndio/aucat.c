@@ -72,8 +72,8 @@ random_bytes(unsigned char *buf, int len)
 	close(fd);
 	return 1;
 }
-#endif
 
+#endif
 /*
  * read a message, return 0 if not completed
  */
@@ -238,7 +238,7 @@ _aucat_wdata(struct aucat *hdl, const void *buf, size_t len,
 	return n;
 }
 
-int
+static int
 aucat_mkcookie(unsigned char *cookie)
 {
 	struct stat sb;
@@ -324,7 +324,7 @@ bad_gen:
 	return 1;
 }
 
-int
+static int
 aucat_connect_tcp(struct aucat *hdl, char *host, unsigned int unit)
 {
 	int s, error, opt;
@@ -371,7 +371,7 @@ aucat_connect_tcp(struct aucat *hdl, char *host, unsigned int unit)
 	return 1;
 }
 
-int
+static int
 aucat_connect_un(struct aucat *hdl, unsigned int unit)
 {
 	struct sockaddr_un ca;
