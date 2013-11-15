@@ -725,7 +725,7 @@ sio_alsa_setpar(struct sio_hdl *sh, struct sio_par *par)
 		}
 	}
 #ifdef DEBUG
-	if (sndio_debug) {
+	if (_sndio_debug) {
 		if (hdl->sio.mode & SIO_REC)
 			snd_pcm_dump(hdl->ipcm, output);
 		if (hdl->sio.mode & SIO_PLAY)
