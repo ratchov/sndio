@@ -11,6 +11,10 @@
 struct sio_par par;
 struct sio_cap cap;
 
+void pr_enc(struct sio_enc *);
+void cap_pr(struct sio_cap *);
+void usage(void);
+
 void
 pr_enc(struct sio_enc *enc)
 {

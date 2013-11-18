@@ -11,6 +11,10 @@
 #include "tools.h"
 
 #define BUFSZ 0x100
+
+void usage(void);
+void onvol(void *, unsigned);
+
 unsigned char buf[BUFSZ];
 struct sio_par par;
 unsigned vol = 0xdeadbeef;

@@ -27,6 +27,13 @@
 #define MIDI_NCHAN	16		/* max channels */
 #define MSGMAX		0x100		/* buffer size */
 
+void setvol(int, int);
+void setmaster(int);
+void onsysex(unsigned char *, int);
+void oncommon(unsigned char *, int);
+void oninput(unsigned char *, int);
+void usage(void);
+
 int verbose = 0;
 int mst, midx, mlen, mready;		/* midi parser state */
 unsigned char mmsg[MSGMAX];		/* resulting midi message */

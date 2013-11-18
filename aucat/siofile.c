@@ -57,6 +57,7 @@ void siofile_stop(struct file *);
 int siofile_nfds(struct file *);
 int siofile_pollfd(struct file *, struct pollfd *, int);
 int siofile_revents(struct file *, struct pollfd *);
+void siofile_cb(void *, int);
 
 struct fileops siofile_ops = {
 	"sio",

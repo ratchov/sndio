@@ -33,6 +33,8 @@
 
 #define WATCHDOG_USEC	2000000		/* 2 seconds */
 
+void dev_sio_onmove(void *, int);
+void dev_sio_timeout(void *);
 int dev_sio_pollfd(void *, struct pollfd *);
 int dev_sio_revents(void *, struct pollfd *);
 void dev_sio_run(void *);

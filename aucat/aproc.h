@@ -205,6 +205,7 @@ void aproc_del(struct aproc *);
 void aproc_dbg(struct aproc *);
 void aproc_setin(struct aproc *, struct abuf *);
 void aproc_setout(struct aproc *, struct abuf *);
+int aproc_inuse(struct aproc *);
 int aproc_depend(struct aproc *, struct aproc *);
 
 void aproc_ipos(struct aproc *, struct abuf *, int);

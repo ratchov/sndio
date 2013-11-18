@@ -45,6 +45,12 @@
 #include "dbg.h"
 #endif
 
+void abuf_dump(struct abuf *);
+int abuf_flush_do(struct abuf *);
+int abuf_fill_do(struct abuf *);
+void abuf_eof_do(struct abuf *);
+void abuf_hup_do(struct abuf *);
+
 #ifdef DEBUG
 void
 abuf_dbg(struct abuf *buf)

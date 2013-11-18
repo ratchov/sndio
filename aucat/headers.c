@@ -76,6 +76,8 @@ char wav_guid[14] = {
 	0x9B, 0x71
 };
 
+int wav_readfmt(int, unsigned int, struct aparams *, short **);
+
 int
 wav_readfmt(int fd, unsigned int csize, struct aparams *par, short **map)
 {

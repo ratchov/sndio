@@ -9,6 +9,10 @@
 #include "tools.h"
 
 #define BUFSZ 0x100
+
+void cb(void *, int);
+void usage(void);
+
 unsigned char buf[BUFSZ];
 struct sio_par par;
 char *xstr[] = SIO_XSTRINGS;

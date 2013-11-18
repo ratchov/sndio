@@ -15,10 +15,10 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#ifndef HAVE_STRTONUM
 #include <errno.h>
 #include <limits.h>
 #include <stdlib.h>
+#include "bsd-compat.h"
 
 #ifndef LLONG_MIN
 #define LLONG_MIN (-LLONG_MAX-1)
@@ -31,6 +31,7 @@
 #define TOOSMALL 	2
 #define TOOLARGE 	3
 
+#ifndef HAVE_STRTONUM
 long long
 strtonum(const char *numstr, long long minval, long long maxval,
     const char **errstrp)

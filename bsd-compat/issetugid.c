@@ -13,9 +13,10 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#ifndef HAVE_ISSETUGID
 #include <unistd.h>
+#include "bsd-compat.h"
 
+#ifndef HAVE_ISSETUGID
 int
 issetugid(void)
 {

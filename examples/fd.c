@@ -16,6 +16,13 @@ struct buf {				/* simple circular fifo */
 	unsigned char data[BUF_LEN];
 };
 
+void cb(void *, int);
+void buf_read(struct buf *, int);
+void buf_write(struct buf *, int);
+unsigned buf_rec(struct buf *, struct sio_hdl *);
+unsigned buf_play(struct buf *, struct sio_hdl *);
+void usage(void);
+
 char *xstr[] = SIO_XSTRINGS;
 struct sio_par par;
 struct buf playbuf, recbuf;

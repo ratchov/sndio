@@ -86,6 +86,22 @@
 #define DEFAULT_DEV "rsnd/0"
 #endif
 
+void sigint(int);
+void opt_ch(int *, int *);
+void opt_enc(struct aparams *);
+int opt_mmc(void);
+int opt_onoff(void);
+int getword(char *, char **);
+unsigned int opt_mode(void);
+void getbasepath(char *, size_t);
+void setsig(void);
+void unsetsig(void);
+void privdrop(void);
+struct dev *mkdev(char *, struct aparams *,
+    int, int, int, int, int, int);
+struct opt *mkopt(char *, struct dev *,
+    int, int, int, int, int, int, int, int);
+
 unsigned int log_level = 0;
 volatile sig_atomic_t quit_flag = 0;
 

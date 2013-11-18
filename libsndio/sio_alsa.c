@@ -55,6 +55,9 @@ struct sio_alsa_hdl {
 	int events;
 };
 
+/* stdin */
+static void sio_alsa_onmove(struct sio_alsa_hdl *);
+static int sio_alsa_revents(struct sio_hdl *, struct pollfd *);
 static void sio_alsa_close(struct sio_hdl *);
 static int sio_alsa_start(struct sio_hdl *);
 static int sio_alsa_stop(struct sio_hdl *);
@@ -450,7 +453,7 @@ sio_alsa_xrun(struct sio_alsa_hdl *hdl)
 	return 1;
 }
 
-int
+static int
 sio_alsa_setpar_hw(snd_pcm_t *pcm, snd_pcm_hw_params_t *hwp,
     snd_pcm_format_t *reqfmt, unsigned int *rate, unsigned int *chans,
     snd_pcm_uframes_t *round, unsigned int *periods)
