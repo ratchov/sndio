@@ -19,6 +19,7 @@
 #include <sndio.h>
 #include <unistd.h>
 #include "sysex.h"
+#include "bsd-compat.h"
 
 #define MIDI_CMDMASK	0xf0		/* command mask */
 #define MIDI_CHANMASK	0x0f		/* channel mask */
@@ -125,7 +126,7 @@ onsysex(unsigned char *buf, int len)
 			fprintf(stderr, "%u: invalid channel name\n", cn);
 			exit(1);
 		}
-		strlcpy(ctls[cn].name, x->u.slotdesc.name, SYSEX_NAMELEN);
+		memcpy(ctls[cn].name, x->u.slotdesc.name, SYSEX_NAMELEN);
 		ctls[cn].vol = 0;
 		break;
 	case SYSEX_AUCAT_DUMPEND:
@@ -204,7 +205,8 @@ int
 main(int argc, char **argv)
 {
 	char *dev = NULL;
-	unsigned char buf[MSGMAX], *lhs, *rhs;
+	unsigned char buf[MSGMAX];
+	char *lhs, *rhs;
 	int c, cn, vol, size;
 
 	while ((c = getopt(argc, argv, "f:v")) != -1) {
