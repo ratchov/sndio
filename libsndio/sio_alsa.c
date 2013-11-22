@@ -55,7 +55,6 @@ struct sio_alsa_hdl {
 	int events;
 };
 
-/* stdin */
 static void sio_alsa_onmove(struct sio_alsa_hdl *);
 static int sio_alsa_revents(struct sio_hdl *, struct pollfd *);
 static void sio_alsa_close(struct sio_hdl *);
