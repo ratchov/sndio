@@ -42,7 +42,7 @@ MAN7 = sndio.7
 #
 # libraries to build and install
 #
-MAJ = 5
+MAJ = 6
 MIN = 0
 SO = @so@
 
