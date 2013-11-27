@@ -1,2 +1,2 @@
-# Additional options that are passed to the Daemon.
+# Options that are passed to sndiod
 DAEMON_OPTS=""
