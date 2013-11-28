@@ -1,7 +1,7 @@
 /*	$OpenBSD$	*/
 /*
  * Copyright (c) 2010 Jacob Meuser <jakemsr@sdf.lonestar.org>
- * Copyright (c) 2008 Alexandre Ratchov <alex@caoua.org>
+ * Copyright (c) 2008,2012-2013 Alexandre Ratchov <alex@caoua.org>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -85,68 +85,106 @@ static struct sio_ops sio_alsa_ops = {
 	NULL
 };
 
+#define CAP_NFMTS	(sizeof(cap_fmts)  / sizeof(cap_fmts[0]))
+#define CAP_NCHANS	(sizeof(cap_chans) / sizeof(cap_chans[0]))
+#define CAP_NRATES	(sizeof(cap_rates) / sizeof(cap_rates[0]))
+
+static unsigned int cap_chans[] = {
+	1, 2, 4, 6, 8, 10, 12, 16
+};
+static unsigned int cap_rates[] = {
+	 8000, 11025, 12000, 16000, 22050, 24000,
+	32000, 44100, 48000, 64000, 88200, 96000
+};
+static snd_pcm_format_t cap_fmts[] = {
+	/* XXX add s24le3 and s24be3 */
+	SND_PCM_FORMAT_S32_LE,	SND_PCM_FORMAT_S32_BE, 
+	SND_PCM_FORMAT_S24_LE,	SND_PCM_FORMAT_S24_BE, 
+	SND_PCM_FORMAT_S16_LE,	SND_PCM_FORMAT_S16_BE, 
+	SND_PCM_FORMAT_U8
+};
+
 /*
  * convert ALSA format to sio_par encoding
  */
 static int
-sio_alsa_fmttopar(struct sio_alsa_hdl *hdl, snd_pcm_format_t fmt, struct sio_par *par)
+sio_alsa_fmttopar(struct sio_alsa_hdl *hdl, snd_pcm_format_t fmt,
+    unsigned int *bits, unsigned int *sig, unsigned int *le)
 {
 	switch (fmt) {
 	case SND_PCM_FORMAT_U8:
-		par->bits = 8;
-		par->sig = 0;
+		*bits = 8;
+		*sig = 0;
 		break;
 	case SND_PCM_FORMAT_S8:
-		par->bits = 8;
-		par->sig = 1;
+		*bits = 8;
+		*sig = 1;
 		break;
 	case SND_PCM_FORMAT_S16_LE:
-		par->bits = 16;
-		par->sig = 1;
-		par->le = 1;
+		*bits = 16;
+		*sig = 1;
+		*le = 1;
 		break;
 	case SND_PCM_FORMAT_S16_BE:
-		par->bits = 16;
-		par->sig = 1;
-		par->le = 0;
+		*bits = 16;
+		*sig = 1;
+		*le = 0;
 		break;
 	case SND_PCM_FORMAT_U16_LE:
-		par->bits = 16;
-		par->sig = 0;
-		par->le = 1;
+		*bits = 16;
+		*sig = 0;
+		*le = 1;
 		break;
 	case SND_PCM_FORMAT_U16_BE:
-		par->bits = 16;
-		par->sig = 0;
-		par->le = 0;
+		*bits = 16;
+		*sig = 0;
+		*le = 0;
 		break;
 	case SND_PCM_FORMAT_S24_LE:
-		par->bits = 24;
-		par->sig = 1;
-		par->le = 1;
+		*bits = 24;
+		*sig = 1;
+		*le = 1;
 		break;
 	case SND_PCM_FORMAT_S24_BE:
-		par->bits = 24;
-		par->sig = 1;
-		par->le = 0;
+		*bits = 24;
+		*sig = 1;
+		*le = 0;
 		break;
 	case SND_PCM_FORMAT_U24_LE:
-		par->bits = 24;
-		par->sig = 0;
-		par->le = 1;
+		*bits = 24;
+		*sig = 0;
+		*le = 1;
 		break;
 	case SND_PCM_FORMAT_U24_BE:
-		par->bits = 24;
-		par->sig = 0;
-		par->le = 0;
+		*bits = 24;
+		*sig = 0;
+		*le = 0;
+		break;
+	case SND_PCM_FORMAT_S32_LE:
+		*bits = 32;
+		*sig = 1;
+		*le = 1;
+		break;
+	case SND_PCM_FORMAT_S32_BE:
+		*bits = 32;
+		*sig = 1;
+		*le = 0;
+		break;
+	case SND_PCM_FORMAT_U32_LE:
+		*bits = 32;
+		*sig = 0;
+		*le = 1;
+		break;
+	case SND_PCM_FORMAT_U32_BE:
+		*bits = 32;
+		*sig = 0;
+		*le = 0;
 		break;
 	default:
 		DPRINTF("sio_alsa_fmttopar: 0x%x: unsupported format\n", fmt);
 		hdl->sio.eof = 1;
 		return 0;
 	}
-	par->msb = 1;
-	par->bps = SIO_BPS(par->bits);
 	return 1;
 }
 
@@ -155,70 +193,78 @@ sio_alsa_fmttopar(struct sio_alsa_hdl *hdl, snd_pcm_format_t fmt, struct sio_par
  * convert sio_par encoding to ALSA format
  */
 static void
-sio_alsa_enctofmt(struct sio_alsa_hdl *hdl, snd_pcm_format_t *rfmt, struct sio_par *enc)
+sio_alsa_enctofmt(struct sio_alsa_hdl *hdl, snd_pcm_format_t *rfmt,
+    unsigned int bits, unsigned int sig, unsigned int le)
 {
-	if (enc->bits == 8) {
-		if (enc->sig == ~0U || !enc->sig)
+	if (bits == 8) {
+		if (sig == ~0U || !sig)
 			*rfmt = SND_PCM_FORMAT_U8;
 		else
 			*rfmt = SND_PCM_FORMAT_S8;
-	} else if (enc->bits == 16) {
-		if (enc->sig == ~0U || enc->sig) {
-			if (enc->le == ~0U) {
+	} else if (bits == 16) {
+		if (sig == ~0U || sig) {
+			if (le == ~0U) {
 				*rfmt = SIO_LE_NATIVE ?
 				    SND_PCM_FORMAT_S16_LE :
 				    SND_PCM_FORMAT_S16_BE;
-			} else if (enc->le)
+			} else if (le)
 				*rfmt = SND_PCM_FORMAT_S16_LE;
 			else
 				*rfmt = SND_PCM_FORMAT_S16_BE;
 		} else {
-			if (enc->le == ~0U) {
+			if (le == ~0U) {
 				*rfmt = SIO_LE_NATIVE ?
 				    SND_PCM_FORMAT_U16_LE :
 				    SND_PCM_FORMAT_U16_BE;
-			} else if (enc->le)
+			} else if (le)
 				*rfmt = SND_PCM_FORMAT_U16_LE;
 			else
 				*rfmt = SND_PCM_FORMAT_U16_BE;
 		}
-	} else if (enc->bits == 24) {
-		if (enc->sig == ~0U || enc->sig) {
-			if (enc->le == ~0U) {
+	} else if (bits == 24) {
+		if (sig == ~0U || sig) {
+			if (le == ~0U) {
 				*rfmt = SIO_LE_NATIVE ?
 				    SND_PCM_FORMAT_S24_LE :
 				    SND_PCM_FORMAT_S24_BE;
-			 } else if (enc->le)
+			 } else if (le)
 				*rfmt = SND_PCM_FORMAT_S24_LE;
 			else
 				*rfmt = SND_PCM_FORMAT_S24_BE;
 		} else {
-			if (enc->le == ~0U) {
+			if (le == ~0U) {
 				*rfmt = SIO_LE_NATIVE ?
 				    SND_PCM_FORMAT_U24_LE :
 				    SND_PCM_FORMAT_U24_BE;
-			} else if (enc->le)
+			} else if (le)
 				*rfmt = SND_PCM_FORMAT_U24_LE;
 			else
 				*rfmt = SND_PCM_FORMAT_U24_BE;
+		}
+	} else if (bits == 32) {
+		if (sig == ~0U || sig) {
+			if (le == ~0U) {
+				*rfmt = SIO_LE_NATIVE ?
+				    SND_PCM_FORMAT_S32_LE :
+				    SND_PCM_FORMAT_S32_BE;
+			 } else if (le)
+				*rfmt = SND_PCM_FORMAT_S32_LE;
+			else
+				*rfmt = SND_PCM_FORMAT_S32_BE;
+		} else {
+			if (le == ~0U) {
+				*rfmt = SIO_LE_NATIVE ?
+				    SND_PCM_FORMAT_U32_LE :
+				    SND_PCM_FORMAT_U32_BE;
+			} else if (le)
+				*rfmt = SND_PCM_FORMAT_U32_LE;
+			else
+				*rfmt = SND_PCM_FORMAT_U32_BE;
 		}
 	} else {
 		*rfmt = SIO_LE_NATIVE ?
 		    SND_PCM_FORMAT_S16_LE : SND_PCM_FORMAT_S16_BE;
 	}
-}
-
-/*
- * guess device capabilities
- */
-static int
-sio_alsa_getcap(struct sio_hdl *sh, struct sio_cap *cap)
-{
-	struct sio_alsa_hdl *hdl = (struct sio_alsa_hdl *)sh;
-
-	DPRINTF("sio_alsa_getcap: not implemented\n");
-	hdl->sio.eof = 1;
-	return 0;
 }
 
 struct sio_hdl *
@@ -458,6 +504,8 @@ sio_alsa_setpar_hw(snd_pcm_t *pcm, snd_pcm_hw_params_t *hwp,
     snd_pcm_uframes_t *round, unsigned int *periods)
 {
 	static snd_pcm_format_t fmts[] = {
+		SND_PCM_FORMAT_S32_LE,	SND_PCM_FORMAT_S32_BE, 
+		SND_PCM_FORMAT_U32_LE,	SND_PCM_FORMAT_U32_BE,
 		SND_PCM_FORMAT_S24_LE,	SND_PCM_FORMAT_S24_BE, 
 		SND_PCM_FORMAT_U24_LE,	SND_PCM_FORMAT_U24_BE,
 		SND_PCM_FORMAT_S16_LE,	SND_PCM_FORMAT_S16_BE, 
@@ -552,6 +600,105 @@ sio_alsa_setpar_hw(snd_pcm_t *pcm, snd_pcm_hw_params_t *hwp,
 }
 
 static int
+sio_alsa_getcap_hw(snd_pcm_t *pcm, int *rates, int *fmts, int *chans)
+{
+	int i, err;
+	snd_pcm_hw_params_t *hwp;
+
+	snd_pcm_hw_params_alloca(&hwp);
+
+	err = snd_pcm_hw_params_any(pcm, hwp);
+	if (err < 0) {
+		DALSA("sio_alsa_trypar: couldn't init pars", err);
+		return 0;
+	}
+
+	*fmts = 0;
+	for (i = 0; i < CAP_NFMTS; i++) {
+		err = snd_pcm_hw_params_test_format(pcm, hwp, cap_fmts[i]);
+		if (err == 0) {
+			*fmts |= 1 << i;
+		}
+	}
+	*rates = 0;
+	for (i = 0; i < CAP_NRATES; i++) {
+		err = snd_pcm_hw_params_test_rate(pcm, hwp, cap_rates[i], 0);
+		if (err == 0) {
+			*rates |= 1 << i;
+		}
+	}
+	*chans = 0;
+	for (i = 0; i < CAP_NCHANS; i++) {
+		err = snd_pcm_hw_params_test_channels(pcm, hwp, cap_chans[i]);
+		if (err == 0) {
+			*chans |= 1 << i;
+		}
+	}
+	return 1;
+}
+
+/*
+ * guess device capabilities
+ */
+static int
+sio_alsa_getcap(struct sio_hdl *sh, struct sio_cap *cap)
+{
+	struct sio_alsa_hdl *hdl = (struct sio_alsa_hdl *)sh;
+	snd_pcm_hw_params_t *ihwp, *ohwp;
+	int irates, orates, ifmts, ofmts, ichans, ochans;
+	int i;
+
+	irates = orates = ifmts = ofmts = ichans = ochans = 0;
+
+	if (hdl->sio.mode & SIO_PLAY) {
+		if (!sio_alsa_getcap_hw(hdl->opcm,
+			&orates, &ofmts, &ochans)) {
+			return 0;
+		}
+	}
+	if (hdl->sio.mode & SIO_REC) {
+		if (!sio_alsa_getcap_hw(hdl->ipcm,
+			&irates, &ifmts, &ichans)) {
+			return 0;
+		}
+	}
+
+	for (i = 0; i < CAP_NFMTS; i++) {
+		sio_alsa_fmttopar(hdl, cap_fmts[i],
+		    &cap->enc[i].bits,
+		    &cap->enc[i].sig,
+		    &cap->enc[i].le);		
+		cap->enc[i].bps = SIO_BPS(cap->enc[0].bits);
+		cap->enc[i].msb = 1;
+	}
+	for (i = 0; i < CAP_NRATES; i++) {
+		cap->rate[i] = cap_rates[i];
+	}
+	for (i = 0; i < CAP_NCHANS; i++) {
+		cap->pchan[i] = cap_chans[i];
+		cap->rchan[i] = cap_chans[i];
+	}
+	cap->confs[0].enc = ~0U;
+	cap->confs[0].rate = ~0U;
+	cap->confs[0].pchan = ~0U;
+	cap->confs[0].rchan = ~0U;
+	if (hdl->sio.mode & SIO_PLAY) {
+		cap->confs[0].pchan &= ochans;
+		cap->confs[0].enc &= ofmts;
+		cap->confs[0].rate &= orates;
+	}
+	if (hdl->sio.mode & SIO_REC) {
+		cap->confs[0].rchan &= ichans;
+		cap->confs[0].enc &= ifmts;
+		cap->confs[0].rate &= irates;
+	}
+	cap->nconf = 1;
+	return 1;
+#undef NCHANS
+#undef NRATES
+}
+
+static int
 sio_alsa_setpar(struct sio_hdl *sh, struct sio_par *par)
 {
 	struct sio_alsa_hdl *hdl = (struct sio_alsa_hdl *)sh;
@@ -569,7 +716,7 @@ sio_alsa_setpar(struct sio_hdl *sh, struct sio_par *par)
 	snd_pcm_hw_params_malloc(&ihwp);
 	snd_pcm_sw_params_malloc(&iswp);
 
-	sio_alsa_enctofmt(hdl, &ofmt, par);
+	sio_alsa_enctofmt(hdl, &ofmt, par->bits, par->sig, par->le);
 	orate = (par->rate == ~0U) ? 48000 : par->rate;
 	if (par->appbufsz != ~0U) {
 		oround = (par->round != ~0U) ?
@@ -634,8 +781,11 @@ sio_alsa_setpar(struct sio_hdl *sh, struct sio_par *par)
 		hdl->sio.eof = 1;
 		return 0;
 	}
-	if (!sio_alsa_fmttopar(hdl, ofmt, &hdl->par))
+	if (!sio_alsa_fmttopar(hdl, ofmt,
+		&hdl->par.bits, &hdl->par.sig, &hdl->par.le))
 		return 0;
+	hdl->par.msb = 1;
+	hdl->par.bps = SIO_BPS(par->bits);
 	hdl->par.rate = orate;
 	hdl->par.round = oround;
 	hdl->par.bufsz = oround * operiods;
