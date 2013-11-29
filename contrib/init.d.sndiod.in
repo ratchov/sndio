@@ -51,8 +51,11 @@ case "$1" in
 	;;
   restart|force-reload)
 	log_daemon_msg "Restarting $DESC" "$NAME"
-	start-stop-daemon --start --quiet --exec $DAEMON -- $DAEMON_ARGS
-	start-stop-daemon --stop --quiet --exec $DAEMON
+	start-stop-daemon --stop --quiet --oknodo \
+		--exec $DAEMON
+	start-stop-daemon --start --quiet --oknodo \
+		--exec $DAEMON -- $DAEMON_ARGS
+	log_end_msg $?
 	;;
   *)
 	echo "Usage: $SCRIPTNAME {start|stop|status|restart|force-reload}" >&2
