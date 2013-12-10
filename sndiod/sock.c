@@ -253,19 +253,6 @@ sock_midi_imsg(void *arg, unsigned char *msg, int size)
 {
 	struct sock *f = arg;
 
-#ifdef DEBUG
-	int i;
-
-	if (log_level >= 3) {
-		log_puts("sock got:");
-		for (i = 0; i < size; i++) {
-			log_puts(" ");
-			log_putx(msg[i]);
-		}
-		log_puts("\n");
-	}
-#endif
-
 	midi_send(f->midi, msg, size);
 }
 
