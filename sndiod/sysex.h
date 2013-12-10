@@ -46,6 +46,11 @@
 #define   SYSEX_MMC_LOC_CMD	0x01
 
 /*
+ * sepcial "any" midi device number
+ */
+#define SYSEX_DEV_ANY		0x7f
+
+/*
  * aucat-specific messages, in the "edu" namespace
  */
 #define SYSEX_AUCAT		0x23		/* aucat-specific */

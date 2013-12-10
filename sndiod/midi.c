@@ -285,6 +285,18 @@ midi_in(struct midi *iep, unsigned char *idata, int icount)
 	int i;
 	unsigned char c;
 
+#ifdef DEBUG
+	if (log_level >= 3) {
+		midi_log(iep);
+		log_puts(": got:");
+		for (i = 0; i < icount; i++) {
+			log_puts(" ");
+			log_putx(idata[i]);
+		}
+		log_puts("\n");
+	}
+#endif
+
 	for (i = 0; i < icount; i++) {
 		c = *idata++;
 		if (c >= 0xf8) {
