@@ -403,7 +403,7 @@ aucat_connect_un(struct aucat *hdl, unsigned int unit)
 		break;
 	}
 	hdl->fd = s;
-	DPRINTF("%s: connected\n", ca.sun_path);
+	DPRINTFN(2, "%s: connected\n", ca.sun_path);
 	return 1;
 }
 
@@ -488,7 +488,7 @@ _aucat_open(struct aucat *hdl, const char *str, unsigned int mode,
 		return 0;
 	}
 	devnum += type * 16; /* XXX */
-	DPRINTF("_aucat_open: host=%s unit=%u devnum=%u opt=%s\n",
+	DPRINTFN(2, "_aucat_open: host=%s unit=%u devnum=%u opt=%s\n",
 	    host, unit, devnum, opt);
 	if (host[0] != '\0') {
 		if (!aucat_connect_tcp(hdl, host, unit))

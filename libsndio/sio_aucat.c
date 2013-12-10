@@ -100,13 +100,13 @@ sio_aucat_runmsg(struct sio_aucat_hdl *hdl)
 	case AMSG_FLOWCTL:
 		delta = ntohl(hdl->aucat.rmsg.u.ts.delta);
 		hdl->aucat.maxwrite += delta * (int)hdl->wbpf;
-		DPRINTF("aucat: flowctl = %d, maxwrite = %d\n",
+		DPRINTFN(3, "aucat: flowctl = %d, maxwrite = %d\n",
 		    delta, hdl->aucat.maxwrite);
 		break;
 	case AMSG_MOVE:
 		delta = ntohl(hdl->aucat.rmsg.u.ts.delta);
 		hdl->delta += delta;
-		DPRINTFN(2, "aucat: move = %d, delta = %d, maxwrite = %d\n",
+		DPRINTFN(3, "aucat: move = %d, delta = %d, maxwrite = %d\n",
 		    delta, hdl->delta, hdl->aucat.maxwrite);
 		if (hdl->delta >= 0) {
 			_sio_onmove_cb(&hdl->sio, hdl->delta);
@@ -193,7 +193,7 @@ sio_aucat_start(struct sio_hdl *sh)
 	hdl->aucat.maxwrite = 0;
 	hdl->round = par.round;
 	hdl->delta = 0;
-	DPRINTF("aucat: start, maxwrite = %d\n", hdl->aucat.maxwrite);
+	DPRINTFN(2, "aucat: start, maxwrite = %d\n", hdl->aucat.maxwrite);
 
 	AMSG_INIT(&hdl->aucat.wmsg);
 	hdl->aucat.wmsg.cmd = htonl(AMSG_START);
@@ -472,7 +472,7 @@ sio_aucat_revents(struct sio_hdl *sh, struct pollfd *pfd)
 	}
 	if (hdl->sio.eof)
 		return POLLHUP;
-	DPRINTFN(2, "sio_aucat_revents: %x\n", revents & hdl->events);
+	DPRINTFN(3, "sio_aucat_revents: %x\n", revents & hdl->events);
 	return revents & (hdl->events | POLLHUP);
 }
 

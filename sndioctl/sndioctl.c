@@ -78,6 +78,7 @@ setmaster(int vol)
 
 	msg.start = SYSEX_START;
 	msg.type = SYSEX_TYPE_RT;
+	msg.dev = SYSEX_DEV_ANY;
 	msg.id0 = SYSEX_CONTROL;
 	msg.id1 = SYSEX_MASTER;
 	msg.u.master.fine = 0;

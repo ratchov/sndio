@@ -153,7 +153,7 @@ sio_stop(struct sio_hdl *hdl)
 	if (!hdl->ops->stop(hdl))
 		return 0;
 #ifdef DEBUG
-	DPRINTF("libsndio: polls: %llu, written = %llu, read: %llu\n",
+	DPRINTFN(2, "libsndio: polls: %llu, written = %llu, read: %llu\n",
 	    hdl->pollcnt, hdl->wcnt, hdl->rcnt);
 #endif
 	hdl->started = 0;

@@ -368,7 +368,7 @@ sio_alsa_start(struct sio_hdl *sh)
 	struct sio_alsa_hdl *hdl = (struct sio_alsa_hdl *)sh;
 	int err;
 
-	DPRINTF("sio_alsa_start:\n");
+	DPRINTFN(2, "sio_alsa_start:\n");
 
 	hdl->ibpf = hdl->par.rchan * hdl->par.bps;
 	hdl->obpf = hdl->par.pchan * hdl->par.bps;
@@ -459,7 +459,7 @@ sio_alsa_stop(struct sio_hdl *sh)
 			return 0;
 		}
 	}
-	DPRINTF("sio_alsa_stop: stopped\n");
+	DPRINTFN(2, "sio_alsa_stop: stopped\n");
 	return 1;
 }
 
@@ -470,8 +470,9 @@ sio_alsa_xrun(struct sio_alsa_hdl *hdl)
 	int wdiff, cdiff, rdiff;
 	int wsil, rdrop, cmove;
 
-	DPRINTF("sio_alsa_xrun:\n");
-	_sio_printpos(&hdl->sio);
+	DPRINTFN(2, "sio_alsa_xrun:\n");
+	if (_sndio_debug >= 2)
+		_sio_printpos(&hdl->sio);
 
 	rpos = (hdl->sio.mode & SIO_REC) ?
 		hdl->sio.rcnt / hdl->ibpf : hdl->sio.cpos;
@@ -488,13 +489,14 @@ sio_alsa_xrun(struct sio_alsa_hdl *hdl)
 	if (wdiff == hdl->par.round)
 		wdiff = 0;
 
-	DPRINTF("rdiff = %d, cdiff = %d, wdiff = %d\n", rdiff, cdiff, wdiff);
+	DPRINTFN(2, "rdiff = %d, cdiff = %d, wdiff = %d\n",
+	    rdiff, cdiff, wdiff);
 
 	wsil = rdiff + wpos - rpos;
 	rdrop = rdiff;
 	cmove = -(rdiff + hdl->sio.cpos - rpos);
 
-	DPRINTF("wsil = %d, cmove = %d, rdrop = %d\n", wsil, cmove, rdrop);
+	DPRINTFN(2, "wsil = %d, cmove = %d, rdrop = %d\n", wsil, cmove, rdrop);
 
 	if (!sio_alsa_stop(&hdl->sio))
 		return 0;
@@ -508,9 +510,9 @@ sio_alsa_xrun(struct sio_alsa_hdl *hdl)
 		hdl->idelta += cmove;
 		hdl->sio.rdrop += rdrop * hdl->ibpf;
 	}
-	DPRINTF("xrun: corrected\n");
-	DPRINTF("wsil = %d, rdrop = %d, odelta = %d, idelta = %d\n",
-		wsil, rdrop, hdl->odelta, hdl->idelta);
+	DPRINTFN(2, "xrun: corrected\n");
+	DPRINTFN(2, "wsil = %d, rdrop = %d, odelta = %d, idelta = %d\n",
+	    wsil, rdrop, hdl->odelta, hdl->idelta);
 	return 1;
 }
 
@@ -776,9 +778,9 @@ sio_alsa_setpar(struct sio_hdl *sh, struct sio_par *par)
 		}
 	}
 
-	DPRINTF("ofmt = %u, orate = %u, oround = %u, operiods = %u\n",
+	DPRINTFN(2, "ofmt = %u, orate = %u, oround = %u, operiods = %u\n",
 	    ofmt, orate, (unsigned int)oround, operiods);
-	DPRINTF("ifmt = %u, irate = %u, iround = %u, iperiods = %u\n",
+	DPRINTFN(2, "ifmt = %u, irate = %u, iround = %u, iperiods = %u\n",
 	    ifmt, irate, (unsigned int)iround, iperiods);
 	
 	if (ifmt != ofmt) {
@@ -892,7 +894,7 @@ sio_alsa_setpar(struct sio_hdl *sh, struct sio_par *par)
 		}
 	}
 #ifdef DEBUG
-	if (_sndio_debug) {
+	if (_sndio_debug >= 2) {
 		if (hdl->sio.mode & SIO_REC)
 			snd_pcm_dump(hdl->ipcm, output);
 		if (hdl->sio.mode & SIO_PLAY)
@@ -1080,7 +1082,7 @@ sio_alsa_pollfd(struct sio_hdl *sh, struct pollfd *pfd, int events)
 		}
 	} else
 		hdl->infds = 0;
-	DPRINTFN(2, "sio_alsa_pollfd: events = %x, nfds = %d + %d\n",
+	DPRINTFN(3, "sio_alsa_pollfd: events = %x, nfds = %d + %d\n",
 	    events, hdl->onfds, hdl->infds);
 
 	for (i = 0; i < hdl->onfds + hdl->infds; i++) {
