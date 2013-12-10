@@ -491,7 +491,7 @@ _sio_onmove_cb(struct sio_hdl *hdl, int delta)
 {
 #ifdef DEBUG
 	hdl->cpos += delta;
-	if (_sndio_debug >= 2)
+	if (_sndio_debug >= 3)
 		_sio_printpos(hdl);
 #endif
 	if (hdl->move_cb)
