@@ -53,6 +53,8 @@ struct sio_alsa_hdl {
 	int nfds, infds, onfds;
 	int running;
 	int events;
+	int ipartial, opartial;
+	char *itmpbuf, *otmpbuf;
 };
 
 static void sio_alsa_onmove(struct sio_alsa_hdl *);
@@ -385,6 +387,12 @@ sio_alsa_start(struct sio_hdl *sh)
 			hdl->sio.eof = 1;
 			return 0;
 		}
+		hdl->otmpbuf = malloc(hdl->obpf);
+		if (hdl->otmpbuf == NULL) {
+			hdl->sio.eof = 1;
+			return 0;
+		}
+		hdl->opartial = 0;
 	}
 	if (hdl->sio.mode & SIO_REC) {
 		err = snd_pcm_prepare(hdl->ipcm);
@@ -393,6 +401,12 @@ sio_alsa_start(struct sio_hdl *sh)
 			hdl->sio.eof = 1;
 			return 0;
 		}
+		hdl->itmpbuf = malloc(hdl->ibpf);
+		if (hdl->itmpbuf == NULL) {
+			hdl->sio.eof = 1;
+			return 0;
+		}
+		hdl->ipartial = 0;
 	}
 	if ((hdl->sio.mode & SIO_PLAY) && (hdl->sio.mode & SIO_REC)) {
 		err = snd_pcm_link(hdl->ipcm, hdl->opcm);
@@ -426,6 +440,7 @@ sio_alsa_stop(struct sio_hdl *sh)
 			hdl->sio.eof = 1;
 			return 0;
 		}
+		free(hdl->otmpbuf);
 	}
 	if (hdl->sio.mode & SIO_REC) {
 		err = snd_pcm_drop(hdl->ipcm);
@@ -434,6 +449,7 @@ sio_alsa_stop(struct sio_hdl *sh)
 			hdl->sio.eof = 1;
 			return 0;
 		}
+		free(hdl->itmpbuf);
 	}
 	if ((hdl->sio.mode & SIO_PLAY) && (hdl->sio.mode & SIO_REC)) {
 		err = snd_pcm_unlink(hdl->ipcm);
@@ -644,7 +660,6 @@ static int
 sio_alsa_getcap(struct sio_hdl *sh, struct sio_cap *cap)
 {
 	struct sio_alsa_hdl *hdl = (struct sio_alsa_hdl *)sh;
-	snd_pcm_hw_params_t *ihwp, *ohwp;
 	int irates, orates, ifmts, ofmts, ichans, ochans;
 	int i;
 
@@ -901,10 +916,22 @@ sio_alsa_read(struct sio_hdl *sh, void *buf, size_t len)
 {
 	struct sio_alsa_hdl *hdl = (struct sio_alsa_hdl *)sh;
 	snd_pcm_sframes_t n;
-	snd_pcm_uframes_t todo;
+	size_t todo;
 
-	todo = len / hdl->ibpf;
-	while ((n = snd_pcm_readi(hdl->ipcm, buf, todo)) < 0) {
+	if (hdl->ipartial > 0) {
+		todo = hdl->ipartial;
+		if (todo > len)
+			todo = len;
+		memcpy(buf, hdl->itmpbuf + hdl->ibpf - hdl->ipartial, todo);
+		hdl->ipartial -= todo;
+		return todo;
+	} else {
+		if (len < hdl->ibpf) {
+			buf = hdl->itmpbuf;
+			len = hdl->ibpf;
+		}
+	}
+	while ((n = snd_pcm_readi(hdl->ipcm, buf, len / hdl->ibpf)) < 0) {
 		if (n == -EINTR)
 			continue;
 		if (n == -EPIPE || n == -ESTRPIPE) {
@@ -923,29 +950,33 @@ sio_alsa_read(struct sio_hdl *sh, void *buf, size_t len)
 		return 0;
 	}
 	hdl->idelta += n;
-	n *= hdl->ibpf;
-	return n;
+	if (buf == hdl->itmpbuf) {
+		hdl->ipartial = hdl->ibpf;
+		return 0;
+	}
+	return n *= hdl->ibpf;
 }
 
 static size_t
 sio_alsa_write(struct sio_hdl *sh, const void *buf, size_t len)
 {
 	struct sio_alsa_hdl *hdl = (struct sio_alsa_hdl *)sh;
-	ssize_t n, todo;
+	snd_pcm_sframes_t n;
+	size_t todo;
 
-	if (len < hdl->obpf) {
-		/*
-		 * we can't just return, because sio_write() will loop
-		 * forever. Fix this by saving partial samples in a
-		 * temporary buffer.
-		 */
-		DPRINTF("sio_alsa_write: wrong chunk size\n");
-		hdl->sio.eof = 1;
-		return 0;
+	if (len < hdl->obpf || hdl->opartial > 0) {
+		todo = hdl->obpf - hdl->opartial;
+		if (todo > 0) {
+			if (todo > len)
+				todo = len;
+			memcpy(hdl->otmpbuf + hdl->opartial, buf, todo);
+			hdl->opartial += todo;
+			return todo;
+		}
+		len = hdl->obpf;
+		buf = hdl->otmpbuf;
 	}
-	todo = len / hdl->obpf;
-	DPRINTFN(2, "sio_alsa_write: len = %zd, todo = %zd\n", len, todo);
-	while ((n = snd_pcm_writei(hdl->opcm, buf, todo)) < 0) {
+	while ((n = snd_pcm_writei(hdl->opcm, buf, len / hdl->obpf)) < 0) {
 		if (n == -EINTR)
 			continue;
 		if (n == -ESTRPIPE || n == -EPIPE) {
@@ -958,10 +989,13 @@ sio_alsa_write(struct sio_hdl *sh, const void *buf, size_t len)
 		}
 		return 0;
 	}
-	DPRINTFN(2, "sio_alsa_write: wrote %zd\n", n);
 	hdl->odelta += n;
-	n *= hdl->obpf;
-	return n;
+	if (buf == hdl->otmpbuf) {
+		if (n > 0)
+			hdl->opartial = 0;
+		return 0;
+	}
+	return n * hdl->obpf;
 }
 
 void
