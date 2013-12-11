@@ -733,35 +733,22 @@ sio_alsa_setpar(struct sio_hdl *sh, struct sio_par *par)
 	snd_pcm_hw_params_malloc(&ihwp);
 	snd_pcm_sw_params_malloc(&iswp);
 
-	sio_alsa_enctofmt(hdl, &ofmt, par->bits, par->sig, par->le);
-	orate = (par->rate == ~0U) ? 48000 : par->rate;
+	sio_alsa_enctofmt(hdl, &ifmt, par->bits, par->sig, par->le);
+	irate = (par->rate == ~0U) ? 48000 : par->rate;
 	if (par->appbufsz != ~0U) {
-		oround = (par->round != ~0U) ?
+		iround = (par->round != ~0U) ?
 		    par->round : (par->appbufsz + 1) / 2;
-		operiods = par->appbufsz / oround;
-		if (operiods < 2)
-			operiods = 2;
+		iperiods = par->appbufsz / iround;
+		if (iperiods < 2)
+			iperiods = 2;
 	} else if (par->round != ~0U) {
-		oround = par->round;
-		operiods = 2;
+		iround = par->round;
+		iperiods = 2;
 	} else {
-		operiods = 2;
-		oround = orate / 100;
+		iperiods = 2;
+		iround = irate / 100;
 	}
 
-	if (hdl->sio.mode & SIO_PLAY) {
-		hdl->par.pchan = par->pchan;
-		if (!sio_alsa_setpar_hw(hdl->opcm, ohwp,
-			&ofmt, &orate, &hdl->par.pchan,
-			&oround, &operiods)) {
-			hdl->sio.eof = 1;
-			return 0;
-		}
-	}
-	ifmt = ofmt;
-	irate = orate;
-	iround = oround;
-	iperiods = operiods;
 	if (hdl->sio.mode & SIO_REC) {
 		hdl->par.rchan = par->rchan;
 		if (!sio_alsa_setpar_hw(hdl->ipcm, ihwp,
@@ -770,11 +757,24 @@ sio_alsa_setpar(struct sio_hdl *sh, struct sio_par *par)
 			hdl->sio.eof = 1;
 			return 0;
 		}
-		if (!(hdl->sio.mode & SIO_PLAY)) {
-			ofmt = ifmt;
-			orate = irate;
-			oround = iround;
-			operiods = iperiods;
+	}
+	ofmt = ifmt;
+	orate = irate;
+	oround = iround;
+	operiods = iperiods;
+	if (hdl->sio.mode & SIO_PLAY) {
+		hdl->par.pchan = par->pchan;
+		if (!sio_alsa_setpar_hw(hdl->opcm, ohwp,
+			&ofmt, &orate, &hdl->par.pchan,
+			&oround, &operiods)) {
+			hdl->sio.eof = 1;
+			return 0;
+		}
+		if (!(hdl->sio.mode & SIO_REC)) {
+			ifmt = ofmt;
+			irate = orate;
+			iround = oround;
+			iperiods = operiods;
 		}
 	}
 
@@ -798,59 +798,17 @@ sio_alsa_setpar(struct sio_hdl *sh, struct sio_par *par)
 		hdl->sio.eof = 1;
 		return 0;
 	}
-	if (!sio_alsa_fmttopar(hdl, ofmt,
+	if (!sio_alsa_fmttopar(hdl, ifmt,
 		&hdl->par.bits, &hdl->par.sig, &hdl->par.le))
 		return 0;
 	hdl->par.msb = 1;
-	hdl->par.bps = SIO_BPS(par->bits);
-	hdl->par.rate = orate;
-	hdl->par.round = oround;
-	hdl->par.bufsz = oround * operiods;
+	hdl->par.bps = SIO_BPS(hdl->par.bits);
+	hdl->par.rate = irate;
+	hdl->par.round = iround;
+	hdl->par.bufsz = iround * iperiods;
 	hdl->par.appbufsz = hdl->par.bufsz;
 
 	/* software params */
-
-	if (hdl->sio.mode & SIO_PLAY) {
-		err = snd_pcm_sw_params_current(hdl->opcm, oswp);
-		if (err < 0) {
-			DALSA("couldn't get current play params", err);
-			hdl->sio.eof = 1;
-			return 0;
-		}
-		err = snd_pcm_sw_params_set_start_threshold(hdl->opcm,
-		    oswp, hdl->par.bufsz);
-		if (err < 0) {
-			DALSA("couldn't set play start threshold", err);
-			hdl->sio.eof = 1;
-			return 0;
-		}
-		err = snd_pcm_sw_params_set_stop_threshold(hdl->opcm,
-		    oswp, hdl->par.bufsz);
-		if (err < 0) {
-			DALSA("couldn't set play stop threshold", err);
-			hdl->sio.eof = 1;
-			return 0;
-		}
-		err = snd_pcm_sw_params_set_avail_min(hdl->opcm,
-		    oswp, hdl->par.round);
-		if (err < 0) {
-			DALSA("couldn't set play avail min", err);
-			hdl->sio.eof = 1;
-			return 0;
-		}
-		err = snd_pcm_sw_params_set_period_event(hdl->opcm, oswp, 1);
-		if (err < 0) {
-			DALSA("couldn't set play period event", err);
-			hdl->sio.eof = 1;
-			return 0;
-		}
-		err = snd_pcm_sw_params(hdl->opcm, oswp);
-		if (err < 0) {
-			DALSA("couldn't commit play sw params", err);
-			hdl->sio.eof = 1;
-			return 0;
-		}
-	}
 
 	if (hdl->sio.mode & SIO_REC) {
 		err = snd_pcm_sw_params_current(hdl->ipcm, iswp);
@@ -889,6 +847,47 @@ sio_alsa_setpar(struct sio_hdl *sh, struct sio_par *par)
 		err = snd_pcm_sw_params(hdl->ipcm, iswp);
 		if (err < 0) {
 			DALSA("couldn't commit rec sw params", err);
+			hdl->sio.eof = 1;
+			return 0;
+		}
+	}
+	if (hdl->sio.mode & SIO_PLAY) {
+		err = snd_pcm_sw_params_current(hdl->opcm, oswp);
+		if (err < 0) {
+			DALSA("couldn't get current play params", err);
+			hdl->sio.eof = 1;
+			return 0;
+		}
+		err = snd_pcm_sw_params_set_start_threshold(hdl->opcm,
+		    oswp, hdl->par.bufsz);
+		if (err < 0) {
+			DALSA("couldn't set play start threshold", err);
+			hdl->sio.eof = 1;
+			return 0;
+		}
+		err = snd_pcm_sw_params_set_stop_threshold(hdl->opcm,
+		    oswp, hdl->par.bufsz);
+		if (err < 0) {
+			DALSA("couldn't set play stop threshold", err);
+			hdl->sio.eof = 1;
+			return 0;
+		}
+		err = snd_pcm_sw_params_set_avail_min(hdl->opcm,
+		    oswp, hdl->par.round);
+		if (err < 0) {
+			DALSA("couldn't set play avail min", err);
+			hdl->sio.eof = 1;
+			return 0;
+		}
+		err = snd_pcm_sw_params_set_period_event(hdl->opcm, oswp, 1);
+		if (err < 0) {
+			DALSA("couldn't set play period event", err);
+			hdl->sio.eof = 1;
+			return 0;
+		}
+		err = snd_pcm_sw_params(hdl->opcm, oswp);
+		if (err < 0) {
+			DALSA("couldn't commit play sw params", err);
 			hdl->sio.eof = 1;
 			return 0;
 		}
