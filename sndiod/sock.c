@@ -767,7 +767,7 @@ sock_setpar(struct sock *f)
 		max = 1 + rate / d->round;
 		min *= s->round;
 		max *= s->round;
-		appbufsz += s->round - 1;
+		appbufsz += s->round / 2;
 		appbufsz -= appbufsz % s->round;
 		if (appbufsz < min)
 			appbufsz = min;
