@@ -141,7 +141,7 @@ main(int argc, char **argv)
 		writepos += n;
 		if (tick) {
 			fprintf(stderr,
-			    "playpos = %d, writepos = %d, latency = %d\n",
+			    "playpos = %lld, writepos = %lld, latency = %lld\n",
 			    playpos, writepos, writepos - playpos);
 			tick = 0;
 		}

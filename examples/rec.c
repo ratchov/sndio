@@ -126,7 +126,7 @@ main(int argc, char **argv)
 		readpos += n;
 		if (tick) {
 			fprintf(stderr,
-			    "recpos = %d, readpos = %d, latency = %d\n",
+			    "recpos = %lld, readpos = %lld, latency = %lld\n",
 			    recpos, readpos, recpos - readpos);
 			tick = 0;
 		}
