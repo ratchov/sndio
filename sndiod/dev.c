@@ -1971,6 +1971,8 @@ slot_stop(struct slot *s)
 void
 slot_write(struct slot *s)
 {
+	int drop;
+
 	if (s->pstate == SLOT_START && s->mix.buf.used == s->mix.buf.len) {
 #ifdef DEBUG
 		if (log_level >= 4) {
@@ -1981,6 +1983,18 @@ slot_write(struct slot *s)
 		s->pstate = SLOT_READY;
 		slot_ready(s);
 	}
+	drop = s->mix.drop;
+	slot_mix_drop(s);
+	while (drop > s->mix.drop) {
+#ifdef DEBUG
+		if (log_level >= 4) {
+			slot_log(s);
+			log_puts(": catching play block\n");
+		}
+#endif
+		s->ops->fill(s->arg);
+		drop--;
+	}
 }
 
 /*
@@ -1989,5 +2003,18 @@ slot_write(struct slot *s)
 void
 slot_read(struct slot *s)
 {
-	/* nothing yet */
+	int sil;
+
+	sil = s->sub.silence;
+	slot_sub_sil(s);
+	while (sil > s->sub.silence) {
+#ifdef DEBUG
+		if (log_level >= 4) {
+			slot_log(s);
+			log_puts(": catching rec block\n");
+		}
+#endif
+		s->ops->flush(s->arg);
+		sil--;
+	}
 }
