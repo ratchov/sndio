@@ -8,37 +8,40 @@
 #include <sndio.h>
 #include "tools.h"
 
-#define BUFSZ 0x1000
-
 void cb(void *, int);
 void usage(void);
 
-unsigned char buf[BUFSZ];
+unsigned char *buf;
 struct sio_par par;
 char *xstr[] = SIO_XSTRINGS;
 
-long long pos = 0;
-int rlat = 0;
+long long recpos = 0, readpos = 0;
+int tick = 0;
 
 void
 cb(void *addr, int delta)
 {
-	pos += delta;
-	rlat += delta;
-	fprintf(stderr,
-	    "cb: delta = %+7d, rlat = %+7d, pos = %+7lld\n",
-	    delta, rlat, pos);
+	int bytes;
+
+	bytes = delta * (int)(par.bps * par.rchan);
+	// fprintf(stderr, "advanced by %d\n", bytes);
+	recpos += bytes;
+	tick = 1;
 }
 
 void
-usage(void) {
-	fprintf(stderr, "usage: rec [-r rate] [-c nchan] [-e enc]\n");
+usage(void)
+{
+	fprintf(stderr,
+	    "usage: rec [-b size] [-c nchan] [-e enc] [-r rate]\n");
 }
- 
+
 int
-main(int argc, char **argv) {
+main(int argc, char **argv)
+{
 	int ch;
 	struct sio_hdl *hdl;
+	size_t bufsz;
 	ssize_t n;
 	
 	/*
@@ -48,7 +51,7 @@ main(int argc, char **argv) {
 	par.sig = 1;
 	par.bits = 16;
 	par.rchan = 2;
-	par.rate = 44100;
+	par.rate = 48000;
 
 	while ((ch = getopt(argc, argv, "r:c:e:b:x:")) != -1) {
 		switch(ch) {
@@ -102,17 +105,31 @@ main(int argc, char **argv) {
 		fprintf(stderr, "sio_getpar() failed\n");
 		exit(1);
 	}
+	bufsz = par.bps * par.rchan * par.round;
+	buf = malloc(bufsz);
+	if (buf == NULL) {
+		fprintf(stderr, "failed to allocate %zu bytes\n", bufsz);
+		exit(1);
+	}
+	fprintf(stderr, "%zu bytes buffer, max latency %u frames\n",
+	    bufsz, par.bufsz);
 	if (!sio_start(hdl)) {
 		fprintf(stderr, "sio_start() failed\n");
 		exit(1);
 	}
 	for (;;) {
-		n = sio_read(hdl, buf, BUFSZ);
+		n = sio_read(hdl, buf, bufsz);
 		if (n == 0) {
 			fprintf(stderr, "sio_write: failed\n");
 			exit(1);
 		}
-		rlat -= n / (int)(par.bps * par.rchan);
+		readpos += n;
+		if (tick) {
+			fprintf(stderr,
+			    "recpos = %d, readpos = %d, latency = %d\n",
+			    recpos, readpos, recpos - readpos);
+			tick = 0;
+		}
 		if (write(STDOUT_FILENO, buf, n) < 0) {
 			perror("stdout");
 			exit(1);

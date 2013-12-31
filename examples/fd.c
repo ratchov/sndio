@@ -27,18 +27,14 @@ char *xstr[] = SIO_XSTRINGS;
 struct sio_par par;
 struct buf playbuf, recbuf;
 
-long long pos = 0;
-int plat = 0, rlat = 0;
+long long hwpos, wrpos, rdpos;
+int tick = 0;
 
 void
 cb(void *addr, int delta)
 {
-	pos += delta;
-	fprintf(stderr, "cb: delta = %+7d, pos = %+7lld, "
-	    "plat = %+7d, rlat = %+7d\n", 
-	    delta, pos, plat, rlat);
-	plat -= delta;
-	rlat += delta;
+	hwpos += delta;
+	tick = 1;
 }
 
 /*
@@ -130,7 +126,7 @@ buf_rec(struct buf *buf, struct sio_hdl *hdl)
 			fprintf(stderr, "rec: bad align: %u bytes\n", n);
 			exit(1);
 		}
-		rlat -= n / bpf;
+		rdpos += n;
 		buf->used += n;
 		done += n;
 	}
@@ -165,7 +161,7 @@ buf_play(struct buf *buf, struct sio_hdl *hdl)
 			fprintf(stderr, "play: bad align: %u bytes\n", n);
 			exit(1);
 		}
-		plat += n / bpf;
+		wrpos += n;
 		//write(STDOUT_FILENO, buf->data + buf->start, n);
 		buf->used  -= n;
 		buf->start += n;
@@ -180,8 +176,8 @@ void
 usage(void)
 {
 	fprintf(stderr,
-	    "usage: fd [-v] [-r rate] [-c ichan] [-C ochan] [-e enc] "
-	    "[-i file] [-o file]\n");
+	    "usage: fd [-v] [-b size] [-c pchan] [-C rchan] [-e enc]\n"
+	    "          [-i file] [-o file] [-r rate] [-x mode]\n");
 }
  
 int
@@ -206,7 +202,7 @@ main(int argc, char **argv)
 	par.sig = 1;
 	par.bits = 16;
 	par.pchan = par.rchan = 2;
-	par.rate = 44100;
+	par.rate = 48000;
 
 	while ((ch = getopt(argc, argv, "r:c:C:e:i:o:b:x:")) != -1) {
 		switch(ch) {
@@ -218,19 +214,21 @@ main(int argc, char **argv)
 			break;
 		case 'c':
 			if (sscanf(optarg, "%u", &par.pchan) != 1) {
-				fprintf(stderr, "%s: bad play chans\n", optarg);
+				fprintf(stderr, "%s: bad play chans\n",
+				    optarg);
 				exit(1);
 			}
 			break;
 		case 'C':
 			if (sscanf(optarg, "%u", &par.rchan) != 1) {
-				fprintf(stderr, "%s: bad rec chans\n", optarg);
+				fprintf(stderr, "%s: bad rec chans\n",
+				    optarg);
 				exit(1);
 			}
 			break;
 		case 'e':
 			if (!sio_strtoenc(&par, optarg)) {
-				fprintf(stderr, "%s: unknown encoding\n", optarg);
+				fprintf(stderr, "%s: bad encoding\n", optarg);
 				exit(1);
 			}
 			break;
@@ -248,7 +246,8 @@ main(int argc, char **argv)
 			break;
 		case 'x':
 			for (par.xrun = 0;; par.xrun++) {
-				if (par.xrun == sizeof(xstr) / sizeof(char *)) {
+				if (par.xrun ==
+				    sizeof(xstr) / sizeof(char *)) {
 					fprintf(stderr, 
 					    "%s: bad xrun mode\n", optarg);
 					exit(1);
@@ -327,7 +326,15 @@ main(int argc, char **argv)
 		if (revents & POLLHUP) {
 			fprintf(stderr, "device hangup\n");
 			exit(0);
-		}				
+		}
+		if (tick) {
+			fprintf(stderr, "pos = %+7lld, "
+			    "plat = %+7lld, rlat = %+7lld\n", 
+			    hwpos,
+			    wrpos - hwpos * par.pchan * par.bps,
+			    hwpos * par.rchan * par.bps - rdpos);
+			tick = 0;
+		}
 		if (revents & POLLIN) {
 			buf_rec(&recbuf, hdl);
 			buf_write(&recbuf, recfd);

@@ -8,41 +8,41 @@
 #include <sndio.h>
 #include "tools.h"
 
-#define BUFSZ 0x100
-
 void cb(void *, int);
 void usage(void);
 
-unsigned char buf[BUFSZ];
+unsigned char *buf;
 struct sio_par par;
 char *xstr[] = SIO_XSTRINGS;
 
-long long realpos = 0, playpos = 0;
+long long playpos = 0, writepos = 0;
+int tick = 0;
 
 void
 cb(void *addr, int delta)
 {
-	int bytes = delta * (int)(par.bps * par.pchan);
+	int bytes;
 
-	realpos += bytes;
-
-	fprintf(stderr,
-	    "cb: bytes = %+7d, latency = %+7lld, "
-	    "realpos = %+7lld, bufused = %+7lld\n",
-	    bytes, playpos - realpos,
-	    realpos, (realpos < 0) ? playpos : playpos - realpos);
+	bytes = delta * (int)(par.bps * par.pchan);
+	/* fprintf(stderr, "advanced by %d\n", bytes); */
+	playpos += bytes;
+	tick = 1;
 }
 
 void
-usage(void) {
-	fprintf(stderr, "usage: play [-r rate] [-c nchan] [-e enc]\n");
+usage(void)
+{
+	fprintf(stderr,
+	    "usage: play [-b size] [-c nchan] [-e enc] [-r rate]\n");
 }
- 
+
 int
-main(int argc, char **argv) {
+main(int argc, char **argv)
+{
 	int ch;
 	struct sio_hdl *hdl;
 	ssize_t n, len;
+	size_t bufsz;
 	
 	/*
 	 * defaults parameters
@@ -51,7 +51,7 @@ main(int argc, char **argv) {
 	par.sig = 1;
 	par.bits = 16;
 	par.pchan = 2;
-	par.rate = 44100;
+	par.rate = 48000;
 
 	while ((ch = getopt(argc, argv, "r:c:e:b:x:")) != -1) {
 		switch(ch) {
@@ -111,27 +111,40 @@ main(int argc, char **argv) {
 		fprintf(stderr, "sio_getpar() failed\n");
 		exit(1);
 	}
+	bufsz = par.bps * par.pchan * par.round;
+	buf = malloc(bufsz);
+	if (buf == NULL) {
+		fprintf(stderr, "failed to allocate %zu bytes\n", bufsz);
+		exit(1);
+	}
+	fprintf(stderr, "%zu bytes buffer, max latency %u frames\n",
+	    bufsz, par.bufsz);
 	if (!sio_start(hdl)) {
 		fprintf(stderr, "sio_start() failed\n");
 		exit(1);
 	}
-	fprintf(stderr, "using %u bytes per buffer, rounding to %u\n",
-	    par.bufsz * par.bps * par.pchan,
-	    par.round * par.bps * par.pchan);
 	for (;;) {
-		len = read(STDIN_FILENO, buf, BUFSZ);
+		len = read(STDIN_FILENO, buf, bufsz);
 		if (len < 0) {
 			perror("stdin");
 			exit(1);
 		}
-		if (len == 0)
+		if (len == 0) {
+			fprintf(stderr, "eof\n");
 			break;
+		}
 		n = sio_write(hdl, buf, len);
 		if (n == 0) {
 			fprintf(stderr, "sio_write: failed\n");
 			exit(1);
 		}
-		playpos += n;
+		writepos += n;
+		if (tick) {
+			fprintf(stderr,
+			    "playpos = %d, writepos = %d, latency = %d\n",
+			    playpos, writepos, writepos - playpos);
+			tick = 0;
+		}
 	}
 	sio_close(hdl);
 	return 0;
