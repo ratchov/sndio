@@ -1,0 +1,63 @@
+.\"	$OpenBSD$
+.\"
+.\" Copyright (c) 2010-2012 Alexandre Ratchov <alex@caoua.org>
+.\"
+.\" Permission to use, copy, modify, and distribute this software for any
+.\" purpose with or without fee is hereby granted, provided that the above
+.\" copyright notice and this permission notice appear in all copies.
+.\"
+.\" THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+.\" WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+.\" MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+.\" ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+.\" WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+.\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+.\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+.\"
+.Dd November 29, 2010
+.Dt XVOLKEYS 1
+.Os
+.Sh NAME
+.Nm xvolkeys
+.Nd hot-keys in X to control sndiod master volume
+.Sh SYNOPSIS
+.Nm xvolkeys
+.Op Fl D
+.Op Fl v
+.Op Fl f Ar port
+.Sh DESCRIPTION
+The
+.Nm
+increments or
+decrements the
+.Xr sndiod 1
+master volume whenever the "+" and "-" keys
+are pressed while the Control and Alt keys are held down.
+It is meant to be started as background process by
+.Xr xinit 1
+or
+.Xr xdm 1
+session startup scripts.
+.Pp
+The options are as follows:
+.Bl -tag -width Ds
+.It Fl D
+Daemonize.
+.It Fl f Ar dev
+MIDI port to use, default is
+.Pa snd/0
+.It Fl v
+Increase log verbosity.
+.El
+.Sh SEE ALSO
+.Xr sndiod 1
+.Xr sndio 7
+.Sh BUGS
+The
+.Nm
+utility keeps the audio device open.
+If the device is disconnected or
+.Xr sndiod 1
+is restarted, the
+.Nm
+process terminates.
