@@ -49,6 +49,13 @@ unsigned char dumpreq[] = {
 	SYSEX_END
 };
 
+/*
+ * X bits
+ */
+Display	*dpy;
+KeyCode inc_code, dec_code;
+KeySym *inc_map, *dec_map;
+
 void
 midi_setvol(int vol)
 {
@@ -85,12 +92,6 @@ midi_sysex(unsigned char *msg, unsigned len)
 {
 	int i;
 
-	if (verbose >= 2) {
-		fprintf(stderr, "sysex: ");
-		for (i = 0; i < len; i++)
-			fprintf(stderr, " %02x", msg[i]);
-		fprintf(stderr, "\n");
-	}
 	if (len == 8 &&
 	    msg[1] == SYSEX_TYPE_RT &&
 	    msg[3] == SYSEX_CONTROL &&
@@ -132,6 +133,60 @@ midi_parse(unsigned char *mbuf, unsigned len)
 }
 
 void
+grab_keys(void)
+{
+	unsigned int i, scr, nscr;
+	int nret;
+
+	if (verbose)
+		fprintf(stderr, "grabbing keys\n");
+	inc_code = XKeysymToKeycode(dpy, KEY_INC);
+	inc_map = XGetKeyboardMapping(dpy, inc_code, 1, &nret);
+	if (nret <= ShiftMask) {
+		fprintf(stderr, "Couldn't get keymap for '+' key\n");
+		exit(1);
+	}
+		
+	dec_code = XKeysymToKeycode(dpy, KEY_DEC);
+	dec_map = XGetKeyboardMapping(dpy, dec_code, 1, &nret);
+	if (nret <= ShiftMask) {
+		fprintf(stderr, "Couldn't get keymap for '-' key\n");
+		exit(1);
+	}
+
+	nscr = ScreenCount(dpy);
+	for (i = 0; i <= 0xff; i++) {
+		if ((i & MODMASK) != 0)
+			continue;
+		for (scr = 0; scr != nscr; scr++) {
+			
+			XGrabKey(dpy, inc_code, i | MODMASK,
+			    RootWindow(dpy, scr), 1,
+			    GrabModeAsync, GrabModeAsync);
+			XGrabKey(dpy, dec_code, i | MODMASK,
+			    RootWindow(dpy, scr), 1,
+			    GrabModeAsync, GrabModeAsync);
+		}
+	}
+}
+
+void
+ungrab_keys(void)
+{
+	unsigned int scr, nscr;
+
+	if (verbose)
+		fprintf(stderr, "ungrabbing keys\n");
+
+	XFree(inc_map);
+	XFree(dec_map);
+
+	nscr = ScreenCount(dpy);
+	for (scr = 0; scr != nscr; scr++)
+		XUngrabKey(dpy, AnyKey, AnyModifier, RootWindow(dpy, scr));
+}
+
+void
 usage(void)
 {
 	fprintf(stderr, "usage: xvolkeys [-Dv] [-f device]\n");
@@ -145,12 +200,9 @@ main(int argc, char **argv)
 	unsigned char msg[MIDIBUFSZ];
 	char *devname;
 	struct pollfd *pfds;
-	unsigned int i, scr, nscr;
-	Display	*dpy;
-	KeyCode inc_code, dec_code;
-	KeySym *inc_map, *dec_map;
+	unsigned int i, scr;
 	XEvent xev;
-	int c, nfds, n, nret;
+	int c, nfds, n;
 	int background;
 
 	/*
@@ -191,36 +243,8 @@ main(int argc, char **argv)
 		exit(1);
 	}
 
-	inc_code = XKeysymToKeycode(dpy, KEY_INC);
-	inc_map = XGetKeyboardMapping(dpy, inc_code, 1, &nret);
-	if (nret <= ShiftMask) {
-		fprintf(stderr, "Couldn't get keymap for '+' key\n");
-		exit(1);
-	}
-
-	dec_code = XKeysymToKeycode(dpy, KEY_DEC);
-	dec_map = XGetKeyboardMapping(dpy, dec_code, 1, &nret);
-	if (nret <= ShiftMask) {
-		fprintf(stderr, "Couldn't get keymap for '-' key\n");
-		exit(1);
-	}
-
-	nscr = ScreenCount(dpy);
-	for (i = 0; i <= 0xff; i++) {
-		if ((i & MODMASK) != 0)
-			continue;
-		for (scr = 0; scr != nscr; scr++) {
-			XGrabKey(dpy, inc_code, i | MODMASK,
-			    RootWindow(dpy, scr), 1,
-			    GrabModeAsync, GrabModeAsync);
-			XGrabKey(dpy, dec_code, i | MODMASK,
-			    RootWindow(dpy, scr), 1,
-			    GrabModeAsync, GrabModeAsync);
-		}
-	}
-
 	/* mask non-key events for each screan */
-	for (scr = 0; scr != nscr; scr++)
+	for (scr = 0; scr != ScreenCount(dpy); scr++)
 		XSelectInput(dpy, RootWindow(dpy, scr), KeyPress);
 
 	/*
@@ -230,6 +254,8 @@ main(int argc, char **argv)
 		fprintf(stderr, "Failed to request master volume\n");
 		exit(1);
 	}
+
+	grab_keys();
 
 	pfds = malloc(sizeof(struct pollfd) * (mio_nfds(hdl) + 1));
 	if (pfds == NULL) {
@@ -248,6 +274,14 @@ main(int argc, char **argv)
 	while (1) {
 		while (XPending(dpy)) {
 			XNextEvent(dpy, &xev);
+			if (xev.type == MappingNotify) {
+				if (xev.xmapping.request != MappingKeyboard)
+					continue;
+				if (verbose)
+					fprintf(stderr, "keyboard remapped\n");
+				ungrab_keys();
+				grab_keys();
+			}
 			if (xev.type != KeyPress)
 				continue;
 			if (xev.xkey.keycode == inc_code &&
