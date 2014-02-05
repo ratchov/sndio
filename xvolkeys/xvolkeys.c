@@ -189,7 +189,7 @@ ungrab_keys(void)
 void
 usage(void)
 {
-	fprintf(stderr, "usage: xvolkeys [-Dv] [-f device]\n");
+	fprintf(stderr, "usage: xvolkeys [-Dv] [-q port]\n");
 	exit(1);
 }
 
@@ -211,7 +211,7 @@ main(int argc, char **argv)
 	devname = "snd/0";
 	verbose = 0;
 	background = 0;
-	while ((c = getopt(argc, argv, "Df:v")) != -1) {
+	while ((c = getopt(argc, argv, "Dq:v")) != -1) {
 		switch (c) {
 		case 'D':
 			background = 1;
@@ -219,7 +219,7 @@ main(int argc, char **argv)
 		case 'v':
 			verbose++;
 			break;
-		case 'f':
+		case 'q':
 			devname = optarg;
 			break;
 		default:

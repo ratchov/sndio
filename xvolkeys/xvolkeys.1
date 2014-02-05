@@ -24,7 +24,7 @@
 .Nm xvolkeys
 .Op Fl D
 .Op Fl v
-.Op Fl f Ar port
+.Op Fl q Ar port
 .Sh DESCRIPTION
 The
 .Nm
@@ -43,8 +43,10 @@ The options are as follows:
 .Bl -tag -width Ds
 .It Fl D
 Daemonize.
-.It Fl f Ar dev
-MIDI port to use, default is
+.It Fl q Ar port
+Control MIDI port to use to connect to
+.Xr sndiod 1
+daemon, the default is
 .Pa snd/0
 .It Fl v
 Increase log verbosity.
