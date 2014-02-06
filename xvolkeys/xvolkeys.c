@@ -1,3 +1,19 @@
+/*	$OpenBSD$	*/
+/*
+ * Copyright (c) 2014 Alexandre Ratchov <alex@caoua.org>
+ *
+ * Permission to use, copy, modify, and distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
 #include <poll.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -33,6 +49,8 @@
 /*
  * midi parser state
  */
+char *port;
+struct pollfd pfds[16];
 struct mio_hdl *hdl;
 unsigned int midx;
 unsigned char mev[MIDI_MSGMAX];
@@ -41,7 +59,7 @@ int master = MIDI_MAXVOL;
 int verbose;
 
 unsigned char dumpreq[] = {
-	SYSEX_START,	
+	SYSEX_START,
 	SYSEX_TYPE_EDU,
 	0,
 	SYSEX_AUCAT,
@@ -56,18 +74,44 @@ Display	*dpy;
 KeyCode inc_code, dec_code;
 KeySym *inc_map, *dec_map;
 
+int
+midi_connect(void)
+{
+	hdl = mio_open(port, MIO_IN | MIO_OUT, 0);
+	if (hdl == NULL) {
+		if (verbose)
+			fprintf(stderr, "%s: couldn't open MIDI port\n", port);
+		return 0;
+	}
+	return 1;
+}
+
+void
+midi_disconnect(void)
+{
+	if (!mio_eof(hdl))
+		return;
+	if (verbose)
+		fprintf(stderr, "%s: MIDI port disconnected\n");
+	mio_close(hdl);
+	hdl = NULL;
+}
+
 void
 midi_setvol(int vol)
 {
 	struct sysex msg;
 
 	if (vol > MIDI_MAXVOL)
-		vol = MIDI_MAXVOL;	
+		vol = MIDI_MAXVOL;
 	if (vol < 0)
 		vol = 0;
 	if (verbose)
-		fprintf(stderr, "setvol(%d)\n", vol);
+		fprintf(stderr, "%s: setting volume to %d\n", port, vol);
+	if (!midi_connect())
+		return;
 	if (master != vol) {
+		master = vol;
 		msg.start = SYSEX_START;
 		msg.type = SYSEX_TYPE_RT;
 		msg.dev = SYSEX_DEV_ANY;
@@ -76,11 +120,10 @@ midi_setvol(int vol)
 		msg.u.master.fine = 0;
 		msg.u.master.coarse = vol;
 		msg.u.master.end = SYSEX_END;
-		if (mio_write(hdl, &msg, SYSEX_SIZE(master)) == 0) {
-			fprintf(stderr, "Couldn't write volume message\n");
-			exit(1);
+		if (hdl) {
+			mio_write(hdl, &msg, SYSEX_SIZE(master));
+			midi_disconnect();
 		}
-		master = vol;
 	}
 }
 
@@ -98,7 +141,10 @@ midi_sysex(unsigned char *msg, unsigned len)
 	    msg[4] == SYSEX_MASTER) {
 		if (master != msg[6]) {
 			master = msg[6];
-			fprintf(stderr, "master -> %d\n", master);
+			if (verbose) {
+				fprintf(stderr, "%s: volume is %d\n",
+				    port, master);
+			}
 		}
 	}
 }
@@ -146,7 +192,7 @@ grab_keys(void)
 		fprintf(stderr, "Couldn't get keymap for '+' key\n");
 		exit(1);
 	}
-		
+
 	dec_code = XKeysymToKeycode(dpy, KEY_DEC);
 	dec_map = XGetKeyboardMapping(dpy, dec_code, 1, &nret);
 	if (nret <= ShiftMask) {
@@ -159,7 +205,7 @@ grab_keys(void)
 		if ((i & MODMASK) != 0)
 			continue;
 		for (scr = 0; scr != nscr; scr++) {
-			
+
 			XGrabKey(dpy, inc_code, i | MODMASK,
 			    RootWindow(dpy, scr), 1,
 			    GrabModeAsync, GrabModeAsync);
@@ -198,8 +244,6 @@ main(int argc, char **argv)
 {
 #define MIDIBUFSZ 0x100
 	unsigned char msg[MIDIBUFSZ];
-	char *devname;
-	struct pollfd *pfds;
 	unsigned int i, scr;
 	XEvent xev;
 	int c, nfds, n;
@@ -208,7 +252,7 @@ main(int argc, char **argv)
 	/*
 	 * parse command line options
 	 */
-	devname = "snd/0";
+	port = "snd/0";
 	verbose = 0;
 	background = 0;
 	while ((c = getopt(argc, argv, "Dq:v")) != -1) {
@@ -220,7 +264,7 @@ main(int argc, char **argv)
 			verbose++;
 			break;
 		case 'q':
-			devname = optarg;
+			port = optarg;
 			break;
 		default:
 			usage();
@@ -230,12 +274,6 @@ main(int argc, char **argv)
 	argv += optind;
 	if (argc > 0)
 		usage();
-
-	hdl = mio_open("snd/0", MIO_IN | MIO_OUT, 0);
-	if (hdl == NULL) {
-		fprintf(stderr, "Couldn't open MIDI control device\n");
-		exit(1);
-	}	
 
 	dpy = XOpenDisplay(NULL);
 	if (dpy == 0) {
@@ -247,21 +285,17 @@ main(int argc, char **argv)
 	for (scr = 0; scr != ScreenCount(dpy); scr++)
 		XSelectInput(dpy, RootWindow(dpy, scr), KeyPress);
 
+	(void)midi_connect();
+
 	/*
 	 * request initial volume
 	 */
-	if (mio_write(hdl, dumpreq, sizeof(dumpreq)) != sizeof(dumpreq)) {
-		fprintf(stderr, "Failed to request master volume\n");
-		exit(1);
+	if (hdl) {
+		mio_write(hdl, dumpreq, sizeof(dumpreq));
+		midi_disconnect();
 	}
 
 	grab_keys();
-
-	pfds = malloc(sizeof(struct pollfd) * (mio_nfds(hdl) + 1));
-	if (pfds == NULL) {
-		fprintf(stderr, "Failed to allocate pollfd structures\n");
-		exit(1);
-	}
 
 	if (background) {
 		verbose = 0;
@@ -292,21 +326,22 @@ main(int argc, char **argv)
 				midi_setvol(master - 5);
 			}
 		}
-		nfds = mio_pollfd(hdl, pfds, POLLIN);
+		nfds = (hdl != NULL) ? mio_pollfd(hdl, pfds, POLLIN) : 0;
 		pfds[nfds].fd = ConnectionNumber(dpy);
 		pfds[nfds].events = POLLIN;
 		while (poll(pfds, nfds + 1, -1) < 0 && errno == EINTR)
 			; /* nothing */
-		if (mio_revents(hdl, pfds) & POLLIN) {
-			n = mio_read(hdl, msg, MIDIBUFSZ);
-			if (n == 0)
-				break;
-			midi_parse(msg, n);
+		if (hdl) {
+			if (mio_revents(hdl, pfds) & POLLIN) {
+				n = mio_read(hdl, msg, MIDIBUFSZ);
+				midi_parse(msg, n);
+			}
 		}
 	}
 	XFree(inc_map);
 	XFree(dec_map);
 	XCloseDisplay(dpy);
-	mio_close(hdl);
+	if (hdl)
+		mio_close(hdl);
 	return 0;
 }
