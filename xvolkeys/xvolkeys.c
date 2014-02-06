@@ -80,6 +80,8 @@ KeySym *inc_map, *dec_map;
 int
 midi_connect(void)
 {
+	if (hdl != NULL)
+		return;
 	hdl = mio_open(port, MIO_IN | MIO_OUT, 0);
 	if (hdl == NULL) {
 		if (verbose)
