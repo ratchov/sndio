@@ -74,6 +74,9 @@ Display	*dpy;
 KeyCode inc_code, dec_code;
 KeySym *inc_map, *dec_map;
 
+/*
+ * connect to sndiod
+ */
 int
 midi_connect(void)
 {
@@ -86,6 +89,9 @@ midi_connect(void)
 	return 1;
 }
 
+/*
+ * if there's an error, close connection to sndiod
+ */
 void
 midi_disconnect(void)
 {
@@ -97,6 +103,9 @@ midi_disconnect(void)
 	hdl = NULL;
 }
 
+/*
+ * send master volume message and to the server
+ */
 void
 midi_setvol(int vol)
 {
@@ -133,8 +142,6 @@ midi_setvol(int vol)
 void
 midi_sysex(unsigned char *msg, unsigned len)
 {
-	int i;
-
 	if (len == 8 &&
 	    msg[1] == SYSEX_TYPE_RT &&
 	    msg[3] == SYSEX_CONTROL &&
@@ -149,6 +156,9 @@ midi_sysex(unsigned char *msg, unsigned len)
 	}
 }
 
+/*
+ * decode midi bytes
+ */
 void
 midi_parse(unsigned char *mbuf, unsigned len)
 {
@@ -178,6 +188,9 @@ midi_parse(unsigned char *mbuf, unsigned len)
 	}
 }
 
+/*
+ * register hot-keys in X
+ */
 void
 grab_keys(void)
 {
@@ -216,6 +229,9 @@ grab_keys(void)
 	}
 }
 
+/*
+ * unregister hot-keys
+ */
 void
 ungrab_keys(void)
 {
@@ -244,7 +260,7 @@ main(int argc, char **argv)
 {
 #define MIDIBUFSZ 0x100
 	unsigned char msg[MIDIBUFSZ];
-	unsigned int i, scr;
+	unsigned int scr;
 	XEvent xev;
 	int c, nfds, n;
 	int background;
