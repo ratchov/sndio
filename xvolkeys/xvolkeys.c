@@ -98,7 +98,7 @@ midi_disconnect(void)
 	if (!mio_eof(hdl))
 		return;
 	if (verbose)
-		fprintf(stderr, "%s: MIDI port disconnected\n");
+		fprintf(stderr, "%s: MIDI port disconnected\n", port);
 	mio_close(hdl);
 	hdl = NULL;
 }
@@ -202,14 +202,14 @@ grab_keys(void)
 	inc_code = XKeysymToKeycode(dpy, KEY_INC);
 	inc_map = XGetKeyboardMapping(dpy, inc_code, 1, &nret);
 	if (nret <= ShiftMask) {
-		fprintf(stderr, "Couldn't get keymap for '+' key\n");
+		fprintf(stderr, "couldn't get keymap for '+' key\n");
 		exit(1);
 	}
 
 	dec_code = XKeysymToKeycode(dpy, KEY_DEC);
 	dec_map = XGetKeyboardMapping(dpy, dec_code, 1, &nret);
 	if (nret <= ShiftMask) {
-		fprintf(stderr, "Couldn't get keymap for '-' key\n");
+		fprintf(stderr, "couldn't get keymap for '-' key\n");
 		exit(1);
 	}
 
@@ -263,7 +263,7 @@ main(int argc, char **argv)
 	unsigned int scr;
 	XEvent xev;
 	int c, nfds, n;
-	int background;
+	int background, revents;
 
 	/*
 	 * parse command line options
@@ -348,7 +348,10 @@ main(int argc, char **argv)
 		while (poll(pfds, nfds + 1, -1) < 0 && errno == EINTR)
 			; /* nothing */
 		if (hdl) {
-			if (mio_revents(hdl, pfds) & POLLIN) {
+			revents = mio_revents(hdl, pfds);
+			if (revents & POLLHUP)
+				midi_disconnect();
+			else if (revents & POLLIN) {
 				n = mio_read(hdl, msg, MIDIBUFSZ);
 				midi_parse(msg, n);
 			}
