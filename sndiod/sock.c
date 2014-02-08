@@ -616,7 +616,9 @@ sock_setpar(struct sock *f)
 	struct slot *s = f->slot;
 	struct dev *d = s->dev;
 	struct amsg_par *p = &f->rmsg.u.par;
-	unsigned int min, max, rate, pchan, rchan, appbufsz;
+	unsigned int min, max;
+	uint32_t rate, appbufsz;
+	uint16_t pchan, rchan;
 
 	rchan = ntohs(p->rchan);
 	pchan = ntohs(p->pchan);
