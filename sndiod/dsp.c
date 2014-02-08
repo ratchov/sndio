@@ -622,15 +622,13 @@ cmap_copy(struct cmap *p, void *in, void *out, int vol, int todo)
 	 */
 	for (i = todo; i > 0; i--) {
 		idata += istart;
-		for (j = ostart; j > 0; j--)
-			*odata++ = 0x1111;
+		odata += ostart;
 		for (j = nch; j > 0; j--) {
 			*odata = ADATA_MUL(*idata, v);
 			odata++;
 			idata++;
 		}
-		for (j = onext; j > 0; j--)
-			*odata++ = 0x2222;
+		odata += onext;
 		idata += inext;
 	}
 }
