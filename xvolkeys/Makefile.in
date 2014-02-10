@@ -24,18 +24,17 @@ MAN1_DIR = @mandir@/man1
 # programs to build
 #
 PROG = xvolkeys
-MAN1 = xvolkeys.1
 
-all:		${PROG} ${MAN1}
+all:		${PROG}
 
 install:
 		mkdir -p ${DESTDIR}${BIN_DIR} ${DESTDIR}${MAN1_DIR}
-		cp xvolkeys ${DESTDIR}${BIN_DIR}
-		cp xvolkeys.1 ${DESTDIR}${MAN1_DIR}
+		cp ${PROG} ${DESTDIR}${BIN_DIR}
+		cp ${PROG:=.1} ${DESTDIR}${MAN1_DIR}
 
 uninstall:
 		cd ${DESTDIR}${BIN_DIR} && rm -f ${PROG}
-		cd ${DESTDIR}${MAN1_DIR} && rm -f ${MAN1}
+		cd ${DESTDIR}${MAN1_DIR} && rm -f ${PROG:=.1}
 
 clean:
 		rm -f -- *.o xvolkeys

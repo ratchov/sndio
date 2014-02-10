@@ -1,32 +1,30 @@
-all:
-	cd libsndio && ${MAKE}
-	cd sndiod && ${MAKE}
-	cd sndioctl && ${MAKE}
-	cd aucat && ${MAKE}
-	cd examples && ${MAKE}
+SUBDIRS = @subdirs@
 
-clean:
-	cd libsndio && ${MAKE} clean
-	cd aucat && ${MAKE} clean
-	cd sndiod && ${MAKE} clean
-	cd sndioctl && ${MAKE} clean
-	cd examples && ${MAKE} clean
+all:
+	for i in ${SUBDIRS}; do (cd $$i && ${MAKE}); done
 
 install:
-	cd libsndio && ${MAKE} install
-	cd sndiod && ${MAKE} install
-	cd sndioctl && ${MAKE} install
-	cd aucat && ${MAKE} install
+	for i in ${SUBDIRS}; do (cd $$i && ${MAKE}); done
 
 uninstall:
 	cd aucat && ${MAKE} uninstall
 	cd sndioctl && ${MAKE} uninstall
 	cd sndiod && ${MAKE} uninstall
 	cd libsndio && ${MAKE} uninstall
+	cd xvolkeys && ${MAKE} uninstall
+
+clean:
+	cd aucat && ${MAKE} clean
+	cd sndioctl && ${MAKE} clean
+	cd sndiod && ${MAKE} clean
+	cd libsndio && ${MAKE} clean
+	cd examples && ${MAKE} clean
+	cd xvolkeys && ${MAKE} clean
 
 distclean:	clean
 	rm -f \
-		Makefile libsndio/Makefile \
-		sndiod/Makefile sndioctl/Makefile \
-		aucat/Makefile examples/Makefile \
+		Makefile aucat/Makefile sndiod/Makefile \
+		libsndio/Makefile sndioctl/Makefile \
+		xvolkeys/Makefile \
+		examples/Makefile \
 		contrib/init.d.sndiod

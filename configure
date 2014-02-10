@@ -20,6 +20,8 @@ Usage: configure [options]
 --disable-sun			disable sun audio backend
 --enable-rmidi			enable character device midi backend [$rmidi]
 --disable-rmidi			disable character device midi backend
+--enable-xvolkeys		build xvolkeys utility (requires X) [$xvolkeys]
+--disable-xvolkeys		don't build xvolkeys
 END
 }
 
@@ -33,6 +35,7 @@ sun=no					# do we want sun support ?
 rmidi=no				# do we want support for raw char dev ?
 precision=16				# aucat/sndiod arithmetic precision
 user=_sndio				# non-privileged user for sndio daemon
+xvolkeys=yes				# build xvolkeys ?
 unset vars				# variables passed as arguments
 unset bindir				# path where to install binaries
 unset datadir				# path where to install doc
@@ -41,6 +44,11 @@ unset includedir			# path where to install header file
 unset libdir				# path where to install library
 unset defs				# no extra #defines
 unset ldadd				# no extra libraries (-l options)
+
+#
+# components to build
+#
+subdirs="libsndio sndioctl sndiod aucat"
 
 #
 # guess OS-specific parameters
@@ -111,6 +119,12 @@ for i; do
 	--privsep-user=*)
 		user="${i#--privsep-user=}"
 		shift;;
+	--enable-xvolkeys)
+		xvolkeys=yes
+		shift;;
+	--disable-xvolkeys)
+		xvolkeys=no
+		shift;;
 	--precision=*)
 		precision="${i#--precision=}"
 		if [ "$precision" != 16 -a "$precision" != 24 ]; then
@@ -159,6 +173,13 @@ if [ $rmidi = yes ]; then
 	defs="$defs -DUSE_RMIDI"
 fi
 
+#
+# include xvolkeys to the build
+#
+if [ $xvolkeys = yes ]; then
+	subdirs="$subdirs xvolkeys"
+fi 
+
 for f in Makefile aucat/Makefile sndiod/Makefile \
 libsndio/Makefile sndioctl/Makefile xvolkeys/Makefile \
 examples/Makefile \
@@ -176,6 +197,7 @@ do
 	-e "s:@vars@:${vars}:" \
 	-e "s:@precision@:$precision:" \
 	-e "s:@user@:$user:" \
+	-e "s:@subdirs@:$subdirs:" \
 	< $f.in > $f
 done
 
@@ -191,6 +213,7 @@ precision................ $precision
 alsa..................... $alsa
 sun...................... $sun
 rmidi.................... $rmidi
+xvolkeys................. $xvolkeys
 
 Do "make && make install" to compile and install sndio
 
