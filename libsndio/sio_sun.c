@@ -438,14 +438,11 @@ sio_sun_close(struct sio_hdl *sh)
 static int
 sio_sun_start(struct sio_hdl *sh)
 {
-	struct sio_par par;
 	struct sio_sun_hdl *hdl = (struct sio_sun_hdl *)sh;
 	struct audio_info aui;
 
-	if (!sio_getpar(&hdl->sio, &par))
-		return 0;
-	hdl->obpf = par.pchan * par.bps;
-	hdl->ibpf = par.rchan * par.bps;
+	hdl->obpf = hdl->sio.par.pchan * hdl->sio.par.bps;
+	hdl->ibpf = hdl->sio.par.rchan * hdl->sio.par.bps;
 	hdl->ibytes = 0;
 	hdl->obytes = 0;
 	hdl->ierr = 0;
