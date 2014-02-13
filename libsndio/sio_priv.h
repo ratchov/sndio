@@ -37,13 +37,13 @@ struct sio_hdl {
 	int eof;			/* true if error occured */
 	int rdrop;			/* recorded bytes to drop */
 	int wsil;			/* silence to play */
+	int rused;			/* bytes used in read buffer */
+	int wused;			/* bytes used in write buffer */
+	long long cpos;			/* clock since start */
+	struct sio_par par;
 #ifdef DEBUG
 	unsigned long long pollcnt;	/* times sio_revents was called */
-	long long wcnt;			/* bytes written with sio_write() */
-	long long rcnt;			/* bytes read with sio_read() */
-	long long cpos;
 	long long start_nsec;
-	struct sio_par par;
 #endif
 };
 

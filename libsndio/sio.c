@@ -124,10 +124,12 @@ sio_start(struct sio_hdl *hdl)
 		hdl->eof = 1;
 		return 0;
 	}
-#ifdef DEBUG
+	hdl->cpos = 0;
+	hdl->rused = hdl->wused = 0;
 	if (!sio_getpar(hdl, &hdl->par))
 		return 0;
-	hdl->pollcnt = hdl->wcnt = hdl->rcnt = hdl->cpos = 0;
+#ifdef DEBUG
+	hdl->pollcnt = 0;
 	clock_gettime(CLOCK_MONOTONIC, &ts);
 	hdl->start_nsec = 1000000000LL * ts.tv_sec + ts.tv_nsec;
 #endif
@@ -153,8 +155,8 @@ sio_stop(struct sio_hdl *hdl)
 	if (!hdl->ops->stop(hdl))
 		return 0;
 #ifdef DEBUG
-	DPRINTFN(2, "libsndio: polls: %llu, written = %llu, read: %llu\n",
-	    hdl->pollcnt, hdl->wcnt, hdl->rcnt);
+	DPRINTFN(2, "libsndio: polls: %llu, samples = %llu\n",
+	    hdl->pollcnt, hdl->cpos);
 #endif
 	hdl->started = 0;
 	return 1;
@@ -328,9 +330,7 @@ sio_read(struct sio_hdl *hdl, void *buf, size_t len)
 		}
 		data += n;
 		todo -= n;
-#ifdef DEBUG
-		hdl->rcnt += n;
-#endif
+		hdl->rused -= n;
 	}
 	return len - todo;
 }
@@ -368,9 +368,7 @@ sio_write(struct sio_hdl *hdl, const void *buf, size_t len)
 		}
 		data += n;
 		todo -= n;
-#ifdef DEBUG
-		hdl->wcnt += n;
-#endif
+		hdl->wused += n;
 	}
 	return len - todo;
 }
@@ -410,7 +408,7 @@ sio_revents(struct sio_hdl *hdl, struct pollfd *pfd)
 	if (!hdl->started)
 		return revents & POLLHUP;
 #ifdef DEBUG
-	if (_sndio_debug >= 3) {
+	if (_sndio_debug >= 4) {
 		clock_gettime(CLOCK_MONOTONIC, &ts1);
 		DPRINTF("%09lld: sio_revents: revents = 0x%x, took %lldns\n",
 		    1000000000LL * ts0.tv_sec +
@@ -453,13 +451,18 @@ _sio_printpos(struct sio_hdl *hdl)
 	long long rpos, rdiff;
 	long long cpos, cdiff;
 	long long wpos, wdiff;
+	unsigned rbpf, wbpf, rround, wround;
 
 	clock_gettime(CLOCK_MONOTONIC, &ts);
+	rbpf = hdl->par.bps * hdl->par.rchan;
+	wbpf = hdl->par.bps * hdl->par.pchan;
+	rround = hdl->par.round * rbpf;
+	wround = hdl->par.round * wbpf;
 
 	rpos = (hdl->mode & SIO_REC) ? 
-	    hdl->rcnt / (hdl->par.bps * hdl->par.rchan) : 0;
+	    hdl->cpos * rbpf - hdl->rused : 0;
 	wpos = (hdl->mode & SIO_PLAY) ?
-	    hdl->wcnt / (hdl->par.bps * hdl->par.pchan) : 0;
+	    hdl->cpos * wbpf + hdl->wused : 0;
 
 	cdiff = hdl->cpos % hdl->par.round;
 	cpos  = hdl->cpos / hdl->par.round;
@@ -467,17 +470,17 @@ _sio_printpos(struct sio_hdl *hdl)
 		cpos++;
 		cdiff = cdiff - hdl->par.round;
 	}
-	rdiff = rpos % hdl->par.round;
-	rpos  = rpos / hdl->par.round;
-	if (rdiff > hdl->par.round / 2) {
+	rdiff = rpos % rround;
+	rpos  = rpos / rround;
+	if (rdiff > rround / 2) {
 		rpos++;
-		rdiff = rdiff - hdl->par.round;
+		rdiff = rdiff - rround;
 	}
-	wdiff = wpos % hdl->par.round;
-	wpos  = wpos / hdl->par.round;
-	if (wdiff > hdl->par.round / 2) {
+	wdiff = wpos % wround;
+	wpos  = wpos / wround;
+	if (wdiff > wround / 2) {
 		wpos++;
-		wdiff = wdiff - hdl->par.round;
+		wdiff = wdiff - wround;
 	}
 	DPRINTF("%011lld: "
 	    "clk %+5lld%+5lld, wr %+5lld%+5lld rd: %+5lld%+5lld\n",
@@ -489,8 +492,12 @@ _sio_printpos(struct sio_hdl *hdl)
 void
 _sio_onmove_cb(struct sio_hdl *hdl, int delta)
 {
-#ifdef DEBUG
 	hdl->cpos += delta;
+	if (hdl->mode & SIO_REC)
+		hdl->rused += delta * (hdl->par.bps * hdl->par.rchan);
+	if (hdl->mode & SIO_PLAY)
+		hdl->wused -= delta * (hdl->par.bps * hdl->par.pchan);
+#ifdef DEBUG
 	if (_sndio_debug >= 3)
 		_sio_printpos(hdl);
 #endif

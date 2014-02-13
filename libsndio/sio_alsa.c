@@ -475,9 +475,9 @@ sio_alsa_xrun(struct sio_alsa_hdl *hdl)
 		_sio_printpos(&hdl->sio);
 
 	rpos = (hdl->sio.mode & SIO_REC) ?
-		hdl->sio.rcnt / hdl->ibpf : hdl->sio.cpos;
+	    hdl->sio.cpos - hdl->sio.rused / hdl->ibpf : hdl->sio.cpos;
 	wpos = (hdl->sio.mode & SIO_PLAY) ?
-		hdl->sio.wcnt / hdl->obpf : hdl->sio.cpos;
+	    hdl->sio.cpos + hdl->sio.wused / hdl->obpf : hdl->sio.cpos;
 
 	cdiff = hdl->par.round - (hdl->sio.cpos % hdl->par.round);
 	if (cdiff == hdl->par.round)
@@ -1081,11 +1081,11 @@ sio_alsa_pollfd(struct sio_hdl *sh, struct pollfd *pfd, int events)
 		}
 	} else
 		hdl->infds = 0;
-	DPRINTFN(3, "sio_alsa_pollfd: events = %x, nfds = %d + %d\n",
+	DPRINTFN(4, "sio_alsa_pollfd: events = %x, nfds = %d + %d\n",
 	    events, hdl->onfds, hdl->infds);
 
 	for (i = 0; i < hdl->onfds + hdl->infds; i++) {
-		DPRINTFN(3, "sio_alsa_pollfd: pfds[%d].events = %x\n",
+		DPRINTFN(4, "sio_alsa_pollfd: pfds[%d].events = %x\n",
 		    i, pfd[i].events);
 	}
 	return hdl->onfds + hdl->infds;
@@ -1104,7 +1104,7 @@ sio_alsa_revents(struct sio_hdl *sh, struct pollfd *pfd)
 		return POLLHUP;
 	
 	for (i = 0; i < hdl->onfds + hdl->infds; i++) {
-		DPRINTFN(3, "sio_alsa_revents: pfds[%d].revents = %x\n",
+		DPRINTFN(4, "sio_alsa_revents: pfds[%d].revents = %x\n",
 		    i, pfd[i].revents);
 	}
 	revents = nfds = 0;
