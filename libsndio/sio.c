@@ -454,8 +454,8 @@ _sio_printpos(struct sio_hdl *hdl)
 	unsigned rbpf, wbpf, rround, wround;
 
 	clock_gettime(CLOCK_MONOTONIC, &ts);
-	rbpf = hdl->par.bps * hdl->par.rchan;
-	wbpf = hdl->par.bps * hdl->par.pchan;
+	rbpf = (hdl->mode & SIO_REC) ? hdl->par.bps * hdl->par.rchan : 1;
+	wbpf = (hdl->mode & SIO_PLAY) ? hdl->par.bps * hdl->par.pchan : 1;
 	rround = hdl->par.round * rbpf;
 	wround = hdl->par.round * wbpf;
 
