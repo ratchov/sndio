@@ -466,24 +466,36 @@ sio_alsa_stop(struct sio_hdl *sh)
 static int
 sio_alsa_xrun(struct sio_alsa_hdl *hdl)
 {
-	long long wpos, rpos;
-	int rdiff;
+	int clk;
 	int wsil, rdrop, cmove;
+	int rbpf, rround;
+	int wbpf, wround;
 
 	DPRINTFN(2, "sio_alsa_xrun:\n");
 	if (_sndio_debug >= 2)
 		_sio_printpos(&hdl->sio);
 
-	rpos = (hdl->sio.mode & SIO_REC) ?
-	    hdl->sio.cpos - hdl->sio.rused / hdl->ibpf : hdl->sio.cpos;
-	wpos = (hdl->sio.mode & SIO_PLAY) ?
-	    hdl->sio.cpos + hdl->sio.wused / hdl->obpf : hdl->sio.cpos;
+	/*
+	 * we assume rused/wused are zero if rec/play modes are not
+	 * selected. This allows us to keep the same formula for all
+	 * modes, provided we set rbpf/wbpf to 1 to avoid division by
+	 * zero.
+	 *
+	 * to understand the formula, draw a picture :)
+	 */
+	rbpf = (hdl->sio.mode & SIO_REC) ? 
+	    hdl->sio.par.bps * hdl->sio.par.rchan : 1;
+	rround = hdl->sio.par.round * rbpf; 
+	wbpf = (hdl->sio.mode & SIO_PLAY) ?
+	    hdl->sio.par.bps * hdl->sio.par.pchan : 1;
+	wround = hdl->sio.par.round * wbpf;
 
-	rdiff = rpos % hdl->par.round;
-
-	wsil = rdiff + wpos - rpos;
-	rdrop = rdiff;
-	cmove = -(rdiff + hdl->sio.cpos - rpos);
+	clk = hdl->sio.cpos % hdl->sio.par.round;
+	rdrop = (clk * rbpf - hdl->sio.rused) % rround;
+	if (rdrop < 0)
+		rdrop += rround;
+	cmove = (rdrop + hdl->sio.rused) / rbpf;
+	wsil = cmove * wbpf + hdl->sio.wused;
 
 	DPRINTFN(2, "wsil = %d, cmove = %d, rdrop = %d\n", wsil, cmove, rdrop);
 
@@ -492,12 +504,12 @@ sio_alsa_xrun(struct sio_alsa_hdl *hdl)
 	if (!sio_alsa_start(&hdl->sio))
 		return 0;
 	if (hdl->sio.mode & SIO_PLAY) {
-		hdl->odelta += cmove;
-		hdl->sio.wsil += wsil * hdl->obpf;
+		hdl->odelta -= cmove;
+		hdl->sio.wsil = wsil;
 	}
 	if (hdl->sio.mode & SIO_REC) {
-		hdl->idelta += cmove;
-		hdl->sio.rdrop += rdrop * hdl->ibpf;
+		hdl->idelta -= cmove;
+		hdl->sio.rdrop = rdrop;
 	}
 	DPRINTFN(2, "xrun: corrected\n");
 	DPRINTFN(2, "wsil = %d, rdrop = %d, odelta = %d, idelta = %d\n",
