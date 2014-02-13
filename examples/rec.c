@@ -73,6 +73,12 @@ main(int argc, char **argv)
 				exit(1);
 			}
 			break;
+		case 'b':
+			if (sscanf(optarg, "%u", &par.appbufsz) != 1) {
+				fprintf(stderr, "%s: bad buf size\n", optarg);
+				exit(1);
+			}
+			break;
 		case 'x':
 			for (par.xrun = 0;; par.xrun++) {
 				if (par.xrun == sizeof(xstr) / sizeof(char *)) {
