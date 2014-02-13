@@ -469,7 +469,7 @@ sio_alsa_xrun(struct sio_alsa_hdl *hdl)
 	int clk;
 	int wsil, rdrop, cmove;
 	int rbpf, rround;
-	int wbpf, wround;
+	int wbpf;
 
 	DPRINTFN(2, "sio_alsa_xrun:\n");
 	if (_sndio_debug >= 2)
@@ -485,10 +485,9 @@ sio_alsa_xrun(struct sio_alsa_hdl *hdl)
 	 */
 	rbpf = (hdl->sio.mode & SIO_REC) ? 
 	    hdl->sio.par.bps * hdl->sio.par.rchan : 1;
-	rround = hdl->sio.par.round * rbpf; 
 	wbpf = (hdl->sio.mode & SIO_PLAY) ?
 	    hdl->sio.par.bps * hdl->sio.par.pchan : 1;
-	wround = hdl->sio.par.round * wbpf;
+	rround = hdl->sio.par.round * rbpf; 
 
 	clk = hdl->sio.cpos % hdl->sio.par.round;
 	rdrop = (clk * rbpf - hdl->sio.rused) % rround;
