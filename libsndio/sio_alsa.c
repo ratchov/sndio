@@ -467,7 +467,7 @@ static int
 sio_alsa_xrun(struct sio_alsa_hdl *hdl)
 {
 	long long wpos, rpos;
-	int wdiff, cdiff, rdiff;
+	int rdiff;
 	int wsil, rdrop, cmove;
 
 	DPRINTFN(2, "sio_alsa_xrun:\n");
@@ -479,18 +479,7 @@ sio_alsa_xrun(struct sio_alsa_hdl *hdl)
 	wpos = (hdl->sio.mode & SIO_PLAY) ?
 	    hdl->sio.cpos + hdl->sio.wused / hdl->obpf : hdl->sio.cpos;
 
-	cdiff = hdl->par.round - (hdl->sio.cpos % hdl->par.round);
-	if (cdiff == hdl->par.round)
-		cdiff = 0;
-
 	rdiff = rpos % hdl->par.round;
-
-	wdiff = hdl->par.round - (wpos % hdl->par.round);
-	if (wdiff == hdl->par.round)
-		wdiff = 0;
-
-	DPRINTFN(2, "rdiff = %d, cdiff = %d, wdiff = %d\n",
-	    rdiff, cdiff, wdiff);
 
 	wsil = rdiff + wpos - rpos;
 	rdrop = rdiff;
