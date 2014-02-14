@@ -81,7 +81,7 @@ int
 midi_connect(void)
 {
 	if (hdl != NULL)
-		return;
+		return 1;
 	hdl = mio_open(port, MIO_IN | MIO_OUT, 0);
 	if (hdl == NULL) {
 		if (verbose)
