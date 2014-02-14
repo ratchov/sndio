@@ -752,7 +752,7 @@ sio_alsa_setpar(struct sio_hdl *sh, struct sio_par *par)
 	if (hdl->sio.mode & SIO_REC) {
 		hdl->par.rchan = par->rchan;
 		if (!sio_alsa_setpar_hw(hdl->ipcm, ihwp,
-			&ifmt, &irate, &par->rchan,
+			&ifmt, &irate, &hdl->par.rchan,
 			&iround, &iperiods)) {
 			hdl->sio.eof = 1;
 			return 0;
@@ -955,7 +955,7 @@ sio_alsa_read(struct sio_hdl *sh, void *buf, size_t len)
 		hdl->ipartial = hdl->ibpf;
 		return 0;
 	}
-	return n *= hdl->ibpf;
+	return n * hdl->ibpf;
 }
 
 static size_t
