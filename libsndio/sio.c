@@ -302,7 +302,7 @@ sio_read(struct sio_hdl *hdl, void *buf, size_t len)
 {
 	unsigned int n;
 	char *data = buf;
-	size_t todo = len, maxread;
+	size_t todo = len;
 
 	if (hdl->eof) {
 		DPRINTF("sio_read: eof\n");
@@ -320,10 +320,7 @@ sio_read(struct sio_hdl *hdl, void *buf, size_t len)
 	if (!sio_rdrop(hdl))
 		return 0;
 	while (todo > 0) {
-		maxread = hdl->rused;
-		if (maxread > todo)
-			maxread = todo;
-		n = hdl->ops->read(hdl, data, maxread);
+		n = hdl->ops->read(hdl, data, todo);
 		if (n == 0) {
 			if (hdl->nbio || hdl->eof || todo < len)
 				break;
@@ -343,7 +340,7 @@ sio_write(struct sio_hdl *hdl, const void *buf, size_t len)
 {
 	unsigned int n;
 	const unsigned char *data = buf;
-	size_t todo = len, maxwrite, wbufsz;
+	size_t todo = len;
 
 	if (hdl->eof) {
 		DPRINTF("sio_write: eof\n");
@@ -360,12 +357,8 @@ sio_write(struct sio_hdl *hdl, const void *buf, size_t len)
 	}
 	if (!sio_wsil(hdl))
 		return 0;
-	wbufsz = hdl->par.bufsz * hdl->par.pchan * hdl->par.bps;
 	while (todo > 0) {
-		maxwrite = wbufsz - hdl->wused;
-		if (maxwrite > todo)
-			maxwrite = todo;
-		n = hdl->ops->write(hdl, data, maxwrite);
+		n = hdl->ops->write(hdl, data, todo);
 		if (n == 0) {
 			if (hdl->nbio || hdl->eof)
 				break;
@@ -507,11 +500,6 @@ _sio_onmove_cb(struct sio_hdl *hdl, int delta)
 #ifdef DEBUG
 	if (_sndio_debug >= 3)
 		_sio_printpos(hdl);
-	if (hdl->wused < 0) {
-		DPRINTFN(1, "sndio h/w failure: clock ahead of write ptr\n");
-		hdl->eof = 1;
-		return;
-	}
 #endif
 	if (hdl->move_cb)
 		hdl->move_cb(hdl->move_addr, delta);
