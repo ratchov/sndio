@@ -884,7 +884,7 @@ dev_full_cycle(struct dev *d)
 			if (s->pstate != SLOT_STOP)
 				s->ops->fill(s->arg);
 		}
-		if (s->mode & MODE_RECMASK) {
+		if ((s->mode & MODE_RECMASK) && !(s->pstate == SLOT_STOP)) {
 			if (s->sub.prime == 0) {
 				dev_sub_bcopy(d, s);
 				s->ops->flush(s->arg);
