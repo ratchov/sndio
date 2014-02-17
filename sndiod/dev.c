@@ -548,7 +548,7 @@ slot_skip(struct slot *s)
 
 	max = s->skip;
 	while (s->skip > 0) {
-		if (s->mode & MODE_RECMASK) {
+		if (s->pstate != SLOT_STOP && (s->mode & MODE_RECMASK)) {
 			data = abuf_wgetblk(&s->sub.buf, &count);
 			if (count < s->round * s->sub.bpf)
 				break;
@@ -563,7 +563,7 @@ slot_skip(struct slot *s)
 			log_puts(": skipped a cycle\n");
 		}
 #endif
-		if (s->mode & MODE_RECMASK) {
+		if (s->pstate != SLOT_STOP && (s->mode & MODE_RECMASK)) {
 			if (s->sub.encbuf)
 				enc_sil_do(&s->sub.enc, data, s->round);
 			else
@@ -811,6 +811,9 @@ dev_full_cycle(struct dev *d)
 			log_puts("\n");
 		}
 #endif
+		/*
+		 * skip cycles for XRUN_SYNC correction
+		 */
 		slot_skip(s);
 		if (s->skip < 0) {
 			s->skip++;
@@ -818,39 +821,40 @@ dev_full_cycle(struct dev *d)
 			continue;
 		}
 
+#ifdef DEBUG
+		if (s->pstate == SLOT_STOP && !(s->mode & MODE_PLAY)) {
+			slot_log(s);
+			log_puts(": rec-only slots can't be drained\n");
+			panic();
+		}
+#endif
 		/*
 		 * check if stopped stream finished draining
 		 */
-		if (s->pstate == SLOT_STOP) {
-			if (s->mode & MODE_PLAY) {
-				if (s->mix.buf.used < s->round * s->mix.bpf) {
-					/*
-					 * partial blocks are
-					 * zero-filled by socket layer
-					 */
-					s->pstate = SLOT_INIT;
-					abuf_done(&s->mix.buf);
-					if (s->mix.decbuf)
-						xfree(s->mix.decbuf);
-					if (s->mix.resampbuf)
-						xfree(s->mix.resampbuf);
-					s->ops->eof(s->arg);
-					*ps = s->next;
-					dev_mix_adjvol(d);
-					continue;
-				}
-			} else {
-				ps = &s->next;
-				continue;
-			}
+		if (s->pstate == SLOT_STOP &&
+		    s->mix.buf.used < s->round * s->mix.bpf) {
+			/*
+			 * partial blocks are zero-filled by socket
+			 * layer, so s->mix.buf.used == 0 and we can
+			 * destroy the buffer
+			 */
+			s->pstate = SLOT_INIT;
+			abuf_done(&s->mix.buf);
+			if (s->mix.decbuf)
+				xfree(s->mix.decbuf);
+			if (s->mix.resampbuf)
+				xfree(s->mix.resampbuf);
+			s->ops->eof(s->arg);
+			*ps = s->next;
+			dev_mix_adjvol(d);
+			continue;
 		}
 		
 		/*
 		 * check for xruns
 		 */
 		if (((s->mode & MODE_PLAY) && 
-			s->mix.buf.used < s->round * s->mix.bpf &&
-			!(s->pstate == SLOT_STOP)) ||
+			s->mix.buf.used < s->round * s->mix.bpf) ||
 		    ((s->mode & MODE_RECMASK) &&
 			s->sub.buf.len - s->sub.buf.used <
 			s->round * s->sub.bpf)) {
