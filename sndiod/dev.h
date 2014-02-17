@@ -48,7 +48,6 @@ struct slot {
 		int weight;			/* dynamic range */	
 		int maxweight;			/* max dynamic range allowed */
 		unsigned int vol;		/* volume within the vol */
-		int drop;			/* to drop on next read */
 		struct abuf buf;		/* socket side buffer */
 		int bpf;			/* byte per frame */
 		int slot_cmin, slot_cmax;	/* slot source chans */
@@ -61,8 +60,8 @@ struct slot {
 		void *resampbuf, *decbuf;	/* tmp buffers */
 	} mix;
 	struct {
-		int silence;			/* to add on next write */
 		struct abuf buf;		/* socket side buffer */
+		int prime;			/* initial cycles to skip */
 		int bpf;			/* byte per frame */
 		int slot_cmin, slot_cmax;	/* slot destination chans */
 		int dev_cmin, dev_cmax;		/* device source chans */
@@ -74,6 +73,7 @@ struct slot {
 		void *resampbuf, *encbuf;	/* tmp buffers */
 	} sub;
 	int xrun;				/* underrun policy */
+	int skip;				/* cycles to skip (for xrun) */
 	int dup;				/* mono-to-stereo and alike */
 #define SLOT_BUFSZ(s) \
 	((s)->appbufsz + (s)->dev->bufsz / (s)->dev->round * (s)->round)
