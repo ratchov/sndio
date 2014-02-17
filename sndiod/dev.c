@@ -890,10 +890,12 @@ dev_full_cycle(struct dev *d)
 				s->ops->flush(s->arg);
 			} else {
 #ifdef DEBUG
-				slot_log(s);
-				log_puts(": prime = ");
-				log_puti(s->sub.prime);
-				log_puts("\n");
+				if (log_level >= 3) {
+					slot_log(s);
+					log_puts(": prime = ");
+					log_puti(s->sub.prime);
+					log_puts("\n");
+				}
 #endif
 				s->sub.prime--;
 			}
