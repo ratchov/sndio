@@ -157,6 +157,5 @@ void dec_init(struct conv *, struct aparams *, int);
 void cmap_add(struct cmap *, void *, void *, int, int);
 void cmap_copy(struct cmap *, void *, void *, int, int);
 void cmap_init(struct cmap *, int, int, int, int, int, int, int, int);
-int sqrtone(int, adata_t *, int, int, int);
 
 #endif /* !defined(DSP_H) */

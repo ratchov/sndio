@@ -685,24 +685,3 @@ cmap_init(struct cmap *p,
 	}
 #endif
 }
-
-/*
- * produce a square tone, for instance with:
- *
- *	period = round / (220 * round / rate)
- */
-int
-sqrtone(int ctx, adata_t *out, int period, int vol, int todo)
-{
-	int i;
-
-	for (i = todo; i > 0; i--) {
-		if (ctx == 0) {
-			vol = -vol;
-			ctx = period / 2;
-		}
-		ctx--;
-		*(out++) += vol;
-	}
-	return ctx;
-}
