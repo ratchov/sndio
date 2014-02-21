@@ -827,7 +827,7 @@ sio_sun_revents(struct sio_hdl *sh, struct pollfd *pfd)
 
 	if (!hdl->sio.started)
 		return pfd->revents;
-	if ((revents & POLLOUT) && (hdl->sio.mode & SIO_PLAY)) {
+	if (hdl->sio.mode & SIO_PLAY) {
 		if (ioctl(hdl->fd, AUDIO_GETOOFFS, &ao) < 0) {
 			DPERROR("sio_sun_revents: GETOOFFS");
 			hdl->sio.eof = 1;
@@ -839,7 +839,7 @@ sio_sun_revents(struct sio_hdl *sh, struct pollfd *pfd)
 		if (!(hdl->sio.mode & SIO_REC))
 			hdl->idelta += delta;
 	}
-	if ((revents & POLLIN) && (hdl->sio.mode & SIO_REC)) {
+	if (hdl->sio.mode & SIO_REC) {
 		if (ioctl(hdl->fd, AUDIO_GETIOFFS, &ao) < 0) {
 			DPERROR("sio_sun_revents: GETIOFFS");
 			hdl->sio.eof = 1;
