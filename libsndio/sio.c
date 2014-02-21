@@ -302,7 +302,7 @@ sio_read(struct sio_hdl *hdl, void *buf, size_t len)
 {
 	unsigned int n;
 	char *data = buf;
-	size_t todo = len;
+	size_t todo = len, maxread;
 
 	if (hdl->eof) {
 		DPRINTF("sio_read: eof\n");
@@ -317,10 +317,13 @@ sio_read(struct sio_hdl *hdl, void *buf, size_t len)
 		DPRINTF("sio_read: zero length read ignored\n");
 		return 0;
 	}
-	if (!sio_rdrop(hdl))
-		return 0;
 	while (todo > 0) {
-		n = hdl->ops->read(hdl, data, todo);
+		if (!sio_rdrop(hdl))
+			return 0;
+		maxread = hdl->rused;
+		if (maxread > todo)
+			maxread = todo;
+		n = maxread > 0 ? hdl->ops->read(hdl, data, maxread) : 0;
 		if (n == 0) {
 			if (hdl->nbio || hdl->eof || todo < len)
 				break;
@@ -340,7 +343,7 @@ sio_write(struct sio_hdl *hdl, const void *buf, size_t len)
 {
 	unsigned int n;
 	const unsigned char *data = buf;
-	size_t todo = len;
+	size_t todo = len, maxwrite;
 
 	if (hdl->eof) {
 		DPRINTF("sio_write: eof\n");
@@ -355,10 +358,14 @@ sio_write(struct sio_hdl *hdl, const void *buf, size_t len)
 		DPRINTF("sio_write: zero length write ignored\n");
 		return 0;
 	}
-	if (!sio_wsil(hdl))
-		return 0;
 	while (todo > 0) {
-		n = hdl->ops->write(hdl, data, todo);
+		if (!sio_wsil(hdl))
+			return 0;
+		maxwrite = hdl->par.bufsz * hdl->par.pchan * hdl->par.bps -
+		    hdl->wused;
+		if (maxwrite > todo)
+			maxwrite = todo;
+		n = maxwrite > 0 ? hdl->ops->write(hdl, data, maxwrite) : 0;
 		if (n == 0) {
 			if (hdl->nbio || hdl->eof)
 				break;
@@ -500,6 +507,11 @@ _sio_onmove_cb(struct sio_hdl *hdl, int delta)
 #ifdef DEBUG
 	if (_sndio_debug >= 3)
 		_sio_printpos(hdl);
+	if ((hdl->mode & SIO_PLAY) && hdl->wused < 0) {
+		DPRINTFN(1, "sndio: h/w failure: negative buffer usage\n");
+		hdl->eof = 1;
+		return;
+	}
 #endif
 	if (hdl->move_cb)
 		hdl->move_cb(hdl->move_addr, delta);
