@@ -30,6 +30,8 @@ struct buf playbuf, recbuf;
 long long hwpos, wrpos, rdpos;
 int tick = 0;
 
+int randomize, xruns;
+
 void
 cb(void *addr, int delta)
 {
@@ -101,7 +103,6 @@ unsigned
 buf_rec(struct buf *buf, struct sio_hdl *hdl)
 {
 	unsigned count, end, avail, done = 0;
-	int bpf = par.rchan * par.bps;
 	int n;
 
 	for (;;) {
@@ -114,6 +115,9 @@ buf_rec(struct buf *buf, struct sio_hdl *hdl)
 		count = BUF_LEN - end;
 		if (count > avail)
 			count = avail;
+		/* try to confuse the server */
+		if (randomize)
+			count = 1 + (rand() % count);
 		n = sio_read(hdl, buf->data + end, count);
 		if (n == 0) {
 			if (sio_eof(hdl)) {
@@ -121,10 +125,6 @@ buf_rec(struct buf *buf, struct sio_hdl *hdl)
 				exit(1);
 			}
 			break;
-		}
-		if (n % bpf) {
-			fprintf(stderr, "rec: bad align: %u bytes\n", n);
-			exit(1);
 		}
 		rdpos += n;
 		buf->used += n;
@@ -140,7 +140,6 @@ unsigned
 buf_play(struct buf *buf, struct sio_hdl *hdl)
 {
 	unsigned count, done = 0;
-	int bpf = par.pchan * par.bps;
 	int n;
 	
 	while (buf->used) {
@@ -148,7 +147,8 @@ buf_play(struct buf *buf, struct sio_hdl *hdl)
 		if (count > buf->used) 
 			count = buf->used;
 		/* try to confuse the server */
-		//count = 1 + (rand() % count);
+		if (randomize)
+			count = 1 + (rand() % count);
 		n = sio_write(hdl, buf->data + buf->start, count);
 		if (n == 0) {
 			if (sio_eof(hdl)) {
@@ -156,10 +156,6 @@ buf_play(struct buf *buf, struct sio_hdl *hdl)
 				exit(1);
 			}
 			break;
-		}
-		if (n % bpf) {
-			fprintf(stderr, "play: bad align: %u bytes\n", n);
-			exit(1);
 		}
 		wrpos += n;
 		//write(STDOUT_FILENO, buf->data + buf->start, n);
@@ -176,7 +172,7 @@ void
 usage(void)
 {
 	fprintf(stderr,
-	    "usage: fd [-v] [-b size] [-c pchan] [-C rchan] [-e enc]\n"
+	    "usage: fd [-vRX] [-b size] [-c pchan] [-C rchan] [-e enc]\n"
 	    "          [-i file] [-o file] [-r rate] [-x mode]\n");
 }
  
@@ -204,7 +200,7 @@ main(int argc, char **argv)
 	par.pchan = par.rchan = 2;
 	par.rate = 48000;
 
-	while ((ch = getopt(argc, argv, "r:c:C:e:i:o:b:x:")) != -1) {
+	while ((ch = getopt(argc, argv, "RXr:c:C:e:i:o:b:x:")) != -1) {
 		switch(ch) {
 		case 'r':
 			if (sscanf(optarg, "%u", &par.rate) != 1) {
@@ -256,6 +252,12 @@ main(int argc, char **argv)
 					break;
 			}
 			break;			
+		case 'R':
+			randomize = 1;
+			break;
+		case 'X':
+			xruns = 1;
+			break;
 		default:
 			usage();
 			exit(1);
@@ -334,6 +336,10 @@ main(int argc, char **argv)
 			    wrpos - hwpos * par.pchan * par.bps,
 			    hwpos * par.rchan * par.bps - rdpos);
 			tick = 0;
+			if (xruns) {
+				if (rand() % 20 == 0)
+					sleep(2);
+			}
 		}
 		if (revents & POLLIN) {
 			buf_rec(&recbuf, hdl);
