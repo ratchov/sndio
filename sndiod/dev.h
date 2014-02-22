@@ -129,6 +129,11 @@ struct dev {
 	unsigned int serial;			/* for slot allocation */
 
 	/*
+	 * current position, relative to the current cycle
+	 */
+	int delta;
+
+	/*
 	 * desired parameters
 	 */
 	unsigned int reqmode;			/* mode */

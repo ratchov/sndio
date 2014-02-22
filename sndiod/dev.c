@@ -782,10 +782,12 @@ dev_full_cycle(struct dev *d)
 	unsigned char *base;
 	int nsamp;
 
+	d->delta -= d->round;
 #ifdef DEBUG
 	if (log_level >= 4) {
 		dev_log(d);
-		log_puts(": dev_full_cycle");
+		log_puts(": dev_full_cycle: clk=");
+		log_puti(d->delta);
 		if (d->mode & MODE_PLAY) {
 			log_puts(", poffs = ");
 			log_puti(d->poffs);
@@ -912,6 +914,12 @@ dev_full_cycle(struct dev *d)
 	}
 }
 
+void
+slot_onmove(struct slot *s, int delta)
+{
+
+}
+
 /*
  * called at every clock tick by the device
  */
@@ -919,12 +927,14 @@ void
 dev_onmove(struct dev *d, int delta)
 {
 	long long pos;
-	struct slot *s, *snext;
+	struct slot *s, *snext;	
 
-	/*
-	 * s->ops->onmove() may remove the slot
-	 */
+	d->delta += delta;
+
 	for (s = d->slot_list; s != NULL; s = snext) {
+		/*
+		 * s->ops->onmove() may remove the slot
+		 */
 		snext = s->next;
 		pos = (long long)delta * s->round + s->delta_rem;
 		s->delta_rem = pos % d->round;
@@ -1314,6 +1324,10 @@ dev_wakeup(struct dev *d)
 		} else {
 			d->prime = 0;
 		}
+
+		/* empty cycles don't increment delta */
+		d->delta = 0; 
+
 		d->pstate = DEV_RUN;
 		dev_sio_start(d);
 	}
@@ -1657,6 +1671,7 @@ slot_attach(struct slot *s)
 {
 	struct dev *d = s->dev;
 	unsigned int slot_nch, dev_nch;
+	long long pos;
 	int startpos;
 
 	/*
@@ -1669,14 +1684,22 @@ slot_attach(struct slot *s)
 	 * played and/or recorded
 	 */
 	startpos = dev_getpos(d) * (int)s->round / (int)d->round;
-	s->delta = startpos;
-	s->delta_rem = 0;
+
+	/*
+	 * adjust initial clock
+	 */
+	pos = (long long)d->delta * s->round;
+	s->delta = startpos + pos / (int)d->round;
+	s->delta_rem = pos % d->round;
+
 	s->pstate = SLOT_RUN;
 #ifdef DEBUG
-	if (log_level >= 3) {
+	if (log_level >= 0) {
 		slot_log(s);
 		log_puts(": attached at ");
 		log_puti(startpos);
+		log_puts(", delta = ");
+		log_puti(d->delta);
 		log_puts("\n");
 	}
 #endif
