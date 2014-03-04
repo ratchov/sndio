@@ -877,16 +877,22 @@ sio_sun_revents(struct sio_hdl *sh, struct pollfd *pfd)
 		if (dierr > 0)
 			DPRINTFN(2, "rec xrun %d\n", dierr);
 	}
+
+	/*
+	 * GET{I,O}OFFS report positions including xruns,
+	 * so we have to substract to get the real position
+	 */
+	hdl->idelta -= dierr;
+	hdl->odelta -= doerr;
+
 	offset = doerr - dierr;
 	if (offset > 0) {
 		hdl->sio.rdrop += offset * hdl->ibpf;
-		hdl->idelta -= doerr;
-		hdl->odelta -= doerr;
+		hdl->idelta -= offset;
 		DPRINTFN(2, "will drop %d and pause %d\n", offset, doerr);
 	} else if (offset < 0) {
 		hdl->sio.wsil += -offset * hdl->obpf;
-		hdl->idelta -= dierr;
-		hdl->odelta -= dierr;
+		hdl->odelta -= offset;
 		DPRINTFN(2, "will insert %d and pause %d\n", -offset, dierr);
 	}
 
