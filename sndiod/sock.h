@@ -60,7 +60,6 @@ struct sock {
 	struct slot *slot;		/* audio device slot number */
 	struct midi *midi;		/* midi endpoint */
 	struct port *port;		/* midi port */
-	char who[12];			/* label, mostly for debugging */
 };
 
 struct sock *sock_new(int fd);
