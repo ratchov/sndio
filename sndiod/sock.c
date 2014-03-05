@@ -1416,7 +1416,7 @@ sock_buildmsg(struct sock *f)
 	/*
 	 * If data available, build a DATA message.
 	 */
-	if (f->slot != NULL && f->slot->sub.buf.used > 0 && f->wmax > 0) {
+	if (f->slot != NULL && f->wmax > 0 && f->slot->sub.buf.used > 0) {
 		size = f->slot->sub.buf.used;
 		if (size > AMSG_DATAMAX)
 			size = AMSG_DATAMAX;
