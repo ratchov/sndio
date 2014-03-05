@@ -544,7 +544,7 @@ dev_midi_exit(void *arg)
 int
 slot_skip(struct slot *s)
 {
-	unsigned char *data;
+	unsigned char *data = (unsigned char *)0xdeadbeef; /* please gcc */
 	int max, count;
 
 	max = s->skip;
