@@ -93,6 +93,7 @@ void slot_ready(struct slot *);
 void slot_start(struct slot *);
 void slot_detach(struct slot *);
 void slot_stop(struct slot *);
+void slot_skip_update(struct slot *);
 void slot_write(struct slot *);
 void slot_read(struct slot *);
 int slot_skip(struct slot *);
