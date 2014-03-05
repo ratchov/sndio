@@ -914,12 +914,6 @@ dev_full_cycle(struct dev *d)
 	}
 }
 
-void
-slot_onmove(struct slot *s, int delta)
-{
-
-}
-
 /*
  * called at every clock tick by the device
  */
