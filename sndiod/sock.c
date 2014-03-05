@@ -217,9 +217,6 @@ sock_slot_onmove(void *arg, int delta)
 	struct sock *f = (struct sock *)arg;
 	struct slot *s = f->slot;
 
-	/*
-	 * XXX: remove unused delta argument
-	 */
 #ifdef DEBUG
 	if (log_level >= 4) {
 		sock_log(f);
