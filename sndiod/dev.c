@@ -1038,7 +1038,6 @@ dev_new(char *path, struct aparams *par,
 	d->reqrate = rate;
 	d->hold = hold;
 	d->autovol = autovol;
-	d->autostart = 0;
 	d->refcnt = 0;
 	d->pstate = DEV_CFG;
 	d->serial = 0;
