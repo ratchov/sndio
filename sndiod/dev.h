@@ -144,7 +144,6 @@ struct dev {
 	unsigned int reqrate;			/* sample rate */
 	unsigned int hold;			/* hold the device open ? */
 	unsigned int autovol;			/* auto adjust playvol ? */
-	unsigned int autostart;			/* don't wait for MMC start */
 	unsigned int refcnt;			/* number of openers */
 #define DEV_NMAX	16			/* max number of devices */
 	unsigned int num;			/* device serial number */

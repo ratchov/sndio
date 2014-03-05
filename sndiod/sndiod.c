@@ -480,8 +480,6 @@ main(int argc, char **argv)
 	for (d = dev_list; d != NULL; d = d->next) {
 		if (!dev_init(d))
 			return 1;
-		if (d->autostart && (d->mode & MODE_AUDIOMASK))
-			dev_mmcstart(d);
 	}
 	for (l = listen_list; l != NULL; l = l->next) {
 		if (!listen_init(l))
