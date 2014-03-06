@@ -55,7 +55,7 @@ sndiod:		${OBJS}
 
 abuf.o:		abuf.c abuf.h utils.h
 dev.o:		dev.c ../bsd-compat/bsd-compat.h abuf.h defs.h dev.h \
-		dsp.h siofile.h file.h midi.h miofile.h opt.h sysex.h \
+		dsp.h siofile.h file.h midi.h miofile.h sysex.h \
 		utils.h
 dsp.o:		dsp.c dsp.h defs.h utils.h
 file.o:		file.c file.h utils.h

@@ -24,7 +24,6 @@
 #include "dsp.h"
 #include "siofile.h"
 #include "midi.h"
-#include "opt.h"
 #include "sysex.h"
 #include "utils.h"
 
