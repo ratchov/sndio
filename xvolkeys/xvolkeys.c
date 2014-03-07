@@ -46,6 +46,15 @@
  */
 #define MIDI_MAXVOL	127
 
+int midi_connect(void);
+void midi_disconnect(void);
+void midi_setvol(int);
+void midi_sysex(unsigned char *, unsigned);
+void midi_parse(unsigned char *, unsigned);
+void grab_keys(void);
+void ungrab_keys(void);
+void usage(void);
+
 /*
  * midi parser state
  */
