@@ -32,9 +32,6 @@ struct slotops
 	void (*fill)(void *);			/* request to fill a play block */
 	void (*flush)(void *);			/* request to flush a rec block */
 	void (*eof)(void *);			/* notify that play drained */
-	void (*mmcstart)(void *);		/* request to start */
-	void (*mmcstop)(void *);		/* request to stop */
-	void (*mmcloc)(void *, unsigned int);	/* relocate to new position */
 	void (*exit)(void *);			/* delete client */
 };
 
