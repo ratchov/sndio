@@ -338,10 +338,10 @@ main(int argc, char **argv)
 				continue;
 			if (xev.xkey.keycode == inc_code &&
 			    inc_map[xev.xkey.state & ShiftMask] == KEY_INC) {
-				midi_setvol(master + 5);
+				midi_setvol(master + 9);
 			} else if (xev.xkey.keycode == dec_code &&
 			    dec_map[xev.xkey.state & ShiftMask] == KEY_DEC) {
-				midi_setvol(master - 5);
+				midi_setvol(master - 9);
 			}
 		}
 		nfds = (hdl != NULL) ? mio_pollfd(hdl, pfds, POLLIN) : 0;
