@@ -207,7 +207,7 @@ timo_done(void)
 void
 file_log(struct file *f)
 {
-	static char *states[] = { "ini", "bus", "clo", "zom" };
+	static char *states[] = { "ini", "zom" };
 
 	log_puts(f->ops->name);
 	if (log_level >= 3) {
