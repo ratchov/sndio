@@ -27,7 +27,7 @@
 #include "sysex.h"
 #include "utils.h"
 
-void zomb_onmove(void *, int);
+void zomb_onmove(void *);
 void zomb_onvol(void *, unsigned int);
 void zomb_fill(void *);
 void zomb_flush(void *);
@@ -159,7 +159,7 @@ slot_log(struct slot *s)
 }
 
 void
-zomb_onmove(void *arg, int delta)
+zomb_onmove(void *arg)
 {
 }
 
@@ -913,7 +913,7 @@ dev_onmove(struct dev *d, int delta)
 		s->delta_rem = pos % d->round;
 		s->delta += pos / (int)d->round;
 		if (s->delta >= 0)
-			s->ops->onmove(s->arg, delta);
+			s->ops->onmove(s->arg);
 	}
 	if (d->tstate == MMC_RUN)
 		dev_midi_qfr(d, delta);

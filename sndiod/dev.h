@@ -27,7 +27,7 @@
 
 struct slotops
 {
-	void (*onmove)(void *, int);		/* clock tick */
+	void (*onmove)(void *);			/* clock tick */
 	void (*onvol)(void *, unsigned int);	/* tell client vol changed */
 	void (*fill)(void *);			/* request to fill a play block */
 	void (*flush)(void *);			/* request to flush a rec block */
