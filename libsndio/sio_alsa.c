@@ -1012,10 +1012,9 @@ sio_alsa_onmove(struct sio_alsa_hdl *hdl)
 		case SIO_REC:
 			delta = hdl->idelta;
 			break;
-		case SIO_PLAY | SIO_REC:
+		default: /* SIO_PLAY | SIO_REC */
 			delta = hdl->odelta > hdl->idelta ?
 				hdl->odelta : hdl->idelta;
-			break;
 		}
 		if (delta <= 0)
 			return;
