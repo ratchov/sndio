@@ -44,7 +44,6 @@ unset includedir			# path where to install header file
 unset libdir				# path where to install library
 unset defs				# no extra #defines
 unset ldadd				# no extra libraries (-l options)
-unset no_xvolkeys_comment		# comment to disable xvolkeys
 
 #
 # guess OS-specific parameters
@@ -169,13 +168,6 @@ if [ $rmidi = yes ]; then
 	defs="$defs -DUSE_RMIDI"
 fi
 
-#
-# if xvolkeys is disabled, comment it in the makefile
-#
-if [ $xvolkeys = no ]; then
-	no_xvolkeys_comment="#"
-fi
-
 for f in Makefile aucat/Makefile sndiod/Makefile \
 libsndio/Makefile sndioctl/Makefile xvolkeys/Makefile \
 examples/Makefile \
@@ -193,7 +185,7 @@ do
 	-e "s:@vars@:${vars}:" \
 	-e "s:@precision@:$precision:" \
 	-e "s:@user@:$user:" \
-	-e "s:@no_xvolkeys_comment@:$no_xvolkeys_comment:" \
+	-e "s:@xvolkeys@:$xvolkeys:" \
 	< $f.in > $f
 done
 

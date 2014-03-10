@@ -5,14 +5,14 @@ all:
 	cd sndiod && ${MAKE}
 	cd sndioctl && ${MAKE}
 	cd aucat && ${MAKE}
-@no_xvolkeys_comment@	cd xvolkeys && ${MAKE}
+	if [ ${XVOLKEYS} = yes ]; then cd xvolkeys && ${MAKE}; fi
 
 install:
 	cd libsndio && ${MAKE} install
 	cd sndiod && ${MAKE} install
 	cd sndioctl && ${MAKE} install
 	cd aucat && ${MAKE} install
-@no_xvolkeys_comment@	cd xvolkeys && ${MAKE} install
+	if [ ${XVOLKEYS} = yes ]; then cd xvolkeys && ${MAKE} install; fi
 
 uninstall:
 	cd xvolkeys && ${MAKE} uninstall
