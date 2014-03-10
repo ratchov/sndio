@@ -1,33 +1,33 @@
 XVOLKEYS = @xvolkeys@
 
 all:
-	@cd libsndio && ${MAKE}
-	@cd sndiod && ${MAKE}
-	@cd sndioctl && ${MAKE}
-	@cd aucat && ${MAKE}
-	@if test ${XVOLKEYS} = yes; then cd xvolkeys && ${MAKE}; fi
+	cd libsndio && ${MAKE}
+	cd sndiod && ${MAKE}
+	cd sndioctl && ${MAKE}
+	cd aucat && ${MAKE}
+@no_xvolkeys_comment@	cd xvolkeys && ${MAKE}
 
 install:
-	@cd libsndio && ${MAKE} install
-	@cd sndiod && ${MAKE} install
-	@cd sndioctl && ${MAKE} install
-	@cd aucat && ${MAKE} install
-	@if test ${XVOLKEYS} = yes; then cd xvolkeys && ${MAKE} install; fi
+	cd libsndio && ${MAKE} install
+	cd sndiod && ${MAKE} install
+	cd sndioctl && ${MAKE} install
+	cd aucat && ${MAKE} install
+@no_xvolkeys_comment@	cd xvolkeys && ${MAKE} install
 
 uninstall:
-	@cd xvolkeys && ${MAKE} uninstall
-	@cd aucat && ${MAKE} uninstall
-	@cd sndioctl && ${MAKE} uninstall
-	@cd sndiod && ${MAKE} uninstall
-	@cd libsndio && ${MAKE} uninstall
+	cd xvolkeys && ${MAKE} uninstall
+	cd aucat && ${MAKE} uninstall
+	cd sndioctl && ${MAKE} uninstall
+	cd sndiod && ${MAKE} uninstall
+	cd libsndio && ${MAKE} uninstall
 
 clean:
-	@cd aucat && ${MAKE} clean
-	@cd sndioctl && ${MAKE} clean
-	@cd sndiod && ${MAKE} clean
-	@cd libsndio && ${MAKE} clean
-	@cd examples && ${MAKE} clean
-	@cd xvolkeys && ${MAKE} clean
+	cd aucat && ${MAKE} clean
+	cd sndioctl && ${MAKE} clean
+	cd sndiod && ${MAKE} clean
+	cd libsndio && ${MAKE} clean
+	cd examples && ${MAKE} clean
+	cd xvolkeys && ${MAKE} clean
 
 distclean:	clean
 	rm -f \
