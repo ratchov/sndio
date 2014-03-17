@@ -415,7 +415,7 @@ dev_sio_run(void *arg)
 			}
 #endif
 			d->poffs += d->round;
-			if (d->poffs == d->bufsz)
+			if (d->poffs == d->psize)
 				d->poffs = 0;
 			if ((d->mode & MODE_REC) && d->prime == 0) {
 				d->sio.cstate = DEV_SIO_READ;

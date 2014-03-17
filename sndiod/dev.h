@@ -113,6 +113,7 @@ struct dev {
 	adata_t *pbuf;				/* array of play buffers */
 #define DEV_PBUF(d) ((d)->pbuf + (d)->poffs * (d)->pchan)
 	int poffs;				/* index of current play buf */
+	int psize;				/* size of play buffer */
 	struct conv enc;			/* native->device format */
 	struct conv dec;			/* device->native format */
 	unsigned char *encbuf;			/* buffer for encoding */
