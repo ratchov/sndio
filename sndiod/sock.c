@@ -854,13 +854,6 @@ sock_hello(struct sock *f)
 		mode |= MODE_MON;
 		mode &= ~MODE_REC;
 	}
-	if ((mode & MODE_MON) && (mode & MODE_PLAY)) {
-		if (log_level >= 1) {
-			sock_log(f);
-			log_puts(": cannot play and monitor\n");
-		}
-		return 0;
-	}
 	if ((mode & f->opt->mode) != mode) {
 		if (log_level >= 1) {
 			sock_log(f);
