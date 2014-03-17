@@ -50,7 +50,6 @@ void dev_mon_snoop(struct dev *);
 int play_filt_resamp(struct slot *, void *, void *, int);
 int play_filt_dec(struct slot *, void *, void *, int);
 void dev_mix_badd(struct dev *, struct slot *);
-void dev_empty_cycle(struct dev *);
 void dev_mix_adjvol(struct dev *);
 int rec_filt_resamp(struct slot *, void *, void *, int);
 int rec_filt_enc(struct slot *, void *, void *, int);
@@ -58,7 +57,7 @@ void dev_sub_bcopy(struct dev *, struct slot *);
 
 void dev_onmove(struct dev *, int);
 void dev_master(struct dev *, unsigned int);
-int dev_cycle(struct dev *);
+void dev_cycle(struct dev *);
 int dev_getpos(struct dev *);
 struct dev *dev_new(char *, struct aparams *, unsigned int, unsigned int,
     unsigned int, unsigned int, unsigned int, unsigned int);
@@ -630,11 +629,6 @@ dev_mix_badd(struct dev *d, struct slot *s)
 	abuf_rdiscard(&s->mix.buf, s->round * s->mix.bpf);
 }
 
-void
-dev_empty_cycle(struct dev *d)
-{
-}
-
 /*
  * Normalize input levels.
  */
@@ -752,7 +746,7 @@ dev_sub_bcopy(struct dev *d, struct slot *s)
  * run a one block cycle, return 0 if the device was stopped and/or
  * closed.
  */
-int
+void
 dev_cycle(struct dev *d)
 {
 	struct slot *s, **ps;
@@ -772,7 +766,7 @@ dev_cycle(struct dev *d)
 		d->pstate = DEV_INIT;
 		if (d->refcnt == 0)
 			dev_close(d);
-		return 0;
+		return;
 	}
 
 	if (d->prime > 0) {
@@ -792,7 +786,7 @@ dev_cycle(struct dev *d)
 			    d->encbuf, d->round);
 		}
 		d->prime -= d->round;
-		return 1;
+		return;
 	}
 
 	d->delta -= d->round;
@@ -925,7 +919,6 @@ dev_cycle(struct dev *d)
 		enc_do(&d->enc, (unsigned char *)DEV_PBUF(d),
 		    d->encbuf, d->round);
 	}
-	return 1;
 }
 
 /*
