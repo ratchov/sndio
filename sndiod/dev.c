@@ -55,11 +55,10 @@ void dev_mix_adjvol(struct dev *);
 int rec_filt_resamp(struct slot *, void *, void *, int);
 int rec_filt_enc(struct slot *, void *, void *, int);
 void dev_sub_bcopy(struct dev *, struct slot *);
-void dev_full_cycle(struct dev *);
 
 void dev_onmove(struct dev *, int);
 void dev_master(struct dev *, unsigned int);
-void dev_cycle(struct dev *);
+int dev_cycle(struct dev *);
 int dev_getpos(struct dev *);
 struct dev *dev_new(char *, struct aparams *, unsigned int, unsigned int,
     unsigned int, unsigned int, unsigned int, unsigned int);
@@ -74,7 +73,6 @@ struct dev *dev_bynum(int);
 void dev_del(struct dev *);
 unsigned int dev_roundof(struct dev *, unsigned int);
 void dev_wakeup(struct dev *);
-void dev_clear(struct dev *);
 void dev_sync_attach(struct dev *);
 void dev_mmcstart(struct dev *);
 void dev_mmcstop(struct dev *);
@@ -635,16 +633,6 @@ dev_mix_badd(struct dev *d, struct slot *s)
 void
 dev_empty_cycle(struct dev *d)
 {
-	unsigned char *base;
-	int nsamp;
-
-	base = (unsigned char *)DEV_PBUF(d);
-	nsamp = d->round * d->pchan;
-	memset(base, 0, nsamp * sizeof(adata_t));
-	if (d->encbuf) {
-		enc_do(&d->enc, (unsigned char *)DEV_PBUF(d),
-		    d->encbuf, d->round);
-	}
 }
 
 /*
@@ -760,18 +748,58 @@ dev_sub_bcopy(struct dev *d, struct slot *s)
 	abuf_wcommit(&s->sub.buf, ocount * s->sub.bpf);
 }
 
-void
-dev_full_cycle(struct dev *d)
+/*
+ * run a one block cycle, return 0 if the device was stopped and/or
+ * closed.
+ */
+int
+dev_cycle(struct dev *d)
 {
 	struct slot *s, **ps;
 	unsigned char *base;
 	int nsamp;
 
+	/*
+	 * check if the device is actually used. If it isn't,
+	 * then close it
+	 */
+	if (d->slot_list == NULL && d->tstate != MMC_RUN) {
+		if (log_level >= 2) {
+			dev_log(d);
+			log_puts(": device stopped\n");
+		}
+		dev_sio_stop(d);
+		d->pstate = DEV_INIT;
+		if (d->refcnt == 0)
+			dev_close(d);
+		return 0;
+	}
+
+	if (d->prime > 0) {
+#ifdef DEBUG
+		if (log_level >= 4) {
+			dev_log(d);
+			log_puts(": empty cycle, prime = ");
+			log_putu(d->prime);
+			log_puts("\n");
+		}
+#endif
+		base = (unsigned char *)DEV_PBUF(d);
+		nsamp = d->round * d->pchan;
+		memset(base, 0, nsamp * sizeof(adata_t));
+		if (d->encbuf) {
+			enc_do(&d->enc, (unsigned char *)DEV_PBUF(d),
+			    d->encbuf, d->round);
+		}
+		d->prime -= d->round;
+		return 1;
+	}
+
 	d->delta -= d->round;
 #ifdef DEBUG
 	if (log_level >= 4) {
 		dev_log(d);
-		log_puts(": dev_full_cycle: clk=");
+		log_puts(": full cycle: delta = ");
 		log_puti(d->delta);
 		if (d->mode & MODE_PLAY) {
 			log_puts(", poffs = ");
@@ -897,6 +925,7 @@ dev_full_cycle(struct dev *d)
 		enc_do(&d->enc, (unsigned char *)DEV_PBUF(d),
 		    d->encbuf, d->round);
 	}
+	return 1;
 }
 
 /*
@@ -937,38 +966,6 @@ dev_master(struct dev *d, unsigned int master)
 	d->master = master;
 	if (d->mode & MODE_PLAY)
 		dev_mix_adjvol(d);
-}
-
-void
-dev_cycle(struct dev *d)
-{
-	if (d->slot_list == NULL && d->tstate != MMC_RUN) {
-		if (log_level >= 2) {
-			dev_log(d);
-			log_puts(": device stopped\n");
-		}
-		dev_sio_stop(d);
-		d->pstate = DEV_INIT;
-		if (d->refcnt == 0)
-			dev_close(d);
-		else
-			dev_clear(d);
-		return;
-	}
-#ifdef DEBUG
-	if (log_level >= 4) {
-		dev_log(d);
-		log_puts(": device cycle, prime = ");
-		log_putu(d->prime);
-		log_puts("\n");
-	}
-#endif
-	if (d->prime > 0) {
-		d->prime -= d->round;
-		dev_empty_cycle(d);
-	} else {
-		dev_full_cycle(d);
-	}
 }
 
 /*
@@ -1173,7 +1170,6 @@ dev_close(struct dev *d)
 			xfree(d->decbuf);
 		xfree(d->rbuf);
 	}
-	dev_clear(d);
 }
 
 int
@@ -1303,23 +1299,17 @@ dev_wakeup(struct dev *d)
 		} else {
 			d->prime = 0;
 		}
+		d->poffs = 0;
 
-		/* empty cycles don't increment delta */
+		/* 
+		 * empty cycles don't increment delta, so it's ok to
+		 * start at 0
+		 **/
 		d->delta = 0; 
 
 		d->pstate = DEV_RUN;
 		dev_sio_start(d);
 	}
-}
-
-/*
- * Clear buffers of the play and record chains so that when the device
- * is started, playback and record start in sync.
- */
-void
-dev_clear(struct dev *d)
-{
-	d->poffs = 0;
 }
 
 /*

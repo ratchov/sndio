@@ -348,7 +348,8 @@ dev_sio_run(void *arg)
 				panic();
 			}
 #endif
-			dev_cycle(d);
+			if (!dev_cycle(d))
+				return;
 			if (d->mode & MODE_PLAY) {
 				d->sio.cstate = DEV_SIO_WRITE;
 				d->sio.todo = d->round * d->pchan * d->par.bps;

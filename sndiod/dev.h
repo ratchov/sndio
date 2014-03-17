@@ -206,7 +206,7 @@ unsigned int dev_roundof(struct dev *, unsigned int);
  * interface to hardware device
  */
 void dev_onmove(struct dev *, int);
-void dev_cycle(struct dev *);
+int dev_cycle(struct dev *);
 
 /*
  * midi & midi call-backs
