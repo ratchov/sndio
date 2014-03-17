@@ -743,8 +743,8 @@ dev_sub_bcopy(struct dev *d, struct slot *s)
 }
 
 /*
- * run a one block cycle, return 0 if the device was stopped and/or
- * closed.
+ * run a one block cycle: consume one recorded block from
+ * rbuf and produce one play block in pbuf
  */
 void
 dev_cycle(struct dev *d)
