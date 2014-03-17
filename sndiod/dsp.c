@@ -679,7 +679,7 @@ cmap_init(struct cmap *p,
 		log_puti(p->onext);
 		log_puts(", istart = ");
 		log_puti(p->istart);
-		log_puts(", inext= ");
+		log_puts(", inext = ");
 		log_puti(p->inext);
 		log_puts("\n");
 	}
