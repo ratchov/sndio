@@ -1617,6 +1617,7 @@ slot_setvol(struct slot *s, unsigned int vol)
 void
 slot_attach(struct slot *s)
 {
+	struct slot **ps;
 	struct dev *d = s->dev;
 	unsigned int slot_nch, dev_nch;
 	long long pos;
@@ -1660,12 +1661,27 @@ slot_attach(struct slot *s)
 #ifdef DEBUG
 	if ((s->mode & d->mode) != s->mode) {
 		slot_log(s);
-	    	log_puts(": mode beyond device mode, not attaching\n");
+	    	log_puts(": mode beyond device mode\n");
 		panic();
 	}
 #endif
-	s->next = d->slot_list;
-	d->slot_list = s;
+
+	/*
+	 * attach slot to the list
+	 */
+	ps = &d->slot_list;
+	if (s->mode & MODE_MON) {
+		/*
+		 * attach slot at the end of the list as other slots
+		 * must be processed first to produce the data to
+		 * monitor
+		 */
+		while (*ps != NULL)
+			ps = &(*ps)->next;
+	}
+	s->next = *ps;
+	*ps = s;
+
 	s->skip = 0;
 	if (s->mode & MODE_PLAY) {
 		slot_nch = s->mix.slot_cmax - s->mix.slot_cmin + 1;
