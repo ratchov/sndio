@@ -46,7 +46,6 @@ void dev_midi_omsg(void *, unsigned char *, int);
 void dev_midi_fill(void *, int);
 void dev_midi_exit(void *);
 
-void dev_mon_snoop(struct dev *);
 int play_filt_resamp(struct slot *, void *, void *, int);
 int play_filt_dec(struct slot *, void *, void *, int);
 void dev_mix_badd(struct dev *, struct slot *);
@@ -552,15 +551,6 @@ slot_skip(struct slot *s)
 		s->skip--;		
 	}
 	return max - s->skip;
-}
-
-/*
- * merge play buffer contents into record buffer as if the
- * play stream was recorded
- */
-void
-dev_mon_snoop(struct dev *d)
-{
 }
 
 int 
