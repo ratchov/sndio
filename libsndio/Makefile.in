@@ -103,7 +103,7 @@ sio.o sio_alsa.o sio_aucat.o sio_sun.o \
 issetugid.o strlcat.o strlcpy.o strtonum.o
 
 .c.o:
-		${CC} ${CFLAGS} ${SO_CFLAGS} ${INCLUDE} ${DEFS} -o $@ -c $<
+		${CC} ${CFLAGS} ${SO_CFLAGS} -I. ${INCLUDE} ${DEFS} -o $@ -c $<
 
 libsndio.so.${MAJ}.${MIN}:	${OBJS}
 		${CC} ${LDFLAGS} ${SO_CFLAGS} ${SO_LDFLAGS} -o libsndio.so.${MAJ}.${MIN} ${OBJS} ${LDADD}
