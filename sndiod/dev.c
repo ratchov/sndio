@@ -1622,7 +1622,7 @@ slot_attach(struct slot *s)
 
 	s->pstate = SLOT_RUN;
 #ifdef DEBUG
-	if (log_level >= 0) {
+	if (log_level >= 2) {
 		slot_log(s);
 		log_puts(": attached at ");
 		log_puti(startpos);
