@@ -275,6 +275,7 @@ sock_new(int fd)
 	f->pstate = SOCK_AUTH;
 	f->opt = NULL;
 	f->slot = NULL;
+	f->port = NULL;
 	f->midi = NULL;
 	f->tickpending = 0;
 	f->fillpending = 0;
