@@ -34,6 +34,9 @@ MAN3 = \
 	sio_start.3 sio_stop.3 sio_read.3 sio_write.3 sio_onmove.3 \
 	sio_nfds.3 sio_pollfd.3 sio_revents.3 sio_eof.3 \
 	sio_setvol.3 sio_onvol.3 sio_initpar.3 \
+	siomix_open.3 \
+	siomix_close.3 siomix_setctl.3 siomix_ondesc.3 siomix_onctl.3 \
+	siomix_nfds.3 siomix_pollfd.3 siomix_revents.3 siomix_eof.3 \
 	mio_open.3 \
 	mio_close.3 mio_read.3 mio_write.3 mio_nfds.3 mio_pollfd.3 \
 	mio_revents.3 mio_eof.3
@@ -72,6 +75,15 @@ install:
 		ln -sf sio_open.3 ${DESTDIR}${MAN3_DIR}/sio_setvol.3
 		ln -sf sio_open.3 ${DESTDIR}${MAN3_DIR}/sio_onvol.3
 		ln -sf sio_open.3 ${DESTDIR}${MAN3_DIR}/sio_initpar.3
+		cp siomix_open.3 ${DESTDIR}${MAN3_DIR}
+		ln -sf siomix_open.3 ${DESTDIR}${MAN3_DIR}/siomix_close.3
+		ln -sf siomix_open.3 ${DESTDIR}${MAN3_DIR}/siomix_setctl.3
+		ln -sf siomix_open.3 ${DESTDIR}${MAN3_DIR}/siomix_ondesc.3
+		ln -sf siomix_open.3 ${DESTDIR}${MAN3_DIR}/siomix_onctl.3
+		ln -sf siomix_open.3 ${DESTDIR}${MAN3_DIR}/siomix_nfds.3
+		ln -sf siomix_open.3 ${DESTDIR}${MAN3_DIR}/siomix_pollfd.3
+		ln -sf siomix_open.3 ${DESTDIR}${MAN3_DIR}/siomix_revents.3
+		ln -sf siomix_open.3 ${DESTDIR}${MAN3_DIR}/siomix_eof.3
 		cp mio_open.3 ${DESTDIR}${MAN3_DIR}
 		ln -sf mio_open.3 ${DESTDIR}${MAN3_DIR}/mio_close.3
 		ln -sf mio_open.3 ${DESTDIR}${MAN3_DIR}/mio_read.3
@@ -100,6 +112,7 @@ clean:
 OBJS = debug.o aucat.o \
 mio.o mio_rmidi.o mio_alsa.o mio_aucat.o \
 sio.o sio_alsa.o sio_aucat.o sio_sun.o \
+siomix.o siomix_aucat.o siomix_sun.o \
 issetugid.o strlcat.o strlcpy.o strtonum.o
 
 .c.o:
@@ -143,3 +156,6 @@ sio_aucat.o:	sio_aucat.c aucat.h amsg.h debug.h sio_priv.h sndio.h \
 		../bsd-compat/bsd-compat.h
 sio_sun.o:	sio_sun.c debug.h sio_priv.h sndio.h \
 		../bsd-compat/bsd-compat.h
+siomix.o:	siomix.c debug.h siomix_priv.h
+siomix_aucat.o:	siomix_aucat.c debug.h aucat.h amsg.h siomix_priv.h
+siomix_sun.o:	siomix_sun.c debug.h amsg.h siomix_priv.h

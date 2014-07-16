@@ -24,12 +24,21 @@
  */
 #define SIO_DEVANY	"default"
 #define MIO_PORTANY	"default"
+#define SIOMIX_DEVANY	"default"
+
+/*
+ * limits
+ */
+#define SIOMIX_NAMEMAX		12	/* max name length */
+#define SIOMIX_INTMAX		127	/* max channel number */
+#define SIOMIX_HALF		64	/* also bool threshold */
 
 /*
  * private ``handle'' structure
  */
 struct sio_hdl;
 struct mio_hdl;
+struct siomix_hdl;
 
 /*
  * parameters of a full-duplex stream
@@ -85,12 +94,39 @@ struct sio_cap {
 #define SIO_XSTRINGS { "ignore", "sync", "error" }
 
 /*
+ * subset of channels of a stream
+ */
+struct siomix_chan {
+	char str[SIOMIX_NAMEMAX];	/* stream name */
+	unsigned int min;		/* first channel */
+	unsigned int num;		/* number of channels */
+};
+
+/*
+ * description of a control (index, value) pair
+ */
+struct siomix_desc {
+	unsigned int addr;		/* control address */
+#define SIOMIX_NUM		2	/* integer in the 0..127 range */
+#define SIOMIX_SW		3	/* on/off switch (0 or 1) */
+#define SIOMIX_VEC		4	/* number, element of vector */
+#define SIOMIX_LIST		5	/* switch, element of a list */
+#define SIOMIX_LABEL		6	/* label attached to chan0 */
+	unsigned int type;		/* one of above */
+	char grp[SIOMIX_NAMEMAX];	/* parameter name or label */
+	struct siomix_chan chan0;	/* affected channels */
+	struct siomix_chan chan1;	/* dito for SIOMIX_{VEC,LIST} */
+};
+
+/*
  * mode bitmap
  */
 #define SIO_PLAY	1
 #define SIO_REC		2
 #define MIO_OUT		4
 #define MIO_IN		8
+#define SIOMIX_READ	0x100
+#define SIOMIX_WRITE	0x200
 
 /*
  * default bytes per sample for the given bits per sample
@@ -143,6 +179,18 @@ int mio_nfds(struct mio_hdl *);
 int mio_pollfd(struct mio_hdl *, struct pollfd *, int);
 int mio_revents(struct mio_hdl *, struct pollfd *);
 int mio_eof(struct mio_hdl *);
+
+struct siomix_hdl *siomix_open(const char *, unsigned int, int);
+void siomix_close(struct siomix_hdl *);
+int siomix_ondesc(struct siomix_hdl *,
+    void (*)(void *, struct siomix_desc *, int), void *);
+int siomix_onctl(struct siomix_hdl *,
+    void (*)(void *, unsigned int, unsigned int), void *);
+int siomix_setctl(struct siomix_hdl *, unsigned int, unsigned int);
+int siomix_nfds(struct siomix_hdl *);
+int siomix_pollfd(struct siomix_hdl *, struct pollfd *, int);
+int siomix_revents(struct siomix_hdl *, struct pollfd *);
+int siomix_eof(struct siomix_hdl *);
 
 #ifdef __cplusplus
 }

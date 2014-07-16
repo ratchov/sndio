@@ -60,6 +60,11 @@ struct sock {
 	struct slot *slot;		/* audio device slot number */
 	struct midi *midi;		/* midi endpoint */
 	struct port *port;		/* midi port */
+	struct ctlslot *ctlslot;
+	struct amsg_mix_desc *ctldesc;
+#define SOCK_CTLDESC	1		/* dump desc and send changes */
+#define SOCK_CTLVAL	2		/* send value changes */
+	unsigned int ctlops;
 };
 
 struct sock *sock_new(int fd);

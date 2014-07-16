@@ -1,6 +1,6 @@
-.\"	$OpenBSD$
+.\" $OpenBSD$
 .\"
-.\" Copyright (c) 2010-2012 Alexandre Ratchov <alex@caoua.org>
+.\" Copyright (c) 2007 Alexandre Ratchov <alex@caoua.org>
 .\"
 .\" Permission to use, copy, modify, and distribute this software for any
 .\" purpose with or without fee is hereby granted, provided that the above
@@ -14,51 +14,143 @@
 .\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 .\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd November 29, 2010
+.Dd $Mdocdate: April 8 2011 $
 .Dt SNDIOCTL 1
 .Os
 .Sh NAME
 .Nm sndioctl
-.Nd control sndiod volume
+.Nd control audio mixer parameters
 .Sh SYNOPSIS
-.Nm sndioctl
-.Op Fl f Ar port
-.Op Ar expr ...
+.Nm
+.Bk -words
+.Op Fl iv
+.Op Fl f Ar device
+.Op Ar command ...
+.Ek
+.Nm
+.Bk -words
+.Fl d
+.Ek
 .Sh DESCRIPTION
 The
 .Nm
-utility sends MIDI volume controller messages (number 7) to adjust
-the master
-.Xr sndiod 1
-volume or programs indivisual volume.
-.Pp
+utility can display or change mixer parameters of
+.Xr sndio 7
+audio devices.
 The options are as follows:
 .Bl -tag -width Ds
-.It Fl f Ar port
-Specifies the name of the
+.It Fl d
+Dump the raw list of available parameters and exit.
+Useful to debug device drivers or programs using the
+.Xr siomix_open 3
+interface.
+.It Fl f Ar device
+Use this
 .Xr sndio 7
-MIDI port to use, default is
-.Pa snd/0
+mixer device.
+.It Fl m
+Monitor and display mixer changes.
+.It Fl n
+Don't hide program names associated to audio streams (by
+default they are displayed as comments).
+.It Fl i
+Display characteristics of requested parameters
+instead of their values.
 .It Fl v
-Increase log verbosity.
+Enable verbose mode, a.k.a. multi-channel mode.
+By default parameters affecting different channels
+of the same stream are disguised as a single mono
+parameter to hide details that are not essential.
 .El
 .Pp
-In no expression is given,
-.Nm
-displays the list of streams known by the server
-and their respective volumes.
-If an expression is a stream name,
-then the volume of this stream is displayed.
-If the expression is a stream name followed by
-.Qq =
-followed by a decimal in the 0..127 range,
-then the stream volume is set to the given value.
-.Sh EXAMPLES
-Set mplayer volume to 80:
-.Bd -literal -offset indent
-$ sndioctl mplayer0=80
-.Ed
+If no commands are specified all valid parameters are displayed on
+.Em stdout .
+Unless
+.Fl d
+or
+.Fl i
+are used, displayed parameters are valid commands.
+The set of available controls depends on the mixer device.
+.Pp
+Commands use the following two formats to display and set
+parameters respectively:
+.Pp
+.Dl <substream>.<parameter>
+.Dl <substream>.<parameter>=<value>
+.Pp
+On the left-hand side, the affected substream is specified
+by the stream name followed by an optional
+channel range.
+Examples of left-hand side terms:
+.Pp
+.Dl spkr.level
+.Dl spkr[2-5].level
+.Dl spkr[6].level
+.Pp
+There are three parameter types: numbers, selectors and vectors.
+.Pp
+Numbers are specified in decimal and follow the same semantics
+as MIDI controllers.
+Values are in the 0..127 range and 64 is the neutral state (if applicable).
+Two-state controls (switches) take any value in the 0..63 range or
+in the 64..127 range typically to the
+.Em off
+and
+.Em on
+states respectively.
+.Pp
+If a decimal is prefixed by the plus (minus) sign then
+the given value is added to (subtracted from) the
+current value of the control.
+If
+.Qq \&!
+is used instead of a number, then the switch is toggled.
+Examples:
+.Pp
+.Dl spkr.level=85
+.Dl spkr[4-5].level=+10
+.Dl spkr.mute=0
+.Dl spkr.mute=!
+.Pp
+.Pp Selectors
+Selector values are substreams; they are specified
+as the stream name followed by an optional channel
+range.
+If no channel range is specified, the same
+range as the stream specified on the left-hand side is used.
+For instance the following are equivalent:
+.Pp
+.Dl record[1].source=mic
+.Dl record[1].source=mic[1]
+.Pp
+.Pp Vectors
+Vectors are arrays of numbers.
+Values are specified as comma-separated components.
+Each component is a substream, followed by
+a colon, followed by a number.
+If the colon and the number are omitted, then 127 is
+assumed.
+If a component is missing, then 0 is assumed.
+Example:
+.Pp
+.Dl monitor.mix=play:120,linein:85
+.Dl record.source=mic,linein
+.Pp
+Numbers are specified as discussed above.
+Note that a vector of switches is equivalent to
+a list.
 .Sh SEE ALSO
-.Xr sndiod 1
-.Xr mio_open 3
-.Xr sndio 7
+.Xr siomix_open 3
+.Sh EXAMPLES
+The following will set all
+.Ar level
+parameters that control the
+.Ar spkr
+stream to zero.
+.Pp
+.Dl $ sndioctl spkr.level=0
+.Pp
+The following commands are equivalent:
+.Pp
+.Dl $ sndioctl record[0].source=mic[0] record[1].source=mic[1]
+.Dl $ sndioctl record.source=mic
