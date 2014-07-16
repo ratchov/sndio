@@ -19,6 +19,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sndio.h>
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
@@ -35,11 +36,11 @@
  */
 #define MODMASK		(Mod1Mask | ControlMask)
 
+void mixer_setvol(int);
+void mixer_ondesc(void *, struct siomix_desc *, int);
+void mixer_onctl(void *, unsigned int, unsigned int);
 int  mixer_connect(void);
 void mixer_disconnect(void);
-void mixer_setvol(int);
-void mixer_sysex(unsigned char *, unsigned);
-void mixer_parse(unsigned char *, unsigned);
 void grab_keys(void);
 void ungrab_keys(void);
 void usage(void);
@@ -88,8 +89,6 @@ mixer_setvol(int vol)
 void
 mixer_ondesc(void *unused, struct siomix_desc *desc, int val)
 {
-	unsigned c;
-
 	if (desc == NULL)
 		return;
 	if (master_addr != -1)
@@ -227,7 +226,7 @@ main(int argc, char **argv)
 {
 	unsigned int scr;
 	XEvent xev;
-	int c, nfds, n;
+	int c, nfds;
 	int background, revents;
 
 	/*
