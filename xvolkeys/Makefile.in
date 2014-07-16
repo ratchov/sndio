@@ -49,4 +49,4 @@ xvolkeys:	${OBJS}
 .c.o:
 		${CC} ${CFLAGS} ${INCLUDE} ${DEFS} -c $<
 
-xvolkeys.o:	xvolkeys.c sysex.h
+xvolkeys.o:	xvolkeys.c

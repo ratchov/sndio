@@ -23,7 +23,6 @@
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <X11/keysym.h>
-#include "sysex.h"
 
 /*
  * X keysyms to increment / decrement volume: + and -
@@ -36,45 +35,20 @@
  */
 #define MODMASK		(Mod1Mask | ControlMask)
 
-/*
- * max MIDI message length we accept
- */
-#define MIDI_MSGMAX	(sizeof(struct sysex))
-
-/*
- * max MIDI volume
- */
-#define MIDI_MAXVOL	127
-
-int midi_connect(void);
-void midi_disconnect(void);
-void midi_setvol(int);
-void midi_sysex(unsigned char *, unsigned);
-void midi_parse(unsigned char *, unsigned);
+int  mixer_connect(void);
+void mixer_disconnect(void);
+void mixer_setvol(int);
+void mixer_sysex(unsigned char *, unsigned);
+void mixer_parse(unsigned char *, unsigned);
 void grab_keys(void);
 void ungrab_keys(void);
 void usage(void);
 
-/*
- * midi parser state
- */
-char *port;
+char *devname;
 struct pollfd pfds[16];
-struct mio_hdl *hdl;
-unsigned int midx;
-unsigned char mev[MIDI_MSGMAX];
-
-int master = MIDI_MAXVOL;
+struct siomix_hdl *hdl;
+int master_addr, master_val = SIOMIX_INTMAX;
 int verbose;
-
-unsigned char dumpreq[] = {
-	SYSEX_START,
-	SYSEX_TYPE_EDU,
-	0,
-	SYSEX_AUCAT,
-	SYSEX_AUCAT_DUMPREQ,
-	SYSEX_END
-};
 
 /*
  * X bits
@@ -84,19 +58,86 @@ KeyCode inc_code, dec_code;
 KeySym *inc_map, *dec_map;
 
 /*
+ * send master volume message and to the server
+ */
+void
+mixer_setvol(int vol)
+{
+	if (vol > SIOMIX_INTMAX)
+		vol = SIOMIX_INTMAX;
+	if (vol < 0)
+		vol = 0;
+	if (!mixer_connect())
+		return;
+	if (master_val != vol) {
+		master_val = vol;
+		if (hdl && master_addr != -1) {
+			if (verbose) {
+				fprintf(stderr, "%s: setting volume to %d\n",
+				    devname, vol);
+			}
+			siomix_setctl(hdl, master_addr, master_val);
+			mixer_disconnect();
+		}
+	}
+}
+
+/*
+ * new control
+ */
+void
+mixer_ondesc(void *unused, struct siomix_desc *desc, int val)
+{
+	unsigned c;
+
+	if (desc == NULL)
+		return;
+	if (master_addr != -1)
+		return;
+	if (strcmp(desc->chan0.str, "master0") == 0 &&
+	    strcmp(desc->grp, "softvol") == 0) {
+		master_addr = desc->addr;
+		master_val = val;
+		if (verbose)
+			fprintf(stderr, "%s: master at addr %u, value = %u\n",
+			    devname, master_addr, master_val);
+	}
+}
+
+/*
+ * control value changed
+ */
+void
+mixer_onctl(void *unused, unsigned int addr, unsigned int val)
+{
+	if (addr == master_addr) {
+		if (verbose)
+			fprintf(stderr, "master changed %u -> %u\n", master_val, val);
+		master_val = val;
+	}
+}
+
+/*
  * connect to sndiod
  */
 int
-midi_connect(void)
+mixer_connect(void)
 {
 	if (hdl != NULL)
 		return 1;
-	hdl = mio_open(port, MIO_IN | MIO_OUT, 0);
+	hdl = siomix_open(devname, SIOMIX_READ | SIOMIX_WRITE, 0);
 	if (hdl == NULL) {
 		if (verbose)
-			fprintf(stderr, "%s: couldn't open MIDI port\n", port);
+			fprintf(stderr, "%s: couldn't open mixer device\n",
+			    devname);
 		return 0;
 	}
+	master_addr = -1;
+	siomix_ondesc(hdl, mixer_ondesc, NULL);
+	siomix_onctl(hdl, mixer_onctl, NULL);
+	if (master_addr)
+		fprintf(stderr, "%s: warning, couldn't find master control\n",
+		    devname);
 	return 1;
 }
 
@@ -104,99 +145,14 @@ midi_connect(void)
  * if there's an error, close connection to sndiod
  */
 void
-midi_disconnect(void)
+mixer_disconnect(void)
 {
-	if (!mio_eof(hdl))
+	if (!siomix_eof(hdl))
 		return;
 	if (verbose)
-		fprintf(stderr, "%s: MIDI port disconnected\n", port);
-	mio_close(hdl);
+		fprintf(stderr, "%s: mixer device disconnected\n", devname);
+	siomix_close(hdl);
 	hdl = NULL;
-}
-
-/*
- * send master volume message and to the server
- */
-void
-midi_setvol(int vol)
-{
-	struct sysex msg;
-
-	if (vol > MIDI_MAXVOL)
-		vol = MIDI_MAXVOL;
-	if (vol < 0)
-		vol = 0;
-	if (verbose)
-		fprintf(stderr, "%s: setting volume to %d\n", port, vol);
-	if (!midi_connect())
-		return;
-	if (master != vol) {
-		master = vol;
-		msg.start = SYSEX_START;
-		msg.type = SYSEX_TYPE_RT;
-		msg.dev = SYSEX_DEV_ANY;
-		msg.id0 = SYSEX_CONTROL;
-		msg.id1 = SYSEX_MASTER;
-		msg.u.master.fine = 0;
-		msg.u.master.coarse = vol;
-		msg.u.master.end = SYSEX_END;
-		if (hdl) {
-			mio_write(hdl, &msg, SYSEX_SIZE(master));
-			midi_disconnect();
-		}
-	}
-}
-
-/*
- * decode midi sysex message
- */
-void
-midi_sysex(unsigned char *msg, unsigned len)
-{
-	if (len == 8 &&
-	    msg[1] == SYSEX_TYPE_RT &&
-	    msg[3] == SYSEX_CONTROL &&
-	    msg[4] == SYSEX_MASTER) {
-		if (master != msg[6]) {
-			master = msg[6];
-			if (verbose) {
-				fprintf(stderr, "%s: volume is %d\n",
-				    port, master);
-			}
-		}
-	}
-}
-
-/*
- * decode midi bytes
- */
-void
-midi_parse(unsigned char *mbuf, unsigned len)
-{
-	unsigned c;
-
-	for (; len > 0; len--) {
-		c = *mbuf++;
-		if (c >= 0xf8) {
-			/* ignore */
-		} else if (c == SYSEX_END) {
-			if (mev[0] == SYSEX_START) {
-				mev[midx++] = c;
-				midi_sysex(mev, midx);
-			}
-			mev[0] = 0;
-		} else if (c == SYSEX_START) {
-			mev[0] = c;
-			midx = 1;
-		} else if (c >= 0x80) {
-			mev[0] = 0;
-		} else if (mev[0]) {
-			if (midx < MIDI_MSGMAX - 1) {
-				mev[midx++] = c;
-			} else
-				mev[0] = 0;
-		}
-	}
 }
 
 /*
@@ -262,15 +218,13 @@ ungrab_keys(void)
 void
 usage(void)
 {
-	fprintf(stderr, "usage: xvolkeys [-Dv] [-q port]\n");
+	fprintf(stderr, "usage: xvolkeys [-Dv] [-f device]\n");
 	exit(1);
 }
 
 int
 main(int argc, char **argv)
 {
-#define MIDIBUFSZ 0x100
-	unsigned char msg[MIDIBUFSZ];
 	unsigned int scr;
 	XEvent xev;
 	int c, nfds, n;
@@ -279,10 +233,10 @@ main(int argc, char **argv)
 	/*
 	 * parse command line options
 	 */
-	port = "snd/0";
+	devname = SIOMIX_DEVANY;
 	verbose = 0;
 	background = 0;
-	while ((c = getopt(argc, argv, "Dq:v")) != -1) {
+	while ((c = getopt(argc, argv, "Df:q:v")) != -1) {
 		switch (c) {
 		case 'D':
 			background = 1;
@@ -290,8 +244,10 @@ main(int argc, char **argv)
 		case 'v':
 			verbose++;
 			break;
-		case 'q':
-			port = optarg;
+			
+		case 'q': /* compat */
+		case 'f':
+			devname = optarg;
 			break;
 		default:
 			usage();
@@ -312,15 +268,7 @@ main(int argc, char **argv)
 	for (scr = 0; scr != ScreenCount(dpy); scr++)
 		XSelectInput(dpy, RootWindow(dpy, scr), KeyPress);
 
-	(void)midi_connect();
-
-	/*
-	 * request initial volume
-	 */
-	if (hdl) {
-		mio_write(hdl, dumpreq, sizeof(dumpreq));
-		midi_disconnect();
-	}
+	(void)mixer_connect();
 
 	grab_keys();
 
@@ -347,24 +295,23 @@ main(int argc, char **argv)
 				continue;
 			if (xev.xkey.keycode == inc_code &&
 			    inc_map[xev.xkey.state & ShiftMask] == KEY_INC) {
-				midi_setvol(master + 9);
+				mixer_setvol(master_val + 9);
 			} else if (xev.xkey.keycode == dec_code &&
 			    dec_map[xev.xkey.state & ShiftMask] == KEY_DEC) {
-				midi_setvol(master - 9);
+				mixer_setvol(master_val - 9);
 			}
 		}
-		nfds = (hdl != NULL) ? mio_pollfd(hdl, pfds, POLLIN) : 0;
+		nfds = (hdl != NULL) ? siomix_pollfd(hdl, pfds, 0) : 0;
 		pfds[nfds].fd = ConnectionNumber(dpy);
 		pfds[nfds].events = POLLIN;
 		while (poll(pfds, nfds + 1, -1) < 0 && errno == EINTR)
 			; /* nothing */
 		if (hdl) {
-			revents = mio_revents(hdl, pfds);
+			revents = siomix_revents(hdl, pfds);
 			if (revents & POLLHUP)
-				midi_disconnect();
+				mixer_disconnect();
 			else if (revents & POLLIN) {
-				n = mio_read(hdl, msg, MIDIBUFSZ);
-				midi_parse(msg, n);
+				/* what */
 			}
 		}
 	}
@@ -372,6 +319,6 @@ main(int argc, char **argv)
 	XFree(dec_map);
 	XCloseDisplay(dpy);
 	if (hdl)
-		mio_close(hdl);
+		siomix_close(hdl);
 	return 0;
 }
