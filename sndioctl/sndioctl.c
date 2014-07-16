@@ -418,6 +418,11 @@ print_par(struct info *p, int mono)
 {
 	struct info *i;
 
+	if (!n_flag && p->desc.type == SIOMIX_LABEL) {
+		print_chan(&p->desc.chan0, mono);
+		printf(" # %s\n", p->desc.grp);
+		return;
+	}
 	print_chan(&p->desc.chan0, mono);
 	printf(".%s", p->desc.grp);
 	if (p->desc.type == SIOMIX_LABEL) {
