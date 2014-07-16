@@ -135,7 +135,7 @@ mixer_connect(void)
 	master_addr = -1;
 	siomix_ondesc(hdl, mixer_ondesc, NULL);
 	siomix_onctl(hdl, mixer_onctl, NULL);
-	if (master_addr)
+	if (master_addr == -1)
 		fprintf(stderr, "%s: warning, couldn't find master control\n",
 		    devname);
 	return 1;
