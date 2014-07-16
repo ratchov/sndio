@@ -50,4 +50,4 @@ sndioctl:	${OBJS}
 .c.o:
 		${CC} ${CFLAGS} ${INCLUDE} ${DEFS} -c $<
 
-sndioctl.o:	sndioctl.c sysex.h
+sndioctl.o:	sndioctl.c
