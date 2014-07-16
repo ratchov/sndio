@@ -44,7 +44,7 @@ void grab_keys(void);
 void ungrab_keys(void);
 void usage(void);
 
-char *devname;
+char *dev_name;
 struct pollfd pfds[16];
 struct siomix_hdl *hdl;
 int master_addr, master_val = SIOMIX_INTMAX;
@@ -74,7 +74,7 @@ mixer_setvol(int vol)
 		if (hdl && master_addr != -1) {
 			if (verbose) {
 				fprintf(stderr, "%s: setting volume to %d\n",
-				    devname, vol);
+				    dev_name, vol);
 			}
 			siomix_setctl(hdl, master_addr, master_val);
 			mixer_disconnect();
@@ -100,7 +100,7 @@ mixer_ondesc(void *unused, struct siomix_desc *desc, int val)
 		master_val = val;
 		if (verbose)
 			fprintf(stderr, "%s: master at addr %u, value = %u\n",
-			    devname, master_addr, master_val);
+			    dev_name, master_addr, master_val);
 	}
 }
 
@@ -125,11 +125,11 @@ mixer_connect(void)
 {
 	if (hdl != NULL)
 		return 1;
-	hdl = siomix_open(devname, SIOMIX_READ | SIOMIX_WRITE, 0);
+	hdl = siomix_open(dev_name, SIOMIX_READ | SIOMIX_WRITE, 0);
 	if (hdl == NULL) {
 		if (verbose)
 			fprintf(stderr, "%s: couldn't open mixer device\n",
-			    devname);
+			    dev_name);
 		return 0;
 	}
 	master_addr = -1;
@@ -137,7 +137,7 @@ mixer_connect(void)
 	siomix_onctl(hdl, mixer_onctl, NULL);
 	if (master_addr == -1)
 		fprintf(stderr, "%s: warning, couldn't find master control\n",
-		    devname);
+		    dev_name);
 	return 1;
 }
 
@@ -150,7 +150,7 @@ mixer_disconnect(void)
 	if (!siomix_eof(hdl))
 		return;
 	if (verbose)
-		fprintf(stderr, "%s: mixer device disconnected\n", devname);
+		fprintf(stderr, "%s: mixer device disconnected\n", dev_name);
 	siomix_close(hdl);
 	hdl = NULL;
 }
@@ -233,7 +233,7 @@ main(int argc, char **argv)
 	/*
 	 * parse command line options
 	 */
-	devname = SIOMIX_DEVANY;
+	dev_name = SIOMIX_DEVANY;
 	verbose = 0;
 	background = 0;
 	while ((c = getopt(argc, argv, "Df:q:v")) != -1) {
@@ -247,7 +247,7 @@ main(int argc, char **argv)
 			
 		case 'q': /* compat */
 		case 'f':
-			devname = optarg;
+			dev_name = optarg;
 			break;
 		default:
 			usage();
