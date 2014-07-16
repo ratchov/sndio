@@ -851,7 +851,7 @@ onctl(void *arg, unsigned addr, unsigned val)
 {
 	struct info *i;
 
-	if (v_flag >= 0)
+	if (v_flag >= 1)
 		fprintf(stderr, "onctl (%d, %d)\n", addr, val);
 	for (i = infolist; i != NULL; i = i->next) {
 		if (i->ctladdr != addr)
