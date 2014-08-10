@@ -43,11 +43,11 @@ The options are as follows:
 .Bl -tag -width Ds
 .It Fl D
 Daemonize.
-.It Fl q Ar port
-Control MIDI port to use to connect to
-.Xr sndiod 1
-daemon, the default is
-.Pa snd/0
+.It Fl f Ar port
+Control
+.Xr sndio 7
+device to use.
+
 .It Fl v
 Increase log verbosity.
 .El
