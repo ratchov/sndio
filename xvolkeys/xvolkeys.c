@@ -36,6 +36,11 @@
  */
 #define MODMASK		(Mod1Mask | ControlMask)
 
+/*
+ * volume increment
+ */
+#define VOL_INC	9
+
 void mixer_setvol(unsigned int);
 void mixer_ondesc(void *, struct siomix_desc *, int);
 void mixer_onctl(void *, unsigned int, unsigned int);
@@ -63,15 +68,18 @@ KeySym *inc_map, *dec_map;
  * send master volume message and to the server
  */
 void
-mixer_setvol(unsigned int vol)
+mixer_incrvol(int incr)
 {
+	int vol;
+
+	if (!mixer_connect())
+		return;
+	vol = master_val + incr;
 	if (vol > SIOMIX_INTMAX)
 		vol = SIOMIX_INTMAX;
 	if (vol < 0)
 		vol = 0;
-	if (!mixer_connect())
-		return;
-	if (master_val != vol) {
+	if (master_val != (unsigned int)vol) {
 		master_val = vol;
 		if (hdl && master_found) {
 			if (verbose) {
@@ -296,10 +304,10 @@ main(int argc, char **argv)
 				continue;
 			if (xev.xkey.keycode == inc_code &&
 			    inc_map[xev.xkey.state & ShiftMask] == KEY_INC) {
-				mixer_setvol(master_val + 9);
+				mixer_incrvol(VOL_INC);
 			} else if (xev.xkey.keycode == dec_code &&
 			    dec_map[xev.xkey.state & ShiftMask] == KEY_DEC) {
-				mixer_setvol(master_val - 9);
+				mixer_incrvol(-VOL_INC);
 			}
 		}
 		nfds = (hdl != NULL) ? siomix_pollfd(hdl, pfds, 0) : 0;
