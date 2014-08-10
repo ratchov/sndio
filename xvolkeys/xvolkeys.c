@@ -36,7 +36,7 @@
  */
 #define MODMASK		(Mod1Mask | ControlMask)
 
-void mixer_setvol(int);
+void mixer_setvol(unsigned int);
 void mixer_ondesc(void *, struct siomix_desc *, int);
 void mixer_onctl(void *, unsigned int, unsigned int);
 int  mixer_connect(void);
@@ -63,7 +63,7 @@ KeySym *inc_map, *dec_map;
  * send master volume message and to the server
  */
 void
-mixer_setvol(int vol)
+mixer_setvol(unsigned int vol)
 {
 	if (vol > SIOMIX_INTMAX)
 		vol = SIOMIX_INTMAX;
