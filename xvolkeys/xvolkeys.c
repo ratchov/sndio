@@ -92,10 +92,11 @@ mixer_ondesc(void *unused, struct siomix_desc *desc, int val)
 {
 	if (desc == NULL)
 		return;
-	if (!master_found)
+	if (master_found)
 		return;
 	if (strcmp(desc->chan0.str, "master0") == 0 &&
 	    strcmp(desc->grp, "softvol") == 0) {
+		master_found = 1;
 		master_addr = desc->addr;
 		master_val = val;
 		if (verbose)
