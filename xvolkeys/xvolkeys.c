@@ -48,7 +48,8 @@ void usage(void);
 char *dev_name;
 struct pollfd pfds[16];
 struct siomix_hdl *hdl;
-int master_addr, master_val = SIOMIX_INTMAX;
+unsigned int master_addr, master_val = SIOMIX_INTMAX;
+int master_found = 0;
 int verbose;
 
 /*
@@ -72,7 +73,7 @@ mixer_setvol(int vol)
 		return;
 	if (master_val != vol) {
 		master_val = vol;
-		if (hdl && master_addr != -1) {
+		if (hdl && master_found) {
 			if (verbose) {
 				fprintf(stderr, "%s: setting volume to %d\n",
 				    dev_name, vol);
@@ -91,7 +92,7 @@ mixer_ondesc(void *unused, struct siomix_desc *desc, int val)
 {
 	if (desc == NULL)
 		return;
-	if (master_addr != -1)
+	if (!master_found)
 		return;
 	if (strcmp(desc->chan0.str, "master0") == 0 &&
 	    strcmp(desc->grp, "softvol") == 0) {
@@ -131,10 +132,10 @@ mixer_connect(void)
 			    dev_name);
 		return 0;
 	}
-	master_addr = -1;
+	master_found = 0;
 	siomix_ondesc(hdl, mixer_ondesc, NULL);
 	siomix_onctl(hdl, mixer_onctl, NULL);
-	if (master_addr == -1)
+	if (!master_found)
 		fprintf(stderr, "%s: warning, couldn't find master control\n",
 		    dev_name);
 	return 1;
@@ -224,7 +225,7 @@ usage(void)
 int
 main(int argc, char **argv)
 {
-	unsigned int scr;
+	int scr;
 	XEvent xev;
 	int c, nfds;
 	int background, revents;
