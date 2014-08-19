@@ -459,7 +459,7 @@ filelist_init(void)
 		perror("setitimer");
 		exit(1);
 	}
-	//log_sync = 0;
+	log_sync = 0;
 	timo_init();
 }
 

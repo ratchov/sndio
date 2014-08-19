@@ -136,7 +136,7 @@ aparams_strtoenc(struct aparams *par, char *istr)
 		p++;
 
 		/*
-		 * get (optional) alignement
+		 * get (optional) alignment
 		 */
 		if (p[0] == 'm' && p[1] == 's' && p[2] == 'b') {
 			msb = 1;

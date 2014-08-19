@@ -77,21 +77,14 @@ _mio_rmidi_open(const char *str, unsigned int mode, int nbio)
 		flags = O_RDWR;
 	else
 		flags = (mode & MIO_OUT) ? O_WRONLY : O_RDONLY;
-	while ((fd = open(path, flags | O_NONBLOCK)) < 0) {
+	while ((fd = open(path, flags | O_NONBLOCK | O_CLOEXEC)) < 0) {
 		if (errno == EINTR)
 			continue;
 		DPERROR(path);
 		goto bad_free;
 	}
-	if (fcntl(fd, F_SETFD, FD_CLOEXEC) < 0) {
-		DPERROR("FD_CLOEXEC");
-		goto bad_close;
-	}
 	hdl->fd = fd;
 	return (struct mio_hdl *)hdl;
- bad_close:
-	while (close(hdl->fd) < 0 && errno == EINTR)
-		; /* retry */
  bad_free:
 	free(hdl);
 	return NULL;

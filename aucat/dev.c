@@ -1525,7 +1525,7 @@ dev_try(struct dev *d, int slot)
 #ifdef DEBUG
 		if (debug_level >= 3) {
 			dev_slotdbg(d, slot);
-			dbg_puts(": server not started, delayd\n");
+			dbg_puts(": server not started, delayed\n");
 		}
 #endif
 		return 0;

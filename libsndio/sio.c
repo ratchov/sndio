@@ -403,7 +403,7 @@ sio_revents(struct sio_hdl *hdl, struct pollfd *pfd)
 #ifdef DEBUG
 	struct timespec ts0, ts1;
 
-	if (_sndio_debug >= 2)
+	if (_sndio_debug >= 4)
 		clock_gettime(CLOCK_MONOTONIC, &ts0);
 #endif
 	if (hdl->eof)
