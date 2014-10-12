@@ -330,7 +330,7 @@ enc_do(struct conv *p, unsigned char *in, unsigned char *out, int todo)
 	adata_t *idata;
 	unsigned int s;
 	unsigned int oshift;
-	int obias;
+	unsigned int obias;
 	unsigned int obps;
 	unsigned int i;
 	unsigned char *odata;
@@ -419,7 +419,7 @@ enc_sil_do(struct conv *p, unsigned char *out, int todo)
 	 */
 	odata += p->bfirst;
 	for (f = todo * p->nch; f > 0; f--) {
-		s = ((1 << 31) >> oshift) - obias;
+		s = ((1U << 31) >> oshift) - obias;
 		for (i = obps; i > 0; i--) {
 			*odata = (unsigned char)s;
 			s >>= 8;
@@ -443,7 +443,7 @@ enc_init(struct conv *p, struct aparams *par, int nch)
 		p->shift = 32 - par->bits;
 	}
 	if (par->sig) {
-		p->bias = 1 << (p->shift - 1);
+		p->bias = (1U << 31) >> p->shift;
 	} else {
 		p->bias = 0;
 	}	
@@ -480,7 +480,7 @@ dec_do(struct conv *p, unsigned char *in, unsigned char *out, int todo)
 	unsigned char *idata;
 	int ibnext;
 	int isnext;
-	int ibias;
+	unsigned int ibias;
 	unsigned int ishift;
 	adata_t *odata;
 
@@ -536,7 +536,7 @@ dec_init(struct conv *p, struct aparams *par, int nch)
 		p->shift = 32 - par->bits;
 	}
 	if (par->sig) {
-		p->bias = 1 << (p->shift - 1);
+		p->bias = (1U << 31) >> p->shift;
 	} else {
 		p->bias = 0;
 	}	
