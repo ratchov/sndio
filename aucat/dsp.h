@@ -1,6 +1,6 @@
 /*	$OpenBSD$	*/
 /*
- * Copyright (c) 2008 Alexandre Ratchov <alex@caoua.org>
+ * Copyright (c) 2012 Alexandre Ratchov <alex@caoua.org>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -14,40 +14,11 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#ifndef APARAMS_H
-#define APARAMS_H
+#ifndef DSP_H
+#define DSP_H
 
-#include <sys/param.h>
-
-#define NCHAN_MAX	16		/* max channel in a stream */
-#define RATE_MIN	4000		/* min sample rate */
-#define RATE_MAX	192000		/* max sample rate */
-#define BITS_MIN	1		/* min bits per sample */
-#define BITS_MAX	32		/* max bits per sample */
-
-/*
- * Maximum size of the encording string (the longest possible
- * encoding is ``s24le3msb'').
- */
-#define ENCMAX	10
-
-/*
- * Default bytes per sample for the given bits per sample.
- */
-#define APARAMS_BPS(bits) (((bits) <= 8) ? 1 : (((bits) <= 16) ? 2 : 4))
-
-/*
- * Encoding specification.
- */
-struct aparams {
-	unsigned int bps;		/* bytes per sample */
-	unsigned int bits;		/* actually used bits */
-	unsigned int le;		/* 1 if little endian, 0 if big endian */
-	unsigned int sig;		/* 1 if signed, 0 if unsigned */
-	unsigned int msb;		/* 1 if msb justified, 0 if lsb justified */
-	unsigned int cmin, cmax;	/* provided/consumed channels */
-	unsigned int rate;		/* frames per second */
-};
+#include <sys/types.h>
+#include "defs.h"
 
 /*
  * Samples are numbers in the interval [-1, 1[, note that 1, the upper
@@ -62,14 +33,12 @@ struct aparams {
 
 #if ADATA_BITS == 16
 
-typedef short adata_t;
-
 #define ADATA_MUL(x,y)		(((int)(x) * (int)(y)) >> (ADATA_BITS - 1))
 #define ADATA_MULDIV(x,y,z)	((int)(x) * (int)(y) / (int)(z))
 
-#elif ADATA_BITS == 24
+typedef short adata_t;
 
-typedef int adata_t;
+#elif ADATA_BITS == 24
 
 #if defined(__i386__) && defined(__GNUC__)
 
@@ -116,26 +85,77 @@ fp24_muldiv(int x, int a, int b)
 #error "no 24-bit code for this architecture"
 #endif
 
+typedef int adata_t;
+
 #else
 #error "only 16-bit and 24-bit precisions are supported"
 #endif
 
-#define MIDI_MAXCTL		127
+/*
+ * Maximum size of the encording string (the longest possible
+ * encoding is ``s24le3msb'').
+ */
+#define ENCMAX	10
+
+/*
+ * Default bytes per sample for the given bits per sample.
+ */
+#define APARAMS_BPS(bits) (((bits) <= 8) ? 1 : (((bits) <= 16) ? 2 : 4))
+
+struct aparams {
+	unsigned int bps;		/* bytes per sample */
+	unsigned int bits;		/* actually used bits */
+	unsigned int le;		/* 1 if little endian, 0 if big endian */
+	unsigned int sig;		/* 1 if signed, 0 if unsigned */
+	unsigned int msb;		/* 1 if msb justified, 0 if lsb justified */
+};
+
+struct resamp {
+#define RESAMP_NCTX	2
+	unsigned int ctx_start;
+	adata_t ctx[NCHAN_MAX * RESAMP_NCTX];
+	unsigned int iblksz, oblksz;
+	int diff;
+	int idelta, odelta;		/* remainder of ipos/opos */
+	int nch;
+};
+
+struct conv {
+	int bfirst;			/* bytes to skip at startup */
+	unsigned int bps;		/* bytes per sample */
+	unsigned int shift;		/* shift to get 32bit MSB */
+	unsigned int bias;			/* bias of unsigned samples */
+	int bnext;			/* to reach the next byte */
+	int snext;			/* to reach the next sample */
+	int nch;
+};
+
+struct cmap {
+	int istart;
+	int inext;
+	int onext;
+	int ostart;
+	int nch;
+};
+
 #define MIDI_TO_ADATA(m)	(aparams_ctltovol[m] << (ADATA_BITS - 16))
-
 extern int aparams_ctltovol[128];
-extern struct aparams aparams_none;
 
-void aparams_init(struct aparams *, unsigned int, unsigned int, unsigned int);
-void aparams_dbg(struct aparams *);
-int aparams_eqrate(struct aparams *, struct aparams *);
-int aparams_eqenc(struct aparams *, struct aparams *);
-int aparams_eq(struct aparams *, struct aparams *);
-int aparams_subset(struct aparams *, struct aparams *);
-void aparams_grow(struct aparams *, struct aparams *);
-unsigned int aparams_bpf(struct aparams *);
+void aparams_init(struct aparams *);
+void aparams_log(struct aparams *);
 int aparams_strtoenc(struct aparams *, char *);
 int aparams_enctostr(struct aparams *, char *);
-void aparams_copyenc(struct aparams *, struct aparams *);
+int aparams_native(struct aparams *);
 
-#endif /* !defined(APARAMS_H) */
+int resamp_do(struct resamp *, adata_t *, adata_t *, int);
+void resamp_init(struct resamp *, unsigned int, unsigned int, int);
+void enc_do(struct conv *, unsigned char *, unsigned char *, int);
+void enc_sil_do(struct conv *, unsigned char *, int);
+void enc_init(struct conv *, struct aparams *, int);
+void dec_do(struct conv *, unsigned char *, unsigned char *, int);
+void dec_init(struct conv *, struct aparams *, int);
+void cmap_add(struct cmap *, void *, void *, int, int);
+void cmap_copy(struct cmap *, void *, void *, int, int);
+void cmap_init(struct cmap *, int, int, int, int, int, int, int, int);
+
+#endif /* !defined(DSP_H) */

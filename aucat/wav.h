@@ -18,59 +18,32 @@
 #define WAV_H
 
 #include <sys/types.h>
-
-#include "aparams.h"
-#include "pipe.h"
+#include "dsp.h"
 
 struct wav {
-	struct pipe pipe;
-	struct wav *next;
-#define HDR_AUTO	0	/* guess by looking at the file name */
-#define HDR_RAW		1	/* no headers, ie openbsd native ;-) */
-#define HDR_WAV		2	/* microsoft riff wave */
-	unsigned int hdr;	/* HDR_RAW or HDR_WAV */
-	unsigned int xrun;	/* xrun policy */
-	struct aparams hpar;	/* parameters to write on the header */
-	off_t rbytes;		/* bytes to read, -1 if no limit */
-	off_t wbytes;		/* bytes to write, -1 if no limit */
-	off_t startpos;		/* beginning of the data chunk */
-	off_t endpos;		/* end of the data chunk */
-	off_t mmcpos;		/* play/rec start point set by MMC */
-	short *map;		/* mulaw/alaw -> s16 conversion table */
-	int slot;		/* mixer ctl slot number */
-	int mmc;		/* use MMC control */
-	int join;		/* join/expand channels */
-	unsigned int vol;	/* current volume */
-	unsigned int maxweight;	/* dynamic range when vol == 127 */
-#define WAV_CFG		0	/* parameters read from headers */
-#define WAV_INIT	1	/* not trying to do anything */
-#define WAV_START	2	/* buffer allocated */
-#define WAV_READY	3	/* buffer filled enough */
-#define WAV_RUN		4	/* buffer attached to device */
-#define WAV_MIDI	5	/* midi "syx" file */
-	unsigned int pstate;	/* one of above */
-	unsigned int mode;	/* bitmap of MODE_* */
-	struct dev *dev;	/* device playing or recording */
+	struct aparams par;		/* file params */
+	int rate;			/* file sample rate */
+	int nch;			/* file channel count */
+#define HDR_AUTO	0
+#define HDR_RAW		1
+#define HDR_WAV		2
+	int hdr;			/* header type */
+	int fd;				/* file descriptor */
+#define WAV_FREAD	1		/* open for reading */
+#define WAV_FWRITE	2		/* open for writing */
+	int flags;			/* bitmap of above */
+	off_t curpos;			/* read/write position (bytes) */
+	off_t startpos;			/* where payload starts */
+	off_t endpos;			/* where payload ends */
+	off_t maxpos;			/* max allowed pos (.wav limitation) */
+	short *map;			/* mulaw/alaw conversions */
+	char *path;			/* file name (debug only) */
 };
 
-extern struct fileops wav_ops;
-struct wav *wav_list;
-
-struct wav *wav_new_in(struct fileops *, struct dev *,
-    unsigned int, char *, unsigned int, struct aparams *,
-    unsigned int, unsigned int, int, int);
-struct wav *wav_new_out(struct fileops *, struct dev *,
-    unsigned int, char *, unsigned int, struct aparams *,
-    unsigned int, int, int);
-unsigned int wav_read(struct file *, unsigned char *, unsigned int);
-unsigned int wav_write(struct file *, unsigned char *, unsigned int);
-void wav_close(struct file *);
-int wav_readhdr(int, struct aparams *, off_t *, off_t *, short **);
-int wav_writehdr(int, struct aparams *, off_t *, off_t);
-void wav_conv(unsigned char *, unsigned int, short *);
-int wav_init(struct wav *);
-
-extern short wav_ulawmap[256];
-extern short wav_alawmap[256];
+int wav_open(struct wav *, char *, int, int, struct aparams *, int, int);
+size_t wav_read(struct wav *, void *, size_t);
+size_t wav_write(struct wav *, void *, size_t);
+int wav_seek(struct wav *, off_t);
+void wav_close(struct wav *);
 
 #endif /* !defined(WAV_H) */

@@ -1,6 +1,6 @@
 /*	$OpenBSD$	*/
 /*
- * Copyright (c) 2008 Alexandre Ratchov <alex@caoua.org>
+ * Copyright (c) 2008-2012 Alexandre Ratchov <alex@caoua.org>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -14,15 +14,21 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#ifndef MIOFILE_H
-#define MIOFILE_H
+#ifndef DEFS_H
+#define DEFS_H
 
-struct file;
-struct fileops;
-struct miofile;
+/*
+ * units used for MTC clock.
+ */
+#define MTC_SEC			2400	/* 1 second is 2400 ticks */
 
-struct miofile *miofile_new(struct fileops *, char *, unsigned int);
+/*
+ * limits
+ */
+#define NCHAN_MAX	16		/* max channel in a stream */
+#define RATE_MIN	4000		/* min sample rate */
+#define RATE_MAX	192000		/* max sample rate */
+#define BITS_MIN	1		/* min bits per sample */
+#define BITS_MAX	32		/* max bits per sample */
 
-extern struct fileops miofile_ops;
-
-#endif /* !defined(MIOFILE_H) */
+#endif /* !defined(DEFS_H) */
