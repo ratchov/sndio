@@ -30,6 +30,9 @@
 #include "wav.h"
 #include "bsd-compat.h"
 
+#define xstr(x) #x
+#define str(x) xstr(x)
+
 /*
  * masks to extract command and channel of status byte
  */
@@ -1210,8 +1213,11 @@ opt_num(char *s, int min, int max, int *num)
 	*num = strtonum(s, min, max, &errstr);
 	if (errstr) {
 		log_puts(s);
-		log_puts(": ");
-		log_puts(errstr);
+		log_puts(": expected integer between ");
+		log_puti(min);
+		log_puts(" and ");
+		log_puti(max);
+		log_puts("\n");
 		return 0;
 	}
 	return 1;
