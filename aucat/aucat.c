@@ -30,9 +30,6 @@
 #include "wav.h"
 #include "bsd-compat.h"
 
-#define xstr(x) #x
-#define str(x) xstr(x)
-
 /*
  * masks to extract command and channel of status byte
  */
