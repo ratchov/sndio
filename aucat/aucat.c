@@ -1241,7 +1241,7 @@ main(int argc, char **argv)
 	dev = NULL;
 	mode = 0;
 	
-	while ((c = getopt(argc, argv, "b:c:de:f:h:i:j:no:q:r:t:v:z:")) != -1) {
+	while ((c = getopt(argc, argv, "b:c:de:f:h:i:j:no:q:r:t:v:")) != -1) {
 		switch (c) {
 		case 'b':
 			if (!opt_num(optarg, 1, RATE_MAX, &bufsz))
@@ -1293,10 +1293,6 @@ main(int argc, char **argv)
 			break;
 		case 'v':
 			if (!opt_num(optarg, 0, MIDI_MAXCTL, &vol))
-				return 1;
-			break;
-		case 'z':
-			if (!opt_num(optarg, 1, RATE_MAX, &round))
 				return 1;
 			break;
 		default:
