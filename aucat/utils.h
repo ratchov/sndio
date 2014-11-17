@@ -20,7 +20,7 @@
 
 #include <stddef.h>
 
-void log_puts(const char *);
+void log_puts(char *);
 void log_putx(unsigned long);
 void log_putu(unsigned long);
 void log_puti(long);

@@ -60,9 +60,9 @@ log_flush(void)
  * store a string in the log
  */
 void
-log_puts(const char *msg)
+log_puts(char *msg)
 {
-	const char *p = msg;
+	char *p = msg;
 	int c;
 
 	while ((c = *p++) != '\0') {
