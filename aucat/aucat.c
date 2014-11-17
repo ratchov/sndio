@@ -67,8 +67,8 @@
 /*
  * audio device defaults
  */
-#define DEFAULT_RATE	48000
-#define DEFAULT_BUFSZ	7860
+#define DEFAULT_RATE		48000
+#define DEFAULT_BUFSZ_MS	200
 
 struct slot {
 	struct slot *next;		/* next on the play list */
@@ -588,7 +588,7 @@ dev_open(char *dev, int mode, int bufsz, char *port)
 		par.pchan = pmax + 1;
 	if (mode & SIO_REC)
 		par.rchan = rmax + 1;
-	par.appbufsz = bufsz;
+	par.appbufsz = bufsz > 0 ? bufsz : rate * DEFAULT_BUFSZ_MS / 1000;
 	if (!sio_setpar(dev_sh, &par) || !sio_getpar(dev_sh, &par)) {
 		log_puts(dev_name);
 		log_puts(": couldn't set audio params\n");
@@ -1227,7 +1227,7 @@ main(int argc, char **argv)
 
 	vol = 127;
 	dup = 0;
-	bufsz = DEFAULT_BUFSZ;
+	bufsz = 0;
 	rate = DEFAULT_RATE;
 	cmin = 0;
 	cmax = 1;
