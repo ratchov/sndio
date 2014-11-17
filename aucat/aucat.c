@@ -69,7 +69,6 @@
  */
 #define DEFAULT_RATE	48000
 #define DEFAULT_BUFSZ	7860
-#define DEFAULT_ROUND	960
 
 struct slot {
 	struct slot *next;		/* next on the play list */
@@ -542,7 +541,7 @@ slot_sub_bcopy(struct slot *s, adata_t *idata, int todo)
 }
 
 static int
-dev_open(char *dev, int mode, int round, int bufsz, char *port)
+dev_open(char *dev, int mode, int bufsz, char *port)
 {
 	int rate, pmax, rmax;
 	struct sio_par par;
@@ -589,7 +588,6 @@ dev_open(char *dev, int mode, int round, int bufsz, char *port)
 		par.pchan = pmax + 1;
 	if (mode & SIO_REC)
 		par.rchan = rmax + 1;
-	par.round = round;
 	par.appbufsz = bufsz;
 	if (!sio_setpar(dev_sh, &par) || !sio_getpar(dev_sh, &par)) {
 		log_puts(dev_name);
@@ -1038,7 +1036,7 @@ sigint(int s)
 }
 
 static int
-playrec(char *dev, int mode, int round, int bufsz, char *port)
+playrec(char *dev, int mode, int bufsz, char *port)
 {
 #define MIDIBUFSZ 0x100
 	unsigned char mbuf[MIDIBUFSZ];
@@ -1047,7 +1045,7 @@ playrec(char *dev, int mode, int round, int bufsz, char *port)
 	struct slot *s;
 	int n, ns, nm, ev;
 
-	if (!dev_open(dev, mode, round, bufsz, port))
+	if (!dev_open(dev, mode, bufsz, port))
 		return 0;
 	n = sio_nfds(dev_sh);
 	if (dev_mh)
@@ -1222,7 +1220,7 @@ opt_num(char *s, int min, int max, int *num)
 int
 main(int argc, char **argv)
 {
-	int dup, cmin, cmax, rate, vol, bufsz, round, hdr, mode;
+	int dup, cmin, cmax, rate, vol, bufsz, hdr, mode;
 	char *port, *dev;
 	struct aparams par;
 	int n_flag, c;
@@ -1230,7 +1228,6 @@ main(int argc, char **argv)
 	vol = 127;
 	dup = 0;
 	bufsz = DEFAULT_BUFSZ;
-	round = DEFAULT_ROUND;
 	rate = DEFAULT_RATE;
 	cmin = 0;
 	cmax = 1;
@@ -1324,7 +1321,7 @@ main(int argc, char **argv)
 			log_puts("at least of -i and -o required\n");
 			return 1;
 		} 
-		if (!playrec(dev, mode, round, bufsz, port))
+		if (!playrec(dev, mode, bufsz, port))
 			return 1;
 	}
 	return 0;
