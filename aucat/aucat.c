@@ -263,7 +263,7 @@ slot_init(struct slot *s)
 	s->bpf = s->wav.par.bps * (s->cmax - s->cmin + 1);
 	s->round = (dev_round * s->wav.rate + dev_rate / 2) / dev_rate;
 
-	bufsz = s->wav.rate / 2;	/* 500ms */
+	bufsz = s->round * (dev_bufsz / dev_round);
 	bufsz -= bufsz % s->round;
 	if (bufsz == 0)
 		bufsz = s->round;
