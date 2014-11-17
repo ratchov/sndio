@@ -72,7 +72,7 @@ abuf_done(struct abuf *buf)
 unsigned char *
 abuf_rgetblk(struct abuf *buf, int *rsize)
 {
-	unsigned int count;
+	int count;
 
 	count = buf->len - buf->start;
 	if (count > buf->used)
