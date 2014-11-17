@@ -41,15 +41,6 @@
  */
 #define VOL_INC	9
 
-void mixer_setvol(unsigned int);
-void mixer_ondesc(void *, struct siomix_desc *, int);
-void mixer_onctl(void *, unsigned int, unsigned int);
-int  mixer_connect(void);
-void mixer_disconnect(void);
-void grab_keys(void);
-void ungrab_keys(void);
-void usage(void);
-
 char *dev_name;
 struct pollfd pfds[16];
 struct siomix_hdl *hdl;
@@ -65,9 +56,81 @@ KeyCode inc_code, dec_code;
 KeySym *inc_map, *dec_map;
 
 /*
+ * new control
+ */
+static void
+mixer_ondesc(void *unused, struct siomix_desc *desc, int val)
+{
+	if (desc == NULL)
+		return;
+	if (master_found)
+		return;
+	if (strcmp(desc->chan0.str, "master0") == 0 &&
+	    strcmp(desc->grp, "softvol") == 0) {
+		master_found = 1;
+		master_addr = desc->addr;
+		master_val = val;
+		if (verbose)
+			fprintf(stderr, "%s: master at addr %u, value = %u\n",
+			    dev_name, master_addr, master_val);
+	}
+}
+
+/*
+ * control value changed
+ */
+static void
+mixer_onctl(void *unused, unsigned int addr, unsigned int val)
+{
+	if (addr == master_addr) {
+		if (verbose)
+			fprintf(stderr, "master changed %u -> %u\n", master_val, val);
+		master_val = val;
+	}
+}
+
+/*
+ * if there's an error, close connection to sndiod
+ */
+static void
+mixer_disconnect(void)
+{
+	if (!siomix_eof(hdl))
+		return;
+	if (verbose)
+		fprintf(stderr, "%s: mixer device disconnected\n", dev_name);
+	siomix_close(hdl);
+	hdl = NULL;
+}
+
+/*
+ * connect to sndiod
+ */
+static int
+mixer_connect(void)
+{
+	if (hdl != NULL)
+		return 1;
+	hdl = siomix_open(dev_name, SIOMIX_READ | SIOMIX_WRITE, 0);
+	if (hdl == NULL) {
+		if (verbose)
+			fprintf(stderr, "%s: couldn't open mixer device\n",
+			    dev_name);
+		return 0;
+	}
+	master_found = 0;
+	siomix_ondesc(hdl, mixer_ondesc, NULL);
+	siomix_onctl(hdl, mixer_onctl, NULL);
+	if (!master_found)
+		fprintf(stderr, "%s: warning, couldn't find master control\n",
+		    dev_name);
+	return 1;
+}
+
+/*
  * send master volume message and to the server
  */
-void
+static void
 mixer_incrvol(int incr)
 {
 	int vol;
@@ -93,81 +156,9 @@ mixer_incrvol(int incr)
 }
 
 /*
- * new control
- */
-void
-mixer_ondesc(void *unused, struct siomix_desc *desc, int val)
-{
-	if (desc == NULL)
-		return;
-	if (master_found)
-		return;
-	if (strcmp(desc->chan0.str, "master0") == 0 &&
-	    strcmp(desc->grp, "softvol") == 0) {
-		master_found = 1;
-		master_addr = desc->addr;
-		master_val = val;
-		if (verbose)
-			fprintf(stderr, "%s: master at addr %u, value = %u\n",
-			    dev_name, master_addr, master_val);
-	}
-}
-
-/*
- * control value changed
- */
-void
-mixer_onctl(void *unused, unsigned int addr, unsigned int val)
-{
-	if (addr == master_addr) {
-		if (verbose)
-			fprintf(stderr, "master changed %u -> %u\n", master_val, val);
-		master_val = val;
-	}
-}
-
-/*
- * connect to sndiod
- */
-int
-mixer_connect(void)
-{
-	if (hdl != NULL)
-		return 1;
-	hdl = siomix_open(dev_name, SIOMIX_READ | SIOMIX_WRITE, 0);
-	if (hdl == NULL) {
-		if (verbose)
-			fprintf(stderr, "%s: couldn't open mixer device\n",
-			    dev_name);
-		return 0;
-	}
-	master_found = 0;
-	siomix_ondesc(hdl, mixer_ondesc, NULL);
-	siomix_onctl(hdl, mixer_onctl, NULL);
-	if (!master_found)
-		fprintf(stderr, "%s: warning, couldn't find master control\n",
-		    dev_name);
-	return 1;
-}
-
-/*
- * if there's an error, close connection to sndiod
- */
-void
-mixer_disconnect(void)
-{
-	if (!siomix_eof(hdl))
-		return;
-	if (verbose)
-		fprintf(stderr, "%s: mixer device disconnected\n", dev_name);
-	siomix_close(hdl);
-	hdl = NULL;
-}
-
-/*
  * register hot-keys in X
  */
-void
+static void
 grab_keys(void)
 {
 	unsigned int i, scr, nscr;
@@ -208,7 +199,7 @@ grab_keys(void)
 /*
  * unregister hot-keys
  */
-void
+static void
 ungrab_keys(void)
 {
 	unsigned int scr, nscr;
@@ -222,13 +213,6 @@ ungrab_keys(void)
 	nscr = ScreenCount(dpy);
 	for (scr = 0; scr != nscr; scr++)
 		XUngrabKey(dpy, AnyKey, AnyModifier, RootWindow(dpy, scr));
-}
-
-void
-usage(void)
-{
-	fprintf(stderr, "usage: xvolkeys [-Dv] [-f device]\n");
-	exit(1);
 }
 
 int
@@ -259,13 +243,15 @@ main(int argc, char **argv)
 			dev_name = optarg;
 			break;
 		default:
-			usage();
+			goto bad_usage;
 		}
 	}
 	argc -= optind;
 	argv += optind;
-	if (argc > 0)
-		usage();
+	if (argc > 0) {
+	bad_usage:
+		fprintf(stderr, "usage: xvolkeys [-Dv] [-f device]\n");
+	}
 
 	dpy = XOpenDisplay(NULL);
 	if (dpy == 0) {
