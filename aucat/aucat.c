@@ -136,7 +136,7 @@ unsigned int common_len[] = { 0, 2, 3, 2, 0, 0, 1, 1 };
 
 char usagestr[] = "usage: aucat [-d] [-b nframes] "
     "[-c min:max] [-e enc] [-f device]\n\t"
-    "[-j flag] [-q port] [-r rate] [-v volume] [-z nframes]\n";
+    "[-j flag] [-q port] [-r rate] [-v volume]\n";
 
 static void
 slot_log(struct slot *s)
