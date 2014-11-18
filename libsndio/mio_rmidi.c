@@ -60,7 +60,6 @@ _mio_rmidi_open(const char *str, unsigned int mode, int nbio)
 
 	switch (*str) {
 	case '/':
-	case ':': /* XXX: for backward compat */
 		str++;
 		break;
 	default:

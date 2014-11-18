@@ -280,7 +280,6 @@ _sio_alsa_open(const char *str, unsigned mode, int nbio)
 
 	switch (*str) {
 	case '/':
-	case ':': /* XXX: for backward compat */
 		str++;
 		break;
 	default:
