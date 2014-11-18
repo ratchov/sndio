@@ -48,7 +48,7 @@ main(int argc, char **argv) {
 	par.sig = 1;
 	par.bits = 16;
 	par.pchan = 2;
-	par.rate = 44100;
+	par.rate = 48000;
 
 	if (isatty(STDIN_FILENO)) {
 		fprintf(stderr, "stdin can't be a tty\n");
