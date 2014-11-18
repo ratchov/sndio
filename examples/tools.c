@@ -22,7 +22,7 @@
  * return the length of the resulting string
  */
 int
-sio_enctostr(struct sio_par *par, char *ostr)
+enctostr(struct sio_par *par, char *ostr)
 {
 	char *p = ostr;
 
@@ -52,7 +52,7 @@ sio_enctostr(struct sio_par *par, char *ostr)
  * Return the number of bytes consumed
  */
 int
-sio_strtoenc(struct sio_par *par, char *istr)
+strtoenc(struct sio_par *par, char *istr)
 {
 	char *p = istr;
 	int i, sig, bits, le, bps, msb;

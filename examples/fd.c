@@ -223,7 +223,7 @@ main(int argc, char **argv)
 			}
 			break;
 		case 'e':
-			if (!sio_strtoenc(&par, optarg)) {
+			if (!strtoenc(&par, optarg)) {
 				fprintf(stderr, "%s: bad encoding\n", optarg);
 				exit(1);
 			}

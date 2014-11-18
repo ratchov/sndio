@@ -39,8 +39,8 @@ extern "C" {
 
 struct sio_par;
 
-int sio_strtoenc(struct sio_par *, char *);
-int sio_enctostr(struct sio_par *, char *);
+int strtoenc(struct sio_par *, char *);
+int enctostr(struct sio_par *, char *);
 
 #ifdef __cplusplus
 }
