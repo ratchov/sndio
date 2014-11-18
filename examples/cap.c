@@ -11,12 +11,8 @@
 struct sio_par par;
 struct sio_cap cap;
 
-void pr_enc(struct sio_enc *);
-void cap_pr(struct sio_cap *);
-void usage(void);
-
-void
-pr_enc(struct sio_enc *enc)
+static void
+print_enc(struct sio_enc *enc)
 {
 	fprintf(stderr, "%s%d", enc->sig ? "s" : "u", enc->bits);
 	if (enc->bps > 1)
@@ -25,8 +21,8 @@ pr_enc(struct sio_enc *enc)
 		fprintf(stderr, "%d%s", enc->bps, enc->msb ? "msb" : "lsb");
 }
 
-void
-cap_pr(struct sio_cap *cap)
+static void
+print_cap(struct sio_cap *cap)
 {
 	unsigned n, i;
 
@@ -36,7 +32,7 @@ cap_pr(struct sio_cap *cap)
 		for (i = 0; i < SIO_NENC; i++) {
 			if (cap->confs[n].enc & (1 << i)) {
 				fprintf(stderr, " ");
-				pr_enc(&cap->enc[i]);
+				print_enc(&cap->enc[i]);
 			}
 		}
 		fprintf(stderr, "\n\tpchan:");
@@ -58,11 +54,6 @@ cap_pr(struct sio_cap *cap)
 	}	
 }
 
-void
-usage(void) {
-	fprintf(stderr, "usage: cap [-pr]\n");
-}
- 
 int
 main(int argc, char **argv) {
 	int ch;
@@ -78,7 +69,7 @@ main(int argc, char **argv) {
 			mode &= ~SIO_PLAY;
 			break;
 		default:
-			usage();
+			fprintf(stderr, "usage: cap [-pr]\n");
 			exit(1);
 			break;
 		}
@@ -93,10 +84,10 @@ main(int argc, char **argv) {
 		exit(1);
 	}
 	if (!sio_getcap(hdl, &cap)) {
-		fprintf(stderr, "sio_setcap() failed\n");
+		fprintf(stderr, "sio_getcap() failed\n");
 		exit(1);
 	}
-	cap_pr(&cap);
+	print_cap(&cap);
 	sio_close(hdl);
 	return 0;
 }
