@@ -15,15 +15,15 @@ unsigned char *buf;
 struct sio_par par;
 char *xstr[] = SIO_XSTRINGS;
 
-long long recpos = 0, readpos = 0;
+unsigned long long recpos = 0, readpos = 0;
 int tick = 0;
 
 void
 cb(void *addr, int delta)
 {
-	int bytes;
+	unsigned int bytes;
 
-	bytes = delta * (int)(par.bps * par.rchan);
+	bytes = delta * par.bps * par.rchan;
 	// fprintf(stderr, "advanced by %d\n", bytes);
 	recpos += bytes;
 	tick = 1;
