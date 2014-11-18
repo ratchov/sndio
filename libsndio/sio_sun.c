@@ -14,17 +14,6 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-/*
- * TODO:
- *
- * remove filling code from sio_sun_write() and create sio_sun_fill()
- *
- * allow block size to be set
- *
- * call hdl->cb_pos() from sio_sun_read() and sio_sun_write(), or better:
- * implement generic blocking sio_read() and sio_write() with poll(2)
- * and use non-blocking sio_ops only
- */
 
 #ifdef USE_SUN
 #include <sys/types.h>
