@@ -14,11 +14,11 @@ struct sio_cap cap;
 static void
 print_enc(struct sio_enc *enc)
 {
-	fprintf(stderr, "%s%d", enc->sig ? "s" : "u", enc->bits);
+	printf("%s%d", enc->sig ? "s" : "u", enc->bits);
 	if (enc->bps > 1)
-		fprintf(stderr, "%s", enc->le ? "le" : "be");
+		printf("%s", enc->le ? "le" : "be");
 	if (enc->bps != SIO_BPS(enc->bits))
-		fprintf(stderr, "%d%s", enc->bps, enc->msb ? "msb" : "lsb");
+		printf("%d%s", enc->bps, enc->msb ? "msb" : "lsb");
 }
 
 static void
@@ -27,30 +27,30 @@ print_cap(struct sio_cap *cap)
 	unsigned n, i;
 
 	for (n = 0; n < cap->nconf; n++) {
-		fprintf(stderr, "config %d\n", n);
-		fprintf(stderr, "\tenc:");
+		printf("config %d\n", n);
+		printf("\tenc:");
 		for (i = 0; i < SIO_NENC; i++) {
 			if (cap->confs[n].enc & (1 << i)) {
-				fprintf(stderr, " ");
+				printf(" ");
 				print_enc(&cap->enc[i]);
 			}
 		}
-		fprintf(stderr, "\n\tpchan:");
+		printf("\n\tpchan:");
 		for (i = 0; i < SIO_NCHAN; i++) {
 			if (cap->confs[n].pchan & (1 << i))
-				fprintf(stderr, " %d", cap->pchan[i]);
+				printf(" %d", cap->pchan[i]);
 		}
-		fprintf(stderr, "\n\trchan:");
+		printf("\n\trchan:");
 		for (i = 0; i < SIO_NCHAN; i++) {
 			if (cap->confs[n].rchan & (1 << i))
-				fprintf(stderr, " %d", cap->rchan[i]);
+				printf(" %d", cap->rchan[i]);
 		}
-		fprintf(stderr, "\n\trate:");
+		printf("\n\trate:");
 		for (i = 0; i < SIO_NRATE; i++) {
 			if (cap->confs[n].rate & (1 << i))
-				fprintf(stderr, " %d", cap->rate[i]);
+				printf(" %d", cap->rate[i]);
 		}
-		fprintf(stderr, "\n");
+		printf("\n");
 	}	
 }
 
