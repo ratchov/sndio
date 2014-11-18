@@ -27,7 +27,7 @@ char *xstr[] = SIO_XSTRINGS;
 struct sio_par par;
 struct buf playbuf, recbuf;
 
-long long hwpos, wrpos, rdpos;
+unsigned long long hwpos, wrpos, rdpos;
 int tick = 0;
 
 int randomize, xruns;
@@ -40,7 +40,7 @@ cb(void *addr, int delta)
 }
 
 /*
- * read buffer contents from a file without blocking
+ * read buffer contents from a file
  */
 void
 buf_read(struct buf *buf, int fd)
@@ -72,7 +72,7 @@ buf_read(struct buf *buf, int fd)
 }
 
 /*
- * write buffer contents to file, without blocking
+ * write buffer contents to file
  */
 void
 buf_write(struct buf *buf, int fd)
@@ -97,7 +97,7 @@ buf_write(struct buf *buf, int fd)
 }
 
 /*
- * read buffer contents from a file without blocking
+ * read recorded samples from the device, without blocking
  */
 unsigned
 buf_rec(struct buf *buf, struct sio_hdl *hdl)
@@ -134,7 +134,7 @@ buf_rec(struct buf *buf, struct sio_hdl *hdl)
 }
 
 /*
- * write buffer contents to file, without blocking
+ * write samples to the device, without blocking
  */
 unsigned
 buf_play(struct buf *buf, struct sio_hdl *hdl)
