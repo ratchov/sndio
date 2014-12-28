@@ -31,6 +31,7 @@
  * Encoding IDs used in .wav headers.
  */
 #define WAV_ENC_PCM	1
+#define WAV_ENC_FLOAT	3
 #define WAV_ENC_ALAW	6
 #define WAV_ENC_ULAW	7
 #define WAV_ENC_EXT	0xfffe
