@@ -191,6 +191,25 @@ le32_set(le32_t *p, unsigned int v)
 	p->ld[3] = v >> 24;
 }
 
+#if 0
+static inline int
+f32_to_s24(unsigned int x)
+{
+	unsigned int s, e, m, y;
+
+	s = (x >> 31);
+	e = (x >> 23) & 0xff;
+	m = (x & 0x007fffff) | 0x00800000;
+	if (e < 127 - 24)
+		y = 0;
+	else if (e > 127 - 1)
+		y = 0x00800000;
+	else
+		y = m >> (127 - e);
+	return (y ^ -s) + s;
+}
+#endif
+
 static int
 wav_readfmt(struct wav *w, unsigned int csize)
 {
@@ -383,7 +402,7 @@ wav_writehdr(struct wav *w)
  * convert ``count'' samples using the given char->short map
  */
 static void
-wav_conv(unsigned char *data, unsigned int count, short *map)
+wav_conv_map(unsigned char *data, unsigned int count, short *map)
 {
 	unsigned int i;
 	unsigned char *iptr;
@@ -428,7 +447,7 @@ wav_read(struct wav *w, void *data, size_t count)
 	}
 	w->curpos += n;
 	if (w->map) {
-		wav_conv(data, n, w->map);
+		wav_conv_map(data, n, w->map);
 		n *= sizeof(adata_t);
 	}
 	return n;
