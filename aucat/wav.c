@@ -405,7 +405,7 @@ wav_read(struct wav *w, void *data, size_t count)
 	ssize_t n;
 
 	if (w->map)
-		count /= 2;
+		count /= sizeof(adata_t);
 	if (w->endpos >= 0) {
 		maxread = w->endpos - w->curpos;
 		if (maxread == 0) {
@@ -429,7 +429,7 @@ wav_read(struct wav *w, void *data, size_t count)
 	w->curpos += n;
 	if (w->map) {
 		wav_conv(data, n, w->map);
-		n *= 2;
+		n *= sizeof(adata_t);
 	}
 	return n;
 }
@@ -470,7 +470,7 @@ int
 wav_seek(struct wav *w, off_t pos)
 {
 	if (w->map)
-		pos /= 2;
+		pos /= sizeof(adata_t);
 	pos += w->startpos;
 	if (w->endpos >= 0 && pos > w->endpos) {
 		log_puts(w->path);
