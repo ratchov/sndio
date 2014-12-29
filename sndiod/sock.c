@@ -31,6 +31,7 @@
 #include "opt.h"
 #include "sock.h"
 #include "utils.h"
+#include "bsd-compat.h"
 
 void sock_log(struct sock *);
 void sock_close(struct sock *);

@@ -22,7 +22,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
 #include "abuf.h"
 #include "defs.h"
 #include "dev.h"
@@ -30,6 +29,7 @@
 #include "file.h"
 #include "dev_siomix.h"
 #include "utils.h"
+#include "bsd-compat.h"
 
 void dev_siomix_ondesc(void *, struct siomix_desc *, int);
 void dev_siomix_onctl(void *, unsigned int, unsigned int);

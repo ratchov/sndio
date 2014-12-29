@@ -20,10 +20,11 @@
 #include <string.h>
 #include <sndio.h>
 #include <unistd.h>
-
+#include <arpa/inet.h>
 #include "debug.h"
 #include "aucat.h"
 #include "siomix_priv.h"
+#include "bsd-compat.h"
 
 struct siomix_aucat_hdl {
 	struct siomix_hdl siomix;
