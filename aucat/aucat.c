@@ -706,7 +706,7 @@ dev_mmcstart(void)
 		dev_pstate = DEV_START;
 		for (s = slot_list; s != NULL; s = s->next)
 			slot_start(s, dev_mmcpos);
-		dev_prime = dev_bufsz / dev_round;
+		dev_prime = (dev_mode & SIO_PLAY) ? dev_bufsz / dev_round : 0;
 		sio_start(dev_sh);
 		if (log_level >= 2)
 			log_puts("started\n");
