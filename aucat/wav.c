@@ -30,11 +30,11 @@
 /*
  * Encoding IDs used in .wav headers.
  */
-#define WAV_ENC_PCM	1
-#define WAV_ENC_FLOAT	3
-#define WAV_ENC_ALAW	6
-#define WAV_ENC_ULAW	7
-#define WAV_ENC_EXT	0xfffe
+#define WAV_FMT_PCM	1
+#define WAV_FMT_FLOAT	3
+#define WAV_FMT_ALAW	6
+#define WAV_FMT_ULAW	7
+#define WAV_FMT_EXT	0xfffe
 
 typedef struct {
 	unsigned char ld[4];
@@ -191,24 +191,64 @@ le32_set(le32_t *p, unsigned int v)
 	p->ld[3] = v >> 24;
 }
 
-#if 0
+/*
+ * convert a 32-bit float to adata_t, clipping to -1:1, boundaries
+ * excluded
+ */
 static inline int
-f32_to_s24(unsigned int x)
+f32_to_adata(unsigned int x)
 {
 	unsigned int s, e, m, y;
 
 	s = (x >> 31);
 	e = (x >> 23) & 0xff;
-	m = (x & 0x007fffff) | 0x00800000;
+	m = (x << 8) | 0x80000000;
 	if (e < 127 - 24)
 		y = 0;
 	else if (e > 127 - 1)
-		y = 0x00800000;
+		y = ADATA_UNIT - 1;
 	else
-		y = m >> (127 - e);
+		y = m >> (127 + (32 - ADATA_BITS) - e);
 	return (y ^ -s) + s;
 }
-#endif
+
+/*
+ * convert samples from little endian ieee 754 floats to adata_t
+ */
+void
+wav_dec_f32le(unsigned char *in, adata_t *out, int count)
+{
+	while (count > 0) {
+		*out = f32_to_adata(le32_get((le32_t *)in));
+		in += 4;
+		out++;
+		count--;
+	}
+}
+
+/*
+ * convert samples from ulaw to adata_t
+ */
+void
+wav_dec_ulaw(unsigned char *in, adata_t *out, int count)
+{
+	while (count > 0) {
+		*out++ = (adata_t)(wav_ulawmap[*in++]) << (ADATA_BITS - 16);
+		count--;
+	}
+}
+
+/*
+ * convert samples from alaw to adata_t
+ */
+void
+wav_dec_alaw(unsigned char *in, adata_t *out, int count)
+{
+	while (count > 0) {
+		*out++ = (adata_t)(wav_alawmap[*in++]) << (ADATA_BITS - 16);
+		count--;
+	}
+}
 
 static int
 wav_readfmt(struct wav *w, unsigned int csize)
@@ -229,7 +269,7 @@ wav_readfmt(struct wav *w, unsigned int csize)
 	}
 	enc = le16_get(&fmt.fmt);
 	bits = le16_get(&fmt.bits);
-	if (enc == WAV_ENC_EXT) {
+	if (enc == WAV_FMT_EXT) {
 		if (csize != WAV_FMT_EXT_SIZE) {
 			log_puts("missing extended format chunk in .wav file\n");
 			return 0;
@@ -243,21 +283,6 @@ wav_readfmt(struct wav *w, unsigned int csize)
 		enc = le16_get(&fmt.extfmt);
 	} else
 		bps = (bits + 7) / 8;
-	switch (enc) {
-	case WAV_ENC_PCM:
-		w->map = NULL;
-		break;
-	case WAV_ENC_ALAW:
-		w->map = wav_alawmap;
-		break;
-	case WAV_ENC_ULAW:
-		w->map = wav_ulawmap;
-		break;
-	default:
-		log_putu(enc);
-		log_puts(": unsupported encoding in .wav file\n");
-		return 0;
-	}
 	nch = le16_get(&fmt.nch);
 	if (nch == 0) {
 		log_puts("zero number of channels in .wav file\n");
@@ -278,22 +303,44 @@ wav_readfmt(struct wav *w, unsigned int csize)
 		log_puts("bits larger than bytes-per-sample\n");
 		return 0;
 	}
-	if (enc == WAV_ENC_PCM) {
+	switch (enc) {
+	case WAV_FMT_PCM:
+		w->enc = ENC_PCM;
 		w->par.bps = bps;
 		w->par.bits = bits;
 		w->par.le = 1;
 		w->par.sig = (bits <= 8) ? 0 : 1;	/* ask microsoft why... */
 		w->par.msb = 1;
-	} else {
+		break;
+	case WAV_FMT_ALAW:
+	case WAV_FMT_ULAW:
+		w->enc = (enc == WAV_FMT_ULAW) ? ENC_ULAW : ENC_ALAW;
 		if (bits != 8) {
 			log_puts("mulaw/alaw encoding not 8-bit\n");
 			return 0;
 		}
-		w->par.bits = ADATA_BITS;
-		w->par.bps = sizeof(adata_t);
+		w->par.bits = 8;
+		w->par.bps = 1;
 		w->par.le = ADATA_LE;
+		w->par.sig = 0;
+		w->par.msb = 0;
+		break;
+	case WAV_FMT_FLOAT:
+		w->enc = ENC_F32LE;
+		if (bits != 32) {
+			log_puts("only 32-bit float supported\n");
+			return 0;
+		}
+		w->par.bits = 32;
+		w->par.bps = 4;
+		w->par.le = 1;
 		w->par.sig = 1;
 		w->par.msb = 0;
+		break;
+	default:
+		log_putu(enc);
+		log_puts(": unsupported encoding in .wav file\n");
+		return 0;
 	}
 	w->nch = nch;
 	w->rate = rate;
@@ -398,33 +445,12 @@ wav_writehdr(struct wav *w)
 	return 1;
 }
 
-/*
- * convert ``count'' samples using the given char->short map
- */
-static void
-wav_conv_map(unsigned char *data, unsigned int count, short *map)
-{
-	unsigned int i;
-	unsigned char *iptr;
-	adata_t *optr;
-
-	iptr = data + count;
-	optr = (adata_t *)data + count;
-	for (i = count; i > 0; i--) {
-		--optr;
-		--iptr;
-		*optr = (adata_t)(map[*iptr]) << (ADATA_BITS - 16);
-	}
-}
-
 size_t
 wav_read(struct wav *w, void *data, size_t count)
 {
 	off_t maxread;
 	ssize_t n;
-
-	if (w->map)
-		count /= sizeof(adata_t);
+	
 	if (w->endpos >= 0) {
 		maxread = w->endpos - w->curpos;
 		if (maxread == 0) {
@@ -446,10 +472,6 @@ wav_read(struct wav *w, void *data, size_t count)
 		return 0;
 	}
 	w->curpos += n;
-	if (w->map) {
-		wav_conv_map(data, n, w->map);
-		n *= sizeof(adata_t);
-	}
 	return n;
 }
 
@@ -488,8 +510,6 @@ wav_write(struct wav *w, void *data, size_t count)
 int
 wav_seek(struct wav *w, off_t pos)
 {
-	if (w->map)
-		pos /= sizeof(adata_t);
 	pos += w->startpos;
 	if (w->endpos >= 0 && pos > w->endpos) {
 		log_puts(w->path);
@@ -561,7 +581,7 @@ wav_open(struct wav *w, char *path, int hdr, int flags,
 		} else {
 			w->startpos = 0;
 			w->endpos = -1; /* read until EOF */
-			w->map = NULL;
+			w->enc = ENC_PCM;
 		}
 		w->curpos = w->startpos;
 	} else if (flags == WAV_FWRITE) {

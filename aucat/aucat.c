@@ -235,7 +235,20 @@ slot_new(char *path, int mode, struct aparams *par, int hdr,
 		log_puts(", ");
 		log_putu(s->wav.rate);
 		log_puts("Hz, ");
-		aparams_log(&s->wav.par);
+		switch (s->wav.enc) {
+		case ENC_PCM:
+			aparams_log(&s->wav.par);
+			break;
+		case ENC_ULAW:
+			log_puts("ulaw");
+			break;
+		case ENC_ALAW:
+			log_puts("alaw");
+			break;
+		case ENC_F32LE:
+			log_puts("f32le");
+			break;
+		}
 		if (s->mode == SIO_PLAY && s->wav.endpos >= 0) {
 			log_puts(", ");
 			log_puti(s->wav.endpos - s->wav.startpos);
@@ -294,8 +307,17 @@ slot_init(struct slot *s)
 		    s->cmin, s->cmax,
 		    0, dev_pchan - 1,
 		    0, dev_pchan - 1);
-		if (!aparams_native(&s->wav.par)) {
-			dec_init(&s->conv, &s->wav.par, slot_nch);
+		if (s->wav.enc != ENC_PCM || !aparams_native(&s->wav.par)) {
+			switch (s->wav.enc) {
+			case ENC_PCM:
+				dec_init(&s->conv, &s->wav.par, slot_nch);
+				break;
+			case ENC_ALAW:
+			case ENC_ULAW:
+			case ENC_F32LE:
+				/* nothing */
+				break;
+			};
 			s->convbuf =
 			    xmalloc(s->round * slot_nch * sizeof(adata_t));
 		}
@@ -447,8 +469,22 @@ play_filt_dec(struct slot *s, void *in, void *out, int todo)
 	void *tmp;
 
 	tmp = s->convbuf;
-	if (tmp)
-		dec_do(&s->conv, in, tmp, todo);
+	if (tmp) {
+		switch (s->wav.enc) {
+		case ENC_PCM:
+			dec_do(&s->conv, in, tmp, todo);
+			break;
+		case ENC_ULAW:
+			wav_dec_ulaw(in, tmp, todo * s->wav.nch);
+			break;
+		case ENC_ALAW:
+			wav_dec_alaw(in, tmp, todo * s->wav.nch);
+			break;
+		case ENC_F32LE:
+			wav_dec_f32le(in, tmp, todo * s->wav.nch);
+			break;
+		}
+	}
 	return play_filt_resamp(s, tmp ? tmp : in, out, todo);
 }
 

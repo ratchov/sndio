@@ -22,6 +22,11 @@
 
 struct wav {
 	struct aparams par;		/* file params */
+#define ENC_PCM		0		/* simple integers (fixed point) */
+#define ENC_ULAW	1		/* 8-bit mu-law */
+#define ENC_ALAW	2		/* 8-bit a-law */
+#define ENC_F32LE	3		/* IEEE 754 32-bit floats */
+	int enc;			/* one of above */
 	int rate;			/* file sample rate */
 	int nch;			/* file channel count */
 #define HDR_AUTO	0
@@ -36,7 +41,6 @@ struct wav {
 	off_t startpos;			/* where payload starts */
 	off_t endpos;			/* where payload ends */
 	off_t maxpos;			/* max allowed pos (.wav limitation) */
-	short *map;			/* mulaw/alaw conversions */
 	char *path;			/* file name (debug only) */
 };
 
@@ -45,5 +49,9 @@ size_t wav_read(struct wav *, void *, size_t);
 size_t wav_write(struct wav *, void *, size_t);
 int wav_seek(struct wav *, off_t);
 void wav_close(struct wav *);
+
+void wav_dec_f32le(unsigned char *, adata_t *, int);
+void wav_dec_ulaw(unsigned char *, adata_t *, int);
+void wav_dec_alaw(unsigned char *, adata_t *, int);
 
 #endif /* !defined(WAV_H) */
