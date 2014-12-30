@@ -245,7 +245,7 @@ slot_new(char *path, int mode, struct aparams *par, int hdr,
 		case ENC_ALAW:
 			log_puts("alaw");
 			break;
-		case ENC_F32LE:
+		case ENC_FLOAT:
 			log_puts("f32le");
 			break;
 		}
@@ -308,16 +308,7 @@ slot_init(struct slot *s)
 		    0, dev_pchan - 1,
 		    0, dev_pchan - 1);
 		if (s->wav.enc != ENC_PCM || !aparams_native(&s->wav.par)) {
-			switch (s->wav.enc) {
-			case ENC_PCM:
-				dec_init(&s->conv, &s->wav.par, slot_nch);
-				break;
-			case ENC_ALAW:
-			case ENC_ULAW:
-			case ENC_F32LE:
-				/* nothing */
-				break;
-			};
+			dec_init(&s->conv, &s->wav.par, slot_nch);
 			s->convbuf =
 			    xmalloc(s->round * slot_nch * sizeof(adata_t));
 		}
@@ -475,13 +466,13 @@ play_filt_dec(struct slot *s, void *in, void *out, int todo)
 			dec_do(&s->conv, in, tmp, todo);
 			break;
 		case ENC_ULAW:
-			wav_dec_ulaw(in, tmp, todo * s->wav.nch);
+			dec_do_ulaw(&s->conv, in, tmp, todo);
 			break;
 		case ENC_ALAW:
-			wav_dec_alaw(in, tmp, todo * s->wav.nch);
+			dec_do_alaw(&s->conv, in, tmp, todo);
 			break;
-		case ENC_F32LE:
-			wav_dec_f32le(in, tmp, todo * s->wav.nch);
+		case ENC_FLOAT:
+			dec_do_float(&s->conv, in, tmp, todo);
 			break;
 		}
 	}

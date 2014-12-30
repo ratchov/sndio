@@ -25,7 +25,7 @@ struct wav {
 #define ENC_PCM		0		/* simple integers (fixed point) */
 #define ENC_ULAW	1		/* 8-bit mu-law */
 #define ENC_ALAW	2		/* 8-bit a-law */
-#define ENC_F32LE	3		/* IEEE 754 32-bit floats */
+#define ENC_FLOAT	3		/* IEEE 754 32-bit floats */
 	int enc;			/* one of above */
 	int rate;			/* file sample rate */
 	int nch;			/* file channel count */
