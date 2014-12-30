@@ -466,10 +466,10 @@ play_filt_dec(struct slot *s, void *in, void *out, int todo)
 			dec_do(&s->conv, in, tmp, todo);
 			break;
 		case ENC_ULAW:
-			dec_do_ulaw(&s->conv, in, tmp, todo);
+			dec_do_ulaw(&s->conv, in, tmp, todo, 0);
 			break;
 		case ENC_ALAW:
-			dec_do_alaw(&s->conv, in, tmp, todo);
+			dec_do_ulaw(&s->conv, in, tmp, todo, 1);
 			break;
 		case ENC_FLOAT:
 			dec_do_float(&s->conv, in, tmp, todo);

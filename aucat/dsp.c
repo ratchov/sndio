@@ -660,14 +660,15 @@ dec_do_float(struct conv *p, unsigned char *in, unsigned char *out, int todo)
 }
 
 /*
- * convert samples from ulaw to adata_t
+ * convert samples from ulaw/alaw to adata_t
  */
 void
-dec_do_ulaw(struct conv *p, unsigned char *in, unsigned char *out, int todo)
+dec_do_ulaw(struct conv *p, unsigned char *in, unsigned char *out, int todo, int is_alaw)
 {
 	unsigned int f;
 	unsigned char *idata;
 	adata_t *odata;
+	short *map;
 
 #ifdef DEBUG
 	if (log_level >= 4) {
@@ -676,33 +677,11 @@ dec_do_ulaw(struct conv *p, unsigned char *in, unsigned char *out, int todo)
 		log_puts(" frames\n");
 	}
 #endif
+	map = is_alaw ? wav_alawmap : wav_ulawmap;
 	idata = in;
 	odata = (adata_t *)out;
 	for (f = todo * p->nch; f > 0; f--)
-		*odata++ = wav_ulawmap[*idata++] << (ADATA_BITS - 16);
-}
-
-/*
- * convert samples from alaw to adata_t
- */
-void
-dec_do_alaw(struct conv *p, unsigned char *in, unsigned char *out, int todo)
-{
-	unsigned int f;
-	unsigned char *idata;
-	adata_t *odata;
-
-#ifdef DEBUG
-	if (log_level >= 4) {
-		log_puts("dec_alaw: copying ");
-		log_putu(todo);
-		log_puts(" frames\n");
-	}
-#endif
-	idata = in;
-	odata = (adata_t *)out;
-	for (f = todo * p->nch; f > 0; f--)
-		*odata++ = wav_alawmap[*idata++] << (ADATA_BITS - 16);
+		*odata++ = map[*idata++] << (ADATA_BITS - 16);
 }
 
 /*
