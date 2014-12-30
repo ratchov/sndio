@@ -50,8 +50,4 @@ size_t wav_write(struct wav *, void *, size_t);
 int wav_seek(struct wav *, off_t);
 void wav_close(struct wav *);
 
-void wav_dec_f32le(unsigned char *, adata_t *, int);
-void wav_dec_ulaw(unsigned char *, adata_t *, int);
-void wav_dec_alaw(unsigned char *, adata_t *, int);
-
 #endif /* !defined(WAV_H) */
