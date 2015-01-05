@@ -38,7 +38,7 @@ int aparams_ctltovol[128] = {
 	26008,	27029,	28090,	29193,	30339,	31530,	32768
 };
 
-short afile_ulawmap[256] = {
+short dec_ulawmap[256] = {
 	-32124, -31100, -30076, -29052, -28028, -27004, -25980, -24956,
 	-23932, -22908, -21884, -20860, -19836, -18812, -17788, -16764,
 	-15996, -15484, -14972, -14460, -13948, -13436, -12924, -12412,
@@ -73,7 +73,7 @@ short afile_ulawmap[256] = {
 	    56,     48,     40,     32,     24,     16,      8,      0
 };
 
-short afile_alawmap[256] = {
+short dec_alawmap[256] = {
 	 -5504,  -5248,  -6016,  -5760,  -4480,  -4224,  -4992,  -4736,
 	 -7552,  -7296,  -8064,  -7808,  -6528,  -6272,  -7040,  -6784,
 	 -2752,  -2624,  -3008,  -2880,  -2240,  -2112,  -2496,  -2368,
@@ -677,7 +677,7 @@ dec_do_ulaw(struct conv *p, unsigned char *in, unsigned char *out, int todo, int
 		log_puts(" frames\n");
 	}
 #endif
-	map = is_alaw ? afile_alawmap : afile_ulawmap;
+	map = is_alaw ? dec_alawmap : dec_ulawmap;
 	idata = in;
 	odata = (adata_t *)out;
 	for (f = todo * p->nch; f > 0; f--)
