@@ -19,8 +19,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include "afile.h"
 #include "utils.h"
-#include "wav.h"
 
 /*
  * Max size of a .wav file, format design limitation.
@@ -122,7 +122,7 @@ le32_set(le32_t *p, unsigned int v)
 }
 
 static int
-wav_readfmt(struct wav *w, unsigned int csize)
+afile_wav_readfmt(struct afile *f, unsigned int csize)
 {
 	struct wavfmt fmt;
 	unsigned int nch, rate, bits, bps, enc;
@@ -134,7 +134,7 @@ wav_readfmt(struct wav *w, unsigned int csize)
 	}
 	if (csize > WAV_FMT_EXT_SIZE)
 		csize = WAV_FMT_EXT_SIZE;
-	if (read(w->fd, &fmt, csize) != csize) {
+	if (read(f->fd, &fmt, csize) != csize) {
 		log_puts("failed to read .wav format chun\n");
 		return 0;
 	}
@@ -176,61 +176,61 @@ wav_readfmt(struct wav *w, unsigned int csize)
 	}
 	switch (enc) {
 	case WAV_FMT_PCM:
-		w->enc = ENC_PCM;
-		w->par.bps = bps;
-		w->par.bits = bits;
-		w->par.le = 1;
-		w->par.sig = (bits <= 8) ? 0 : 1;	/* ask microsoft why... */
-		w->par.msb = 1;
+		f->enc = ENC_PCM;
+		f->par.bps = bps;
+		f->par.bits = bits;
+		f->par.le = 1;
+		f->par.sig = (bits <= 8) ? 0 : 1;	/* ask microsoft why... */
+		f->par.msb = 1;
 		break;
 	case WAV_FMT_ALAW:
 	case WAV_FMT_ULAW:
-		w->enc = (enc == WAV_FMT_ULAW) ? ENC_ULAW : ENC_ALAW;
+		f->enc = (enc == WAV_FMT_ULAW) ? ENC_ULAW : ENC_ALAW;
 		if (bits != 8) {
 			log_puts("mulaw/alaw encoding not 8-bit\n");
 			return 0;
 		}
-		w->par.bits = 8;
-		w->par.bps = 1;
-		w->par.le = ADATA_LE;
-		w->par.sig = 0;
-		w->par.msb = 0;
+		f->par.bits = 8;
+		f->par.bps = 1;
+		f->par.le = ADATA_LE;
+		f->par.sig = 0;
+		f->par.msb = 0;
 		break;
 	case WAV_FMT_FLOAT:
-		w->enc = ENC_FLOAT;
+		f->enc = ENC_FLOAT;
 		if (bits != 32) {
 			log_puts("only 32-bit float supported\n");
 			return 0;
 		}
-		w->par.bits = 32;
-		w->par.bps = 4;
-		w->par.le = 1;
-		w->par.sig = 0;
-		w->par.msb = 0;
+		f->par.bits = 32;
+		f->par.bps = 4;
+		f->par.le = 1;
+		f->par.sig = 0;
+		f->par.msb = 0;
 		break;
 	default:
 		log_putu(enc);
 		log_puts(": unsupported encoding in .wav file\n");
 		return 0;
 	}
-	w->nch = nch;
-	w->rate = rate;
+	f->nch = nch;
+	f->rate = rate;
 	return 1;
 }
 
 static int
-wav_readhdr(struct wav *w)
+afile_wav_readhdr(struct afile *f)
 {
 	struct wavriff riff;
 	struct wavchunk chunk;
 	unsigned int csize, rsize, pos = 0;
 	int fmt_done = 0;
 
-	if (lseek(w->fd, 0, SEEK_SET) < 0) {
+	if (lseek(f->fd, 0, SEEK_SET) < 0) {
 		log_puts("failed to seek to beginning of .wav file\n");
 		return 0;
 	}
-	if (read(w->fd, &riff, sizeof(riff)) != sizeof(riff)) {
+	if (read(f->fd, &riff, sizeof(riff)) != sizeof(riff)) {
 		log_puts("failed to read .wav file riff header\n");
 		return 0;
 	}
@@ -245,18 +245,18 @@ wav_readhdr(struct wav *w)
 			log_puts("missing data chunk in .wav file\n");
 			return 0;
 		}
-		if (read(w->fd, &chunk, sizeof(chunk)) != sizeof(chunk)) {
+		if (read(f->fd, &chunk, sizeof(chunk)) != sizeof(chunk)) {
 			log_puts("failed to read .wav chunk header\n");
 			return 0;
 		}
 		csize = le32_get(&chunk.size);
 		if (memcmp(chunk.id, wav_id_fmt, 4) == 0) {
-			if (!wav_readfmt(w, csize))
+			if (!afile_wav_readfmt(f, csize))
 				return 0;
 			fmt_done = 1;
 		} else if (memcmp(chunk.id, wav_id_data, 4) == 0) {
-			w->startpos = pos + sizeof(riff) + sizeof(chunk);
-			w->endpos = w->startpos + csize;
+			f->startpos = pos + sizeof(riff) + sizeof(chunk);
+			f->endpos = f->startpos + csize;
 			break;
 		} else {
 #ifdef DEBUG
@@ -269,7 +269,7 @@ wav_readhdr(struct wav *w)
 		 * next chunk
 		 */
 		pos += sizeof(struct wavchunk) + csize;
-		if (lseek(w->fd, sizeof(riff) + pos, SEEK_SET) < 0) {
+		if (lseek(f->fd, sizeof(riff) + pos, SEEK_SET) < 0) {
 			log_puts("filed to seek to chunk in .wav file\n");
 			return 0;
 		}
@@ -285,49 +285,49 @@ wav_readhdr(struct wav *w)
  * Write header and seek to start position
  */
 static int
-wav_writehdr(struct wav *w)
+afile_wav_writehdr(struct afile *f)
 {
 	struct wavhdr hdr;
 
 	memset(&hdr, 0, sizeof(struct wavhdr));
 	memcpy(hdr.riff.magic, wav_id_riff, 4);
 	memcpy(hdr.riff.type, wav_id_wave, 4);
-	le32_set(&hdr.riff.size, w->endpos - sizeof(hdr.riff));
+	le32_set(&hdr.riff.size, f->endpos - sizeof(hdr.riff));
 	memcpy(hdr.fmt_hdr.id, wav_id_fmt, 4);
 	le32_set(&hdr.fmt_hdr.size, sizeof(hdr.fmt));
 	le16_set(&hdr.fmt.fmt, 1);
-	le16_set(&hdr.fmt.nch, w->nch);
-	le32_set(&hdr.fmt.rate, w->rate);
-	le32_set(&hdr.fmt.byterate, w->rate * w->par.bps * w->nch);
-	le16_set(&hdr.fmt.blkalign, w->par.bps * w->nch);
-	le16_set(&hdr.fmt.bits, w->par.bits);
+	le16_set(&hdr.fmt.nch, f->nch);
+	le32_set(&hdr.fmt.rate, f->rate);
+	le32_set(&hdr.fmt.byterate, f->rate * f->par.bps * f->nch);
+	le16_set(&hdr.fmt.blkalign, f->par.bps * f->nch);
+	le16_set(&hdr.fmt.bits, f->par.bits);
 	memcpy(hdr.data_hdr.id, wav_id_data, 4);
-	le32_set(&hdr.data_hdr.size, w->endpos - w->startpos);
+	le32_set(&hdr.data_hdr.size, f->endpos - f->startpos);
 
-	if (lseek(w->fd, 0, SEEK_SET) < 0) {
+	if (lseek(f->fd, 0, SEEK_SET) < 0) {
 		log_puts("failed to seek back to .wav file header\n");
 		return 0;
 	}
-	if (write(w->fd, &hdr, sizeof(hdr)) != sizeof(hdr)) {
+	if (write(f->fd, &hdr, sizeof(hdr)) != sizeof(hdr)) {
 		log_puts("failed to write .wav file header\n");
 		return 0;
 	}
-	w->curpos = w->startpos;
+	f->curpos = f->startpos;
 	return 1;
 }
 
 size_t
-wav_read(struct wav *w, void *data, size_t count)
+afile_read(struct afile *f, void *data, size_t count)
 {
 	off_t maxread;
 	ssize_t n;
 	
-	if (w->endpos >= 0) {
-		maxread = w->endpos - w->curpos;
+	if (f->endpos >= 0) {
+		maxread = f->endpos - f->curpos;
 		if (maxread == 0) {
 #ifdef DEBUG
 			if (log_level >= 3) {
-				log_puts(w->path);
+				log_puts(f->path);
 				log_puts(": end reached\n");
 			}
 #endif
@@ -336,28 +336,28 @@ wav_read(struct wav *w, void *data, size_t count)
 		if (count > maxread)
 			count = maxread;
 	}
-	n = read(w->fd, data, count);
+	n = read(f->fd, data, count);
 	if (n < 0) {
-		log_puts(w->path);
+		log_puts(f->path);
 		log_puts(": couldn't read\n");
 		return 0;
 	}
-	w->curpos += n;
+	f->curpos += n;
 	return n;
 }
 
 size_t
-wav_write(struct wav *w, void *data, size_t count)
+afile_write(struct afile *f, void *data, size_t count)
 {
 	off_t maxwrite;
 	int n;
 
-	if (w->maxpos >= 0) {
-		maxwrite = w->maxpos - w->curpos;
+	if (f->maxpos >= 0) {
+		maxwrite = f->maxpos - f->curpos;
 		if (maxwrite == 0) {
 #ifdef DEBUG
 			if (log_level >= 3) {
-				log_puts(w->path);
+				log_puts(f->path);
 				log_puts(": max file size reached\n");
 			}
 #endif
@@ -366,24 +366,24 @@ wav_write(struct wav *w, void *data, size_t count)
 		if (count > maxwrite)
 			count = maxwrite;
 	}
-	n = write(w->fd, data, count);
+	n = write(f->fd, data, count);
 	if (n < 0) {
-		log_puts(w->path);
+		log_puts(f->path);
 		log_puts(": couldn't write\n");
 		return 0;
 	}
-	w->curpos += n;
-	if (w->endpos < w->curpos)
-		w->endpos = w->curpos;
+	f->curpos += n;
+	if (f->endpos < f->curpos)
+		f->endpos = f->curpos;
 	return n;
 }
 
 int
-wav_seek(struct wav *w, off_t pos)
+afile_seek(struct afile *f, off_t pos)
 {
-	pos += w->startpos;
-	if (w->endpos >= 0 && pos > w->endpos) {
-		log_puts(w->path);
+	pos += f->startpos;
+	if (f->endpos >= 0 && pos > f->endpos) {
+		log_puts(f->path);
 		log_puts(": attempt to seek ouside file boundaries\n");
 		return 0;
 	}
@@ -391,113 +391,113 @@ wav_seek(struct wav *w, off_t pos)
 	/*
 	 * seek only if needed to avoid errors with pipes & sockets
 	 */
-	if (pos != w->curpos) {
-		if (lseek(w->fd, pos, SEEK_SET) < 0) {
-			log_puts(w->path);
+	if (pos != f->curpos) {
+		if (lseek(f->fd, pos, SEEK_SET) < 0) {
+			log_puts(f->path);
 			log_puts(": couldn't seek\n");
 			return 0;
 		}
-		w->curpos = pos;
+		f->curpos = pos;
 	}
 	return 1;
 }
 
 void
-wav_close(struct wav *w)
+afile_close(struct afile *f)
 {
-	if (w->flags & WAV_FWRITE) {
-		if (w->hdr == HDR_WAV)
-			wav_writehdr(w);
+	if (f->flags & WAV_FWRITE) {
+		if (f->hdr == HDR_WAV)
+			afile_wav_writehdr(f);
 	}
-	close(w->fd);
+	close(f->fd);
 }
 
 int
-wav_open(struct wav *w, char *path, int hdr, int flags,
+afile_open(struct afile *f, char *path, int hdr, int flags,
     struct aparams *par, int rate, int nch)
 {
 	char *ext;
 	struct wavhdr dummy;
 
-	w->par = *par;
-	w->rate = rate;
-	w->nch = nch;
-	w->flags = flags;
-	w->hdr = hdr;
+	f->par = *par;
+	f->rate = rate;
+	f->nch = nch;
+	f->flags = flags;
+	f->hdr = hdr;
 	if (hdr == HDR_AUTO) {
-		w->hdr = HDR_RAW;
+		f->hdr = HDR_RAW;
 		ext = strrchr(path, '.');
 		if (ext != NULL) {
 			ext++;
-			if (strcasecmp(ext, "wav") == 0)
-				w->hdr = HDR_WAV;
+			if (strcasecmp(ext, "afile") == 0)
+				f->hdr = HDR_WAV;
 		}
 	}
-	if (w->flags == WAV_FREAD) {
+	if (f->flags == WAV_FREAD) {
 		if (strcmp(path, "-") == 0) {
-			w->path = "stdin";
-			w->fd = STDIN_FILENO;
+			f->path = "stdin";
+			f->fd = STDIN_FILENO;
 		} else {
-			w->path = path;
-			w->fd = open(w->path, O_RDONLY, 0);
-			if (w->fd < 0) {
-				log_puts(w->path);
+			f->path = path;
+			f->fd = open(f->path, O_RDONLY, 0);
+			if (f->fd < 0) {
+				log_puts(f->path);
 				log_puts(": failed to open for reading\n");
 				return 0;
 			}
 		}
-		if (w->hdr == HDR_WAV) {
-			if (!wav_readhdr(w))
+		if (f->hdr == HDR_WAV) {
+			if (!afile_wav_readhdr(f))
 				goto bad_close;
 		} else {
-			w->startpos = 0;
-			w->endpos = -1; /* read until EOF */
-			w->enc = ENC_PCM;
+			f->startpos = 0;
+			f->endpos = -1; /* read until EOF */
+			f->enc = ENC_PCM;
 		}
-		w->curpos = w->startpos;
+		f->curpos = f->startpos;
 	} else if (flags == WAV_FWRITE) {
 		if (strcmp(path, "-") == 0) {
-			w->path = "stdout";
-			w->fd = STDOUT_FILENO;
+			f->path = "stdout";
+			f->fd = STDOUT_FILENO;
 		} else {
-			w->path = path;
-			w->fd = open(w->path, O_WRONLY | O_TRUNC | O_CREAT, 0666);
-			if (w->fd < 0) {
-				log_puts(w->path);
+			f->path = path;
+			f->fd = open(f->path, O_WRONLY | O_TRUNC | O_CREAT, 0666);
+			if (f->fd < 0) {
+				log_puts(f->path);
 				log_puts(": failed to create file\n");
 				return 0;
 			}
 		}
-		if (w->hdr == HDR_WAV) {
-			w->par.bps = (w->par.bits + 7) >> 3;
-			if (w->par.bits > 8) {
-				w->par.le = 1;
-				w->par.sig = 1;
+		if (f->hdr == HDR_WAV) {
+			f->par.bps = (f->par.bits + 7) >> 3;
+			if (f->par.bits > 8) {
+				f->par.le = 1;
+				f->par.sig = 1;
 			} else
-				w->par.sig = 0;
-			if (w->par.bits & 7)
-				w->par.msb = 1;
-			w->endpos = w->startpos = sizeof(struct wavhdr);			
-			w->maxpos = WAV_MAXPOS;
+				f->par.sig = 0;
+			if (f->par.bits & 7)
+				f->par.msb = 1;
+			f->endpos = f->startpos = sizeof(struct wavhdr);			
+			f->maxpos = WAV_MAXPOS;
 			memset(&dummy, 0xd0, sizeof(struct wavhdr));
-			if (write(w->fd, &dummy, sizeof(struct wavhdr)) < 0) {
-				log_puts(w->path);
+			if (write(f->fd, &dummy, sizeof(struct wavhdr)) < 0) {
+				log_puts(f->path);
 				log_puts(": failed reserve space for .wav header\n");
 				goto bad_close;
 			}
 		} else {
-			w->endpos = w->startpos = 0;
-			w->maxpos = -1;
+			f->endpos = f->startpos = 0;
+			f->maxpos = -1;
 		}
-		w->curpos = w->startpos;
+		f->curpos = f->startpos;
 	} else {
 #ifdef DEBUG
-		log_puts("wav_open: wrong flags\n");
+		log_puts("afile_open: wrong flags\n");
 		panic();
 #endif
 	}
 	return 1;
 bad_close:
-	close(w->fd);
+	close(f->fd);
 	return 0;
 }

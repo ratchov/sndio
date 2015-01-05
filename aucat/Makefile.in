@@ -42,7 +42,7 @@ clean:
 
 # ---------------------------------------------------------- dependencies ---
 
-OBJS = abuf.o aucat.o dsp.o utils.o wav.o
+OBJS = abuf.o afile.o aucat.o dsp.o utils.o
 
 aucat:		${OBJS}
 		${CC} ${LDFLAGS} ${LIB} -o aucat ${OBJS} ${LDADD} 
@@ -51,8 +51,8 @@ aucat:		${OBJS}
 		${CC} ${CFLAGS} ${INCLUDE} ${DEFS} -c $<
 
 abuf.o:		abuf.c abuf.h utils.h
-aucat.o:	aucat.c abuf.h dsp.h defs.h sysex.h utils.h wav.h \
+afile.o:	afile.c afile.h dsp.h defs.h utils.h
+aucat.o:	aucat.c abuf.h afile.h dsp.h defs.h sysex.h utils.h \
 		../bsd-compat/bsd-compat.h
 dsp.o:		dsp.c dsp.h defs.h utils.h
 utils.o:	utils.c utils.h
-wav.o:		wav.c utils.h wav.h dsp.h defs.h

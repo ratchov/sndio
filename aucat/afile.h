@@ -20,7 +20,7 @@
 #include <sys/types.h>
 #include "dsp.h"
 
-struct wav {
+struct afile {
 	struct aparams par;		/* file params */
 #define ENC_PCM		0		/* simple integers (fixed point) */
 #define ENC_ULAW	1		/* 8-bit mu-law */
@@ -44,10 +44,10 @@ struct wav {
 	char *path;			/* file name (debug only) */
 };
 
-int wav_open(struct wav *, char *, int, int, struct aparams *, int, int);
-size_t wav_read(struct wav *, void *, size_t);
-size_t wav_write(struct wav *, void *, size_t);
-int wav_seek(struct wav *, off_t);
-void wav_close(struct wav *);
+int afile_open(struct afile *, char *, int, int, struct aparams *, int, int);
+size_t afile_read(struct afile *, void *, size_t);
+size_t afile_write(struct afile *, void *, size_t);
+int afile_seek(struct afile *, off_t);
+void afile_close(struct afile *);
 
 #endif /* !defined(WAV_H) */

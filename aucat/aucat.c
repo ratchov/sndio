@@ -24,10 +24,10 @@
 #include <string.h>
 #include <unistd.h>
 #include "abuf.h"
+#include "afile.h"
 #include "dsp.h"
 #include "sysex.h"
 #include "utils.h"
-#include "wav.h"
 #include "bsd-compat.h"
 
 /*
@@ -91,7 +91,7 @@ struct slot {
 #define SLOT_RUN	2		/* playing/recording */
 #define SLOT_STOP	3		/* draining (play only) */
 	int pstate;			/* one of above */
-	struct wav wav;			/* file desc & friends */
+	struct afile afile;			/* file desc & friends */
 };
 
 /*
@@ -146,7 +146,7 @@ slot_log(struct slot *s)
 		"cfg", "ini", "run", "stp"
 	};
 #endif
-	log_puts(s->wav.path);
+	log_puts(s->afile.path);
 #ifdef DEBUG
 	if (log_level >= 3) {
 		log_puts(",pst=");
@@ -166,7 +166,7 @@ slot_flush(struct slot *s)
 		data = abuf_rgetblk(&s->buf, &count);
 		if (count > todo)
 			count = todo;
-		n = wav_write(&s->wav, data, count);
+		n = afile_write(&s->afile, data, count);
 		if (n == 0) {
 			slot_log(s);
 			log_puts(": can't write, disabled\n");
@@ -189,7 +189,7 @@ slot_fill(struct slot *s)
 		data = abuf_wgetblk(&s->buf, &count);
 		if (count > todo)
 			count = todo;
-		n = wav_read(&s->wav, data, count);
+		n = afile_read(&s->afile, data, count);
 		if (n == 0) {
 #ifdef DEBUG
 			if (log_level >= 3) {
@@ -212,14 +212,14 @@ slot_new(char *path, int mode, struct aparams *par, int hdr,
 	struct slot *s;
 
 	s = xmalloc(sizeof(struct slot));
-	if (!wav_open(&s->wav, path, hdr,
+	if (!afile_open(&s->afile, path, hdr,
 		mode == SIO_PLAY ? WAV_FREAD : WAV_FWRITE,
 		par, rate, cmax - cmin + 1)) {
 		xfree(s);
 		return 0;
 	}
 	s->cmin = cmin;
-	s->cmax = cmin + s->wav.nch - 1;
+	s->cmax = cmin + s->afile.nch - 1;
 	s->dup = dup;
 	s->vol = MIDI_TO_ADATA(vol);
 	s->mode = mode;
@@ -233,11 +233,11 @@ slot_new(char *path, int mode, struct aparams *par, int hdr,
 		log_puts(":");
 		log_putu(s->cmax);
 		log_puts(", ");
-		log_putu(s->wav.rate);
+		log_putu(s->afile.rate);
 		log_puts("Hz, ");
-		switch (s->wav.enc) {
+		switch (s->afile.enc) {
 		case ENC_PCM:
-			aparams_log(&s->wav.par);
+			aparams_log(&s->afile.par);
 			break;
 		case ENC_ULAW:
 			log_puts("ulaw");
@@ -249,9 +249,9 @@ slot_new(char *path, int mode, struct aparams *par, int hdr,
 			log_puts("f32le");
 			break;
 		}
-		if (s->mode == SIO_PLAY && s->wav.endpos >= 0) {
+		if (s->mode == SIO_PLAY && s->afile.endpos >= 0) {
 			log_puts(", ");
-			log_puti(s->wav.endpos - s->wav.startpos);
+			log_puti(s->afile.endpos - s->afile.startpos);
 			log_puts(" bytes");
 		}
 		log_puts("\n");
@@ -273,8 +273,8 @@ slot_init(struct slot *s)
 		panic();
 	}
 #endif
-	s->bpf = s->wav.par.bps * (s->cmax - s->cmin + 1);
-	s->round = (dev_round * s->wav.rate + dev_rate / 2) / dev_rate;
+	s->bpf = s->afile.par.bps * (s->cmax - s->cmin + 1);
+	s->round = (dev_round * s->afile.rate + dev_rate / 2) / dev_rate;
 
 	bufsz = s->round * (dev_bufsz / dev_round);
 	bufsz -= bufsz % s->round;
@@ -307,12 +307,12 @@ slot_init(struct slot *s)
 		    s->cmin, s->cmax,
 		    0, dev_pchan - 1,
 		    0, dev_pchan - 1);
-		if (s->wav.enc != ENC_PCM || !aparams_native(&s->wav.par)) {
-			dec_init(&s->conv, &s->wav.par, slot_nch);
+		if (s->afile.enc != ENC_PCM || !aparams_native(&s->afile.par)) {
+			dec_init(&s->conv, &s->afile.par, slot_nch);
 			s->convbuf =
 			    xmalloc(s->round * slot_nch * sizeof(adata_t));
 		}
-		if (s->wav.rate != dev_rate) {
+		if (s->afile.rate != dev_rate) {
 			resamp_init(&s->resamp, s->round, dev_round,
 			    slot_nch);
 			s->resampbuf =
@@ -331,14 +331,14 @@ slot_init(struct slot *s)
 		    0, dev_rchan - 1,
 		    s->cmin, s->cmax,
 		    s->cmin, s->cmax);
-		if (s->wav.rate != dev_rate) {
+		if (s->afile.rate != dev_rate) {
 			resamp_init(&s->resamp, dev_round, s->round,
 			    slot_nch);
 			s->resampbuf =
 			    xmalloc(dev_round * slot_nch * sizeof(adata_t));
 		}
-		if (!aparams_native(&s->wav.par)) {
-			enc_init(&s->conv, &s->wav.par, slot_nch);
+		if (!aparams_native(&s->afile.par)) {
+			enc_init(&s->conv, &s->afile.par, slot_nch);
 			s->convbuf =
 			    xmalloc(s->round * slot_nch * sizeof(adata_t));
 		}
@@ -364,8 +364,8 @@ slot_start(struct slot *s, unsigned int mmc)
 		panic();
 	}
 #endif
-	mmcpos = ((off_t)mmc * s->wav.rate / MTC_SEC) * s->bpf;
-	if (!wav_seek(&s->wav, mmcpos)) {
+	mmcpos = ((off_t)mmc * s->afile.rate / MTC_SEC) * s->bpf;
+	if (!afile_seek(&s->afile, mmcpos)) {
 		s->pstate = SLOT_INIT;
 		return;
 	}
@@ -405,7 +405,7 @@ slot_del(struct slot *s)
 
 	if (s->pstate != SLOT_CFG) {
 		slot_stop(s);
-		wav_close(&s->wav);
+		afile_close(&s->afile);
 #ifdef DEBUG
 		if (log_level >= 3) {
 			slot_log(s);
@@ -461,7 +461,7 @@ play_filt_dec(struct slot *s, void *in, void *out, int todo)
 
 	tmp = s->convbuf;
 	if (tmp) {
-		switch (s->wav.enc) {
+		switch (s->afile.enc) {
 		case ENC_PCM:
 			dec_do(&s->conv, in, tmp, todo);
 			break;
@@ -595,8 +595,8 @@ dev_open(char *dev, int mode, int bufsz, char *port)
 
 	rate = pmax = rmax = 0;
 	for (s = slot_list; s != NULL; s = s->next) {
-		if (s->wav.rate > rate)
-			rate = s->wav.rate;
+		if (s->afile.rate > rate)
+			rate = s->afile.rate;
 		if (s->mode == SIO_PLAY) {
 			if (s->cmax > pmax)
 				pmax = s->cmax;
@@ -973,8 +973,8 @@ offline(void)
 
 	rate = cmax = 0;
 	for (s = slot_list; s != NULL; s = s->next) {
-		if (s->wav.rate > rate)
-			rate = s->wav.rate;
+		if (s->afile.rate > rate)
+			rate = s->afile.rate;
 		if (s->cmax > cmax)
 			cmax = s->cmax;
 	}
@@ -1196,7 +1196,7 @@ opt_hdr(char *s, int *hdr)
 		*hdr = HDR_RAW;
 		return 1;
 	}
-	if (strcmp("wav", s) == 0) {
+	if (strcmp("afile", s) == 0) {
 		*hdr = HDR_WAV;
 		return 1;
 	}
