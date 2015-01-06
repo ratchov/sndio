@@ -1196,8 +1196,12 @@ opt_hdr(char *s, int *hdr)
 		*hdr = HDR_RAW;
 		return 1;
 	}
-	if (strcmp("afile", s) == 0) {
+	if (strcmp("wav", s) == 0) {
 		*hdr = HDR_WAV;
+		return 1;
+	}
+	if (strcmp("aiff", s) == 0) {
+		*hdr = HDR_AIFF;
 		return 1;
 	}
 	log_puts(s);

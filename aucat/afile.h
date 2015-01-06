@@ -32,6 +32,7 @@ struct afile {
 #define HDR_AUTO	0
 #define HDR_RAW		1
 #define HDR_WAV		2
+#define HDR_AIFF	3
 	int hdr;			/* header type */
 	int fd;				/* file descriptor */
 #define WAV_FREAD	1		/* open for reading */
