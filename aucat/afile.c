@@ -106,7 +106,11 @@ struct aiff_comm {
 	be16_t rate_ex;
 	be32_t rate_hi;
 	be32_t rate_lo;
+	char comp_id[4];
+	/* followed by stuff we don't care about */
 };
+
+#define AIFF_COMM_BASESZ (offsetof(struct aiff_comm, comp_id))
 
 struct aiff_data {
 	be32_t offs;
@@ -134,6 +138,7 @@ char wav_guid[14] = {
 
 char aiff_id_form[4] = {'F', 'O', 'R', 'M'};
 char aiff_id_aiff[4] = { 'A', 'I', 'F', 'F' };
+char aiff_id_aifc[4] = { 'A', 'I', 'F', 'C' };
 char aiff_id_data[4] = { 'S', 'S', 'N', 'D' };
 char aiff_id_comm[4] = { 'C', 'O', 'M', 'M' };
 
@@ -398,10 +403,14 @@ static int
 afile_aiff_readcomm(struct afile *f, unsigned int csize, unsigned int *nfr)
 {
 	struct aiff_comm comm;
-	unsigned int nch, rate, bits, bps, enc;
+	unsigned int nch, rate, bits, bps;
 	unsigned int e, m;
 
-	if (csize != sizeof(struct aiff_comm)) {
+	if (csize == AIFF_COMM_BASESZ) {
+		/* nothing */
+	} else if (csize >= sizeof(struct aiff_comm)) {
+		csize = sizeof(struct aiff_comm);
+	} else {
 		log_putu(csize);
 		log_puts(": bugus comm chunk size\n");
 		return 0;
@@ -434,12 +443,58 @@ afile_aiff_readcomm(struct afile *f, unsigned int csize, unsigned int *nfr)
 		log_puts(": bad number of bits in .aiff file\n");
 		return 0;
 	}
+	if (csize == sizeof(struct aiff_comm)) {
+		if (memcmp(comm.comp_id, "NONE", 4) == 0) {
+			f->enc = ENC_PCM;
+		} else if (memcmp(comm.comp_id, "fl32", 4) == 0) {
+			f->enc = ENC_FLOAT;
+		} else if (memcmp(comm.comp_id, "ulaw", 4) == 0) {
+			f->enc = ENC_ULAW;
+		} else if (memcmp(comm.comp_id, "alaw", 4) == 0) {
+			f->enc = ENC_ALAW;
+		} else {
+			log_puts("unsupported encoding of .aiff file\n");
+			return 0;
+		}
+	} else
+		f->enc = ENC_PCM;
+	switch (f->enc) {
+	case ENC_PCM:
+		f->par.bps = (bits + 7) / 8;
+		f->par.bits = bits;
+		f->par.le = 0;
+		f->par.sig = 1;
+		f->par.msb = 1;
+		break;
+	case ENC_ALAW:
+	case ENC_ULAW:
+		if (bits != 8) {
+			log_puts("mulaw/alaw encoding not 8-bit\n");
+			return 0;
+		}
+		f->par.bits = 8;
+		f->par.bps = 1;
+		f->par.le = ADATA_LE;
+		f->par.sig = 0;
+		f->par.msb = 0;
+		break;
+	case ENC_FLOAT:
+		if (bits != 32) {
+			log_puts("only 32-bit float supported\n");
+			return 0;
+		}
+		f->par.bits = 32;
+		f->par.bps = 4;
+		f->par.le = 0;
+		f->par.sig = 0;
+		f->par.msb = 0;
+		break;
+	default:
+		log_putu(f->enc);
+		log_puts(": unsupported encoding in .wav file\n");
+		return 0;
+	}
 	f->nch = nch;
-	f->par.bps = (bits + 7) / 8;
-	f->par.bits = bits;
-	f->par.le = 0;
-	f->par.sig = 1;
-	f->par.msb = 1;
 	*nfr = be32_get(&comm.nfr);
 	return 1;
 }
@@ -461,7 +516,8 @@ afile_aiff_readhdr(struct afile *f)
 		return 0;
 	}
 	if (memcmp(&form.magic, &aiff_id_form, 4) != 0 ||
-	    memcmp(&form.type, &aiff_id_aiff, 4)) {
+	    (memcmp(&form.type, &aiff_id_aiff, 4) != 0 &&
+		memcmp(&form.type, &aiff_id_aifc, 4) != 0)) {
 		log_puts("not a .aiff file\n");
 		return 0;
 	}
@@ -541,6 +597,7 @@ afile_aiff_writehdr(struct afile *f)
 	be32_set(&hdr.comm.rate_hi, m);
 	be32_set(&hdr.comm.rate_lo, 0);
 	be32_set(&hdr.comm.nfr, (f->endpos - f->startpos) / bpf);
+	memcpy(&hdr.comm.comp_id, "NONE", 4);
 
 	memcpy(hdr.data_hdr.id, aiff_id_data, 4);
 	be32_set(&hdr.data_hdr.size, f->endpos - f->startpos);
@@ -674,7 +731,8 @@ afile_open(struct afile *f, char *path, int hdr, int flags,
 		if (ext != NULL) {
 			ext++;
 			if (strcasecmp(ext, "aif") == 0 ||
-			    strcasecmp(ext, "aiff") == 0)
+			    strcasecmp(ext, "aiff") == 0 ||
+			    strcasecmp(ext, "aifc") == 0)
 				f->hdr = HDR_AIFF;
 			else if (strcasecmp(ext, "wav") == 0)
 				f->hdr = HDR_WAV;
