@@ -537,7 +537,9 @@ afile_aiff_readhdr(struct afile *f)
 				return 0;
 			comm_done = 1;
 		} else if (memcmp(chunk.id, aiff_id_data, 4) == 0) {
-			f->startpos = pos + sizeof(form) + sizeof(chunk);
+			f->startpos = pos + sizeof(form) + sizeof(chunk) +
+			    sizeof(struct aiff_data);
+			/* XXX: parse offset */
 			break;
 		} else {
 #ifdef DEBUG
