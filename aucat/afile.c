@@ -163,7 +163,7 @@ char aiff_id_fl32[4] = {'f', 'l', '3', '2'};
 char aiff_id_ulaw[4] = {'u', 'l', 'a', 'w'};
 char aiff_id_alaw[4] = {'a', 'l', 'a', 'w'};
 
-char au_id[4] = {0x2e, 's', 'n', 'd'};
+char au_id[4] = {'.', 's', 'n', 'd'};
 
 static inline unsigned int
 le16_get(le16_t *p)
@@ -735,6 +735,10 @@ afile_au_readhdr(struct afile *f)
 	if (f->nch == 0 || f->nch > NCHAN_MAX) {
 		log_putu(f->nch);
 		log_puts(": unsupported number of channels in .au file\n");
+		return 0;
+	}
+	if (lseek(f->fd, f->startpos, SEEK_SET) < 0) {
+		log_puts("failed to seek to .au file payload\n");
 		return 0;
 	}
 	return 1;

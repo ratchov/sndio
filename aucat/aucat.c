@@ -250,9 +250,10 @@ slot_new(char *path, int mode, struct aparams *par, int hdr,
 			break;
 		}
 		if (s->mode == SIO_PLAY && s->afile.endpos >= 0) {
-			log_puts(", ");
-			log_puti(s->afile.endpos - s->afile.startpos);
-			log_puts(" bytes");
+			log_puts(", bytes ");
+			log_puti(s->afile.startpos);
+			log_puts("..");
+			log_puti(s->afile.endpos);
 		}
 		log_puts("\n");
 	}
