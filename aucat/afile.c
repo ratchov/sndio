@@ -36,6 +36,14 @@
 #define WAV_FMT_ULAW	7
 #define WAV_FMT_EXT	0xfffe
 
+#define AU_FMT_PCM8	2
+#define AU_FMT_PCM16	3
+#define AU_FMT_PCM24	4
+#define AU_FMT_PCM32	5
+#define AU_FMT_FLOAT	6
+#define AU_FMT_ALAW	0x1b
+#define AU_FMT_ULAW	1
+
 typedef struct {
 	unsigned char ld[4];
 } le32_t;
@@ -52,18 +60,18 @@ typedef struct {
 	unsigned char bw[2];
 } be16_t;
 
-struct wavriff {
+struct wav_riff {
 	char magic[4];
 	le32_t size;
 	char type[4];
 };
 
-struct wavchunk {
+struct wav_chunk {
 	char id[4];
 	le32_t size;
 };
 
-struct wavfmt {
+struct wav_fmt {
 	le16_t fmt;
 	le16_t nch;
 	le32_t rate;
@@ -80,11 +88,11 @@ struct wavfmt {
 	char guid[14];
 };
 
-struct wavhdr {
-	struct wavriff riff;		/* 00..11 */
-	struct wavchunk fmt_hdr;	/* 12..20 */
-	struct wavfmt fmt;
-	struct wavchunk data_hdr;
+struct wav_hdr {
+	struct wav_riff riff;		/* 00..11 */
+	struct wav_chunk fmt_hdr;	/* 12..20 */
+	struct wav_fmt fmt;
+	struct wav_chunk data_hdr;
 };
 
 struct aiff_form {
@@ -99,18 +107,18 @@ struct aiff_chunk {
 };
 
 struct aiff_comm {
-	be16_t nch;
-	be32_t nfr;
-	be16_t bits;
-	/* rate in 80-bit floating point */
-	be16_t rate_ex;
-	be32_t rate_hi;
-	be32_t rate_lo;
+	struct aiff_commbase {
+		be16_t nch;
+		be32_t nfr;
+		be16_t bits;
+		/* rate in 80-bit floating point */
+		be16_t rate_ex;
+		be32_t rate_hi;
+		be32_t rate_lo;
+	} base;
 	char comp_id[4];
 	/* followed by stuff we don't care about */
 };
-
-#define AIFF_COMM_BASESZ (offsetof(struct aiff_comm, comp_id))
 
 struct aiff_data {
 	be32_t offs;
@@ -118,17 +126,26 @@ struct aiff_data {
 };
 
 struct aiff_hdr {
-	struct aiff_form form;		/* 00..11 */
-	struct aiff_chunk comm_hdr;	/* 12..20 */
-	struct aiff_comm comm;
+	struct aiff_form form;
+	struct aiff_chunk comm_hdr;
+	struct aiff_commbase comm;
 	struct aiff_chunk data_hdr;
 	struct aiff_data data;
 };
 
-char wav_id_riff[4] = { 'R', 'I', 'F', 'F' };
-char wav_id_wave[4] = { 'W', 'A', 'V', 'E' };
-char wav_id_data[4] = { 'd', 'a', 't', 'a' };
-char wav_id_fmt[4] = { 'f', 'm', 't', ' ' };
+struct au_hdr {
+	char id[4];
+	be32_t offs;
+	be32_t size;
+	be32_t fmt;
+	be32_t rate;
+	be32_t nch;
+};
+
+char wav_id_riff[4] = {'R', 'I', 'F', 'F'};
+char wav_id_wave[4] = {'W', 'A', 'V', 'E'};
+char wav_id_data[4] = {'d', 'a', 't', 'a'};
+char wav_id_fmt[4] = {'f', 'm', 't', ' '};
 char wav_guid[14] = {
 	0x00, 0x00, 0x00, 0x00,
 	0x10, 0x00, 0x80, 0x00,
@@ -137,10 +154,16 @@ char wav_guid[14] = {
 };
 
 char aiff_id_form[4] = {'F', 'O', 'R', 'M'};
-char aiff_id_aiff[4] = { 'A', 'I', 'F', 'F' };
-char aiff_id_aifc[4] = { 'A', 'I', 'F', 'C' };
-char aiff_id_data[4] = { 'S', 'S', 'N', 'D' };
-char aiff_id_comm[4] = { 'C', 'O', 'M', 'M' };
+char aiff_id_aiff[4] = {'A', 'I', 'F', 'F'};
+char aiff_id_aifc[4] = {'A', 'I', 'F', 'C'};
+char aiff_id_data[4] = {'S', 'S', 'N', 'D'};
+char aiff_id_comm[4] = {'C', 'O', 'M', 'M'};
+char aiff_id_none[4] = {'N', 'O', 'N', 'E'};
+char aiff_id_fl32[4] = {'f', 'l', '3', '2'};
+char aiff_id_ulaw[4] = {'u', 'l', 'a', 'w'};
+char aiff_id_alaw[4] = {'a', 'l', 'a', 'w'};
+
+char au_id[4] = {0x2e, 's', 'n', 'd'};
 
 static inline unsigned int
 le16_get(le16_t *p)
@@ -207,7 +230,7 @@ be32_set(be32_t *p, unsigned int v)
 static int
 afile_wav_readfmt(struct afile *f, unsigned int csize)
 {
-	struct wavfmt fmt;
+	struct wav_fmt fmt;
 	unsigned int nch, rate, bits, bps, enc;
 
 	if (csize < WAV_FMT_SIZE) {
@@ -263,7 +286,7 @@ afile_wav_readfmt(struct afile *f, unsigned int csize)
 		f->par.bps = bps;
 		f->par.bits = bits;
 		f->par.le = 1;
-		f->par.sig = (bits <= 8) ? 0 : 1;	/* ask microsoft why... */
+		f->par.sig = (bits <= 8) ? 0 : 1;	/* ask microsoft ... */
 		f->par.msb = 1;
 		break;
 	case WAV_FMT_ALAW:
@@ -304,8 +327,8 @@ afile_wav_readfmt(struct afile *f, unsigned int csize)
 static int
 afile_wav_readhdr(struct afile *f)
 {
-	struct wavriff riff;
-	struct wavchunk chunk;
+	struct wav_riff riff;
+	struct wav_chunk chunk;
 	unsigned int csize, rsize, pos = 0;
 	int fmt_done = 0;
 
@@ -324,7 +347,7 @@ afile_wav_readhdr(struct afile *f)
 	}
 	rsize = le32_get(&riff.size);
 	for (;;) {
-		if (pos + sizeof(struct wavchunk) > rsize) {
+		if (pos + sizeof(struct wav_chunk) > rsize) {
 			log_puts("missing data chunk in .wav file\n");
 			return 0;
 		}
@@ -343,15 +366,17 @@ afile_wav_readhdr(struct afile *f)
 			break;
 		} else {
 #ifdef DEBUG
-			if (log_level >= 2)
-				log_puts("skipped unknown .wav file chunk\n");
+			if (log_level >= 2) {
+				log_puts(f->path);
+				log_puts(": skipped unknown chunk\n");
+			}
 #endif
 		}
 
 		/*
 		 * next chunk
 		 */
-		pos += sizeof(struct wavchunk) + csize;
+		pos += sizeof(struct wav_chunk) + csize;
 		if (lseek(f->fd, sizeof(riff) + pos, SEEK_SET) < 0) {
 			log_puts("filed to seek to chunk in .wav file\n");
 			return 0;
@@ -370,9 +395,9 @@ afile_wav_readhdr(struct afile *f)
 static int
 afile_wav_writehdr(struct afile *f)
 {
-	struct wavhdr hdr;
+	struct wav_hdr hdr;
 
-	memset(&hdr, 0, sizeof(struct wavhdr));
+	memset(&hdr, 0, sizeof(struct wav_hdr));
 	memcpy(hdr.riff.magic, wav_id_riff, 4);
 	memcpy(hdr.riff.type, wav_id_wave, 4);
 	le32_set(&hdr.riff.size, f->endpos - sizeof(hdr.riff));
@@ -400,32 +425,32 @@ afile_wav_writehdr(struct afile *f)
 }
 
 static int
-afile_aiff_readcomm(struct afile *f, unsigned int csize, unsigned int *nfr)
+afile_aiff_readcomm(struct afile *f, unsigned int csize,
+    int comp, unsigned int *nfr)
 {
 	struct aiff_comm comm;
-	unsigned int nch, rate, bits, bps;
+	unsigned int csize_min, nch, rate, bits;
 	unsigned int e, m;
 
-	if (csize == AIFF_COMM_BASESZ) {
-		/* nothing */
-	} else if (csize >= sizeof(struct aiff_comm)) {
-		csize = sizeof(struct aiff_comm);
-	} else {
+	csize_min = comp ?
+	    sizeof(struct aiff_comm) : sizeof(struct aiff_commbase);
+	if (csize < csize_min) {
 		log_putu(csize);
 		log_puts(": bugus comm chunk size\n");
 		return 0;
 	}
-	if (read(f->fd, &comm, csize) != csize) {
+	if (read(f->fd, &comm, csize_min) != csize_min) {
 		log_puts("failed to read .aiff comm chunk\n");
 		return 0;
 	}
-	nch = be16_get(&comm.nch);
-	if (nch == 0) {
-		log_puts("zero number of channels in .aiff file\n");
+	nch = be16_get(&comm.base.nch);
+	if (nch == 0 || nch > NCHAN_MAX) {
+		log_putu(nch);
+		log_puts(": unsupported number of channels in .aiff file\n");
 		return 0;
 	}
-	e = be16_get(&comm.rate_ex);
-	m = be32_get(&comm.rate_hi);
+	e = be16_get(&comm.base.rate_ex);
+	m = be32_get(&comm.base.rate_hi);
 	if (e < 0x3fff || e > 0x3fff + 31) {
 		log_puts(f->path);
 		log_puts(": bad sample rate in .aiff file\n");
@@ -437,20 +462,20 @@ afile_aiff_readcomm(struct afile *f, unsigned int csize, unsigned int *nfr)
 		log_puts(": sample rate out of range in .aiff file\n");
 		return 0;
 	}
-	bits = be16_get(&comm.bits);
+	bits = be16_get(&comm.base.bits);
 	if (bits < BITS_MIN || bits > BITS_MAX) {
 		log_putu(bits);
 		log_puts(": bad number of bits in .aiff file\n");
 		return 0;
 	}
-	if (csize == sizeof(struct aiff_comm)) {
-		if (memcmp(comm.comp_id, "NONE", 4) == 0) {
+	if (comp) {
+		if (memcmp(comm.comp_id, aiff_id_none, 4) == 0) {
 			f->enc = ENC_PCM;
-		} else if (memcmp(comm.comp_id, "fl32", 4) == 0) {
+		} else if (memcmp(comm.comp_id, aiff_id_fl32, 4) == 0) {
 			f->enc = ENC_FLOAT;
-		} else if (memcmp(comm.comp_id, "ulaw", 4) == 0) {
+		} else if (memcmp(comm.comp_id, aiff_id_ulaw, 4) == 0) {
 			f->enc = ENC_ULAW;
-		} else if (memcmp(comm.comp_id, "alaw", 4) == 0) {
+		} else if (memcmp(comm.comp_id, aiff_id_alaw, 4) == 0) {
 			f->enc = ENC_ALAW;
 		} else {
 			log_puts("unsupported encoding of .aiff file\n");
@@ -488,14 +513,28 @@ afile_aiff_readcomm(struct afile *f, unsigned int csize, unsigned int *nfr)
 		f->par.le = 0;
 		f->par.sig = 0;
 		f->par.msb = 0;
-		break;
-	default:
-		log_putu(f->enc);
-		log_puts(": unsupported encoding in .wav file\n");
-		return 0;
 	}
 	f->nch = nch;
-	*nfr = be32_get(&comm.nfr);
+	*nfr = be32_get(&comm.base.nfr);
+	return 1;
+}
+
+static int
+afile_aiff_readdata(struct afile *f, unsigned int csize, unsigned int *roffs)
+{
+	struct aiff_data data;
+
+	if (csize < sizeof(struct aiff_data)) {
+		log_putu(csize);
+		log_puts(": bugus comm chunk size\n");
+		return 0;
+	}
+	csize = sizeof(struct aiff_data);
+	if (read(f->fd, &data, csize) != csize) {
+		log_puts("failed to read .aiff data chunk\n");
+		return 0;
+	}
+	*roffs = csize + be32_get(&data.offs);
 	return 1;
 }
 
@@ -504,8 +543,8 @@ afile_aiff_readhdr(struct afile *f)
 {
 	struct aiff_form form;
 	struct aiff_chunk chunk;
-	unsigned int csize, rsize, nfr, pos = 0;
-	int comm_done = 0;
+	unsigned int csize, rsize, nfr = 0, pos = 0, offs;
+	int comm_done = 0, comp;
 
 	if (lseek(f->fd, 0, SEEK_SET) < 0) {
 		log_puts("failed to seek to beginning of .aiff file\n");
@@ -515,10 +554,18 @@ afile_aiff_readhdr(struct afile *f)
 		log_puts("failed to read .aiff file form header\n");
 		return 0;
 	}
-	if (memcmp(&form.magic, &aiff_id_form, 4) != 0 ||
-	    (memcmp(&form.type, &aiff_id_aiff, 4) != 0 &&
-		memcmp(&form.type, &aiff_id_aifc, 4) != 0)) {
-		log_puts("not a .aiff file\n");
+	if (memcmp(&form.magic, &aiff_id_form, 4) != 0) {
+		log_puts(f->path);
+		log_puts(": not an aiff file\n");
+		return 0;
+	}
+	if (memcmp(&form.type, &aiff_id_aiff, 4) == 0) {
+		comp = 0;
+	} else if (memcmp(&form.type, &aiff_id_aifc, 4) == 0)
+		comp = 1;
+	else {
+		log_puts(f->path);
+		log_puts(": unknown aiff file type\n");
 		return 0;
 	}
 	rsize = be32_get(&form.size);
@@ -533,13 +580,13 @@ afile_aiff_readhdr(struct afile *f)
 		}
 		csize = be32_get(&chunk.size);
 		if (memcmp(chunk.id, aiff_id_comm, 4) == 0) {
-			if (!afile_aiff_readcomm(f, csize, &nfr))
+			if (!afile_aiff_readcomm(f, csize, comp, &nfr))
 				return 0;
 			comm_done = 1;
 		} else if (memcmp(chunk.id, aiff_id_data, 4) == 0) {
-			f->startpos = pos + sizeof(form) + sizeof(chunk) +
-			    sizeof(struct aiff_data);
-			/* XXX: parse offset */
+			if (!afile_aiff_readdata(f, csize, &offs))
+				return 0;
+			f->startpos = sizeof(form) + pos + sizeof(chunk) + offs;
 			break;
 		} else {
 #ifdef DEBUG
@@ -599,7 +646,6 @@ afile_aiff_writehdr(struct afile *f)
 	be32_set(&hdr.comm.rate_hi, m);
 	be32_set(&hdr.comm.rate_lo, 0);
 	be32_set(&hdr.comm.nfr, (f->endpos - f->startpos) / bpf);
-	memcpy(&hdr.comm.comp_id, "NONE", 4);
 
 	memcpy(hdr.data_hdr.id, aiff_id_data, 4);
 	be32_set(&hdr.data_hdr.size, f->endpos - f->startpos);
@@ -617,12 +663,134 @@ afile_aiff_writehdr(struct afile *f)
 	return 1;
 }
 
+static int
+afile_au_readhdr(struct afile *f)
+{
+	struct au_hdr hdr;
+	unsigned int fmt;
+
+	if (lseek(f->fd, 0, SEEK_SET) < 0) {
+		log_puts("failed to seek to beginning of .au file\n");
+		return 0;
+	}
+	if (read(f->fd, &hdr, sizeof(hdr)) != sizeof(hdr)) {
+		log_puts("failed to read .au file header\n");
+		return 0;
+	}
+	if (memcmp(&hdr.id, &au_id, 4) != 0) {
+		log_puts("not a .au file\n");
+		return 0;
+	}
+	f->startpos = be32_get(&hdr.offs);
+	f->endpos = f->startpos + be32_get(&hdr.size);
+	fmt = be32_get(&hdr.fmt);
+	switch (fmt) {
+	case AU_FMT_PCM8:
+		f->enc = ENC_PCM;
+		f->par.bits = 8;
+		break;
+	case AU_FMT_PCM16:
+		f->enc = ENC_PCM;
+		f->par.bits = 16;
+		break;
+	case AU_FMT_PCM24:
+		f->enc = ENC_PCM;
+		f->par.bits = 24;
+		break;
+	case AU_FMT_PCM32:
+		f->enc = ENC_PCM;
+		f->par.bits = 32;
+		break;
+	case AU_FMT_ULAW:
+		f->enc = ENC_ULAW;
+		f->par.bits = 8;
+		f->par.bps = 1;
+		break;
+	case AU_FMT_ALAW:
+		f->enc = ENC_ALAW;
+		f->par.bits = 8;
+		f->par.bps = 1;
+		break;
+	case AU_FMT_FLOAT:
+		f->enc = ENC_FLOAT;
+		f->par.bits = 32;
+		f->par.bps = 4;
+		break;
+	default:
+		log_putu(fmt);
+		log_puts(": unsupported encoding in .au file\n");
+		return 0;
+	}
+	f->par.le = 0;
+	f->par.sig = 1;
+	f->par.bps = f->par.bits / 8;
+	f->par.msb = 0;
+	f->rate = be32_get(&hdr.rate);
+	if (f->rate < RATE_MIN || f->rate > RATE_MAX) {
+		log_putu(f->rate);
+		log_puts(": sample rate out of range in .au file\n");
+		return 0;
+	}
+	f->nch = be32_get(&hdr.nch);
+	if (f->nch == 0 || f->nch > NCHAN_MAX) {
+		log_putu(f->nch);
+		log_puts(": unsupported number of channels in .au file\n");
+		return 0;
+	}
+	return 1;
+}
+
+/*
+ * Write header and seek to start position
+ */
+static int
+afile_au_writehdr(struct afile *f)
+{
+	struct au_hdr hdr;
+	unsigned int fmt;
+
+	memset(&hdr, 0, sizeof(struct au_hdr));
+	memcpy(hdr.id, au_id, 4);
+	be32_set(&hdr.offs, f->startpos);
+	be32_set(&hdr.size, f->endpos - f->startpos);
+	switch (f->par.bits) {
+	case 8:
+		fmt = AU_FMT_PCM8;
+		break;
+	case 16:
+		fmt = AU_FMT_PCM16;
+		break;
+	case 24:
+		fmt = AU_FMT_PCM24;
+		break;
+	case 32:
+		fmt = AU_FMT_PCM32;
+	default:
+		log_puts("afile_au_writehdr: wrong precision\n");
+		panic();
+		return 0;
+	}
+	be32_set(&hdr.fmt, fmt);
+	be32_set(&hdr.rate, f->rate);
+	be32_set(&hdr.nch, f->nch);
+	if (lseek(f->fd, 0, SEEK_SET) < 0) {
+		log_puts("failed to seek back to .au file header\n");
+		return 0;
+	}
+	if (write(f->fd, &hdr, sizeof(hdr)) != sizeof(hdr)) {
+		log_puts("failed to write .au file header\n");
+		return 0;
+	}
+	f->curpos = f->startpos;
+	return 1;
+}
+
 size_t
 afile_read(struct afile *f, void *data, size_t count)
 {
 	off_t maxread;
 	ssize_t n;
-	
+
 	if (f->endpos >= 0) {
 		maxread = f->endpos - f->curpos;
 		if (maxread == 0) {
@@ -711,6 +879,8 @@ afile_close(struct afile *f)
 			afile_wav_writehdr(f);
 		else if (f->hdr == HDR_AIFF)
 			afile_aiff_writehdr(f);
+		else if (f->hdr == HDR_AU)
+			afile_au_writehdr(f);
 	}
 	close(f->fd);
 }
@@ -720,7 +890,7 @@ afile_open(struct afile *f, char *path, int hdr, int flags,
     struct aparams *par, int rate, int nch)
 {
 	char *ext;
-	struct wavhdr dummy;
+	struct wav_hdr dummy;
 
 	f->par = *par;
 	f->rate = rate;
@@ -736,6 +906,9 @@ afile_open(struct afile *f, char *path, int hdr, int flags,
 			    strcasecmp(ext, "aiff") == 0 ||
 			    strcasecmp(ext, "aifc") == 0)
 				f->hdr = HDR_AIFF;
+			else if (strcasecmp(ext, "au") == 0 ||
+			    strcasecmp(ext, "snd") == 0)
+				f->hdr = HDR_AU;
 			else if (strcasecmp(ext, "wav") == 0)
 				f->hdr = HDR_WAV;
 		}
@@ -758,6 +931,9 @@ afile_open(struct afile *f, char *path, int hdr, int flags,
 				goto bad_close;
 		} else if (f->hdr == HDR_AIFF) {
 			if (!afile_aiff_readhdr(f))
+				goto bad_close;
+		} else if (f->hdr == HDR_AU) {
+			if (!afile_au_readhdr(f))
 				goto bad_close;
 		} else {
 			f->startpos = 0;
@@ -787,12 +963,12 @@ afile_open(struct afile *f, char *path, int hdr, int flags,
 				f->par.sig = 0;
 			if (f->par.bits & 7)
 				f->par.msb = 1;
-			f->endpos = f->startpos = sizeof(struct wavhdr);			
+			f->endpos = f->startpos = sizeof(struct wav_hdr);
 			f->maxpos = WAV_MAXPOS;
-			memset(&dummy, 0xd0, sizeof(struct wavhdr));
-			if (write(f->fd, &dummy, sizeof(struct wavhdr)) < 0) {
+			memset(&dummy, 0xd0, sizeof(struct wav_hdr));
+			if (write(f->fd, &dummy, sizeof(struct wav_hdr)) < 0) {
 				log_puts(f->path);
-				log_puts(": failed reserve space for .wav header\n");
+				log_puts(": couldn't write .wav header\n");
 				goto bad_close;
 			}
 		} else if (f->hdr == HDR_AIFF) {
@@ -807,7 +983,21 @@ afile_open(struct afile *f, char *path, int hdr, int flags,
 			memset(&dummy, 0xd0, sizeof(struct aiff_hdr));
 			if (write(f->fd, &dummy, sizeof(struct aiff_hdr)) < 0) {
 				log_puts(f->path);
-				log_puts(": failed reserve space for .aiff header\n");
+				log_puts(": couldn't write .aiff header\n");
+				goto bad_close;
+			}
+		} else if (f->hdr == HDR_AU) {
+			f->par.bits = (f->par.bits + 7) & ~7;
+			f->par.bps = f->par.bits / 8;
+			f->par.le = 0;
+			f->par.sig = 1;
+			f->par.msb = 1;
+			f->endpos = f->startpos = sizeof(struct au_hdr);
+			f->maxpos = WAV_MAXPOS;
+			memset(&dummy, 0xd0, sizeof(struct au_hdr));
+			if (write(f->fd, &dummy, sizeof(struct au_hdr)) < 0) {
+				log_puts(f->path);
+				log_puts(": couldn't write .au header\n");
 				goto bad_close;
 			}
 		} else {

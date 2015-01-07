@@ -127,23 +127,12 @@ The following file types are supported:
 .Bl -tag -width auto
 .It Ar raw
 Headerless file.
-This format is recommended since it has no limitations.
 .It Ar wav
 Microsoft WAVE file format.
-There are limitations inherent to the file format itself:
-not all encodings are supported,
-file sizes are limited to 2GB,
-and the file must support the
-.Xr lseek 2
-operation (e.g. pipes do not support it).
 .It Ar aiff
 Electronic Arts audio interchange file format.
-There are limitations inherent to the file format itself:
-not all encodings are supported,
-file sizes are limited to 2GB,
-and the file must support the
-.Xr lseek 2
-operation (e.g. pipes do not support it).
+.It Ar au
+Sun audio file format.
 .It Ar auto
 Try to guess, depending on the file name.
 This is the default.
@@ -299,3 +288,13 @@ $ aucat -n -i stereo.wav -c 0:0 -o left.wav \e
 .Xr sndio 7
 .Sh BUGS
 Resampling is low quality.
+.Pp
+There are limitations inherent to the
+.Ar wav ,
+.Ar aiff ,
+and
+.Ar au
+file formats: not all encodings are supported,
+file sizes are limited to 2GB, and the files must support the
+.Xr lseek 2
+operation (e.g. pipes do not support it).

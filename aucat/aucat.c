@@ -1204,6 +1204,10 @@ opt_hdr(char *s, int *hdr)
 		*hdr = HDR_AIFF;
 		return 1;
 	}
+	if (strcmp("au", s) == 0) {
+		*hdr = HDR_AU;
+		return 1;
+	}
 	log_puts(s);
 	log_puts(": bad header type\n");
 	return 0;
