@@ -233,7 +233,7 @@ static int
 afile_wav_readfmt(struct afile *f, unsigned int csize)
 {
 	struct wav_fmt fmt;
-	unsigned int nch, rate, bits, bps, enc;
+	unsigned int wenc;
 
 	if (csize < WAV_FMT_SIZE) {
 		log_putu(csize);
@@ -246,9 +246,9 @@ afile_wav_readfmt(struct afile *f, unsigned int csize)
 		log_puts("failed to read .wav format chun\n");
 		return 0;
 	}
-	enc = le16_get(&fmt.fmt);
-	bits = le16_get(&fmt.bits);
-	if (enc == WAV_FMT_EXT) {
+	wenc = le16_get(&fmt.fmt);
+	f->par.bits = le16_get(&fmt.bits);
+	if (wenc == WAV_FMT_EXT) {
 		if (csize != WAV_FMT_EXT_SIZE) {
 			log_puts("missing extended format chunk in .wav file\n");
 			return 0;
@@ -257,72 +257,60 @@ afile_wav_readfmt(struct afile *f, unsigned int csize)
 			log_puts("unknown format (GUID) in .wav file\n");
 			return 0;
 		}
-		bps = (bits + 7) / 8;
-		bits = le16_get(&fmt.valbits);
-		enc = le16_get(&fmt.extfmt);
+		f->par.bps = (f->par.bits + 7) / 8;
+		f->par.bits = le16_get(&fmt.valbits);
+		wenc = le16_get(&fmt.extfmt);
 	} else
-		bps = (bits + 7) / 8;
-	nch = le16_get(&fmt.nch);
-	if (nch == 0) {
+		f->par.bps = (f->par.bits + 7) / 8;
+	f->nch = le16_get(&fmt.nch);
+	if (f->nch == 0 || f->nch > NCHAN_MAX) {
 		log_puts("zero number of channels in .wav file\n");
 		return 0;
 	}
-	rate = le32_get(&fmt.rate);
-	if (rate < RATE_MIN || rate > RATE_MAX) {
-		log_putu(rate);
+	f->rate = le32_get(&fmt.rate);
+	if (f->rate < RATE_MIN || f->rate > RATE_MAX) {
+		log_putu(f->rate);
 		log_puts(": bad sample rate in .wav file\n");
 		return 0;
 	}
-	if (bits < BITS_MIN || bits > BITS_MAX) {
-		log_putu(bits);
+	if (f->par.bits < BITS_MIN || f->par.bits > BITS_MAX) {
+		log_putu(f->par.bits);
 		log_puts(": bad number of bits\n");
 		return 0;
 	}
-	if (bits > bps * 8) {
+	if (f->par.bits > f->par.bps * 8) {
 		log_puts("bits larger than bytes-per-sample\n");
 		return 0;
 	}
-	switch (enc) {
+	f->par.le = 1;
+	f->par.msb = 1;
+	switch (wenc) {
 	case WAV_FMT_PCM:
 		f->enc = ENC_PCM;
-		f->par.bps = bps;
-		f->par.bits = bits;
-		f->par.le = 1;
-		f->par.sig = (bits <= 8) ? 0 : 1;	/* ask microsoft ... */
-		f->par.msb = 1;
+		f->par.sig = (f->par.bits <= 8) ? 0 : 1;
 		break;
 	case WAV_FMT_ALAW:
-	case WAV_FMT_ULAW:
-		f->enc = (enc == WAV_FMT_ULAW) ? ENC_ULAW : ENC_ALAW;
-		if (bits != 8) {
-			log_puts("mulaw/alaw encoding not 8-bit\n");
-			return 0;
-		}
+		f->enc = ENC_ALAW;
 		f->par.bits = 8;
 		f->par.bps = 1;
-		f->par.le = ADATA_LE;
-		f->par.sig = 0;
-		f->par.msb = 0;
+		break;
+	case WAV_FMT_ULAW:
+		f->enc = ENC_ULAW;
+		f->par.bits = 8;
+		f->par.bps = 1;
 		break;
 	case WAV_FMT_FLOAT:
 		f->enc = ENC_FLOAT;
-		if (bits != 32) {
+		if (f->par.bits != 32) {
 			log_puts("only 32-bit float supported\n");
 			return 0;
 		}
-		f->par.bits = 32;
-		f->par.bps = 4;
-		f->par.le = 1;
-		f->par.sig = 0;
-		f->par.msb = 0;
 		break;
 	default:
-		log_putu(enc);
+		log_putu(wenc);
 		log_puts(": unsupported encoding in .wav file\n");
 		return 0;
 	}
-	f->nch = nch;
-	f->rate = rate;
 	return 1;
 }
 
@@ -431,7 +419,7 @@ afile_aiff_readcomm(struct afile *f, unsigned int csize,
     int comp, unsigned int *nfr)
 {
 	struct aiff_comm comm;
-	unsigned int csize_min, nch, rate, bits;
+	unsigned int csize_min;
 	unsigned int e, m;
 
 	csize_min = comp ?
@@ -445,9 +433,9 @@ afile_aiff_readcomm(struct afile *f, unsigned int csize,
 		log_puts("failed to read .aiff comm chunk\n");
 		return 0;
 	}
-	nch = be16_get(&comm.base.nch);
-	if (nch == 0 || nch > NCHAN_MAX) {
-		log_putu(nch);
+	f->nch = be16_get(&comm.base.nch);
+	if (f->nch == 0 || f->nch > NCHAN_MAX) {
+		log_putu(f->nch);
 		log_puts(": unsupported number of channels in .aiff file\n");
 		return 0;
 	}
@@ -458,15 +446,15 @@ afile_aiff_readcomm(struct afile *f, unsigned int csize,
 		log_puts(": bad sample rate in .aiff file\n");
 		return 0;
 	}
-	rate = m >> (0x3fff + 31 - e);
-	if (rate < RATE_MIN || rate > RATE_MAX) {
-		log_putu(rate);
+	f->rate = m >> (0x3fff + 31 - e);
+	if (f->rate < RATE_MIN || f->rate > RATE_MAX) {
+		log_putu(f->rate);
 		log_puts(": sample rate out of range in .aiff file\n");
 		return 0;
 	}
-	bits = be16_get(&comm.base.bits);
-	if (bits < BITS_MIN || bits > BITS_MAX) {
-		log_putu(bits);
+	f->par.bits = be16_get(&comm.base.bits);
+	if (f->par.bits < BITS_MIN || f->par.bits > BITS_MAX) {
+		log_putu(f->par.bits);
 		log_puts(": bad number of bits in .aiff file\n");
 		return 0;
 	}
@@ -485,38 +473,26 @@ afile_aiff_readcomm(struct afile *f, unsigned int csize,
 		}
 	} else
 		f->enc = ENC_PCM;
+	f->par.le = 0;
+	f->par.sig = 1;
+	f->par.msb = 1;
+	f->par.bps = (f->par.bits + 7) / 8;
 	switch (f->enc) {
 	case ENC_PCM:
-		f->par.bps = (bits + 7) / 8;
-		f->par.bits = bits;
-		f->par.le = 0;
-		f->par.sig = 1;
-		f->par.msb = 1;
 		break;
 	case ENC_ALAW:
 	case ENC_ULAW:
-		if (bits != 8) {
+		if (f->par.bits != 8) {
 			log_puts("mulaw/alaw encoding not 8-bit\n");
 			return 0;
 		}
-		f->par.bits = 8;
-		f->par.bps = 1;
-		f->par.le = ADATA_LE;
-		f->par.sig = 0;
-		f->par.msb = 0;
 		break;
 	case ENC_FLOAT:
-		if (bits != 32) {
+		if (f->par.bits != 32) {
 			log_puts("only 32-bit float supported\n");
 			return 0;
 		}
-		f->par.bits = 32;
-		f->par.bps = 4;
-		f->par.le = 0;
-		f->par.sig = 0;
-		f->par.msb = 0;
 	}
-	f->nch = nch;
 	*nfr = be32_get(&comm.base.nfr);
 	return 1;
 }
@@ -579,7 +555,7 @@ afile_aiff_readhdr(struct afile *f)
 		if (read(f->fd, &chunk, sizeof(chunk)) != sizeof(chunk)) {
 			log_puts("failed to read .aiff chunk header\n");
 			return 0;
-		}
+		}		
 		csize = be32_get(&chunk.size);
 		if (memcmp(chunk.id, aiff_id_comm, 4) == 0) {
 			if (!afile_aiff_readcomm(f, csize, comp, &nfr))
@@ -598,9 +574,16 @@ afile_aiff_readhdr(struct afile *f)
 		}
 
 		/*
-		 * next chunk
+		 * The aiff spec says "Each Chunk must contain an even
+		 * number of bytes. For those Chunks whose total
+		 * contents would yield an odd number of bytes, a zero
+		 * pad byte must be added at the end of the Chunk. This
+		 * pad byte is not included in ckDataSize, which
+		 * indicates the size of the data in the Chunk."
 		 */
+		csize = (csize + 1) & ~1;
 		pos += sizeof(struct aiff_chunk) + csize;
+
 		if (lseek(f->fd, sizeof(form) + pos, SEEK_SET) < 0) {
 			log_puts("filed to seek to chunk in .aiff file\n");
 			return 0;
