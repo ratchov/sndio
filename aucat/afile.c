@@ -140,6 +140,8 @@ struct au_hdr {
 	be32_t fmt;
 	be32_t rate;
 	be32_t nch;
+	char desc[8];
+	/* followed by optional desc[] continuation */
 };
 
 char wav_id_riff[4] = {'R', 'I', 'F', 'F'};
@@ -894,7 +896,11 @@ afile_open(struct afile *f, char *path, int hdr, int flags,
     struct aparams *par, int rate, int nch)
 {
 	char *ext;
-	struct wav_hdr dummy;
+	union {
+		struct wav_hdr wav;
+		struct aiff_hdr aiff;
+		struct au_hdr au;
+	} dummy;
 
 	f->par = *par;
 	f->rate = rate;
