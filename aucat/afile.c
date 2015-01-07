@@ -452,47 +452,36 @@ afile_aiff_readcomm(struct afile *f, unsigned int csize,
 		log_puts(": sample rate out of range in .aiff file\n");
 		return 0;
 	}
-	f->par.bits = be16_get(&comm.base.bits);
+	if (comp) {
+		if (memcmp(comm.comp_id, aiff_id_none, 4) == 0) {
+			f->enc = ENC_PCM;
+			f->par.bits = be16_get(&comm.base.bits);
+		} else if (memcmp(comm.comp_id, aiff_id_fl32, 4) == 0) {
+			f->enc = ENC_FLOAT;
+			f->par.bits = 32;
+		} else if (memcmp(comm.comp_id, aiff_id_ulaw, 4) == 0) {
+			f->enc = ENC_ULAW;
+			f->par.bits = 8;
+		} else if (memcmp(comm.comp_id, aiff_id_alaw, 4) == 0) {
+			f->enc = ENC_ALAW;
+			f->par.bits = 8;
+		} else {
+			log_puts("unsupported encoding of .aiff file\n");
+			return 0;
+		}
+	} else {
+		f->enc = ENC_PCM;
+		f->par.bits = be16_get(&comm.base.bits);
+	}
 	if (f->par.bits < BITS_MIN || f->par.bits > BITS_MAX) {
 		log_putu(f->par.bits);
 		log_puts(": bad number of bits in .aiff file\n");
 		return 0;
 	}
-	if (comp) {
-		if (memcmp(comm.comp_id, aiff_id_none, 4) == 0) {
-			f->enc = ENC_PCM;
-		} else if (memcmp(comm.comp_id, aiff_id_fl32, 4) == 0) {
-			f->enc = ENC_FLOAT;
-		} else if (memcmp(comm.comp_id, aiff_id_ulaw, 4) == 0) {
-			f->enc = ENC_ULAW;
-		} else if (memcmp(comm.comp_id, aiff_id_alaw, 4) == 0) {
-			f->enc = ENC_ALAW;
-		} else {
-			log_puts("unsupported encoding of .aiff file\n");
-			return 0;
-		}
-	} else
-		f->enc = ENC_PCM;
 	f->par.le = 0;
 	f->par.sig = 1;
 	f->par.msb = 1;
 	f->par.bps = (f->par.bits + 7) / 8;
-	switch (f->enc) {
-	case ENC_PCM:
-		break;
-	case ENC_ALAW:
-	case ENC_ULAW:
-		if (f->par.bits != 8) {
-			log_puts("mulaw/alaw encoding not 8-bit\n");
-			return 0;
-		}
-		break;
-	case ENC_FLOAT:
-		if (f->par.bits != 32) {
-			log_puts("only 32-bit float supported\n");
-			return 0;
-		}
-	}
 	*nfr = be32_get(&comm.base.nfr);
 	return 1;
 }
