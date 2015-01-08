@@ -22,28 +22,6 @@
 #include "afile.h"
 #include "utils.h"
 
-/*
- * Max size of a .wav file, format design limitation.
- */
-#define WAV_MAXPOS	(0x7fffffff)
-
-/*
- * Encoding IDs used in .wav headers.
- */
-#define WAV_FMT_PCM	1
-#define WAV_FMT_FLOAT	3
-#define WAV_FMT_ALAW	6
-#define WAV_FMT_ULAW	7
-#define WAV_FMT_EXT	0xfffe
-
-#define AU_FMT_PCM8	2
-#define AU_FMT_PCM16	3
-#define AU_FMT_PCM24	4
-#define AU_FMT_PCM32	5
-#define AU_FMT_FLOAT	6
-#define AU_FMT_ALAW	0x1b
-#define AU_FMT_ULAW	1
-
 typedef struct {
 	unsigned char ld[4];
 } le32_t;
@@ -61,7 +39,7 @@ typedef struct {
 } be16_t;
 
 struct wav_riff {
-	char magic[4];
+	char id[4];
 	le32_t size;
 	char type[4];
 };
@@ -72,6 +50,11 @@ struct wav_chunk {
 };
 
 struct wav_fmt {
+#define WAV_FMT_PCM	1
+#define WAV_FMT_FLOAT	3
+#define WAV_FMT_ALAW	6
+#define WAV_FMT_ULAW	7
+#define WAV_FMT_EXT	0xfffe
 	le16_t fmt;
 	le16_t nch;
 	le32_t rate;
@@ -79,7 +62,6 @@ struct wav_fmt {
 	le16_t blkalign;
 	le16_t bits;
 #define WAV_FMT_SIZE		 16
-#define WAV_FMT_SIZE2		(16 + 2)
 #define WAV_FMT_EXT_SIZE	(16 + 24)
 	le16_t extsize;
 	le16_t valbits;
@@ -96,7 +78,7 @@ struct wav_hdr {
 };
 
 struct aiff_form {
-	char magic[4];
+	char id[4];
 	be32_t size;
 	char type[4];
 };
@@ -137,6 +119,13 @@ struct au_hdr {
 	char id[4];
 	be32_t offs;
 	be32_t size;
+#define AU_FMT_PCM8	2
+#define AU_FMT_PCM16	3
+#define AU_FMT_PCM24	4
+#define AU_FMT_PCM32	5
+#define AU_FMT_FLOAT	6
+#define AU_FMT_ALAW	0x1b
+#define AU_FMT_ULAW	1
 	be32_t fmt;
 	be32_t rate;
 	be32_t nch;
@@ -230,6 +219,76 @@ be32_set(be32_t *p, unsigned int v)
 }
 
 static int
+afile_readhdr(struct afile *f, void *addr, size_t size)
+{
+	if (lseek(f->fd, 0, SEEK_SET) < 0) {
+		log_puts(f->path);
+		log_puts(": failed to seek to beginning of file\n");
+		return 0;
+	}
+	if (read(f->fd, addr, size) != size) {
+		log_puts(f->path);
+		log_puts(": failed to read header\n");
+		return 0;
+	}
+	return 1;
+}
+
+static int
+afile_writehdr(struct afile *f, void *addr, size_t size)
+{
+	if (lseek(f->fd, 0, SEEK_SET) < 0) {
+		log_puts(f->path);
+		log_puts(": failed to seek back to header\n");
+		return 0;
+	}
+	if (write(f->fd, addr, size) != size) {
+		log_puts(f->path);
+		log_puts(": failed to write header\n");
+		return 0;
+	}
+	f->curpos = f->startpos;
+	return 1;
+}
+
+static int
+afile_checkpar(struct afile *f)
+{
+	if (f->nch == 0 || f->nch > NCHAN_MAX) {
+		log_puts(f->path);
+		log_puts(": ");
+		log_putu(f->nch);
+		log_puts(": unsupported number of channels\n");
+		return 0;
+	}
+	if (f->rate < RATE_MIN || f->rate > RATE_MAX) {
+		log_puts(f->path);
+		log_puts(": ");
+		log_putu(f->rate);
+		log_puts(": unsupported rate\n");
+		return 0;
+	}
+	if (f->par.bits < BITS_MIN || f->par.bits > BITS_MAX) {
+		log_puts(f->path);
+		log_puts(": ");
+		log_putu(f->par.bits);
+		log_puts(": unsupported bits per sample\n");
+		return 0;
+	}
+	if (f->par.bits > f->par.bps * 8) {
+		log_puts(f->path);
+		log_puts(": bits larger than bytes-per-sample\n");
+		return 0;
+	}
+	if (f->fmt == AFILE_FMT_FLOAT && f->par.bits != 32) {
+		log_puts(f->path);
+		log_puts(": only 32-bit floating points are supported\n");
+		return 0;
+	}
+	return 1;
+}
+
+static int
 afile_wav_readfmt(struct afile *f, unsigned int csize)
 {
 	struct wav_fmt fmt;
@@ -246,7 +305,7 @@ afile_wav_readfmt(struct afile *f, unsigned int csize)
 		csize = WAV_FMT_EXT_SIZE;
 	if (read(f->fd, &fmt, csize) != csize) {
 		log_puts(f->path);
-		log_puts(": failed to read .wav format chun\n");
+		log_puts(": failed to read format chunk\n");
 		return 0;
 	}
 	wenc = le16_get(&fmt.fmt);
@@ -268,34 +327,7 @@ afile_wav_readfmt(struct afile *f, unsigned int csize)
 	} else
 		f->par.bps = (f->par.bits + 7) / 8;
 	f->nch = le16_get(&fmt.nch);
-	if (f->nch == 0 || f->nch > NCHAN_MAX) {
-		log_puts(f->path);
-		log_puts(": ");
-		log_putu(f->nch);
-		log_puts(": unsupported number of channels\n");
-		return 0;
-	}
 	f->rate = le32_get(&fmt.rate);
-	if (f->rate < RATE_MIN || f->rate > RATE_MAX) {
-		log_puts(f->path);
-		log_puts(": ");
-		log_putu(f->rate);
-		log_puts(": unsupported rate\n");
-		return 0;
-	}
-	if (f->par.bits < BITS_MIN || f->par.bits > BITS_MAX) {
-		log_puts(f->path);
-		log_puts(": ");
-		log_putu(f->par.bits);
-		log_puts(": unsupported bits per sample\n");
-		return 0;
-	}
-	if (f->par.bits > f->par.bps * 8) {
-		log_puts(f->path);
-		log_puts(": ");
-		log_puts("bits larger than bytes-per-sample\n");
-		return 0;
-	}
 	f->par.le = 1;
 	f->par.msb = 1;
 	switch (wenc) {
@@ -315,18 +347,13 @@ afile_wav_readfmt(struct afile *f, unsigned int csize)
 		break;
 	case WAV_FMT_FLOAT:
 		f->fmt = AFILE_FMT_FLOAT;
-		if (f->par.bits != 32) {
-			log_puts(f->path);
-			log_puts(": only 32-bit float supported\n");
-			return 0;
-		}
 		break;
 	default:
 		log_putu(wenc);
-		log_puts(": unsupported encoding in .wav file\n");
+		log_puts(": unsupported encoding\n");
 		return 0;
 	}
-	return 1;
+	return afile_checkpar(f);
 }
 
 static int
@@ -337,17 +364,9 @@ afile_wav_readhdr(struct afile *f)
 	unsigned int csize, rsize, pos = 0;
 	int fmt_done = 0;
 
-	if (lseek(f->fd, 0, SEEK_SET) < 0) {
-		log_puts(f->path);
-		log_puts(": failed to seek to beginning of file\n");
+	if (!afile_readhdr(f, &riff, sizeof(struct wav_riff)))
 		return 0;
-	}
-	if (read(f->fd, &riff, sizeof(riff)) != sizeof(riff)) {
-		log_puts(f->path);
-		log_puts(": failed to read riff header\n");
-		return 0;
-	}
-	if (memcmp(&riff.magic, &wav_id_riff, 4) != 0 ||
+	if (memcmp(&riff.id, &wav_id_riff, 4) != 0 ||
 	    memcmp(&riff.type, &wav_id_wave, 4)) {
 		log_puts(f->path);
 		log_puts(": not a .wav file\n");
@@ -395,7 +414,7 @@ afile_wav_readhdr(struct afile *f)
 	}
 	if (!fmt_done) {
 		log_puts(f->path);
-		log_puts(": missing format chunk in .wav file\n");
+		log_puts(": missing format chunk\n");
 		return 0;
 	}
 	return 1;
@@ -410,7 +429,7 @@ afile_wav_writehdr(struct afile *f)
 	struct wav_hdr hdr;
 
 	memset(&hdr, 0, sizeof(struct wav_hdr));
-	memcpy(hdr.riff.magic, wav_id_riff, 4);
+	memcpy(hdr.riff.id, wav_id_riff, 4);
 	memcpy(hdr.riff.type, wav_id_wave, 4);
 	le32_set(&hdr.riff.size, f->endpos - sizeof(hdr.riff));
 	memcpy(hdr.fmt_hdr.id, wav_id_fmt, 4);
@@ -423,19 +442,7 @@ afile_wav_writehdr(struct afile *f)
 	le16_set(&hdr.fmt.bits, f->par.bits);
 	memcpy(hdr.data_hdr.id, wav_id_data, 4);
 	le32_set(&hdr.data_hdr.size, f->endpos - f->startpos);
-
-	if (lseek(f->fd, 0, SEEK_SET) < 0) {
-		log_puts(f->path);
-		log_puts(": failed to seek back to header\n");
-		return 0;
-	}
-	if (write(f->fd, &hdr, sizeof(hdr)) != sizeof(hdr)) {
-		log_puts(f->path);
-		log_puts(": failed to write header\n");
-		return 0;
-	}
-	f->curpos = f->startpos;
-	return 1;
+	return afile_writehdr(f, &hdr, sizeof(struct wav_hdr));
 }
 
 static int
@@ -461,13 +468,6 @@ afile_aiff_readcomm(struct afile *f, unsigned int csize,
 		return 0;
 	}
 	f->nch = be16_get(&comm.base.nch);
-	if (f->nch == 0 || f->nch > NCHAN_MAX) {
-		log_puts(f->path);
-		log_puts(": ");
-		log_putu(f->nch);
-		log_puts(": unsupported number of channels\n");
-		return 0;
-	}
 	e = be16_get(&comm.base.rate_ex);
 	m = be32_get(&comm.base.rate_hi);
 	if (e < 0x3fff || e > 0x3fff + 31) {
@@ -476,13 +476,6 @@ afile_aiff_readcomm(struct afile *f, unsigned int csize,
 		return 0;
 	}
 	f->rate = m >> (0x3fff + 31 - e);
-	if (f->rate < RATE_MIN || f->rate > RATE_MAX) {
-		log_puts(f->path);
-		log_puts(": ");
-		log_putu(f->rate);
-		log_puts(": unsupported sample rate\n");
-		return 0;
-	}
 	if (comp) {
 		if (memcmp(comm.comp_id, aiff_id_none, 4) == 0) {
 			f->fmt = AFILE_FMT_PCM;
@@ -505,19 +498,12 @@ afile_aiff_readcomm(struct afile *f, unsigned int csize,
 		f->fmt = AFILE_FMT_PCM;
 		f->par.bits = be16_get(&comm.base.bits);
 	}
-	if (f->par.bits < BITS_MIN || f->par.bits > BITS_MAX) {
-		log_puts(f->path);
-		log_puts(": ");
-		log_putu(f->par.bits);
-		log_puts(": unsupported number of bits per sample\n");
-		return 0;
-	}
 	f->par.le = 0;
 	f->par.sig = 1;
 	f->par.msb = 1;
 	f->par.bps = (f->par.bits + 7) / 8;
 	*nfr = be32_get(&comm.base.nfr);
-	return 1;
+	return afile_checkpar(f);
 }
 
 static int
@@ -550,17 +536,9 @@ afile_aiff_readhdr(struct afile *f)
 	unsigned int csize, rsize, nfr = 0, pos = 0, offs;
 	int comm_done = 0, comp;
 
-	if (lseek(f->fd, 0, SEEK_SET) < 0) {
-		log_puts(f->path);
-		log_puts(": failed to seek to beginning of file\n");
+	if (!afile_readhdr(f, &form, sizeof(struct wav_riff)))
 		return 0;
-	}
-	if (read(f->fd, &form, sizeof(form)) != sizeof(form)) {
-		log_puts(f->path);
-		log_puts(": failed to read file form header\n");
-		return 0;
-	}
-	if (memcmp(&form.magic, &aiff_id_form, 4) != 0) {
+	if (memcmp(&form.id, &aiff_id_form, 4) != 0) {
 		log_puts(f->path);
 		log_puts(": not an aiff file\n");
 		return 0;
@@ -571,7 +549,7 @@ afile_aiff_readhdr(struct afile *f)
 		comp = 1;
 	else {
 		log_puts(f->path);
-		log_puts(": unknown aiff file type\n");
+		log_puts(": unsupported aiff file sub-type\n");
 		return 0;
 	}
 	rsize = be32_get(&form.size);
@@ -600,7 +578,7 @@ afile_aiff_readhdr(struct afile *f)
 #ifdef DEBUG
 			if (log_level >= 2) {
 				log_puts(f->path);
-				log_puts(": skipped unknown .aiff file chunk\n");
+				log_puts(": skipped unknown chunk\n");
 			}
 #endif
 		}
@@ -653,7 +631,7 @@ afile_aiff_writehdr(struct afile *f)
 	bpf = f->nch * f->par.bps;
 
 	memset(&hdr, 0, sizeof(struct aiff_hdr));
-	memcpy(hdr.form.magic, aiff_id_form, 4);
+	memcpy(hdr.form.id, aiff_id_form, 4);
 	memcpy(hdr.form.type, aiff_id_aiff, 4);
 	be32_set(&hdr.form.size, f->endpos - sizeof(hdr.form));
 
@@ -670,18 +648,7 @@ afile_aiff_writehdr(struct afile *f)
 	be32_set(&hdr.data_hdr.size, f->endpos - f->startpos);
 	be32_set(&hdr.data.offs, 0);
 	be32_set(&hdr.data.blksz, 0);
-	if (lseek(f->fd, 0, SEEK_SET) < 0) {
-		log_puts(f->path);
-		log_puts(": failed to seek back to header\n");
-		return 0;
-	}
-	if (write(f->fd, &hdr, sizeof(hdr)) != sizeof(hdr)) {
-		log_puts(f->path);
-		log_puts(": failed to write header\n");
-		return 0;
-	}
-	f->curpos = f->startpos;
-	return 1;
+	return afile_writehdr(f, &hdr, sizeof(struct aiff_hdr));
 }
 
 static int
@@ -690,16 +657,8 @@ afile_au_readhdr(struct afile *f)
 	struct au_hdr hdr;
 	unsigned int fmt;
 
-	if (lseek(f->fd, 0, SEEK_SET) < 0) {
-		log_puts(f->path);
-		log_puts(": failed to seek to beginning of file\n");
+	if (!afile_readhdr(f, &hdr, sizeof(struct wav_riff)))
 		return 0;
-	}
-	if (read(f->fd, &hdr, sizeof(hdr)) != sizeof(hdr)) {
-		log_puts(f->path);
-		log_puts(": failed to read file header\n");
-		return 0;
-	}
 	if (memcmp(&hdr.id, &au_id, 4) != 0) {
 		log_puts(f->path);
 		log_puts(": not a .au file\n");
@@ -752,28 +711,14 @@ afile_au_readhdr(struct afile *f)
 	f->par.bps = f->par.bits / 8;
 	f->par.msb = 0;
 	f->rate = be32_get(&hdr.rate);
-	if (f->rate < RATE_MIN || f->rate > RATE_MAX) {
-		log_puts(f->path);
-		log_puts(": ");
-		log_putu(f->rate);
-		log_puts(": unsupported sample rate\n");
-		return 0;
-	}
 	f->nch = be32_get(&hdr.nch);
-	if (f->nch == 0 || f->nch > NCHAN_MAX) {
-		log_puts(f->path);
-		log_puts(": ");
-		log_putu(f->nch);
-		log_puts(": unsupported number of channels\n");
-		return 0;
-	}
 	if (lseek(f->fd, f->startpos, SEEK_SET) < 0) {
 		log_puts(f->path);
 		log_puts(": ");
 		log_puts("failed to seek to data chunk\n");
 		return 0;
 	}
-	return 1;
+	return afile_checkpar(f);
 }
 
 /*
@@ -813,18 +758,7 @@ afile_au_writehdr(struct afile *f)
 	be32_set(&hdr.fmt, fmt);
 	be32_set(&hdr.rate, f->rate);
 	be32_set(&hdr.nch, f->nch);
-	if (lseek(f->fd, 0, SEEK_SET) < 0) {
-		log_puts(f->path);
-		log_puts(": failed to seek back file header\n");
-		return 0;
-	}
-	if (write(f->fd, &hdr, sizeof(hdr)) != sizeof(hdr)) {
-		log_puts(f->path);
-		log_puts(": failed to write .au file header\n");
-		return 0;
-	}
-	f->curpos = f->startpos;
-	return 1;
+	return afile_writehdr(f, &hdr, sizeof(struct au_hdr));
 }
 
 size_t
@@ -895,7 +829,7 @@ afile_seek(struct afile *f, off_t pos)
 	pos += f->startpos;
 	if (f->endpos >= 0 && pos > f->endpos) {
 		log_puts(f->path);
-		log_puts(": attempt to seek ouside file boundaries\n");
+		log_puts(": attempt to seek outside file boundaries\n");
 		return 0;
 	}
 
@@ -932,7 +866,7 @@ afile_open(struct afile *f, char *path, int hdr, int flags,
     struct aparams *par, int rate, int nch)
 {
 	char *ext;
-	union {
+	static union {
 		struct wav_hdr wav;
 		struct aiff_hdr aiff;
 		struct au_hdr au;
@@ -1010,13 +944,9 @@ afile_open(struct afile *f, char *path, int hdr, int flags,
 			if (f->par.bits & 7)
 				f->par.msb = 1;
 			f->endpos = f->startpos = sizeof(struct wav_hdr);
-			f->maxpos = WAV_MAXPOS;
-			memset(&dummy, 0xd0, sizeof(struct wav_hdr));
-			if (write(f->fd, &dummy, sizeof(struct wav_hdr)) < 0) {
-				log_puts(f->path);
-				log_puts(": couldn't write .wav header\n");
+			f->maxpos = 0x7fffffff;
+			if (!afile_writehdr(f, &dummy, sizeof(struct wav_hdr)))
 				goto bad_close;
-			}
 		} else if (f->hdr == AFILE_HDR_AIFF) {
 			f->par.bps = (f->par.bits + 7) >> 3;
 			if (f->par.bps > 1)
@@ -1025,13 +955,9 @@ afile_open(struct afile *f, char *path, int hdr, int flags,
 			if (f->par.bits & 7)
 				f->par.msb = 1;
 			f->endpos = f->startpos = sizeof(struct aiff_hdr);
-			f->maxpos = WAV_MAXPOS;
-			memset(&dummy, 0xd0, sizeof(struct aiff_hdr));
-			if (write(f->fd, &dummy, sizeof(struct aiff_hdr)) < 0) {
-				log_puts(f->path);
-				log_puts(": couldn't write .aiff header\n");
+			f->maxpos = 0x7fffffff;
+			if (!afile_writehdr(f, &dummy, sizeof(struct aiff_hdr)))
 				goto bad_close;
-			}
 		} else if (f->hdr == AFILE_HDR_AU) {
 			f->par.bits = (f->par.bits + 7) & ~7;
 			f->par.bps = f->par.bits / 8;
@@ -1039,13 +965,9 @@ afile_open(struct afile *f, char *path, int hdr, int flags,
 			f->par.sig = 1;
 			f->par.msb = 1;
 			f->endpos = f->startpos = sizeof(struct au_hdr);
-			f->maxpos = WAV_MAXPOS;
-			memset(&dummy, 0xd0, sizeof(struct au_hdr));
-			if (write(f->fd, &dummy, sizeof(struct au_hdr)) < 0) {
-				log_puts(f->path);
-				log_puts(": couldn't write .au header\n");
+			f->maxpos = 0x7fffffff;
+			if (!afile_writehdr(f, &dummy, sizeof(struct au_hdr)))
 				goto bad_close;
-			}
 		} else {
 			f->endpos = f->startpos = 0;
 			f->maxpos = -1;
