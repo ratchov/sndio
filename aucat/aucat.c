@@ -213,7 +213,7 @@ slot_new(char *path, int mode, struct aparams *par, int hdr,
 
 	s = xmalloc(sizeof(struct slot));
 	if (!afile_open(&s->afile, path, hdr,
-		mode == SIO_PLAY ? WAV_FREAD : WAV_FWRITE,
+		mode == SIO_PLAY ? AFILE_FREAD : AFILE_FWRITE,
 		par, rate, cmax - cmin + 1)) {
 		xfree(s);
 		return 0;
@@ -235,17 +235,17 @@ slot_new(char *path, int mode, struct aparams *par, int hdr,
 		log_puts(", ");
 		log_putu(s->afile.rate);
 		log_puts("Hz, ");
-		switch (s->afile.enc) {
-		case ENC_PCM:
+		switch (s->afile.fmt) {
+		case AFILE_FMT_PCM:
 			aparams_log(&s->afile.par);
 			break;
-		case ENC_ULAW:
+		case AFILE_FMT_ULAW:
 			log_puts("ulaw");
 			break;
-		case ENC_ALAW:
+		case AFILE_FMT_ALAW:
 			log_puts("alaw");
 			break;
-		case ENC_FLOAT:
+		case AFILE_FMT_FLOAT:
 			log_puts("f32le");
 			break;
 		}
@@ -308,7 +308,7 @@ slot_init(struct slot *s)
 		    s->cmin, s->cmax,
 		    0, dev_pchan - 1,
 		    0, dev_pchan - 1);
-		if (s->afile.enc != ENC_PCM || !aparams_native(&s->afile.par)) {
+		if (s->afile.fmt != AFILE_FMT_PCM || !aparams_native(&s->afile.par)) {
 			dec_init(&s->conv, &s->afile.par, slot_nch);
 			s->convbuf =
 			    xmalloc(s->round * slot_nch * sizeof(adata_t));
@@ -462,17 +462,17 @@ play_filt_dec(struct slot *s, void *in, void *out, int todo)
 
 	tmp = s->convbuf;
 	if (tmp) {
-		switch (s->afile.enc) {
-		case ENC_PCM:
+		switch (s->afile.fmt) {
+		case AFILE_FMT_PCM:
 			dec_do(&s->conv, in, tmp, todo);
 			break;
-		case ENC_ULAW:
+		case AFILE_FMT_ULAW:
 			dec_do_ulaw(&s->conv, in, tmp, todo, 0);
 			break;
-		case ENC_ALAW:
+		case AFILE_FMT_ALAW:
 			dec_do_ulaw(&s->conv, in, tmp, todo, 1);
 			break;
-		case ENC_FLOAT:
+		case AFILE_FMT_FLOAT:
 			dec_do_float(&s->conv, in, tmp, todo);
 			break;
 		}
@@ -1190,23 +1190,23 @@ static int
 opt_hdr(char *s, int *hdr)
 {
 	if (strcmp("auto", s) == 0) {
-		*hdr = HDR_AUTO;
+		*hdr = AFILE_HDR_AUTO;
 		return 1;
 	}
 	if (strcmp("raw", s) == 0) {
-		*hdr = HDR_RAW;
+		*hdr = AFILE_HDR_RAW;
 		return 1;
 	}
 	if (strcmp("wav", s) == 0) {
-		*hdr = HDR_WAV;
+		*hdr = AFILE_HDR_WAV;
 		return 1;
 	}
 	if (strcmp("aiff", s) == 0) {
-		*hdr = HDR_AIFF;
+		*hdr = AFILE_HDR_AIFF;
 		return 1;
 	}
 	if (strcmp("au", s) == 0) {
-		*hdr = HDR_AU;
+		*hdr = AFILE_HDR_AU;
 		return 1;
 	}
 	log_puts(s);
@@ -1271,7 +1271,7 @@ main(int argc, char **argv)
 	cmin = 0;
 	cmax = 1;
 	aparams_init(&par);
-	hdr = HDR_AUTO;
+	hdr = AFILE_HDR_AUTO;
 	n_flag = 0;
 	port = NULL;
 	dev = NULL;

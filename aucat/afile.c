@@ -286,21 +286,21 @@ afile_wav_readfmt(struct afile *f, unsigned int csize)
 	f->par.msb = 1;
 	switch (wenc) {
 	case WAV_FMT_PCM:
-		f->enc = ENC_PCM;
+		f->fmt = AFILE_FMT_PCM;
 		f->par.sig = (f->par.bits <= 8) ? 0 : 1;
 		break;
 	case WAV_FMT_ALAW:
-		f->enc = ENC_ALAW;
+		f->fmt = AFILE_FMT_ALAW;
 		f->par.bits = 8;
 		f->par.bps = 1;
 		break;
 	case WAV_FMT_ULAW:
-		f->enc = ENC_ULAW;
+		f->fmt = AFILE_FMT_ULAW;
 		f->par.bits = 8;
 		f->par.bps = 1;
 		break;
 	case WAV_FMT_FLOAT:
-		f->enc = ENC_FLOAT;
+		f->fmt = AFILE_FMT_FLOAT;
 		if (f->par.bits != 32) {
 			log_puts("only 32-bit float supported\n");
 			return 0;
@@ -454,23 +454,23 @@ afile_aiff_readcomm(struct afile *f, unsigned int csize,
 	}
 	if (comp) {
 		if (memcmp(comm.comp_id, aiff_id_none, 4) == 0) {
-			f->enc = ENC_PCM;
+			f->fmt = AFILE_FMT_PCM;
 			f->par.bits = be16_get(&comm.base.bits);
 		} else if (memcmp(comm.comp_id, aiff_id_fl32, 4) == 0) {
-			f->enc = ENC_FLOAT;
+			f->fmt = AFILE_FMT_FLOAT;
 			f->par.bits = 32;
 		} else if (memcmp(comm.comp_id, aiff_id_ulaw, 4) == 0) {
-			f->enc = ENC_ULAW;
+			f->fmt = AFILE_FMT_ULAW;
 			f->par.bits = 8;
 		} else if (memcmp(comm.comp_id, aiff_id_alaw, 4) == 0) {
-			f->enc = ENC_ALAW;
+			f->fmt = AFILE_FMT_ALAW;
 			f->par.bits = 8;
 		} else {
 			log_puts("unsupported encoding of .aiff file\n");
 			return 0;
 		}
 	} else {
-		f->enc = ENC_PCM;
+		f->fmt = AFILE_FMT_PCM;
 		f->par.bits = be16_get(&comm.base.bits);
 	}
 	if (f->par.bits < BITS_MIN || f->par.bits > BITS_MAX) {
@@ -660,33 +660,33 @@ afile_au_readhdr(struct afile *f)
 	fmt = be32_get(&hdr.fmt);
 	switch (fmt) {
 	case AU_FMT_PCM8:
-		f->enc = ENC_PCM;
+		f->fmt = AFILE_FMT_PCM;
 		f->par.bits = 8;
 		break;
 	case AU_FMT_PCM16:
-		f->enc = ENC_PCM;
+		f->fmt = AFILE_FMT_PCM;
 		f->par.bits = 16;
 		break;
 	case AU_FMT_PCM24:
-		f->enc = ENC_PCM;
+		f->fmt = AFILE_FMT_PCM;
 		f->par.bits = 24;
 		break;
 	case AU_FMT_PCM32:
-		f->enc = ENC_PCM;
+		f->fmt = AFILE_FMT_PCM;
 		f->par.bits = 32;
 		break;
 	case AU_FMT_ULAW:
-		f->enc = ENC_ULAW;
+		f->fmt = AFILE_FMT_ULAW;
 		f->par.bits = 8;
 		f->par.bps = 1;
 		break;
 	case AU_FMT_ALAW:
-		f->enc = ENC_ALAW;
+		f->fmt = AFILE_FMT_ALAW;
 		f->par.bits = 8;
 		f->par.bps = 1;
 		break;
 	case AU_FMT_FLOAT:
-		f->enc = ENC_FLOAT;
+		f->fmt = AFILE_FMT_FLOAT;
 		f->par.bits = 32;
 		f->par.bps = 4;
 		break;
@@ -852,12 +852,12 @@ afile_seek(struct afile *f, off_t pos)
 void
 afile_close(struct afile *f)
 {
-	if (f->flags & WAV_FWRITE) {
-		if (f->hdr == HDR_WAV)
+	if (f->flags & AFILE_FWRITE) {
+		if (f->hdr == AFILE_HDR_WAV)
 			afile_wav_writehdr(f);
-		else if (f->hdr == HDR_AIFF)
+		else if (f->hdr == AFILE_HDR_AIFF)
 			afile_aiff_writehdr(f);
-		else if (f->hdr == HDR_AU)
+		else if (f->hdr == AFILE_HDR_AU)
 			afile_au_writehdr(f);
 	}
 	close(f->fd);
@@ -879,23 +879,23 @@ afile_open(struct afile *f, char *path, int hdr, int flags,
 	f->nch = nch;
 	f->flags = flags;
 	f->hdr = hdr;
-	if (hdr == HDR_AUTO) {
-		f->hdr = HDR_RAW;
+	if (hdr == AFILE_HDR_AUTO) {
+		f->hdr = AFILE_HDR_RAW;
 		ext = strrchr(path, '.');
 		if (ext != NULL) {
 			ext++;
 			if (strcasecmp(ext, "aif") == 0 ||
 			    strcasecmp(ext, "aiff") == 0 ||
 			    strcasecmp(ext, "aifc") == 0)
-				f->hdr = HDR_AIFF;
+				f->hdr = AFILE_HDR_AIFF;
 			else if (strcasecmp(ext, "au") == 0 ||
 			    strcasecmp(ext, "snd") == 0)
-				f->hdr = HDR_AU;
+				f->hdr = AFILE_HDR_AU;
 			else if (strcasecmp(ext, "wav") == 0)
-				f->hdr = HDR_WAV;
+				f->hdr = AFILE_HDR_WAV;
 		}
 	}
-	if (f->flags == WAV_FREAD) {
+	if (f->flags == AFILE_FREAD) {
 		if (strcmp(path, "-") == 0) {
 			f->path = "stdin";
 			f->fd = STDIN_FILENO;
@@ -908,22 +908,22 @@ afile_open(struct afile *f, char *path, int hdr, int flags,
 				return 0;
 			}
 		}
-		if (f->hdr == HDR_WAV) {
+		if (f->hdr == AFILE_HDR_WAV) {
 			if (!afile_wav_readhdr(f))
 				goto bad_close;
-		} else if (f->hdr == HDR_AIFF) {
+		} else if (f->hdr == AFILE_HDR_AIFF) {
 			if (!afile_aiff_readhdr(f))
 				goto bad_close;
-		} else if (f->hdr == HDR_AU) {
+		} else if (f->hdr == AFILE_HDR_AU) {
 			if (!afile_au_readhdr(f))
 				goto bad_close;
 		} else {
 			f->startpos = 0;
 			f->endpos = -1; /* read until EOF */
-			f->enc = ENC_PCM;
+			f->fmt = AFILE_FMT_PCM;
 		}
 		f->curpos = f->startpos;
-	} else if (flags == WAV_FWRITE) {
+	} else if (flags == AFILE_FWRITE) {
 		if (strcmp(path, "-") == 0) {
 			f->path = "stdout";
 			f->fd = STDOUT_FILENO;
@@ -936,7 +936,7 @@ afile_open(struct afile *f, char *path, int hdr, int flags,
 				return 0;
 			}
 		}
-		if (f->hdr == HDR_WAV) {
+		if (f->hdr == AFILE_HDR_WAV) {
 			f->par.bps = (f->par.bits + 7) >> 3;
 			if (f->par.bits > 8) {
 				f->par.le = 1;
@@ -953,7 +953,7 @@ afile_open(struct afile *f, char *path, int hdr, int flags,
 				log_puts(": couldn't write .wav header\n");
 				goto bad_close;
 			}
-		} else if (f->hdr == HDR_AIFF) {
+		} else if (f->hdr == AFILE_HDR_AIFF) {
 			f->par.bps = (f->par.bits + 7) >> 3;
 			if (f->par.bps > 1)
 				f->par.le = 0;
@@ -968,7 +968,7 @@ afile_open(struct afile *f, char *path, int hdr, int flags,
 				log_puts(": couldn't write .aiff header\n");
 				goto bad_close;
 			}
-		} else if (f->hdr == HDR_AU) {
+		} else if (f->hdr == AFILE_HDR_AU) {
 			f->par.bits = (f->par.bits + 7) & ~7;
 			f->par.bps = f->par.bits / 8;
 			f->par.le = 0;

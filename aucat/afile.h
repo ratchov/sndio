@@ -22,22 +22,22 @@
 
 struct afile {
 	struct aparams par;		/* file params */
-#define ENC_PCM		0		/* simple integers (fixed point) */
-#define ENC_ULAW	1		/* 8-bit mu-law */
-#define ENC_ALAW	2		/* 8-bit a-law */
-#define ENC_FLOAT	3		/* IEEE 754 32-bit floats */
-	int enc;			/* one of above */
+#define AFILE_FMT_PCM	0		/* integers (fixed point) */
+#define AFILE_FMT_ULAW	1		/* 8-bit mu-law */
+#define AFILE_FMT_ALAW	2		/* 8-bit a-law */
+#define AFILE_FMT_FLOAT	3		/* IEEE 754 32-bit floats */
+	int fmt;			/* one of above */
 	int rate;			/* file sample rate */
 	int nch;			/* file channel count */
-#define HDR_AUTO	0
-#define HDR_RAW		1
-#define HDR_WAV		2
-#define HDR_AIFF	3
-#define HDR_AU		4
+#define AFILE_HDR_AUTO	0		/* guess from file name */
+#define AFILE_HDR_RAW	1		/* headerless aka "raw" file */
+#define AFILE_HDR_WAV	2		/* microsoft .wav */
+#define AFILE_HDR_AIFF	3		/* apple .aiff */
+#define AFILE_HDR_AU	4		/* sun/next .au */
 	int hdr;			/* header type */
 	int fd;				/* file descriptor */
-#define WAV_FREAD	1		/* open for reading */
-#define WAV_FWRITE	2		/* open for writing */
+#define AFILE_FREAD	1		/* open for reading */
+#define AFILE_FWRITE	2		/* open for writing */
 	int flags;			/* bitmap of above */
 	off_t curpos;			/* read/write position (bytes) */
 	off_t startpos;			/* where payload starts */
