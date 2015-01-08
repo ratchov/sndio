@@ -236,25 +236,30 @@ afile_wav_readfmt(struct afile *f, unsigned int csize)
 	unsigned int wenc;
 
 	if (csize < WAV_FMT_SIZE) {
+		log_puts(f->path);
+		log_puts(": ");
 		log_putu(csize);
-		log_puts(": bugus format chunk size\n");
+		log_puts(": bogus format chunk size\n");
 		return 0;
 	}
 	if (csize > WAV_FMT_EXT_SIZE)
 		csize = WAV_FMT_EXT_SIZE;
 	if (read(f->fd, &fmt, csize) != csize) {
-		log_puts("failed to read .wav format chun\n");
+		log_puts(f->path);
+		log_puts(": failed to read .wav format chun\n");
 		return 0;
 	}
 	wenc = le16_get(&fmt.fmt);
 	f->par.bits = le16_get(&fmt.bits);
 	if (wenc == WAV_FMT_EXT) {
 		if (csize != WAV_FMT_EXT_SIZE) {
-			log_puts("missing extended format chunk in .wav file\n");
+			log_puts(f->path);
+			log_puts(": missing extended format chunk\n");
 			return 0;
 		}
 		if (memcmp(fmt.guid, wav_guid, sizeof(wav_guid)) != 0) {
-			log_puts("unknown format (GUID) in .wav file\n");
+			log_puts(f->path);
+			log_puts(": unknown format (GUID)\n");
 			return 0;
 		}
 		f->par.bps = (f->par.bits + 7) / 8;
@@ -264,21 +269,30 @@ afile_wav_readfmt(struct afile *f, unsigned int csize)
 		f->par.bps = (f->par.bits + 7) / 8;
 	f->nch = le16_get(&fmt.nch);
 	if (f->nch == 0 || f->nch > NCHAN_MAX) {
-		log_puts("zero number of channels in .wav file\n");
+		log_puts(f->path);
+		log_puts(": ");
+		log_putu(f->nch);
+		log_puts(": unsupported number of channels\n");
 		return 0;
 	}
 	f->rate = le32_get(&fmt.rate);
 	if (f->rate < RATE_MIN || f->rate > RATE_MAX) {
+		log_puts(f->path);
+		log_puts(": ");
 		log_putu(f->rate);
-		log_puts(": bad sample rate in .wav file\n");
+		log_puts(": unsupported rate\n");
 		return 0;
 	}
 	if (f->par.bits < BITS_MIN || f->par.bits > BITS_MAX) {
+		log_puts(f->path);
+		log_puts(": ");
 		log_putu(f->par.bits);
-		log_puts(": bad number of bits\n");
+		log_puts(": unsupported bits per sample\n");
 		return 0;
 	}
 	if (f->par.bits > f->par.bps * 8) {
+		log_puts(f->path);
+		log_puts(": ");
 		log_puts("bits larger than bytes-per-sample\n");
 		return 0;
 	}
@@ -302,7 +316,8 @@ afile_wav_readfmt(struct afile *f, unsigned int csize)
 	case WAV_FMT_FLOAT:
 		f->fmt = AFILE_FMT_FLOAT;
 		if (f->par.bits != 32) {
-			log_puts("only 32-bit float supported\n");
+			log_puts(f->path);
+			log_puts(": only 32-bit float supported\n");
 			return 0;
 		}
 		break;
@@ -323,26 +338,31 @@ afile_wav_readhdr(struct afile *f)
 	int fmt_done = 0;
 
 	if (lseek(f->fd, 0, SEEK_SET) < 0) {
-		log_puts("failed to seek to beginning of .wav file\n");
+		log_puts(f->path);
+		log_puts(": failed to seek to beginning of file\n");
 		return 0;
 	}
 	if (read(f->fd, &riff, sizeof(riff)) != sizeof(riff)) {
-		log_puts("failed to read .wav file riff header\n");
+		log_puts(f->path);
+		log_puts(": failed to read riff header\n");
 		return 0;
 	}
 	if (memcmp(&riff.magic, &wav_id_riff, 4) != 0 ||
 	    memcmp(&riff.type, &wav_id_wave, 4)) {
-		log_puts("not a .wav file\n");
+		log_puts(f->path);
+		log_puts(": not a .wav file\n");
 		return 0;
 	}
 	rsize = le32_get(&riff.size);
 	for (;;) {
 		if (pos + sizeof(struct wav_chunk) > rsize) {
-			log_puts("missing data chunk in .wav file\n");
+			log_puts(f->path);
+			log_puts(": missing data chunk\n");
 			return 0;
 		}
 		if (read(f->fd, &chunk, sizeof(chunk)) != sizeof(chunk)) {
-			log_puts("failed to read .wav chunk header\n");
+			log_puts(f->path);
+			log_puts(": failed to read chunk header\n");
 			return 0;
 		}
 		csize = le32_get(&chunk.size);
@@ -368,12 +388,14 @@ afile_wav_readhdr(struct afile *f)
 		 */
 		pos += sizeof(struct wav_chunk) + csize;
 		if (lseek(f->fd, sizeof(riff) + pos, SEEK_SET) < 0) {
-			log_puts("filed to seek to chunk in .wav file\n");
+			log_puts(f->path);
+			log_puts(": filed to seek to chunk\n");
 			return 0;
 		}
 	}
 	if (!fmt_done) {
-		log_puts("missing format chunk in .wav file\n");
+		log_puts(f->path);
+		log_puts(": missing format chunk in .wav file\n");
 		return 0;
 	}
 	return 1;
@@ -403,11 +425,13 @@ afile_wav_writehdr(struct afile *f)
 	le32_set(&hdr.data_hdr.size, f->endpos - f->startpos);
 
 	if (lseek(f->fd, 0, SEEK_SET) < 0) {
-		log_puts("failed to seek back to .wav file header\n");
+		log_puts(f->path);
+		log_puts(": failed to seek back to header\n");
 		return 0;
 	}
 	if (write(f->fd, &hdr, sizeof(hdr)) != sizeof(hdr)) {
-		log_puts("failed to write .wav file header\n");
+		log_puts(f->path);
+		log_puts(": failed to write header\n");
 		return 0;
 	}
 	f->curpos = f->startpos;
@@ -425,31 +449,38 @@ afile_aiff_readcomm(struct afile *f, unsigned int csize,
 	csize_min = comp ?
 	    sizeof(struct aiff_comm) : sizeof(struct aiff_commbase);
 	if (csize < csize_min) {
+		log_puts(f->path);
+		log_puts(": ");
 		log_putu(csize);
-		log_puts(": bugus comm chunk size\n");
+		log_puts(": bogus comm chunk size\n");
 		return 0;
 	}
 	if (read(f->fd, &comm, csize_min) != csize_min) {
-		log_puts("failed to read .aiff comm chunk\n");
+		log_puts(f->path);
+		log_puts(": failed to read comm chunk\n");
 		return 0;
 	}
 	f->nch = be16_get(&comm.base.nch);
 	if (f->nch == 0 || f->nch > NCHAN_MAX) {
+		log_puts(f->path);
+		log_puts(": ");
 		log_putu(f->nch);
-		log_puts(": unsupported number of channels in .aiff file\n");
+		log_puts(": unsupported number of channels\n");
 		return 0;
 	}
 	e = be16_get(&comm.base.rate_ex);
 	m = be32_get(&comm.base.rate_hi);
 	if (e < 0x3fff || e > 0x3fff + 31) {
 		log_puts(f->path);
-		log_puts(": bad sample rate in .aiff file\n");
+		log_puts(": malformed sample rate\n");
 		return 0;
 	}
 	f->rate = m >> (0x3fff + 31 - e);
 	if (f->rate < RATE_MIN || f->rate > RATE_MAX) {
+		log_puts(f->path);
+		log_puts(": ");
 		log_putu(f->rate);
-		log_puts(": sample rate out of range in .aiff file\n");
+		log_puts(": unsupported sample rate\n");
 		return 0;
 	}
 	if (comp) {
@@ -466,7 +497,8 @@ afile_aiff_readcomm(struct afile *f, unsigned int csize,
 			f->fmt = AFILE_FMT_ALAW;
 			f->par.bits = 8;
 		} else {
-			log_puts("unsupported encoding of .aiff file\n");
+			log_puts(f->path);
+			log_puts(": unsupported encoding\n");
 			return 0;
 		}
 	} else {
@@ -474,8 +506,10 @@ afile_aiff_readcomm(struct afile *f, unsigned int csize,
 		f->par.bits = be16_get(&comm.base.bits);
 	}
 	if (f->par.bits < BITS_MIN || f->par.bits > BITS_MAX) {
+		log_puts(f->path);
+		log_puts(": ");
 		log_putu(f->par.bits);
-		log_puts(": bad number of bits in .aiff file\n");
+		log_puts(": unsupported number of bits per sample\n");
 		return 0;
 	}
 	f->par.le = 0;
@@ -492,13 +526,16 @@ afile_aiff_readdata(struct afile *f, unsigned int csize, unsigned int *roffs)
 	struct aiff_data data;
 
 	if (csize < sizeof(struct aiff_data)) {
+		log_puts(f->path);
+		log_puts(": ");
 		log_putu(csize);
-		log_puts(": bugus comm chunk size\n");
+		log_puts(": bogus data chunk size\n");
 		return 0;
 	}
 	csize = sizeof(struct aiff_data);
 	if (read(f->fd, &data, csize) != csize) {
-		log_puts("failed to read .aiff data chunk\n");
+		log_puts(f->path);
+		log_puts(": failed to read data chunk\n");
 		return 0;
 	}
 	*roffs = csize + be32_get(&data.offs);
@@ -514,11 +551,13 @@ afile_aiff_readhdr(struct afile *f)
 	int comm_done = 0, comp;
 
 	if (lseek(f->fd, 0, SEEK_SET) < 0) {
-		log_puts("failed to seek to beginning of .aiff file\n");
+		log_puts(f->path);
+		log_puts(": failed to seek to beginning of file\n");
 		return 0;
 	}
 	if (read(f->fd, &form, sizeof(form)) != sizeof(form)) {
-		log_puts("failed to read .aiff file form header\n");
+		log_puts(f->path);
+		log_puts(": failed to read file form header\n");
 		return 0;
 	}
 	if (memcmp(&form.magic, &aiff_id_form, 4) != 0) {
@@ -538,11 +577,13 @@ afile_aiff_readhdr(struct afile *f)
 	rsize = be32_get(&form.size);
 	for (;;) {
 		if (pos + sizeof(struct aiff_chunk) > rsize) {
-			log_puts("missing data chunk in .aiff file\n");
+			log_puts(f->path);
+			log_puts(": missing data chunk\n");
 			return 0;
 		}
 		if (read(f->fd, &chunk, sizeof(chunk)) != sizeof(chunk)) {
-			log_puts("failed to read .aiff chunk header\n");
+			log_puts(f->path);
+			log_puts(": failed to read chunk header\n");
 			return 0;
 		}		
 		csize = be32_get(&chunk.size);
@@ -557,8 +598,10 @@ afile_aiff_readhdr(struct afile *f)
 			break;
 		} else {
 #ifdef DEBUG
-			if (log_level >= 2)
-				log_puts("skipped unknown .aiff file chunk\n");
+			if (log_level >= 2) {
+				log_puts(f->path);
+				log_puts(": skipped unknown .aiff file chunk\n");
+			}
 #endif
 		}
 
@@ -574,12 +617,14 @@ afile_aiff_readhdr(struct afile *f)
 		pos += sizeof(struct aiff_chunk) + csize;
 
 		if (lseek(f->fd, sizeof(form) + pos, SEEK_SET) < 0) {
-			log_puts("filed to seek to chunk in .aiff file\n");
+			log_puts(f->path);
+			log_puts(": filed to seek to chunk\n");
 			return 0;
 		}
 	}
 	if (!comm_done) {
-		log_puts("missing comm chunk in .wav file\n");
+		log_puts(f->path);
+		log_puts(": missing comm chunk\n");
 		return 0;
 	}
 	f->endpos = f->startpos + f->par.bps * f->nch * nfr;
@@ -626,11 +671,13 @@ afile_aiff_writehdr(struct afile *f)
 	be32_set(&hdr.data.offs, 0);
 	be32_set(&hdr.data.blksz, 0);
 	if (lseek(f->fd, 0, SEEK_SET) < 0) {
-		log_puts("failed to seek back to .aiff file header\n");
+		log_puts(f->path);
+		log_puts(": failed to seek back to header\n");
 		return 0;
 	}
 	if (write(f->fd, &hdr, sizeof(hdr)) != sizeof(hdr)) {
-		log_puts("failed to write .aiff file header\n");
+		log_puts(f->path);
+		log_puts(": failed to write header\n");
 		return 0;
 	}
 	f->curpos = f->startpos;
@@ -644,15 +691,18 @@ afile_au_readhdr(struct afile *f)
 	unsigned int fmt;
 
 	if (lseek(f->fd, 0, SEEK_SET) < 0) {
-		log_puts("failed to seek to beginning of .au file\n");
+		log_puts(f->path);
+		log_puts(": failed to seek to beginning of file\n");
 		return 0;
 	}
 	if (read(f->fd, &hdr, sizeof(hdr)) != sizeof(hdr)) {
-		log_puts("failed to read .au file header\n");
+		log_puts(f->path);
+		log_puts(": failed to read file header\n");
 		return 0;
 	}
 	if (memcmp(&hdr.id, &au_id, 4) != 0) {
-		log_puts("not a .au file\n");
+		log_puts(f->path);
+		log_puts(": not a .au file\n");
 		return 0;
 	}
 	f->startpos = be32_get(&hdr.offs);
@@ -691,8 +741,10 @@ afile_au_readhdr(struct afile *f)
 		f->par.bps = 4;
 		break;
 	default:
+		log_puts(f->path);
+		log_puts(": ");
 		log_putu(fmt);
-		log_puts(": unsupported encoding in .au file\n");
+		log_puts(": unsupported encoding\n");
 		return 0;
 	}
 	f->par.le = 0;
@@ -701,18 +753,24 @@ afile_au_readhdr(struct afile *f)
 	f->par.msb = 0;
 	f->rate = be32_get(&hdr.rate);
 	if (f->rate < RATE_MIN || f->rate > RATE_MAX) {
+		log_puts(f->path);
+		log_puts(": ");
 		log_putu(f->rate);
-		log_puts(": sample rate out of range in .au file\n");
+		log_puts(": unsupported sample rate\n");
 		return 0;
 	}
 	f->nch = be32_get(&hdr.nch);
 	if (f->nch == 0 || f->nch > NCHAN_MAX) {
+		log_puts(f->path);
+		log_puts(": ");
 		log_putu(f->nch);
-		log_puts(": unsupported number of channels in .au file\n");
+		log_puts(": unsupported number of channels\n");
 		return 0;
 	}
 	if (lseek(f->fd, f->startpos, SEEK_SET) < 0) {
-		log_puts("failed to seek to .au file payload\n");
+		log_puts(f->path);
+		log_puts(": ");
+		log_puts("failed to seek to data chunk\n");
 		return 0;
 	}
 	return 1;
@@ -743,20 +801,26 @@ afile_au_writehdr(struct afile *f)
 		break;
 	case 32:
 		fmt = AU_FMT_PCM32;
+		break;
+#ifdef DEBUG
 	default:
-		log_puts("afile_au_writehdr: wrong precision\n");
+		log_puts(f->path);
+		log_puts(": wrong precision\n");
 		panic();
 		return 0;
+#endif
 	}
 	be32_set(&hdr.fmt, fmt);
 	be32_set(&hdr.rate, f->rate);
 	be32_set(&hdr.nch, f->nch);
 	if (lseek(f->fd, 0, SEEK_SET) < 0) {
-		log_puts("failed to seek back to .au file header\n");
+		log_puts(f->path);
+		log_puts(": failed to seek back file header\n");
 		return 0;
 	}
 	if (write(f->fd, &hdr, sizeof(hdr)) != sizeof(hdr)) {
-		log_puts("failed to write .au file header\n");
+		log_puts(f->path);
+		log_puts(": failed to write .au file header\n");
 		return 0;
 	}
 	f->curpos = f->startpos;
