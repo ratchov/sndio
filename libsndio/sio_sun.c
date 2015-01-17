@@ -703,6 +703,7 @@ sio_sun_getpar(struct sio_hdl *sh, struct sio_par *par)
 	    aui.play.block_size / (par->bps * par->pchan);
 	par->appbufsz = aui.hiwat * par->round;
 	par->bufsz = par->appbufsz;
+	par->xrun = SIO_IGNORE;
 	return 1;
 }
 

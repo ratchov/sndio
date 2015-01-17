@@ -1184,6 +1184,7 @@ sock_execmsg(struct sock *f)
 		AMSG_INIT(m);
 		m->cmd = htonl(AMSG_GETPAR);
 		m->u.par.legacy_mode = s->mode;
+		m->u.par.xrun = s->xrun;
 		m->u.par.bits = s->par.bits;
 		m->u.par.bps = s->par.bps;
 		m->u.par.sig = s->par.sig;
