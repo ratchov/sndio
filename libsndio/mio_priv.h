@@ -17,7 +17,6 @@
 #ifndef MIO_PRIV_H
 #define MIO_PRIV_H
 
-#include <sys/param.h>
 #include "sndio.h"
 
 #define MIO_MAXNFDS	16

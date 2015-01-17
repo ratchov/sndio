@@ -17,7 +17,6 @@
 #ifndef SNDIO_PRIV_H
 #define SNDIO_PRIV_H
 
-#include <sys/param.h>
 #include "sndio.h"
 
 #define SIO_MAXNFDS	16

@@ -17,7 +17,6 @@
 #ifndef SIOMIX_PRIV_H
 #define SIOMIX_PRIV_H
 
-#include <sys/param.h>
 #include <sndio.h>
 
 #define SIOMIX_MAXNFDS	4
