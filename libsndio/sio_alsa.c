@@ -54,7 +54,6 @@ struct sio_alsa_hdl {
 	int running;
 	int events;
 	int ipartial, opartial;
-	int canread, canwrite;
 	char *itmpbuf, *otmpbuf;
 };
 
@@ -379,8 +378,6 @@ sio_alsa_start(struct sio_hdl *sh)
 	hdl->infds = 0;
 	hdl->onfds = 0;
 	hdl->running = 0;
-	hdl->canread = 0;
-	hdl->canwrite = 0;
 
 	if (hdl->sio.mode & SIO_PLAY) {
 		err = snd_pcm_prepare(hdl->opcm);
@@ -834,7 +831,7 @@ sio_alsa_setpar(struct sio_hdl *sh, struct sio_par *par)
 			return 0;
 		}
 		err = snd_pcm_sw_params_set_avail_min(hdl->ipcm,
-		    iswp, hdl->par.round);
+		    iswp, 1);
 		if (err < 0) {
 			DALSA("couldn't set rec avail min", err);
 			hdl->sio.eof = 1;
@@ -875,7 +872,7 @@ sio_alsa_setpar(struct sio_hdl *sh, struct sio_par *par)
 			return 0;
 		}
 		err = snd_pcm_sw_params_set_avail_min(hdl->opcm,
-		    oswp, hdl->par.round);
+		    oswp, 1);
 		if (err < 0) {
 			DALSA("couldn't set play avail min", err);
 			hdl->sio.eof = 1;
@@ -935,8 +932,6 @@ sio_alsa_read(struct sio_hdl *sh, void *buf, size_t len)
 		}
 	}
 	todo = len / hdl->ibpf;
-	if (todo > hdl->canread)
-		todo = hdl->canread;
 	if (todo == 0)
 		return 0;
 	while ((n = snd_pcm_readi(hdl->ipcm, buf, todo)) < 0) {
@@ -957,7 +952,6 @@ sio_alsa_read(struct sio_hdl *sh, void *buf, size_t len)
 		hdl->sio.eof = 1;
 		return 0;
 	}
-	hdl->canread -= n;
 	hdl->idelta += n;
 	if (buf == hdl->itmpbuf) {
 		hdl->ipartial = hdl->ibpf;
@@ -986,8 +980,6 @@ sio_alsa_write(struct sio_hdl *sh, const void *buf, size_t len)
 		buf = hdl->otmpbuf;
 	}
 	todo = len / hdl->obpf;
-	if (todo > hdl->canwrite)
-		todo = hdl->canwrite;
 	if (todo == 0)
 		return 0;
 	while ((n = snd_pcm_writei(hdl->opcm, buf, todo)) < 0) {
@@ -1003,7 +995,6 @@ sio_alsa_write(struct sio_hdl *sh, const void *buf, size_t len)
 		}
 		return 0;
 	}
-	hdl->canwrite -= n;
 	hdl->odelta += n;
 	if (buf == hdl->otmpbuf) {
 		if (n > 0)
@@ -1073,30 +1064,26 @@ sio_alsa_pollfd(struct sio_hdl *sh, struct pollfd *pfd, int events)
 		if (!hdl->running &&
 		    snd_pcm_state(hdl->opcm) == SND_PCM_STATE_RUNNING)
 			sio_alsa_onmove(hdl);
-		if (hdl->canwrite == 0) {
-			hdl->onfds = snd_pcm_poll_descriptors(hdl->opcm,
-			    pfd, hdl->nfds);
-			if (hdl->onfds < 0) {
-				DALSA("couldn't poll play descriptors",
-				    hdl->onfds);
-				hdl->sio.eof = 1;
-				return 0;
-			}
+		hdl->onfds = snd_pcm_poll_descriptors(hdl->opcm,
+		    pfd, hdl->nfds);
+		if (hdl->onfds < 0) {
+			DALSA("couldn't poll play descriptors",
+			    hdl->onfds);
+			hdl->sio.eof = 1;
+			return 0;
 		}
 	}
 	if (hdl->events & POLLIN) {
 		if (!hdl->running &&
 		    snd_pcm_state(hdl->ipcm) == SND_PCM_STATE_RUNNING)
 			sio_alsa_onmove(hdl);
-		if (hdl->canread == 0) {
-			hdl->infds = snd_pcm_poll_descriptors(hdl->ipcm,
-			    pfd + hdl->onfds, hdl->nfds - hdl->onfds);
-			if (hdl->infds < 0) {
-				DALSA("couldn't poll rec descriptors",
-				    hdl->infds);
-				hdl->sio.eof = 1;
-				return 0;
-			}
+		hdl->infds = snd_pcm_poll_descriptors(hdl->ipcm,
+		    pfd + hdl->onfds, hdl->nfds - hdl->onfds);
+		if (hdl->infds < 0) {
+			DALSA("couldn't poll rec descriptors",
+			    hdl->infds);
+			hdl->sio.eof = 1;
+			return 0;
 		}
 	}
 	DPRINTFN(4, "sio_alsa_pollfd: events = %x, nfds = %d + %d\n",
@@ -1116,7 +1103,7 @@ sio_alsa_revents(struct sio_hdl *sh, struct pollfd *pfd)
 	snd_pcm_sframes_t iused, oavail, oused;
 	snd_pcm_state_t istate, ostate;
 	unsigned short revents, r;
-	int nfds, err, i, cycle;
+	int nfds, err, i;
 
 	if (hdl->sio.eof)
 		return POLLHUP;
@@ -1125,41 +1112,26 @@ sio_alsa_revents(struct sio_hdl *sh, struct pollfd *pfd)
 		DPRINTFN(4, "sio_alsa_revents: pfds[%d].revents = %x\n",
 		    i, pfd[i].revents);
 	}
-	cycle = revents = nfds = 0;
+	revents = nfds = 0;
 	if (hdl->events & POLLOUT) {
-		if (hdl->canwrite == 0) {
-			err = snd_pcm_poll_descriptors_revents(hdl->opcm,
-			    pfd, hdl->onfds, &r);
-			if (err < 0) {
-				DALSA("couldn't get play events", err);
-				hdl->sio.eof = 1;
-				return POLLHUP;
-			}
-			if (r & POLLOUT) {
-				hdl->canwrite = hdl->par.round;
-				cycle = 1;
-			}
-		} else
-			r = POLLOUT;
+		err = snd_pcm_poll_descriptors_revents(hdl->opcm,
+		    pfd, hdl->onfds, &r);
+		if (err < 0) {
+			DALSA("couldn't get play events", err);
+			hdl->sio.eof = 1;
+			return POLLHUP;
+		}
 		revents |= r;
 		nfds += hdl->onfds;
-			
 	}
 	if (hdl->events & POLLIN) {
-		if (hdl->canread == 0) {
-			err = snd_pcm_poll_descriptors_revents(hdl->ipcm,
-			    pfd + nfds, hdl->infds, &r);
-			if (err < 0) {
-				DALSA("couldn't get rec events", err);
-				hdl->sio.eof = 1;
-				return POLLHUP;
-			}
-			if (r & POLLIN) {
-				hdl->canread = hdl->par.round;
-				cycle = 1;
-			}
-		} else
-			r = POLLIN;
+		err = snd_pcm_poll_descriptors_revents(hdl->ipcm,
+		    pfd + nfds, hdl->infds, &r);
+		if (err < 0) {
+			DALSA("couldn't get rec events", err);
+			hdl->sio.eof = 1;
+			return POLLHUP;
+		}
 		revents |= r;
 		nfds += hdl->infds;
 	}
@@ -1212,7 +1184,7 @@ sio_alsa_revents(struct sio_hdl *sh, struct pollfd *pfd)
 			hdl->iused = iused;
 		}
 	}
-	if (cycle && hdl->running)
+	if ((revents & (POLLIN | POLLOUT)) && hdl->running)
 		sio_alsa_onmove(hdl);
 	return revents;
 }
