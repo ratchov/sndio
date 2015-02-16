@@ -57,6 +57,8 @@ random_bytes(unsigned char *buf, int len)
 	while (len > 0) {
 		n = read(fd, buf, len);
 		if (n < 0) {
+			if (errno == EINTR)
+				continue;
 			DPERROR(DEV_RANDOM);
 			close(fd);
 			return 0;
