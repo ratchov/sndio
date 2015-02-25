@@ -27,6 +27,7 @@
 #include <sys/audioio.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <poll.h>
 #include <sndio.h>
 #include <stdio.h>
