@@ -5,6 +5,7 @@ all:
 	cd sndiod && ${MAKE}
 	cd sndioctl && ${MAKE}
 	cd aucat && ${MAKE}
+	cd midicat && ${MAKE}
 	if [ ${XVOLKEYS} = yes ]; then cd xvolkeys && ${MAKE}; fi
 
 install:
@@ -12,17 +13,20 @@ install:
 	cd sndiod && ${MAKE} install
 	cd sndioctl && ${MAKE} install
 	cd aucat && ${MAKE} install
+	cd midicat && ${MAKE} install
 	if [ ${XVOLKEYS} = yes ]; then cd xvolkeys && ${MAKE} install; fi
 
 uninstall:
 	cd xvolkeys && ${MAKE} uninstall
-	cd aucat && ${MAKE} uninstall
+	cd midicat && ${MAKE} uninstall	
+	cd aucat && ${MAKE} uninstall	
 	cd sndioctl && ${MAKE} uninstall
 	cd sndiod && ${MAKE} uninstall
 	cd libsndio && ${MAKE} uninstall
 
 clean:
 	cd aucat && ${MAKE} clean
+	cd midicat && ${MAKE} clean
 	cd sndioctl && ${MAKE} clean
 	cd sndiod && ${MAKE} clean
 	cd libsndio && ${MAKE} clean
@@ -31,7 +35,7 @@ clean:
 
 distclean:	clean
 	rm -f \
-		Makefile aucat/Makefile sndiod/Makefile \
+		Makefile aucat/Makefile midicat/Makefile sndiod/Makefile \
 		libsndio/Makefile sndioctl/Makefile \
 		xvolkeys/Makefile \
 		examples/Makefile \

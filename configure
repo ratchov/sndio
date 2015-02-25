@@ -183,7 +183,7 @@ if [ $rmidi = yes ]; then
 	defs="$defs -DUSE_RMIDI"
 fi
 
-for f in Makefile aucat/Makefile sndiod/Makefile \
+for f in Makefile aucat/Makefile midicat/Makefile sndiod/Makefile \
 libsndio/Makefile sndioctl/Makefile xvolkeys/Makefile \
 examples/Makefile \
 contrib/init.d.sndiod
