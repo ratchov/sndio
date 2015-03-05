@@ -1553,12 +1553,12 @@ sock_buildmsg(struct sock *f)
 			c->val_mask &= ~mask;
 			strlcpy(desc->chan0.str, c->chan0.str,
 			    AMSG_MIX_NAMEMAX);
-			desc->chan0.min = c->chan0.min;
-			desc->chan0.num = c->chan0.num;
+			strlcpy(desc->chan0.opt, c->chan0.opt,
+			    AMSG_MIX_NAMEMAX);
 			strlcpy(desc->chan1.str, c->chan1.str,
 			    AMSG_MIX_NAMEMAX);
-			desc->chan1.min = c->chan1.min;
-			desc->chan1.num = c->chan1.num;
+			strlcpy(desc->chan1.opt, c->chan1.opt,
+			    AMSG_MIX_NAMEMAX);
 			desc->type = c->type;
 			strlcpy(desc->grp, c->grp, AMSG_MIX_NAMEMAX);
 			desc->addr = htons(c->addr);

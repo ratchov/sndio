@@ -113,12 +113,11 @@ struct ctl {
 #define CTL_LABEL	6		/* attach string to stream */
 	unsigned int type;		/* one of above */
 	unsigned int addr;		/* control address */
-#define CTL_NAMEMAX	12		/* max name lenght */
+#define CTL_NAMEMAX	16		/* max name lenght */
 	char grp[CTL_NAMEMAX];		/* parameter group name */
 	struct ctl_chan {
 		char str[CTL_NAMEMAX];	/* stream name */
-		unsigned int min;	/* first channel */
-		unsigned int num;	/* number of channels */
+		char opt[CTL_NAMEMAX];
 	} chan0, chan1;			/* affected channels */
 	unsigned int val_mask;
 	unsigned int desc_mask;
@@ -290,6 +289,6 @@ int dev_onctl(struct dev *, int, int);
 int dev_nctl(struct dev *);
 void dev_label(struct dev *, int);
 struct ctl *dev_addctl(struct dev *, int, int,
-    char *, int, int, char *, char *, int, int);
+    char *, char *, char *, char *, char *);
 
 #endif /* !defined(DEV_H) */

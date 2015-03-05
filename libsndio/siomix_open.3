@@ -118,8 +118,7 @@ stucture as follows:
 .Bd -literal
 struct siomix_chan {
 	char str[SIOMIX_NAMEMAX];	/* stream name */
-	unsigned int min;		/* first channel */
-	unsigned int num;		/* number of channels */
+	char opt[SIOMIX_NAMEMAX];	/* optionnal channel */
 };
 
 struct siomix_desc {
@@ -184,9 +183,8 @@ The
 .Va chan0
 and
 .Va chan1
-attributes indicate the names of the affected streams, the first
-channels and the number of channels affected; zero
-indicates that no channel information is exposed.
+attributes indicate the names of the affected streams, and
+an optional channel sub-set.
 .Va chan1
 is meaningful for
 .Va SIOMIX_VEC

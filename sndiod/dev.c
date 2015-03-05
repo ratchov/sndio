@@ -1148,16 +1148,16 @@ dev_open(struct dev *d)
 		dev_uniqname(d, "slot", ctlname);
 		c = dev_addctl(d, CTL_NUM,
 		    d->ctl_addr + CTLADDR_SLOT_LEVEL(i),
-		    ctlname, 0, 0, "softvol", NULL, 0, 0);
+		    ctlname, "", "softvol", NULL, NULL);
 		c->curval = d->slot[i].vol;
 		dev_addctl(d, CTL_LABEL,
 		    d->ctl_addr + CTLADDR_SLOT_LABEL(i),
-		    ctlname, 0, 0, d->slot[i].name, NULL, 0, 0);
+		    ctlname, "", d->slot[i].name, NULL, NULL);
 	}
 	dev_uniqname(d, "master", ctlname);
 	c = dev_addctl(d, CTL_NUM,
 	    d->ctl_addr + CTLADDR_MASTER,
-	    ctlname, 0, 0, "softvol", NULL, 0, 0);
+	    ctlname, "", "softvol", NULL, NULL);
 	c->curval = d->master;
 	return 1;
 }
@@ -2030,13 +2030,9 @@ void
 ctl_chan_log(struct ctl_chan *c)
 {
 	log_puts(c->str);
-	if (c->num > 0) {
+	if (strlen(c->opt) > 0) {
 		log_puts("[");
-		log_putu(c->min);
-		if (c->num > 1) {
-			log_puts("-");
-			log_putu(c->min + c->num - 1);
-		}
+		log_puts(c->opt);
 		log_puts("]");
 	}
 }
@@ -2093,8 +2089,7 @@ dev_uniqname(struct dev *d, char *templ, char *name)
  */
 struct ctl *
 dev_addctl(struct dev *d, int type, int addr,
-    char *str0, int cmin0, int cnum0, char *grp,
-    char *str1, int cmin1, int cnum1)
+    char *str0, char *opt0, char *grp, char *str1, char *opt1)
 {
 	struct ctl *c;
 	
@@ -2102,13 +2097,11 @@ dev_addctl(struct dev *d, int type, int addr,
 	c->type = type;
 	strlcpy(c->grp, grp, CTL_NAMEMAX);
 	strlcpy(c->chan0.str, str0, CTL_NAMEMAX);
-	c->chan0.min = cmin0;
-	c->chan0.num = cnum0;
+	strlcpy(c->chan0.opt, opt0, CTL_NAMEMAX);
 	if (c->type == CTL_VEC ||
 	    c->type == CTL_LIST) {
 		strlcpy(c->chan1.str, str1, CTL_NAMEMAX);
-		c->chan1.min = cmin1;
-		c->chan1.num = cnum1;
+		strlcpy(c->chan1.opt, opt1, CTL_NAMEMAX);
 	} else
 		memset(&c->chan1, 0, sizeof(struct ctl_chan));
 	c->addr = addr;

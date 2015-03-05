@@ -149,15 +149,17 @@ siomix_sun_close(struct siomix_hdl *addr)
 	free(hdl);
 }
 
+/*
+ * parse foo-4:5 and convert it to "foo", 4, 2
+ */
 static int
-copy_ch(struct siomix_sun_hdl *hdl, struct siomix_chan *c, char *istr, int cls)
+copy_ch(struct siomix_sun_hdl *hdl,
+    int icls, char *istr, char *ostr, int *rmin, int *rnum)
 {
 	size_t len;
-	char *sep, *ostr, *endp;
-	long min, max;
+	char *sep, *endp;
+	long cmin, cmax;
 
-	c->min = c->num = 0;
-	ostr = c->str;
 	ostr[0] = 0;
 
 	sep = strchr(istr, '-');
@@ -169,59 +171,86 @@ copy_ch(struct siomix_sun_hdl *hdl, struct siomix_chan *c, char *istr, int cls)
 		ostr[len] = 0;
 		istr = sep + 1;
 
-		min = strtol(istr, &endp, 10);
+		cmin = strtol(istr, &endp, 10);
 		if (endp != istr) {
 			/*
 			 * this a "foo-0:3" style range
 			 */
 			istr = endp;
-			c->min = min;
-			c->num = 1;
 			if (*endp == ':') {
 				istr++;
-				max = strtol(istr, &endp, 10);
+				cmax = strtol(istr, &endp, 10);
 				if (endp == istr) {
 					DPRINTF("bad range\n");
 					return 0;
 				}
 				istr = endp;
-				c->num = max - min + 1;
+			} else if (*endp == 0) {
+				cmax = cmin;
+			} else {
+				DPRINTF("unknown range\n");
+				return 0;
 			}
+			*rmin = cmin;
+			*rnum = cmax - cmin + 1;
 		} else {
-			if (strcmp(ostr, "line") == 0)
+			if (strcmp(ostr, "line") == 0) {
+				/* rename make "line-foo" to "foo" */
 				ostr[0] = 0;
-			else
+			} else {
+				/* append unknown suffix with '_' */
 				strlcat(ostr, "_", SIOMIX_NAMEMAX);
+			}
 			strlcat(ostr, istr, SIOMIX_NAMEMAX);
+			*rmin = 0;
+			*rnum = 0;
 		}
 	} else {
+		*rmin = 0;
+		*rnum = 0;
 		strlcpy(ostr, istr, SIOMIX_NAMEMAX);
 	}
-	if (cls == -1)
+	if (icls == -1)
 		return 1;
 	if (strcmp(ostr, "line") == 0) {
-		if (cls == hdl->iclass)
+		if (icls == hdl->iclass)
 			strlcpy(ostr, "in", SIOMIX_NAMEMAX);
-		if (cls == hdl->oclass)
+		if (icls == hdl->oclass)
 			strlcpy(ostr, "out", SIOMIX_NAMEMAX);
 	}
 	if (strcmp(ostr, "volume") == 0) {
-		if (cls == hdl->rclass)
+		if (icls == hdl->rclass)
 			strlcpy(ostr, "rec", SIOMIX_NAMEMAX);
 	}
 	return 1;
 }
 
+static void
+make_opt(char *opt, int min, int num)
+{
+	switch (num) {
+	case 0:
+		opt[0] = 0;
+		break;
+	case 1:
+		snprintf(opt, SIOMIX_NAMEMAX, "%u", min);
+		break;
+	default:
+		snprintf(opt, SIOMIX_NAMEMAX, "%u-%u", min, min + num - 1);
+		break;
+	}
+}
+
 static int
 copyname_num(struct siomix_sun_hdl *hdl,
-    struct siomix_desc *desc, struct mixer_devinfo *info)
+    struct mixer_devinfo *info, struct siomix_desc *desc, int *rmin, int *rnum)
 {
 	size_t len;
 	char *sep, *istr;
 
 	sep = strchr(info->label.name, '_');
 	if (sep) {
-		strlcpy(desc->grp, "levels", SIOMIX_NAMEMAX);
+		strlcpy(desc->grp, "mix", SIOMIX_NAMEMAX);
 		desc->type = SIOMIX_VEC;
 		len = sep - info->label.name;
 		if (len >= SIOMIX_NAMEMAX - 1)
@@ -229,29 +258,27 @@ copyname_num(struct siomix_sun_hdl *hdl,
 		memcpy(desc->chan0.str, info->label.name, len);
 		desc->chan0.str[len] = 0;
 		istr = sep + 1;
-		if (!copy_ch(hdl, &desc->chan1, istr, info->mixer_class))
+		if (!copy_ch(hdl, info->mixer_class, istr,
+			desc->chan1.str, rmin, rnum))
 			return 0;
-		desc->chan0.min = desc->chan1.min;
-		desc->chan0.num = desc->chan1.num;
 	} else {
 		strlcpy(desc->grp, "level", SIOMIX_NAMEMAX);
 		desc->type = SIOMIX_NUM;
 		istr = info->label.name;
-		if (!copy_ch(hdl, &desc->chan0, istr, info->mixer_class))
+		if (!copy_ch(hdl, info->mixer_class, istr,
+			desc->chan0.str, rmin, rnum))
 			return 0;
 		desc->chan1.str[0] = '\0';
-		desc->chan1.min = 0;
-		desc->chan1.num = 0;
 	}
 	return 1;
 }
 
 static int
 copyname_enum(struct siomix_sun_hdl *hdl,
-    struct siomix_desc *desc, struct mixer_devinfo *info)
+    struct mixer_devinfo *info, struct siomix_desc *desc, int *rmin, int *rnum)
 {
 	char istr[SIOMIX_NAMEMAX], *sep;
-	size_t len;	
+	size_t len;
 	
 	sep = strrchr(info->label.name, '.');
 	if (sep == NULL)
@@ -264,9 +291,10 @@ copyname_enum(struct siomix_sun_hdl *hdl,
 		strlcpy(desc->grp, info->label.name, SIOMIX_NAMEMAX);
 		while (info->prev >= 0)
 			info = hdl->info + info->prev;
-		if (!copy_ch(hdl, &desc->chan0,
-			info->label.name, info->mixer_class))
+		if (!copy_ch(hdl, info->mixer_class, info->label.name,
+			desc->chan0.str, rmin, rnum))
 			return 0;
+		desc->chan1.str[0] = 0;
 	} else {
 		strlcpy(desc->grp, sep + 1, SIOMIX_NAMEMAX);
 		len = sep - info->label.name;
@@ -274,9 +302,10 @@ copyname_enum(struct siomix_sun_hdl *hdl,
 			return 0;
 		memcpy(istr, info->label.name, len);
 		istr[len] = '\0';
-		if (!copy_ch(hdl, &desc->chan0, istr,
-			info->mixer_class))
+		if (!copy_ch(hdl, info->mixer_class, istr,
+			desc->chan0.str, rmin, rnum))
 			return 0;
+		desc->chan1.str[0] = 0;
 	}
 	/*
 	 * certain cards expose adc[0-1].source and adc[2-3].source
@@ -324,19 +353,20 @@ enum_to_sw(struct mixer_devinfo *info, struct siomix_desc *desc)
 		return 0;
 	v0 = info->un.e.member[ord_to_num(info, 0)].label.name;
 	v1 = info->un.e.member[ord_to_num(info, 1)].label.name;
-	desc->chan1.str[0] = 0;
-	desc->chan1.min = 0;
-	desc->chan1.num = 0;
-	desc->type = SIOMIX_SW;
 	if (strcmp(v0, "off") == 0 && strcmp(v1, "on") == 0)
-		return 1;
+		goto make_sw;
 	if (strcmp(v0, "unplugged") == 0 && strcmp(v1, "plugged") == 0) {
 		strlcpy(desc->grp,
 	            info->un.e.member[1].label.name,
 		    SIOMIX_NAMEMAX);
-		return 1;
+		goto make_sw;
 	}
 	return 0;
+ make_sw:
+	desc->chan1.str[0] = 0;
+	desc->chan1.opt[0] = 0;
+	desc->type = SIOMIX_SW;
+	return 1;
 }
 
 static int
@@ -346,7 +376,8 @@ siomix_sun_ondesc(struct siomix_hdl *addr)
 	struct mixer_devinfo *info;
 	struct mixer_ctrl *ctrl;
 	struct siomix_desc desc;
-	int i, j, v;
+	char *ostr;
+	int i, j, v, cmin, cnum;
 
 	for (i = 0; i < hdl->ninfo; i++) {
 		info = hdl->info + i;
@@ -373,19 +404,25 @@ siomix_sun_ondesc(struct siomix_hdl *addr)
 
 	info = hdl->info;
 	for (i = 0; i < hdl->ninfo; i++) {
-		DPRINTF("parsing \"%s\"\n", info->label.name);
+		DPRINTF("psarsing \"%s\"\n", info->label.name);
 		switch (info->type) {
 		case AUDIO_MIXER_VALUE:
 			desc.addr = i * 32;
-			if (!copyname_num(hdl, &desc, info))
+			if (!copyname_num(hdl, info, &desc, &cmin, &cnum))
 				return 0;
-			if (info->un.v.num_channels > 1)
-				desc.chan0.num = 1;
+			make_opt(desc.chan0.opt, cmin, cnum);
+			desc.chan1.opt[0] = 0;
 			for (j = 0; j < info->un.v.num_channels; j++) {
 				v = hdl->curval[i].un.value.level[j] *
 				    127 / 255;
+				ostr = desc.type == SIOMIX_NUM ?
+				    desc.chan0.opt : desc.chan1.opt;
+				if (info->un.v.num_channels > 1) {
+					make_opt(ostr, cmin + j, 1);
+				} else {
+					make_opt(ostr, cmin, cnum);
+				}
 				_siomix_ondesc_cb(&hdl->siomix, &desc, v);
-				desc.chan0.min++;
 				desc.addr++;
 			}
 			break;
@@ -393,20 +430,24 @@ siomix_sun_ondesc(struct siomix_hdl *addr)
 			desc.addr = i * 32;
 			if (info->un.e.num_mem <= 1)
 				break;
-			if (!copyname_enum(hdl, &desc, info))
+			if (!copyname_enum(hdl, info, &desc, &cmin, &cnum))
 				return 0;
 			if (enum_to_sw(info, &desc)) {
+				make_opt(desc.chan0.opt, cmin, cnum);
 				_siomix_ondesc_cb(&hdl->siomix, &desc,
 				    ord_to_num(info, hdl->curval[i].un.ord));
 				break;
-					
 			}
 			for (j = 0; j < info->un.e.num_mem; j++) {
-				if (!copyname_enum(hdl, &desc, info))
+				if (!copyname_enum(hdl, info,
+					&desc, &cmin, &cnum))
 					return 0;
-				copy_ch(hdl, &desc.chan1,
-				    info->un.e.member[j].label.name, 
-				    info->mixer_class);
+				make_opt(desc.chan0.opt, cmin, cnum);
+				if (!copy_ch(hdl, info->mixer_class,
+					info->un.e.member[j].label.name,
+					desc.chan1.str, &cmin, &cnum))
+					return 0;
+				make_opt(desc.chan1.opt, cmin, cnum);
 				desc.type = SIOMIX_LIST;
 				v = (j == ord_to_num(info,
 					 hdl->curval[i].un.ord)) ? 1 : 0;
@@ -418,14 +459,16 @@ siomix_sun_ondesc(struct siomix_hdl *addr)
 			desc.addr = i * 32;
 			if (info->un.s.num_mem == 0)
 				break;
-			if (!copyname_enum(hdl, &desc, info))
+			if (!copyname_enum(hdl, info, &desc, &cmin, &cnum))
 				return 0;
+			make_opt(desc.chan0.opt, cmin, cnum);
 			desc.type = SIOMIX_LIST;
 			for (j = 0; j < info->un.s.num_mem; j++) {
-				if (!copy_ch(hdl, &desc.chan1,
+				if (!copy_ch(hdl, info->mixer_class,
 					info->un.s.member[j].label.name,
-					info->mixer_class))
+					desc.chan1.str, &cmin, &cnum))
 					return 0;
+				make_opt(desc.chan1.opt, cmin, cnum);
 				_siomix_ondesc_cb(&hdl->siomix, &desc,
 				    mask_to_bit(info, j,
 					hdl->curval[i].un.mask));

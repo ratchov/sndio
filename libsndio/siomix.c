@@ -172,11 +172,11 @@ _siomix_ondesc_cb(struct siomix_hdl *hdl,
     struct siomix_desc *desc, unsigned int val)
 {
 	if (desc) {
-		DPRINTF("%u -> %s[%u/%u].%s=%s[%u/%u]\n",
+		DPRINTF("%u -> %s[%s].%s=%s[%s]\n",
 		    desc->addr,
-		    desc->chan0.str, desc->chan0.min, desc->chan0.num,
+		    desc->chan0.str, desc->chan0.opt,
 		    desc->grp,
-		    desc->chan1.str, desc->chan1.min, desc->chan1.num);
+		    desc->chan1.str, desc->chan1.opt);
 	}
 	if (hdl->desc_cb)
 		hdl->desc_cb(hdl->desc_arg, desc, val);

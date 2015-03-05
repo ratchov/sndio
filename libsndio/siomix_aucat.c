@@ -75,13 +75,11 @@ siomix_aucat_rdata(struct siomix_aucat_hdl *hdl)
 	c = hdl->tmp;
 	while (size >= sizeof(struct amsg_mix_desc)) {
 		strlcpy(desc.chan0.str, c->chan0.str, SIOMIX_NAMEMAX);
-		desc.chan0.min = c->chan0.min;
-		desc.chan0.num = c->chan0.num;
+		strlcpy(desc.chan0.opt, c->chan0.opt, SIOMIX_NAMEMAX);
 		strlcpy(desc.chan1.str, c->chan1.str, SIOMIX_NAMEMAX);
-		desc.chan1.min = c->chan1.min;
-		desc.chan1.num = c->chan1.num;
-		desc.type = c->type;
+		strlcpy(desc.chan1.opt, c->chan1.opt, SIOMIX_NAMEMAX);
 		strlcpy(desc.grp, c->grp, SIOMIX_NAMEMAX);
+		desc.type = c->type;
 		desc.addr = ntohs(c->addr);
 		_siomix_ondesc_cb(&hdl->siomix, &desc, ntohs(c->curval));
 		size -= sizeof(struct amsg_mix_desc);

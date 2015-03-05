@@ -71,8 +71,8 @@ dev_siomix_ondesc(void *arg, struct siomix_desc *desc, int val)
 		return;
 	}
 	c = dev_addctl(d, desc->type, desc->addr,
-	    desc->chan0.str, desc->chan0.min, desc->chan0.num, desc->grp,
-	    desc->chan1.str, desc->chan1.min, desc->chan1.num);
+	    desc->chan0.str, desc->chan0.opt, desc->grp,
+	    desc->chan1.str, desc->chan1.opt);
 	c->curval = val;
 #ifdef DEBUG
 	if (log_level >= 3) {

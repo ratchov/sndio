@@ -98,8 +98,7 @@ struct sio_cap {
  */
 struct siomix_chan {
 	char str[SIOMIX_NAMEMAX];	/* stream name */
-	unsigned int min;		/* first channel */
-	unsigned int num;		/* number of channels */
+	char opt[SIOMIX_NAMEMAX];	/* optional (sub-)stream name */
 };
 
 /*

@@ -44,13 +44,13 @@ struct info {
 int cmpdesc(struct siomix_desc *, struct siomix_desc *);
 int isdiag(struct info *);
 struct info *selpos(struct info *);
-struct info *vecent(struct info *, char *, unsigned, unsigned);
+struct info *vecent(struct info *, char *, char *);
 struct info *nextgrp(struct info *);
 struct info *nextpar(struct info *);
 struct info *firstent(struct info *, char *);
 struct info *nextent(struct info *, int);
-int matchpar(struct info *, char *, unsigned, unsigned);
-int matchent(struct info *, char *, unsigned, unsigned);
+int matchpar(struct info *, char *, char *);
+int matchent(struct info *, char *, char *);
 int ismono(struct info *);
 void print_chan(struct siomix_chan *, int);
 void print_desc(struct info *, int);
@@ -58,7 +58,7 @@ void print_val(struct info *, int);
 void print_par(struct info *, int);
 int parse_name(char **, char *);
 int parse_dec(char **, unsigned *);
-int parse_chan(char **, char *, unsigned *, unsigned *);
+int parse_chan(char **, char *, char *);
 int parse_modeval(char **, int *, unsigned *);
 void dump(void);
 int cmd(char *);
@@ -90,7 +90,7 @@ cmpdesc(struct siomix_desc *d1, struct siomix_desc *d2)
 	res = strcmp(d1->grp, d2->grp);
 	if (res != 0)
 		return res;
-	res = d1->chan0.min - d2->chan0.min;
+	res = strcmp(d1->chan0.opt, d2->chan0.opt);
 	if (d1->type == SIOMIX_VEC ||
 	    d1->type == SIOMIX_LIST) {
 		if (res != 0)
@@ -98,7 +98,7 @@ cmpdesc(struct siomix_desc *d1, struct siomix_desc *d2)
 		res = strcmp(d1->chan1.str, d2->chan1.str);
 		if (res != 0)
 			return res;	
-		res = d1->chan1.min - d2->chan1.min;
+		res = strcmp(d1->chan1.opt, d2->chan0.opt);
 	}
 	return res;
 }
@@ -109,12 +109,10 @@ cmpdesc(struct siomix_desc *d1, struct siomix_desc *d2)
 int
 isdiag(struct info *e)
 {
-	if (e->desc.chan0.num == 0 ||
-	    e->desc.chan1.num == 0)
+	if (strlen(e->desc.chan0.opt) == 0 ||
+	    strlen(e->desc.chan1.opt) == 0)
 		return 1;
-	return
-	    e->desc.chan1.min == e->desc.chan0.min &&
-	    e->desc.chan1.num == e->desc.chan0.num;
+	return strcmp(e->desc.chan1.opt, e->desc.chan0.opt) == 0;
 }
 
 /*
@@ -136,12 +134,11 @@ selpos(struct info *i)
  * find the selector or vector entry with the given name and channels
  */
 struct info *
-vecent(struct info *i, char *vstr, unsigned vmin, unsigned vnum)
+vecent(struct info *i, char *vstr, char *vopt)
 {
 	while (i != NULL) {
-		if (strcmp(i->desc.chan1.str, vstr) == 0 &&
-		    i->desc.chan1.num == vnum &&
-		    i->desc.chan1.min == vmin)
+		if ((strcmp(i->desc.chan1.str, vstr) == 0) &&
+		    (strlen(vopt) == 0 || strcmp(i->desc.chan1.opt, vopt) == 0))
 			break;
 		i = i->next;
 	}
@@ -172,19 +169,16 @@ nextgrp(struct info *i)
 struct info *
 nextpar(struct info *i)
 {
-	char *str, *grp;
-	unsigned min, num;
+	char *str, *opt, *grp;
 
 	grp = i->desc.grp;
 	str = i->desc.chan0.str;
-	min = i->desc.chan0.min;
-	num = i->desc.chan0.num;
+	opt = i->desc.chan0.opt;
 	for (i = i->next; i != NULL; i = i->next) {
 		if (strcmp(i->desc.chan0.str, str) != 0 ||
 		    strcmp(i->desc.grp, grp) != 0)
 			break;
-		if (i->desc.chan0.min != min ||
-		    i->desc.chan0.num != num)
+		if (strcmp(i->desc.chan0.opt, opt) != 0)
 			return i;
 	}
 	return NULL;
@@ -221,21 +215,18 @@ firstent(struct info *g, char *vstr)
 struct info *
 nextent(struct info *i, int mono)
 {
-	char *str, *grp;
-	unsigned min, num;
+	char *str, *opt, *grp;
 
 	grp = i->desc.grp;
 	str = i->desc.chan0.str;
-	min = i->desc.chan0.min;
-	num = i->desc.chan0.num;
+	opt = i->desc.chan0.opt;
 	for (i = i->next; i != NULL; i = i->next) {
 		if (strcmp(i->desc.chan0.str, str) != 0 ||
 		    strcmp(i->desc.grp, grp) != 0)
 			return NULL;
 		if (mono)
 			return i;
-		if (i->desc.chan0.min == min &&
-		    i->desc.chan0.num == num)
+		if (strcmp(i->desc.chan0.opt, opt) != 0)
 			return i;
 	}
 	return NULL;
@@ -245,19 +236,17 @@ nextent(struct info *i, int mono)
  * return true if parameter matches the given name and channel range
  */
 int
-matchpar(struct info *i, char *astr, unsigned amin, unsigned anum)
+matchpar(struct info *i, char *astr, char *aopt)
 {
 	if (strcmp(i->desc.chan0.str, astr) != 0)
 		return 0;
-	if (anum == 0)
+	if (strlen(aopt) == 0)
 		return 1;
-	else if (i->desc.chan0.num == 0) {
-		fprintf(stderr, "range used for parameter with no range\n");
+	else if (strlen(i->desc.chan0.opt) == 0) {
+		fprintf(stderr, "opt used for parameter with no opt\n");
 		exit(1);
 	}
-	return
-	    i->desc.chan0.min >= amin &&
-	    i->desc.chan0.min + i->desc.chan0.num <= amin + anum;
+	return strcmp(i->desc.chan0.opt, aopt) == 0;
 }
 
 /*
@@ -265,19 +254,17 @@ matchpar(struct info *i, char *astr, unsigned amin, unsigned anum)
  * channel range
  */
 int
-matchent(struct info *i, char *vstr, unsigned vmin, unsigned vnum)
+matchent(struct info *i, char *vstr, char *vopt)
 {
 	if (strcmp(i->desc.chan1.str, vstr) != 0)
 		return 0;
-	if (vnum == 0) {
+	if (strlen(vopt) == 0)
 		return 1;
-	} else {
-		if (i->desc.chan1.num == 0) {
-			fprintf(stderr, "range not allowed\n");
-			exit(1);
-		}
+	else if (strlen(i->desc.chan1.opt) == 0) {
+		fprintf(stderr, "opt used for parameter with no opt\n");
+		exit(1);
 	}
-	return i->desc.chan1.min == vmin && i->desc.chan1.num == vnum;
+	return strcmp(i->desc.chan1.opt, vopt) == 0;
 }
 
 /*
@@ -311,8 +298,7 @@ ismono(struct info *g)
 				} else {
 					e1 = vecent(p1,
 					    e2->desc.chan1.str,
-					    p1->desc.chan0.min,
-					    p1->desc.chan0.num);
+					    p1->desc.chan0.opt);
 					if (e1 == NULL)
 						continue;
 					if (e1->curval != e2->curval)
@@ -332,11 +318,8 @@ void
 print_chan(struct siomix_chan *c, int mono)
 {
 	printf("%s", c->str);
-	if (!mono && c->num > 0) {
-		printf("[%u", c->min);
-		if (c->num > 1)
-			printf("-%u", c->min + c->num - 1);
-		printf("]");
+	if (!mono && strlen(c->opt) > 0) {
+		printf("[%s]", c->opt);
 	}
 }
 
@@ -441,7 +424,7 @@ print_par(struct info *p, int mono)
 			if (i->desc.type != SIOMIX_LABEL)
 				continue;
 			if (strcmp(i->desc.chan0.str, p->desc.chan0.str) == 0 &&
-			    i->desc.chan0.min == p->desc.chan0.min &&
+			    strcmp(i->desc.chan0.opt, p->desc.chan0.opt) == 0 &&
 			    strlen(i->desc.grp) > 0) {
 				printf("\t# %s", i->desc.grp);
 			}
@@ -507,39 +490,25 @@ parse_dec(char **line, unsigned *num)
  * parse a sub-stream, eg. "spkr[4-7]"
  */
 int
-parse_chan(char **line, char *str, unsigned *rmin, unsigned *rnum)
+parse_chan(char **line, char *str, char *opt)
 {
 	char *p = *line;
-	unsigned min, max;
-
+	
 	if (!parse_name(&p, str))
 		return 0;
 	if (*p != '[') {
-		*rmin = 0;
-		*rnum = 0;
+		*opt = 0;
 		*line = p;
 		return 1;
 	}
 	p++;
-	if (!parse_dec(&p, &min))
+	if (!parse_name(&p, opt))
 		return 0;
-	if (*p == '-') {
-		p++;
-		if (!parse_dec(&p, &max))
-			return 0;
-		if (max < min) {
-			fprintf(stderr, "%u-%u: bad range\n", min, max);
-			return 0;
-		}
-	} else
-		max = min;
 	if (*p != ']') {
 		fprintf(stderr, "']' expected near '%s'\n", p);
 		return 0;
 	}
 	p++;
-	*rmin = min;
-	*rnum = max - min + 1;
 	*line = p;
 	return 1;
 }
@@ -621,11 +590,12 @@ cmd(char *line)
 	char *pos = line;
 	struct info *i, *e, *g;
 	char grp[SIOMIX_NAMEMAX], astr[SIOMIX_NAMEMAX], vstr[SIOMIX_NAMEMAX];
+	char aopt[SIOMIX_NAMEMAX], vopt[SIOMIX_NAMEMAX];
 	unsigned amin, anum, vmin, vnum, val;
 	unsigned npar = 0, nent = 0;
 	int comma, mode;
 
-	if (!parse_chan(&pos, astr, &amin, &anum))
+	if (!parse_chan(&pos, astr, aopt))
 		return 0;
 	if (*pos != '.') {
 		fprintf(stderr, "'.' expected near '%s'\n", pos);
@@ -663,7 +633,7 @@ cmd(char *line)
 		if (!parse_modeval(&pos, &mode, &val))
 			return 0;
 		for (i = g; i != NULL; i = nextpar(i)) {
-			if (!matchpar(i, astr, amin, anum))
+			if (!matchpar(i, astr, aopt))
 				continue;
 			i->mode = mode;
 			i->newval = val;
@@ -673,7 +643,7 @@ cmd(char *line)
 	case SIOMIX_VEC:
 	case SIOMIX_LIST:
 		for (i = g; i != NULL; i = nextpar(i)) {
-			if (!matchpar(i, astr, amin, anum))
+			if (!matchpar(i, astr, aopt))
 				continue;
 			for (e = i; e != NULL; e = nextent(e, 0)) {
 				e->newval = 0;
@@ -690,7 +660,7 @@ cmd(char *line)
 					break;
 				pos++;
 			}
-			if (!parse_chan(&pos, vstr, &vmin, &vnum))
+			if (!parse_chan(&pos, vstr, vopt))
 				return 0;
 			if (*pos == ':') {
 				pos++;
@@ -702,10 +672,10 @@ cmd(char *line)
 			}
 			nent = 0;
 			for (i = g; i != NULL; i = nextpar(i)) {
-				if (!matchpar(i, astr, amin, anum))
+				if (!matchpar(i, astr, aopt))
 					continue;
 				for (e = i; e != NULL; e = nextent(e, 0)) {
-					if (matchent(e, vstr, vmin, vnum)) {
+					if (matchent(e, vstr, vopt)) {
 						e->newval = val;
 						e->mode = mode;
 						nent++;
@@ -713,7 +683,7 @@ cmd(char *line)
 				}
 			}
 			if (nent == 0) {
-				fprintf(stderr, "%s[%d/%d]: invalid value\n", vstr, vmin, vnum);
+				fprintf(stderr, "%s[%s]: invalid value\n", vstr, vopt);
 				print_par(g, 0);
 				exit(1);
 			}
