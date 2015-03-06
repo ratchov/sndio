@@ -212,15 +212,22 @@ copy_ch(struct siomix_sun_hdl *hdl,
 	}
 	if (icls == -1)
 		return 1;
-	if (strcmp(ostr, "line") == 0) {
-		if (icls == hdl->iclass)
-			strlcpy(ostr, "in", SIOMIX_NAMEMAX);
-		if (icls == hdl->oclass)
-			strlcpy(ostr, "out", SIOMIX_NAMEMAX);
-	}
-	if (strcmp(ostr, "volume") == 0) {
-		if (icls == hdl->rclass)
+	/*
+	 * append "-in" and "-out" suffixes, as nowadays
+	 * most jacks are bidirectional
+	 */
+	if (icls == hdl->iclass)
+		strlcat(ostr, "-in", SIOMIX_NAMEMAX);
+	if (icls == hdl->oclass)
+		strlcat(ostr, "-out", SIOMIX_NAMEMAX);
+	/*
+	 * record class may conflict with input/output
+	 */
+	if (icls == hdl->rclass) {
+		if (strcmp(ostr, "volume") == 0)
 			strlcpy(ostr, "rec", SIOMIX_NAMEMAX);
+		else
+			strlcat(ostr, "-rec", SIOMIX_NAMEMAX);
 	}
 	return 1;
 }
