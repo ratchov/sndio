@@ -226,7 +226,7 @@ nextent(struct info *i, int mono)
 			return NULL;
 		if (mono)
 			return i;
-		if (strcmp(i->desc.chan0.opt, opt) != 0)
+		if (strcmp(i->desc.chan0.opt, opt) == 0)
 			return i;
 	}
 	return NULL;
