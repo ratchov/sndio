@@ -98,7 +98,7 @@ cmpdesc(struct siomix_desc *d1, struct siomix_desc *d2)
 		res = strcmp(d1->chan1.str, d2->chan1.str);
 		if (res != 0)
 			return res;	
-		res = strcmp(d1->chan1.opt, d2->chan0.opt);
+		res = strcmp(d1->chan1.opt, d2->chan1.opt);
 	}
 	return res;
 }
