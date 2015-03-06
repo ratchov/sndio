@@ -1145,19 +1145,19 @@ dev_open(struct dev *d)
 	d->ctl_addr++;
 
 	for (i = 0; i < DEV_NSLOT; i++) {
-		dev_uniqname(d, "slot", ctlname);
+		dev_uniqname(d, "prog", ctlname);
 		c = dev_addctl(d, CTL_NUM,
 		    d->ctl_addr + CTLADDR_SLOT_LEVEL(i),
-		    ctlname, "", "softvol", NULL, NULL);
+		    ctlname, "", "level", NULL, NULL);
 		c->curval = d->slot[i].vol;
 		dev_addctl(d, CTL_LABEL,
 		    d->ctl_addr + CTLADDR_SLOT_LABEL(i),
 		    ctlname, "", d->slot[i].name, NULL, NULL);
 	}
-	dev_uniqname(d, "master", ctlname);
+	dev_uniqname(d, "sndiod", ctlname);
 	c = dev_addctl(d, CTL_NUM,
 	    d->ctl_addr + CTLADDR_MASTER,
-	    ctlname, "", "softvol", NULL, NULL);
+	    ctlname, "", "level", NULL, NULL);
 	c->curval = d->master;
 	return 1;
 }
