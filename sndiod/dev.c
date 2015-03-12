@@ -1152,7 +1152,7 @@ dev_open(struct dev *d)
 		c->curval = d->slot[i].vol;
 		dev_addctl(d, CTL_LABEL,
 		    d->ctl_addr + CTLADDR_SLOT_LABEL(i),
-		    ctlname, "", d->slot[i].name, NULL, NULL);
+		    ctlname, "", "name", d->slot[i].name, "");
 	}
 	dev_uniqname(d, "sndiod", ctlname);
 	c = dev_addctl(d, CTL_NUM,
@@ -2042,20 +2042,21 @@ ctl_log(struct ctl *c)
 {
 	ctl_chan_log(&c->chan0);
 	log_puts(".");
-	log_puts(c->grp[0] != 0 ? c->grp : "(empty)");
-	if (c->type != CTL_LABEL) {
-		log_puts("=");
-		switch (c->type) {
-		case CTL_NUM:
-		case CTL_SW:
-			log_putu(c->curval);
-			break;
-		case CTL_VEC:
-		case CTL_LIST:
-			ctl_chan_log(&c->chan1);
-			log_puts(":");
-			log_putu(c->curval);
-		}
+	log_puts(c->grp);
+	log_puts("=");
+	switch (c->type) {
+	case CTL_NUM:
+	case CTL_SW:
+		log_putu(c->curval);
+		break;
+	case CTL_VEC:
+	case CTL_LIST:
+		ctl_chan_log(&c->chan1);
+		log_puts(":");
+		log_putu(c->curval);
+		break;
+	case CTL_LABEL:
+		ctl_chan_log(&c->chan1);
 	}
 	log_puts(" at ");
 	log_putu(c->addr);
@@ -2196,9 +2197,9 @@ dev_label(struct dev *d, int i)
 			break;
 		c = c->next;
 	}
-	if (strcmp(c->grp, d->slot[i].name) == 0)
+	if (strcmp(c->chan1.str, d->slot[i].name) == 0)
 		return;
-	strlcpy(c->grp, d->slot[i].name, CTL_NAMEMAX);
+	strlcpy(c->chan1.str, d->slot[i].name, CTL_NAMEMAX);
 	c->desc_mask = ~0;
 }
 

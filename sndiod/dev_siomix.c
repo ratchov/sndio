@@ -64,9 +64,9 @@ dev_siomix_ondesc(void *arg, struct siomix_desc *desc, int val)
 			continue;
 		ctl_log(c);
 		log_puts(": label -> ");
-		log_puts(desc->grp);
+		log_puts(desc->chan0.str);
 		log_puts("\n");
-		strlcpy(c->grp, desc->grp, CTL_NAMEMAX);
+		strlcpy(c->chan0.str, desc->chan0.str, CTL_NAMEMAX);
 		c->desc_mask = ~0;
 		return;
 	}
