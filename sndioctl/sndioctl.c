@@ -85,8 +85,6 @@ cmpdesc(struct siomix_desc *d1, struct siomix_desc *d2)
 	res = d1->type - d2->type;
 	if (res != 0)
 		return res;
-	if (d1->type == SIOMIX_LABEL)
-		return 0;
 	res = strcmp(d1->grp, d2->grp);
 	if (res != 0)
 		return res;
@@ -367,8 +365,8 @@ print_val(struct info *p, int mono)
 
 	switch (p->desc.type) {
 	case SIOMIX_LABEL:
-		fprintf(stderr, "print_val called for label\n");
-		abort();
+		printf("%s", p->desc.chan1.str);
+		//print_chan(&e->desc.chan1, mono);
 		break;
 	case SIOMIX_NUM:
 	case SIOMIX_SW:
@@ -400,19 +398,10 @@ void
 print_par(struct info *p, int mono)
 {
 	struct info *i;
+	int more;
 
-	if (!n_flag && p->desc.type == SIOMIX_LABEL) {
-		print_chan(&p->desc.chan0, mono);
-		printf(" # %s\n", p->desc.grp);
-		return;
-	}
 	print_chan(&p->desc.chan0, mono);
-	printf(".%s", p->desc.grp);
-	if (p->desc.type == SIOMIX_LABEL) {
-		printf("\n");
-		return;
-	}
-	printf("=");
+	printf(".%s=", p->desc.grp);
 	if (i_flag)
 		print_desc(p, mono); 
 	else
@@ -420,13 +409,17 @@ print_par(struct info *p, int mono)
 
 	/* append a comment with the labels (if any) */
 	if (!n_flag && p->desc.type != SIOMIX_LABEL) {
+		more = 0;
 		for (i = infolist; i != NULL; i = i->next) {
 			if (i->desc.type != SIOMIX_LABEL)
 				continue;
 			if (strcmp(i->desc.chan0.str, p->desc.chan0.str) == 0 &&
-			    strcmp(i->desc.chan0.opt, p->desc.chan0.opt) == 0 &&
-			    strlen(i->desc.grp) > 0) {
-				printf("\t# %s", i->desc.grp);
+			    strcmp(i->desc.chan0.opt, p->desc.chan0.opt) == 0) {
+				if (!more) {
+					printf("\t#");
+					more = 1;
+				}
+				printf(" %s=%s", i->desc.grp, i->desc.chan1.str);
 			}
 		}
 	}
@@ -559,10 +552,6 @@ dump(void)
 		printf("%03u:", i->ctladdr);
 		print_chan(&i->desc.chan0, 0);
 		printf(".%s", i->desc.grp);
-		if (i->desc.type == SIOMIX_LABEL) {
-			printf("\n");
-			continue;
-		}
 		printf("=");
 		switch (i->desc.type) {
 		case SIOMIX_LABEL:
@@ -792,12 +781,6 @@ ondesc(void *arg, struct siomix_desc *d, int curval)
 	for (pi = &infolist; (i = *pi) != NULL; pi = &i->next) {
 		cmp = cmpdesc(d, &i->desc);
 		if (cmp == 0) {
-			if (d->type == SIOMIX_LABEL) {
-				i->desc = *d;
-				if (m_flag)
-					print_par(i, 0);
-				return;
-			}
 			fprintf(stderr, "fatal: duplicate mixer knob:\n");
 			print_par(i, 0);
 			exit(1);
