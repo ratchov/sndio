@@ -580,8 +580,7 @@ cmd(char *line)
 	struct info *i, *e, *g;
 	char grp[SIOMIX_NAMEMAX], astr[SIOMIX_NAMEMAX], vstr[SIOMIX_NAMEMAX];
 	char aopt[SIOMIX_NAMEMAX], vopt[SIOMIX_NAMEMAX];
-	unsigned amin, anum, vmin, vnum, val;
-	unsigned npar = 0, nent = 0;
+	unsigned val, npar = 0, nent = 0;
 	int comma, mode;
 
 	if (!parse_chan(&pos, astr, aopt))
