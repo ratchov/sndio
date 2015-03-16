@@ -34,7 +34,7 @@ main(int argc, char **argv)
 	unsigned char buf[MIDI_BUFSZ];
 	struct mio_hdl *ih, *oh;
 	char *in, *out;
-	int dump, conn, c, i, len, sep;
+	int dump, c, i, len, sep;
 
 	dump = 0;
 	in = NULL;
