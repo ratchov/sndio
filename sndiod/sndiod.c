@@ -75,7 +75,7 @@
  * buffer size if neither ``-z'' nor ``-b'' is used
  */
 #ifndef DEFAULT_BUFSZ
-#define DEFAULT_BUFSZ	7860
+#define DEFAULT_BUFSZ	7680
 #endif
 
 /*
