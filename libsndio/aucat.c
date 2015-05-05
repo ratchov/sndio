@@ -127,9 +127,10 @@ _aucat_wmsg(struct aucat *hdl, int *eof)
 	ssize_t n;
 	unsigned char *data;
 
-	if (hdl->wstate == WSTATE_IDLE)
+	if (hdl->wstate == WSTATE_IDLE) {
 		hdl->wstate = WSTATE_MSG;
 		hdl->wtodo = sizeof(struct amsg);
+	}
 	if (hdl->wstate != WSTATE_MSG) {
 		DPRINTF("_aucat_wmsg: bad state\n");
 		abort();
