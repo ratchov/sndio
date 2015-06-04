@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2014 Alexandre Ratchov <alex@caoua.org>
+ * Copyright (c) 2015 Alexandre Ratchov <alex@caoua.org>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -13,15 +13,10 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-
 #include <fcntl.h>
-#include <errno.h>
-#include <poll.h>
-#include <signal.h>
 #include <sndio.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <unistd.h>
 #include "bsd-compat.h"
 
