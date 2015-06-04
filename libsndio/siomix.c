@@ -175,7 +175,7 @@ _siomix_ondesc_cb(struct siomix_hdl *hdl,
 		DPRINTF("%u -> %s[%s].%s=%s[%s]\n",
 		    desc->addr,
 		    desc->chan0.str, desc->chan0.opt,
-		    desc->grp,
+		    desc->func,
 		    desc->chan1.str, desc->chan1.opt);
 	}
 	if (hdl->desc_cb)

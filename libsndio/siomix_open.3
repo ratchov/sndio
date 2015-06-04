@@ -129,7 +129,7 @@ struct siomix_desc {
 #define SIOMIX_LIST		5	/* element of array of switches */
 #define SIOMIX_LABEL		6	/* string attached to chan0 */
 	unsigned int type;		/* one of above */
-	char grp[SIOMIX_NAMEMAX];	/* parameter group name */
+	char func[SIOMIX_NAMEMAX];	/* parameter group name */
 	struct siomix_chan chan0;	/* affected channels */
 	struct siomix_chan chan1;	/* dito for vec, and list */
 };
@@ -175,7 +175,7 @@ label is changing.
 .El
 .Pp
 The
-.Va grp
+.Va func
 attribute is the name of the parameter being controlled.
 There may be no parameters of different types with the same name.
 .Pp
@@ -197,7 +197,7 @@ Stream names in the
 and
 .Va chan1
 attributes and
-.Va grp
+.Va func
 are static strings usable as unique identifiers.
 .Sh Changing and reading control values
 Controls are changed with the

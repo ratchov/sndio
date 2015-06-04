@@ -112,7 +112,7 @@ struct siomix_desc {
 #define SIOMIX_LIST		5	/* switch, element of a list */
 #define SIOMIX_LABEL		6	/* label attached to chan0 */
 	unsigned int type;		/* one of above */
-	char grp[SIOMIX_NAMEMAX];	/* parameter name or label */
+	char func[SIOMIX_NAMEMAX];	/* function name or label */
 	struct siomix_chan chan0;	/* affected channels */
 	struct siomix_chan chan1;	/* dito for SIOMIX_{VEC,LIST} */
 };

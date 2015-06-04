@@ -261,7 +261,7 @@ copyname_num(struct siomix_sun_hdl *hdl,
 
 	sep = strchr(info->label.name, '_');
 	if (sep) {
-		strlcpy(desc->grp, "mix", SIOMIX_NAMEMAX);
+		strlcpy(desc->func, "mix", SIOMIX_NAMEMAX);
 		desc->type = SIOMIX_VEC;
 		len = sep - info->label.name;
 		if (len >= SIOMIX_NAMEMAX - 1)
@@ -273,7 +273,7 @@ copyname_num(struct siomix_sun_hdl *hdl,
 			desc->chan1.str, rmin, rnum))
 			return 0;
 	} else {
-		strlcpy(desc->grp, "level", SIOMIX_NAMEMAX);
+		strlcpy(desc->func, "level", SIOMIX_NAMEMAX);
 		desc->type = SIOMIX_NUM;
 		istr = info->label.name;
 		if (!copy_ch(hdl, info->mixer_class, istr,
@@ -299,7 +299,7 @@ copyname_enum(struct siomix_sun_hdl *hdl,
 			fprintf(stderr, "no separator\n");
 			return 0;
 		}
-		strlcpy(desc->grp, info->label.name, SIOMIX_NAMEMAX);
+		strlcpy(desc->func, info->label.name, SIOMIX_NAMEMAX);
 		while (info->prev >= 0)
 			info = hdl->info + info->prev;
 		if (!copy_ch(hdl, info->mixer_class, info->label.name,
@@ -307,7 +307,7 @@ copyname_enum(struct siomix_sun_hdl *hdl,
 			return 0;
 		desc->chan1.str[0] = 0;
 	} else {
-		strlcpy(desc->grp, sep + 1, SIOMIX_NAMEMAX);
+		strlcpy(desc->func, sep + 1, SIOMIX_NAMEMAX);
 		len = sep - info->label.name;
 		if (len >= SIOMIX_NAMEMAX - 1)
 			return 0;
@@ -322,9 +322,9 @@ copyname_enum(struct siomix_sun_hdl *hdl,
 	 * certain cards expose adc[0-1].source and adc[2-3].source
 	 * as different types, which we forbid.
 	 */
-	if (strcmp(desc->grp, "source") == 0) {
+	if (strcmp(desc->func, "source") == 0) {
 		if (info->type == AUDIO_MIXER_SET)
-			strlcpy(desc->grp, "sources", SIOMIX_NAMEMAX);
+			strlcpy(desc->func, "sources", SIOMIX_NAMEMAX);
 	}
 	return 1;
 }
@@ -367,7 +367,7 @@ enum_to_sw(struct mixer_devinfo *info, struct siomix_desc *desc)
 	if (strcmp(v0, "off") == 0 && strcmp(v1, "on") == 0)
 		goto make_sw;
 	if (strcmp(v0, "unplugged") == 0 && strcmp(v1, "plugged") == 0) {
-		strlcpy(desc->grp,
+		strlcpy(desc->func,
 	            info->un.e.member[1].label.name,
 		    SIOMIX_NAMEMAX);
 		goto make_sw;

@@ -124,7 +124,7 @@ struct amsg_mix_chan {
 struct amsg_mix_desc {
 	struct amsg_mix_chan chan0;	/* affected channels */
 	struct amsg_mix_chan chan1;	/* dito for AMSG_MIX_{SEL,VEC,LIST} */
-	char grp[AMSG_MIX_NAMEMAX];	/* parameter group name */
+	char func[AMSG_MIX_NAMEMAX];	/* parameter group name */
 	uint8_t type;			/* see siomix_desc structure */
 	uint8_t __pad[1];
 	uint16_t addr;			/* control address */

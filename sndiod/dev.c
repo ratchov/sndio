@@ -2042,7 +2042,7 @@ ctl_log(struct ctl *c)
 {
 	ctl_chan_log(&c->chan0);
 	log_puts(".");
-	log_puts(c->grp);
+	log_puts(c->func);
 	log_puts("=");
 	switch (c->type) {
 	case CTL_NUM:
@@ -2090,13 +2090,13 @@ dev_uniqname(struct dev *d, char *templ, char *name)
  */
 struct ctl *
 dev_addctl(struct dev *d, int type, int addr,
-    char *str0, char *opt0, char *grp, char *str1, char *opt1)
+    char *str0, char *opt0, char *func, char *str1, char *opt1)
 {
 	struct ctl *c;
 	
 	c = xmalloc(sizeof(struct ctl));
 	c->type = type;
-	strlcpy(c->grp, grp, CTL_NAMEMAX);
+	strlcpy(c->func, func, CTL_NAMEMAX);
 	strlcpy(c->chan0.str, str0, CTL_NAMEMAX);
 	strlcpy(c->chan0.opt, opt0, CTL_NAMEMAX);
 	if (c->type == CTL_VEC ||

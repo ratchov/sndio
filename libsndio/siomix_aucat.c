@@ -78,7 +78,7 @@ siomix_aucat_rdata(struct siomix_aucat_hdl *hdl)
 		strlcpy(desc.chan0.opt, c->chan0.opt, SIOMIX_NAMEMAX);
 		strlcpy(desc.chan1.str, c->chan1.str, SIOMIX_NAMEMAX);
 		strlcpy(desc.chan1.opt, c->chan1.opt, SIOMIX_NAMEMAX);
-		strlcpy(desc.grp, c->grp, SIOMIX_NAMEMAX);
+		strlcpy(desc.func, c->func, SIOMIX_NAMEMAX);
 		desc.type = c->type;
 		desc.addr = ntohs(c->addr);
 		_siomix_ondesc_cb(&hdl->siomix, &desc, ntohs(c->curval));

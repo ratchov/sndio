@@ -85,7 +85,7 @@ cmpdesc(struct siomix_desc *d1, struct siomix_desc *d2)
 	res = d1->type - d2->type;
 	if (res != 0)
 		return res;
-	res = strcmp(d1->grp, d2->grp);
+	res = strcmp(d1->func, d2->func);
 	if (res != 0)
 		return res;
 	res = strcmp(d1->chan0.opt, d2->chan0.opt);
@@ -149,13 +149,13 @@ vecent(struct info *i, char *vstr, char *vopt)
 struct info *
 nextgrp(struct info *i)
 {
-	char *str, *grp;
+	char *str, *func;
 
-	grp = i->desc.grp;
+	func = i->desc.func;
 	str = i->desc.chan0.str;
 	for (i = i->next; i != NULL; i = i->next) {
 		if (strcmp(i->desc.chan0.str, str) != 0 ||
-		    strcmp(i->desc.grp, grp) != 0)
+		    strcmp(i->desc.func, func) != 0)
 			return i;
 	}
 	return NULL;
@@ -167,14 +167,14 @@ nextgrp(struct info *i)
 struct info *
 nextpar(struct info *i)
 {
-	char *str, *opt, *grp;
+	char *str, *opt, *func;
 
-	grp = i->desc.grp;
+	func = i->desc.func;
 	str = i->desc.chan0.str;
 	opt = i->desc.chan0.opt;
 	for (i = i->next; i != NULL; i = i->next) {
 		if (strcmp(i->desc.chan0.str, str) != 0 ||
-		    strcmp(i->desc.grp, grp) != 0)
+		    strcmp(i->desc.func, func) != 0)
 			break;
 		if (strcmp(i->desc.chan0.opt, opt) != 0)
 			return i;
@@ -188,14 +188,14 @@ nextpar(struct info *i)
 struct info *
 firstent(struct info *g, char *vstr)
 {
-	char *astr, *grp;
+	char *astr, *func;
 	struct info *i;
 
 	astr = g->desc.chan0.str;
-	grp = g->desc.grp;
+	func = g->desc.func;
 	for (i = g; i != NULL; i = i->next) {
 		if (strcmp(i->desc.chan0.str, astr) != 0 ||
-		    strcmp(i->desc.grp, grp) != 0)
+		    strcmp(i->desc.func, func) != 0)
 			break;
 		if (!isdiag(i))
 			continue;
@@ -213,14 +213,14 @@ firstent(struct info *g, char *vstr)
 struct info *
 nextent(struct info *i, int mono)
 {
-	char *str, *opt, *grp;
+	char *str, *opt, *func;
 
-	grp = i->desc.grp;
+	func = i->desc.func;
 	str = i->desc.chan0.str;
 	opt = i->desc.chan0.opt;
 	for (i = i->next; i != NULL; i = i->next) {
 		if (strcmp(i->desc.chan0.str, str) != 0 ||
-		    strcmp(i->desc.grp, grp) != 0)
+		    strcmp(i->desc.func, func) != 0)
 			return NULL;
 		if (mono)
 			return i;
@@ -401,7 +401,7 @@ print_par(struct info *p, int mono)
 	int more;
 
 	print_chan(&p->desc.chan0, mono);
-	printf(".%s=", p->desc.grp);
+	printf(".%s=", p->desc.func);
 	if (i_flag)
 		print_desc(p, mono); 
 	else
@@ -419,7 +419,7 @@ print_par(struct info *p, int mono)
 					printf("\t#");
 					more = 1;
 				}
-				printf(" %s=%s", i->desc.grp, i->desc.chan1.str);
+				printf(" %s=%s", i->desc.func, i->desc.chan1.str);
 			}
 		}
 	}
@@ -551,7 +551,7 @@ dump(void)
 	for (i = infolist; i != NULL; i = i->next) {
 		printf("%03u:", i->ctladdr);
 		print_chan(&i->desc.chan0, 0);
-		printf(".%s", i->desc.grp);
+		printf(".%s", i->desc.func);
 		printf("=");
 		switch (i->desc.type) {
 		case SIOMIX_LABEL:
@@ -578,7 +578,7 @@ cmd(char *line)
 {
 	char *pos = line;
 	struct info *i, *e, *g;
-	char grp[SIOMIX_NAMEMAX], astr[SIOMIX_NAMEMAX], vstr[SIOMIX_NAMEMAX];
+	char func[SIOMIX_NAMEMAX], astr[SIOMIX_NAMEMAX], vstr[SIOMIX_NAMEMAX];
 	char aopt[SIOMIX_NAMEMAX], vopt[SIOMIX_NAMEMAX];
 	unsigned val, npar = 0, nent = 0;
 	int comma, mode;
@@ -590,14 +590,14 @@ cmd(char *line)
 		return 0;
 	}
 	pos++;
-	if (!parse_name(&pos, grp))
+	if (!parse_name(&pos, func))
 		return 0;
 	for (g = infolist;; g = g->next) {
 		if (g == NULL) {
-			fprintf(stderr, "%s.%s: no such group\n", astr, grp);
+			fprintf(stderr, "%s.%s: no such group\n", astr, func);
 			return 0;
 		}
-		if (strcmp(g->desc.grp, grp) == 0 &&
+		if (strcmp(g->desc.func, func) == 0 &&
 		    strcmp(g->desc.chan0.str, astr) == 0)
 			break;
 	}

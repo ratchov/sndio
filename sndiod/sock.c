@@ -1560,7 +1560,7 @@ sock_buildmsg(struct sock *f)
 			strlcpy(desc->chan1.opt, c->chan1.opt,
 			    AMSG_MIX_NAMEMAX);
 			desc->type = c->type;
-			strlcpy(desc->grp, c->grp, AMSG_MIX_NAMEMAX);
+			strlcpy(desc->func, c->func, AMSG_MIX_NAMEMAX);
 			desc->addr = htons(c->addr);
 			desc->curval = htons(c->curval);
 			desc++;

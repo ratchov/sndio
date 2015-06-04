@@ -114,7 +114,7 @@ struct ctl {
 	unsigned int type;		/* one of above */
 	unsigned int addr;		/* control address */
 #define CTL_NAMEMAX	16		/* max name lenght */
-	char grp[CTL_NAMEMAX];		/* parameter group name */
+	char func[CTL_NAMEMAX];		/* parameter group name */
 	struct ctl_chan {
 		char str[CTL_NAMEMAX];	/* stream name */
 		char opt[CTL_NAMEMAX];
