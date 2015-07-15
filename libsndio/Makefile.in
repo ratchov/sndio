@@ -14,7 +14,7 @@ LDADD = @ldadd@
 SO_CFLAGS = -fPIC
 
 # extra compiler flags to produce a shared library with the given name
-SO_LDFLAGS = -shared -Wl,-soname=libsndio.so.${MAJ}
+SO_LDFLAGS = -shared -Wl,-soname=libsndio.so.${MAJ}.${MIN}
 
 # variables defined on configure script command line (if any)
 @vars@
@@ -121,11 +121,8 @@ issetugid.o strlcat.o strlcpy.o strtonum.o
 libsndio.so.${MAJ}.${MIN}:	${OBJS}
 		${CC} ${LDFLAGS} ${SO_CFLAGS} ${SO_LDFLAGS} -o libsndio.so.${MAJ}.${MIN} ${OBJS} ${LDADD}
 
-libsndio.so.${MAJ}:
-		ln -sf libsndio.so.${MAJ}.${MIN} libsndio.so.${MAJ}
-
 libsndio.so:
-		ln -sf libsndio.so.${MAJ} libsndio.so
+		ln -sf libsndio.so.${MAJ}.${MIN} libsndio.so
 
 issetugid.o:	../bsd-compat/issetugid.c
 		${CC} ${CFLAGS} ${SO_CFLAGS} ${INCLUDE} ${DEFS} -c -o issetugid.o ../bsd-compat/issetugid.c
