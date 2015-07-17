@@ -53,7 +53,7 @@ struct file {
 #define FILE_INIT	0		/* ready */
 #define FILE_ZOMB	1		/* closed, but not free()d yet */
 	unsigned int state;		/* one of above */
-	unsigned int nfds;		/* max number of descriptors */	
+	unsigned int max_nfds;		/* max number of descriptors */	
 	char *name;			/* for debug purposes */
 };
 

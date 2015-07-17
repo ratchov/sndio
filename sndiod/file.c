@@ -233,7 +233,7 @@ file_new(struct fileops *ops, void *arg, char *name, unsigned int nfds)
 		return NULL;
 	}
 	f = xmalloc(sizeof(struct file));
-	f->nfds = nfds;
+	f->max_nfds = nfds;
 	f->ops = ops;
 	f->arg = arg;
 	f->name = name;
@@ -246,7 +246,7 @@ file_new(struct fileops *ops, void *arg, char *name, unsigned int nfds)
 		log_puts(": created\n");
 	}
 #endif
-	file_nfds += f->nfds;
+	file_nfds += f->max_nfds;
 	return f;
 }
 
@@ -259,7 +259,7 @@ file_del(struct file *f)
 		panic();
 	}
 #endif	
-	file_nfds -= f->nfds;
+	file_nfds -= f->max_nfds;
 	f->state = FILE_ZOMB;
 #ifdef DEBUG
 	if (log_level >= 3) {
@@ -279,10 +279,10 @@ file_poll(void)
 	struct timespec sleepts;
 	struct timespec ts0, ts1;
 	long us;
-	int i, n, nfds;
+	int i;
 #endif
 	long long delta_nsec;
-	int revents, res, immed;
+	int n, nfds, revents, res, immed;
 
 	/*
 	 * cleanup zombies
