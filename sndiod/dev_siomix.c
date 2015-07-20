@@ -142,16 +142,13 @@ dev_siomix_pollfd(void *arg, struct pollfd *pfd)
 {
 	struct dev *d = arg;
 	struct ctl *c;
-	int n, events = 0;
+	int events = 0;
 
 	for (c = d->ctl_list; c != NULL; c = c->next) {
 		if (c->dirty)
 			events |= POLLOUT;
 	}
-	n = siomix_pollfd(d->siomix.hdl, pfd, events);
-	if (events && n == 0)
-		return -1; /* immed */
-	return n;
+	return siomix_pollfd(d->siomix.hdl, pfd, events);
 }
 
 int

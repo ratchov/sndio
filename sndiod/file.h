@@ -47,13 +47,13 @@ struct fileops {
 
 struct file {
 	struct file *next;		/* next in file_list */
-	struct pollfd *pfd;		/* arg to poll(2) syscall */
 	struct fileops *ops;		/* event handlers */
 	void *arg;			/* argument to event handlers */
 #define FILE_INIT	0		/* ready */
 #define FILE_ZOMB	1		/* closed, but not free()d yet */
 	unsigned int state;		/* one of above */
 	unsigned int max_nfds;		/* max number of descriptors */	
+	unsigned int nfds;		/* number of descriptors polled */
 	char *name;			/* for debug purposes */
 };
 

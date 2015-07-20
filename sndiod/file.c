@@ -269,20 +269,56 @@ file_del(struct file *f)
 #endif
 }
 
+void
+file_process(struct file *f, struct pollfd *pfd)
+{
+	int revents;
+#ifdef DEBUG
+	struct timespec ts0, ts1;
+	long us;
+#endif
+
+#ifdef DEBUG
+	if (log_level >= 3)
+		clock_gettime(CLOCK_MONOTONIC, &ts0);
+#endif
+	revents = (f->state != FILE_ZOMB) ? 
+	    f->ops->revents(f->arg, pfd) : 0;
+	if ((revents & POLLHUP) && (f->state != FILE_ZOMB))
+		f->ops->hup(f->arg);
+	if ((revents & POLLIN) && (f->state != FILE_ZOMB))
+		f->ops->in(f->arg);
+	if ((revents & POLLOUT) && (f->state != FILE_ZOMB))
+		f->ops->out(f->arg);
+#ifdef DEBUG
+	if (log_level >= 3) {
+		clock_gettime(CLOCK_MONOTONIC, &ts1);
+		us = 1000000L * (ts1.tv_sec - ts0.tv_sec);
+		us += (ts1.tv_nsec - ts0.tv_nsec) / 1000;
+		if (log_level >= 4 || us >= 5000) {
+			file_log(f);
+			log_puts(": processed in ");
+			log_putu(us);
+			log_puts("us\n");
+		}
+	}
+#endif
+}
+
 int
 file_poll(void)
 {
-	struct pollfd pfds[MAXFDS];
+	struct pollfd pfds[MAXFDS], *pfd;
 	struct file *f, **pf;
 	struct timespec ts;
 #ifdef DEBUG
 	struct timespec sleepts;
-	struct timespec ts0, ts1;
-	long us;
 	int i;
 #endif
 	long long delta_nsec;
-	int n, nfds, revents, res, immed;
+	int nfds, res;
+
+	log_flush();
 
 	/*
 	 * cleanup zombies
@@ -304,47 +340,63 @@ file_poll(void)
 		return 0;
 	}
 
-	log_flush();
+	/*
+	 * fill pollfd structures
+	 */
 	nfds = 0;
-	immed = 0;
 	for (f = file_list; f != NULL; f = f->next) {
-		n = f->ops->pollfd(f->arg, pfds + nfds);
-		if (n == 0) {
-			f->pfd = NULL;
+		f->nfds = f->ops->pollfd(f->arg, pfds + nfds);
+		if (f->nfds == 0)
 			continue;
-		}
-		if (n < 0) {
-			immed = 1;
-			n = 0;
-		}
-		f->pfd = pfds + nfds;
-		nfds += n;
+		nfds += f->nfds;
 	}
 #ifdef DEBUG
 	if (log_level >= 4) {
 		log_puts("poll:");
-		for (i = 0; i < nfds; i++) {
+		pfd = pfds;
+		for (f = file_list; f != NULL; f = f->next) {
+			if (f->nfds == 0)
+				continue;
 			log_puts(" ");
-			for (f = file_list; f != NULL; f = f->next) {
-				if (f->pfd == &pfds[i]) {
-					log_puts(f->ops->name);
-					log_puts(": ");
-				}
+			log_puts(f->ops->name);
+			log_puts(":");
+			for (i = 0; i < f->nfds; i++) {
+				log_puts(" ");
+				log_putx(pfd->events);
+				pfd++;
 			}
-			log_putx(pfds[i].events);
 		}
 		log_puts("\n");
 	}
+#endif
+
+	/*
+	 * process files that do not rely on poll
+	 */
+	for (f = file_list; f != NULL; f = f->next) {
+		if (f->nfds > 0)
+			continue;
+		file_process(f, NULL);
+	}
+
+	/*
+	 * sleep
+	 */
+#ifdef DEBUG
 	clock_gettime(CLOCK_MONOTONIC, &sleepts);
 	file_utime += 1000000000LL * (sleepts.tv_sec - file_ts.tv_sec);
 	file_utime += sleepts.tv_nsec - file_ts.tv_nsec;
 #endif
-	if (!immed) {
-		res = poll(pfds, nfds, TIMER_MSEC);
-		if (res < 0 && errno != EINTR)
+	res = poll(pfds, nfds, TIMER_MSEC);
+	if (res < 0) {
+		if (errno != EINTR)
 			err(1, "poll");
-	} else
-		res = 0;
+		return 1;
+	}
+
+	/*
+	 * run timeouts
+	 */
 	clock_gettime(CLOCK_MONOTONIC, &ts);
 #ifdef DEBUG
 	file_wtime += 1000000000LL * (ts.tv_sec - sleepts.tv_sec);
@@ -363,37 +415,16 @@ file_poll(void)
 		if (log_level >= 2)
 			log_puts("ignored huge clock delta\n");
 	}
-	if (!immed && res <= 0)
-		return 1;
 
+	/*
+	 * process files that rely on poll
+	 */
+	pfd = pfds;
 	for (f = file_list; f != NULL; f = f->next) {
-		if (f->pfd == NULL)
+		if (f->nfds == 0)
 			continue;
-#ifdef DEBUG
-		if (log_level >= 3)
-			clock_gettime(CLOCK_MONOTONIC, &ts0);
-#endif
-		revents = (f->state != FILE_ZOMB) ? 
-		    f->ops->revents(f->arg, f->pfd) : 0;
-		if ((revents & POLLHUP) && (f->state != FILE_ZOMB))
-			f->ops->hup(f->arg);
-		if ((revents & POLLIN) && (f->state != FILE_ZOMB))
-			f->ops->in(f->arg);
-		if ((revents & POLLOUT) && (f->state != FILE_ZOMB))
-			f->ops->out(f->arg);
-#ifdef DEBUG
-		if (log_level >= 3) {
-			clock_gettime(CLOCK_MONOTONIC, &ts1);
-			us = 1000000L * (ts1.tv_sec - ts0.tv_sec);
-			us += (ts1.tv_nsec - ts0.tv_nsec) / 1000;
-			if (log_level >= 4 || us >= 5000) {
-				file_log(f);
-				log_puts(": processed in ");
-				log_putu(us);
-				log_puts("us\n");
-			}
-		}
-#endif
+		file_process(f, pfd);
+		pfd += f->nfds;
 	}
 	return 1;
 }
