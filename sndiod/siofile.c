@@ -32,7 +32,7 @@
 #include "siofile.h"
 #include "utils.h"
 
-#define WATCHDOG_USEC	2000000		/* 2 seconds */
+#define WATCHDOG_USEC	4000000		/* 4 seconds */
 
 void dev_sio_onmove(void *, int);
 void dev_sio_timeout(void *);
