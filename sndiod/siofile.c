@@ -230,6 +230,7 @@ dev_sio_close(struct dev *d)
 		log_puts(": closed\n");
 	}
 #endif
+	timo_del(&d->sio.watchdog);
 	dev_siomix_close(d);
 	file_del(d->sio.file);
 	sio_close(d->sio.hdl);	
@@ -497,5 +498,11 @@ dev_sio_hup(void *arg)
 {
 	struct dev *d = arg;
 
+#ifdef DEBUG
+	if (log_level >= 2) {
+		dev_log(d);
+		log_puts(": disconnected\n");
+	}
+#endif
 	dev_close(d);
 }
