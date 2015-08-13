@@ -55,7 +55,7 @@ Each control has an integer
 and an integer
 .Em value .
 Depending on the control type, its integer value represents either a
-continous quantity or a boolean.
+continuous quantity or a boolean.
 Any control may be changed by submitting
 a new value to its address.
 When values change, asynchronous notifications are sent.
@@ -118,7 +118,7 @@ stucture as follows:
 .Bd -literal
 struct siomix_chan {
 	char str[SIOMIX_NAMEMAX];	/* stream name */
-	char opt[SIOMIX_NAMEMAX];	/* optionnal channel */
+	char opt[SIOMIX_NAMEMAX];	/* optional channel */
 };
 
 struct siomix_desc {
@@ -137,7 +137,7 @@ struct siomix_desc {
 .Pp
 The
 .Va addr
-attribute is the mixer control address, useble with
+attribute is the mixer control address, usable with
 .Fn siomix_setval
 to set its value.
 .Pp
@@ -165,7 +165,7 @@ A label attached to the channel.
 In mixers exposed by
 .Xr sndiod 1 ,
 they correspond to program names.
-The label string in stored in the
+The label string is stored in the
 .Va chan1
 attribute and is not unique.
 Labels may dynamically change, but their
