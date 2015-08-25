@@ -6,6 +6,7 @@
 # Default-Start:     2 3 4 5
 # Default-Stop:      0 1 6
 # Short-Description: sndio audio and MIDI server
+# Description:       sndiod provides audio and MIDI services for sndio-supporting applications
 ### END INIT INFO
 
 PATH=/sbin:/usr/sbin:/bin:/usr/bin
