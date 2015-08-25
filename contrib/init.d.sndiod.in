@@ -12,7 +12,7 @@ PATH=/sbin:/usr/sbin:/bin:/usr/bin
 DESC="sndio audio and MIDI server"
 NAME="sndiod"
 DAEMON=@bindir@/sndiod
-DAEMON_ARGS=""
+DAEMON_OPTS=""
 SCRIPTNAME=/etc/init.d/$NAME
 
 # Exit if the package is not installed
@@ -31,7 +31,7 @@ case "$1" in
   start)
 	log_daemon_msg "Starting $DESC" "$NAME"
 	start-stop-daemon --start --quiet --oknodo \
-		--exec $DAEMON -- $DAEMON_ARGS
+		--exec $DAEMON -- $DAEMON_OPTS
 	log_end_msg $?
 	;;
   stop)
@@ -54,7 +54,7 @@ case "$1" in
 	start-stop-daemon --stop --quiet --oknodo \
 		--exec $DAEMON
 	start-stop-daemon --start --quiet --oknodo \
-		--exec $DAEMON -- $DAEMON_ARGS
+		--exec $DAEMON -- $DAEMON_OPTS
 	log_end_msg $?
 	;;
   *)
