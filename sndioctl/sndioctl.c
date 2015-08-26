@@ -780,6 +780,13 @@ ondesc(void *arg, struct siomix_desc *d, int curval)
 	for (pi = &infolist; (i = *pi) != NULL; pi = &i->next) {
 		cmp = cmpdesc(d, &i->desc);
 		if (cmp == 0) {
+			/* label is updated */
+			if (i->desc.type == SIOMIX_LABEL) {
+				memcpy(i->desc.chan1.str, d->chan1.str,
+				    SIOMIX_NAMEMAX);
+				print_par(i, 0);
+				return;
+			}
 			fprintf(stderr, "fatal: duplicate mixer knob:\n");
 			print_par(i, 0);
 			exit(1);
