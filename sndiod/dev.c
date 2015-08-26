@@ -2099,7 +2099,8 @@ dev_addctl(struct dev *d, int type, int addr,
 	strlcpy(c->func, func, CTL_NAMEMAX);
 	strlcpy(c->chan0.str, str0, CTL_NAMEMAX);
 	strlcpy(c->chan0.opt, opt0, CTL_NAMEMAX);
-	if (c->type == CTL_VEC ||
+	if (c->type == CTL_LABEL ||
+	    c->type == CTL_VEC ||
 	    c->type == CTL_LIST) {
 		strlcpy(c->chan1.str, str1, CTL_NAMEMAX);
 		strlcpy(c->chan1.opt, opt1, CTL_NAMEMAX);
