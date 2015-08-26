@@ -726,11 +726,10 @@ sio_alsa_setpar(struct sio_hdl *sh, struct sio_par *par)
 	unsigned irate, orate;
 	int err;
 
-	/* XXX: alloca */
-	snd_pcm_hw_params_malloc(&ohwp);
-	snd_pcm_sw_params_malloc(&oswp);
-	snd_pcm_hw_params_malloc(&ihwp);
-	snd_pcm_sw_params_malloc(&iswp);
+	snd_pcm_hw_params_alloca(&ohwp);
+	snd_pcm_sw_params_alloca(&oswp);
+	snd_pcm_hw_params_alloca(&ihwp);
+	snd_pcm_sw_params_alloca(&iswp);
 
 	sio_alsa_enctofmt(hdl, &ifmt, par->bits, par->sig, par->le);
 	irate = (par->rate == ~0U) ? 48000 : par->rate;
