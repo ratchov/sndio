@@ -383,7 +383,8 @@ file_poll(void)
 	/*
 	 * Sleep. Calculate the number off milliseconds poll(2) must
 	 * wait before the timo_update() needs to be called. If there're
-	 * no timeouts scheduled, then call poll(2) with -1 timeout.
+	 * no timeouts scheduled, then call poll(2) with infinite
+	 * timeout (i.e -1).
 	 */
 #ifdef DEBUG
 	clock_gettime(CLOCK_MONOTONIC, &sleepts);
