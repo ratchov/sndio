@@ -27,13 +27,6 @@
 #define DEFAULT_OPT		"default"
 
 /*
- * limits
- */
-#define AMSG_MIX_NAMEMAX	16	/* max name length */
-#define AMSG_MIX_INTMAX		127	/* max channel number */
-#define AMSG_MIX_HALF		64	/* also bool threshold */
-
-/*
  * WARNING: since the protocol may be simultaneously used by static
  * binaries or by different versions of a shared library, we are not
  * allowed to change the packet binary representation in a backward
@@ -55,8 +48,6 @@ struct amsg {
 #define AMSG_HELLO	10	/* say hello, check versions and so ... */
 #define AMSG_BYE	11	/* ask server to drop connection */
 #define AMSG_AUTH	12	/* send authentication cookie */
-#define AMSG_MIXSUB	13	/* ondesc/onctl subscription */
-#define AMSG_MIXSET	14	/* set mixer control value */
 	uint32_t cmd;
 	uint32_t __pad;
 	union {
@@ -101,35 +92,7 @@ struct amsg {
 #define AMSG_COOKIELEN	16
 			uint8_t cookie[AMSG_COOKIELEN];
 		} auth;
-		struct amsg_mixsub {
-			uint8_t desc, val;
-		} mixsub;
-		struct amsg_mixset {
-			uint16_t addr, val;
-		} mixset;
 	} u;
-};
-
-/*
- * subset of channels of a stream
- */
-struct amsg_mix_chan {
-	char str[AMSG_MIX_NAMEMAX];	/* stream name */
-	char opt[AMSG_MIX_NAMEMAX];	/* stream name */
-};
-
-/*
- * description of a control (index, value) pair
- */
-struct amsg_mix_desc {
-	struct amsg_mix_chan chan0;	/* affected channels */
-	struct amsg_mix_chan chan1;	/* dito for AMSG_MIX_{SEL,VEC,LIST} */
-	char func[AMSG_MIX_NAMEMAX];	/* parameter group name */
-	uint8_t type;			/* see siomix_desc structure */
-	uint8_t __pad[1];
-	uint16_t addr;			/* control address */
-	uint16_t __pad2[1];
-	uint16_t curval;
 };
 
 /*

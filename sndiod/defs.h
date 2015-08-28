@@ -36,12 +36,9 @@
 #define MODE_MIDIOUT	0x04	/* allowed to read midi */
 #define MODE_MIDIIN	0x08	/* allowed to write midi */
 #define MODE_MON	0x10	/* allowed to monitor */
-#define MODE_MIXREAD	0x100	/* allowed to read mixer settings */
-#define MODE_MIXWRITE	0x200	/* allowed to change mixer settings */
 #define MODE_RECMASK	(MODE_REC | MODE_MON)
 #define MODE_AUDIOMASK	(MODE_PLAY | MODE_REC | MODE_MON)
 #define MODE_MIDIMASK	(MODE_MIDIIN | MODE_MIDIOUT)
-#define MODE_MIXMASK	(MODE_MIXREAD | MODE_MIXWRITE)
 
 /*
  * underrun/overrun policies, must be the same as SIO_ constants

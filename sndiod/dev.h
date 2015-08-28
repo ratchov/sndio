@@ -20,11 +20,6 @@
 #include "abuf.h"
 #include "dsp.h"
 #include "siofile.h"
-#include "dev_siomix.h"
-
-#define CTLADDR_SLOT_LEVEL(n)	(n)
-#define CTLADDR_SLOT_LABEL(n)	(DEV_NSLOT + n)
-#define CTLADDR_MASTER		(DEV_NSLOT + DEV_NSLOT)
 
 /*
  * audio stream state structure
@@ -101,39 +96,7 @@ struct slot {
 };
 
 /*
- * subset of channels of a stream
- */
-
-struct ctl {
-	struct ctl *next;
-#define CTL_NUM		2		/* number (aka integer value) */
-#define CTL_SW		3		/* on/off switch, only bit 7 counts */
-#define CTL_VEC		4		/* number, element of vector */
-#define CTL_LIST	5		/* switch, element of a list */
-#define CTL_LABEL	6		/* attach string to stream */
-	unsigned int type;		/* one of above */
-	unsigned int addr;		/* control address */
-#define CTL_NAMEMAX	16		/* max name lenght */
-	char func[CTL_NAMEMAX];		/* parameter group name */
-	struct ctl_chan {
-		char str[CTL_NAMEMAX];	/* stream name */
-		char opt[CTL_NAMEMAX];
-	} chan0, chan1;			/* affected channels */
-	unsigned int val_mask;
-	unsigned int desc_mask;
-	unsigned int curval;
-	int dirty;
-};
-
-struct ctlslot {
-	struct dev *dev;
-	unsigned int mask;
-	unsigned int mode;
-	int inuse;
-};
-
-/*
- * audio device with plenty of slots and knobs
+ * audio device with plenty of slots
  */
 struct dev {
 	struct dev *next;
@@ -144,7 +107,6 @@ struct dev {
 	 * audio device (while opened)
 	 */	
 	struct dev_sio sio;
-	struct dev_siomix siomix;
 	struct aparams par;			/* encoding */
 	int pchan, rchan;			/* play & rec channels */
 	adata_t *rbuf;				/* rec buffer */
@@ -224,15 +186,6 @@ struct dev {
 #define MMC_RUN		3			/* started */
 	unsigned int tstate;			/* one of above */
 	unsigned int master;			/* master volume controller */
-
-	/*
-	 * control
-	 */
-
-	unsigned int ctl_addr;			/* offset of own ctls */
-	struct ctl *ctl_list;
-#define DEV_NCTLSLOT 8
-	struct ctlslot ctlslot[DEV_NCTLSLOT];
 };
 
 extern struct dev *dev_list;
@@ -277,18 +230,5 @@ void slot_start(struct slot *);
 void slot_stop(struct slot *);
 void slot_read(struct slot *);
 void slot_write(struct slot *);
-
-/*
- * control related functions
- */
-void ctl_log(struct ctl *);
-struct ctlslot *ctlslot_new(struct dev *);
-void ctlslot_del(struct ctlslot *);
-int dev_setctl(struct dev *, int, int, unsigned int);
-int dev_onctl(struct dev *, int, int);
-int dev_nctl(struct dev *);
-void dev_label(struct dev *, int);
-struct ctl *dev_addctl(struct dev *, int, int,
-    char *, char *, char *, char *, char *);
 
 #endif /* !defined(DEV_H) */

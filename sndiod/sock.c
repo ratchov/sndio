@@ -104,10 +104,7 @@ sock_log(struct sock *f)
 		slot_log(f->slot);
 	else if (f->midi)
 		midi_log(f->midi);
-	else if (f->ctlslot) {
-		log_puts("ctlslot");
-		log_putu(f->ctlslot - f->ctlslot->dev->ctlslot);
-	} else
+	else
 		log_puts("sock");
 #ifdef DEBUG
 	if (log_level >= 3) {
@@ -153,11 +150,6 @@ sock_close(struct sock *f)
 	if (f->port) {
 		port_unref(f->port);
 		f->port = NULL;
-	}
-	if (f->ctlslot) {
-		ctlslot_del(f->ctlslot);
-		f->ctlslot = NULL;
-		xfree(f->ctldesc);
 	}
 	file_del(f->file);
 	close(f->fd);
@@ -286,7 +278,6 @@ sock_new(int fd)
 	f->slot = NULL;
 	f->port = NULL;
 	f->midi = NULL;
-	f->ctlslot = NULL;
 	f->tickpending = 0;
 	f->fillpending = 0;
 	f->stoppending = 0;
@@ -553,11 +544,6 @@ sock_wdata(struct sock *f)
 			data = abuf_rgetblk(&f->slot->sub.buf, &count);
 		else if (f->midi)
 			data = abuf_rgetblk(&f->midi->obuf, &count);
-		else {
-			data = (unsigned char *)f->ctldesc +
-			    (f->wsize - f->wtodo);
-			count = f->wtodo;
-		}
 		if (count > f->wtodo)
 			count = f->wtodo;
 		n = sock_fdwrite(f, data, count);
@@ -815,9 +801,6 @@ sock_hello(struct sock *f)
 	case MODE_REC:
 	case MODE_PLAY:
 	case MODE_PLAY | MODE_REC:
-	case MODE_MIXREAD:
-	case MODE_MIXWRITE:
-	case MODE_MIXREAD | MODE_MIXWRITE:
 		break;
 	default:
 #ifdef DEBUG
@@ -853,30 +836,6 @@ sock_hello(struct sock *f)
 			midi_link(f->midi, c->midi);
 		} else
 			return 0;
-		return 1;
-	}
-	if (mode & MODE_MIXMASK) {
-		d = dev_bynum(p->devnum);
-		if (d == NULL) {
-			if (log_level >= 2) {
-				sock_log(f);
-				log_puts(": ");
-				log_putu(p->devnum);
-				log_puts(": no such device\n");
-			}
-			return 0;
-		}
-		f->ctlslot = ctlslot_new(d);
-		if (f->ctlslot == NULL) {
-			if (log_level >= 2) {
-				sock_log(f);
-				log_puts(": couldn't get slot\n");
-			}
-			return 0;
-		}
-		f->ctldesc = xmalloc(dev_nctl(f->ctlslot->dev) *
-		    sizeof(struct amsg_mix_desc));
-		f->ctlops = 0;
 		return 1;
 	}
 	f->opt = opt_byname(p->opt, p->devnum);
@@ -936,7 +895,6 @@ sock_hello(struct sock *f)
 int
 sock_execmsg(struct sock *f)
 {
-	struct ctl *c;
 	struct slot *s = f->slot;
 	struct amsg *m = &f->rmsg;
 	unsigned char *data;
@@ -1236,83 +1194,8 @@ sock_execmsg(struct sock *f)
 		f->rtodo = sizeof(struct amsg);
 		f->rstate = SOCK_RMSG;
 		f->lastvol = ctl; /* dont trigger feedback message */
-		slot_setvol(f->slot, ctl);
+		slot_setvol(s, ctl);
 		dev_midi_vol(s->dev, s);
-		dev_onctl(s->dev, s->dev->ctl_addr +
-		    CTLADDR_SLOT_LEVEL(f->slot - s->dev->slot), ctl);
-		break;
-	case AMSG_MIXSUB:
-#ifdef DEBUG
-		if (log_level >= 3) {
-			sock_log(f);
-			log_puts(": MIXSUB message, desc = ");
-			log_putx(m->u.mixsub.desc);
-			log_puts(", val = ");
-			log_putx(m->u.mixsub.val);
-			log_puts("\n");
-		}
-#endif
-		if (f->pstate != SOCK_INIT || f->ctlslot == NULL) {
-#ifdef DEBUG
-			if (log_level >= 1) {
-				sock_log(f);
-				log_puts(": MIXSUB, wrong state\n");
-			}
-#endif
-			sock_close(f);
-			return 0;
-		}
-		if (m->u.mixsub.desc) {
-			if (!(f->ctlops & SOCK_CTLDESC)) {
-				ctl = f->ctlslot->mask;
-				c = f->ctlslot->dev->ctl_list;
-				while (c != NULL) {
-					c->desc_mask |= ctl;
-					c = c->next;
-				}
-			}
-			f->ctlops |= SOCK_CTLDESC;
-		} else
-			f->ctlops &= ~SOCK_CTLDESC;
-		if (m->u.mixsub.val) {
-			f->ctlops |= SOCK_CTLVAL;
-		} else
-			f->ctlops &= ~SOCK_CTLVAL;
-		f->rstate = SOCK_RMSG;
-		f->rtodo = sizeof(struct amsg);
-		break;
-	case AMSG_MIXSET:
-#ifdef DEBUG
-		if (log_level >= 3) {
-			sock_log(f);
-			log_puts(": MIXSET message\n");
-		}
-#endif
-		if (f->pstate < SOCK_INIT || f->ctlslot == NULL) {
-#ifdef DEBUG
-			if (log_level >= 1) {
-				sock_log(f);
-				log_puts(": MIXSET, wrong state\n");
-			}
-#endif
-			sock_close(f);
-			return 0;
-		}
-		if (!dev_setctl(f->ctlslot->dev,
-			ntohs(m->u.mixset.addr),
-			ntohs(m->u.mixset.val),
-			f->ctlslot->mask)) {
-#ifdef DEBUG
-			if (log_level >= 1) {
-				sock_log(f);
-				log_puts(": MIXSET, wrong addr/val\n");
-			}
-#endif
-			sock_close(f);
-			return 0;
-		}
-		f->rtodo = sizeof(struct amsg);
-		f->rstate = SOCK_RMSG;
 		break;
 	case AMSG_AUTH:
 #ifdef DEBUG
@@ -1401,9 +1284,7 @@ sock_execmsg(struct sock *f)
 int
 sock_buildmsg(struct sock *f)
 {
-	unsigned int size, mask;
-	struct amsg_mix_desc *desc;
-	struct ctl *c;
+	unsigned int size;	
 
 	/*
 	 * If pos changed (or initial tick), build a MOVE message.
@@ -1541,66 +1422,6 @@ sock_buildmsg(struct sock *f)
 		f->wtodo = sizeof(struct amsg);
 		f->wstate = SOCK_WMSG;
 		return 1;
-	}
-
-	if (f->ctlslot && (f->ctlops & SOCK_CTLDESC)) {
-		desc = f->ctldesc;
-		mask = f->ctlslot->mask;
-		for (c = f->ctlslot->dev->ctl_list; c != NULL; c = c->next) {
-			if ((c->desc_mask & mask) == 0)
-				continue;
-			c->desc_mask &= ~mask;
-			c->val_mask &= ~mask;
-			strlcpy(desc->chan0.str, c->chan0.str,
-			    AMSG_MIX_NAMEMAX);
-			strlcpy(desc->chan0.opt, c->chan0.opt,
-			    AMSG_MIX_NAMEMAX);
-			strlcpy(desc->chan1.str, c->chan1.str,
-			    AMSG_MIX_NAMEMAX);
-			strlcpy(desc->chan1.opt, c->chan1.opt,
-			    AMSG_MIX_NAMEMAX);
-			desc->type = c->type;
-			strlcpy(desc->func, c->func, AMSG_MIX_NAMEMAX);
-			desc->addr = htons(c->addr);
-			desc->curval = htons(c->curval);
-			desc++;
-		}
-		if (desc != f->ctldesc) {
-			size = (char *)desc - (char *)f->ctldesc;
-			AMSG_INIT(&f->wmsg);
-			f->wmsg.cmd = htonl(AMSG_DATA);
-			f->wmsg.u.data.size = htonl(size);
-			f->wtodo = sizeof(struct amsg);
-			f->wstate = SOCK_WMSG;
-#ifdef DEBUG
-			if (log_level >= 3) {
-				sock_log(f);
-				log_puts(": building mixer DATA message\n");
-			}
-#endif
-			return 1;
-		}
-	}
-	if (f->ctlslot && (f->ctlops & SOCK_CTLVAL)) {
-		mask = f->ctlslot->mask;
-		for (c = f->ctlslot->dev->ctl_list; c != NULL; c = c->next) {
-			if ((c->val_mask & mask) == 0)
-				continue;
-			c->val_mask &= ~mask;
-			AMSG_INIT(&f->wmsg);
-			f->wmsg.cmd = htonl(AMSG_MIXSET);
-			f->wmsg.u.mixset.addr = htons(c->addr);
-			f->wmsg.u.mixset.val = htons(c->curval);
-			f->wtodo = sizeof(struct amsg);
-			f->wstate = SOCK_WMSG;
-#ifdef DEBUG
-			if (log_level >= 3) {
-				sock_log(f);
-				log_puts(": building mixer MIXSET message\n");
-			}
-#endif
-			return 1;
-		}
 	}
 #ifdef DEBUG
 	if (log_level >= 4) {

@@ -90,10 +90,6 @@ void slot_write(struct slot *);
 void slot_read(struct slot *);
 int slot_skip(struct slot *);
 
-void ctl_chan_log(struct ctl_chan *);
-void ctl_log(struct ctl *);
-void dev_uniqname(struct dev *, char *, char *);
-
 struct midiops dev_midiops = {
 	dev_midi_imsg,
 	dev_midi_omsg,
@@ -427,8 +423,6 @@ dev_midi_omsg(void *arg, unsigned char *msg, int len)
 		if (chan >= DEV_NSLOT)
 			return;
 		slot_setvol(d->slot + chan, msg[2]);
-		dev_onctl(d,
-		    d->ctl_addr + CTLADDR_SLOT_LEVEL(chan), msg[2]);
 		return;
 	}
 	x = (struct sysex *)msg;
@@ -439,11 +433,8 @@ dev_midi_omsg(void *arg, unsigned char *msg, int len)
 	switch (x->type) {
 	case SYSEX_TYPE_RT:
 		if (x->id0 == SYSEX_CONTROL && x->id1 == SYSEX_MASTER) {
-			if (len == SYSEX_SIZE(master)) {
+			if (len == SYSEX_SIZE(master))
 				dev_master(d, x->u.master.coarse);
-				dev_onctl(d, d->ctl_addr + CTLADDR_MASTER,
-				    x->u.master.coarse);
-			}
 			return;
 		}
 		if (x->id0 != SYSEX_MMC)
@@ -1017,17 +1008,10 @@ dev_new(char *path, struct aparams *par,
 		d->slot[i].serial = d->serial++;
 		d->slot[i].name[0] = '\0';
 	}
-	for (i = 0; i < DEV_NCTLSLOT; i++) {
-		d->ctlslot[i].dev = d;
-		d->ctlslot[i].mask = 0;
-		d->ctlslot[i].mode = 0;
-		d->ctlslot[i].inuse = 0;
-	}
 	d->slot_list = NULL;
 	d->master = MIDI_MAXCTL;
 	d->mtc.origin = 0;
 	d->tstate = MMC_STOP;
-	d->ctl_list = NULL;
 	d->next = dev_list;
 	dev_list = d;
 	return d;
@@ -1058,10 +1042,6 @@ dev_adjpar(struct dev *d, int mode,
 int
 dev_open(struct dev *d)
 {
-	char ctlname[CTL_NAMEMAX];
-	struct ctl *c;
-	int i;
-
 	d->mode = d->reqmode;
 	d->round = d->reqround;
 	d->bufsz = d->reqbufsz;
@@ -1136,29 +1116,6 @@ dev_open(struct dev *d)
 		log_putu(d->round);
 		log_puts(" frames\n");
 	}
-
-	d->ctl_addr = 0;
-	for (c = d->ctl_list; c != NULL; c = c->next) {
-		if (d->ctl_addr < c->addr)
-			d->ctl_addr = c->addr;
-	}
-	d->ctl_addr++;
-
-	for (i = 0; i < DEV_NSLOT; i++) {
-		dev_uniqname(d, "prog", ctlname);
-		c = dev_addctl(d, CTL_NUM,
-		    d->ctl_addr + CTLADDR_SLOT_LEVEL(i),
-		    ctlname, "", "level", NULL, NULL);
-		c->curval = d->slot[i].vol;
-		dev_addctl(d, CTL_LABEL,
-		    d->ctl_addr + CTLADDR_SLOT_LABEL(i),
-		    ctlname, "", "name", d->slot[i].name, "");
-	}
-	dev_uniqname(d, "sndiod", ctlname);
-	c = dev_addctl(d, CTL_NUM,
-	    d->ctl_addr + CTLADDR_MASTER,
-	    ctlname, "", "level", NULL, NULL);
-	c->curval = d->master;
 	return 1;
 }
 
@@ -1171,7 +1128,6 @@ dev_close(struct dev *d)
 {
 	int i;
 	struct slot *s;
-	struct ctl *c;
 
 #ifdef DEBUG
 	if (log_level >= 3) {
@@ -1179,10 +1135,6 @@ dev_close(struct dev *d)
 		log_puts(": closing\n");
 	}
 #endif
-	while ((c = d->ctl_list) != NULL) {
-		d->ctl_list = c->next;
-		xfree(c);
-	}
 	d->pstate = DEV_CFG;
 	for (s = d->slot, i = DEV_NSLOT; i > 0; i--, s++) {
 		if (s->ops)
@@ -1560,7 +1512,6 @@ slot_new(struct dev *d, char *who, struct slotops *ops, void *arg, int mode)
 found:
 	if (!dev_ref(d))
 		return NULL;
-	dev_label(d, s - d->slot);
 	s->dev = d;
 	s->ops = ops;
 	s->arg = arg;
@@ -1988,230 +1939,4 @@ void
 slot_read(struct slot *s)
 {
 	slot_skip_update(s);
-}
-
-/*
- * allocate at control slot
- */
-struct ctlslot *
-ctlslot_new(struct dev *d)
-{
-	struct ctlslot *s;
-	int i;
-
-	i = 0;
-	for (;;) {
-		if (i == DEV_NCTLSLOT)
-			return NULL;
-		s = d->ctlslot + i;
-		if (!s->inuse)
-			break;
-		i++;
-	}
-	s->dev = d;
-	s->mask = 1 << i;
-	if (!dev_ref(d))
-		return NULL;
-	s->inuse = 1;
-	return s;
-}
-
-/*
- * free control slot
- */
-void
-ctlslot_del(struct ctlslot *s)
-{
-	s->inuse = 0;
-	dev_unref(s->dev);
-}
-
-void
-ctl_chan_log(struct ctl_chan *c)
-{
-	log_puts(c->str);
-	if (strlen(c->opt) > 0) {
-		log_puts("[");
-		log_puts(c->opt);
-		log_puts("]");
-	}
-}
-
-void
-ctl_log(struct ctl *c)
-{
-	ctl_chan_log(&c->chan0);
-	log_puts(".");
-	log_puts(c->func);
-	log_puts("=");
-	switch (c->type) {
-	case CTL_NUM:
-	case CTL_SW:
-		log_putu(c->curval);
-		break;
-	case CTL_VEC:
-	case CTL_LIST:
-		ctl_chan_log(&c->chan1);
-		log_puts(":");
-		log_putu(c->curval);
-		break;
-	case CTL_LABEL:
-		ctl_chan_log(&c->chan1);
-	}
-	log_puts(" at ");
-	log_putu(c->addr);
-}
-
-void
-dev_uniqname(struct dev *d, char *templ, char *name)
-{
-	int i;
-	struct ctl *c;
-
-	i = 0;
-	for (;;) {
-		snprintf(name, CTL_NAMEMAX, "%s%u", templ, i);
-		c = d->ctl_list;
-		for (;;) {
-			if (c == NULL)
-				return;
-			if (strcmp(name, c->chan0.str) == 0 ||
-			    strcmp(name, c->chan1.str) == 0) {
-				i++;
-				break;
-			}
-			c = c->next;
-		}
-	}
-}
-
-/*
- * add a ctl
- */
-struct ctl *
-dev_addctl(struct dev *d, int type, int addr,
-    char *str0, char *opt0, char *func, char *str1, char *opt1)
-{
-	struct ctl *c;
-	
-	c = xmalloc(sizeof(struct ctl));
-	c->type = type;
-	strlcpy(c->func, func, CTL_NAMEMAX);
-	strlcpy(c->chan0.str, str0, CTL_NAMEMAX);
-	strlcpy(c->chan0.opt, opt0, CTL_NAMEMAX);
-	if (c->type == CTL_LABEL ||
-	    c->type == CTL_VEC ||
-	    c->type == CTL_LIST) {
-		strlcpy(c->chan1.str, str1, CTL_NAMEMAX);
-		strlcpy(c->chan1.opt, opt1, CTL_NAMEMAX);
-	} else
-		memset(&c->chan1, 0, sizeof(struct ctl_chan));
-	c->addr = addr;
-	c->val_mask = 0;
-	c->desc_mask = 0;
-	c->next = d->ctl_list;
-	d->ctl_list = c;
-	c->curval = 0;
-	c->dirty = 0;
-#ifdef DEBUG
-	if (log_level >= 3) {
-		dev_log(d);
-		log_puts(": adding ");
-		ctl_log(c);
-		log_puts("\n");
-	}
-#endif		
-	return c;
-}
-
-int
-dev_setctl(struct dev *d, int addr, int val, unsigned int mask)
-{
-	struct ctl *c;
-	int num;
-
-	if (val < 0 && val >= MIDI_MAXCTL)
-		return 0;
-	c = d->ctl_list;
-	for (;;) {
-		if (c == NULL)
-			return 0;
-		if (c->addr == addr)
-			break;
-		c = c->next;
-	}
-	if (addr < d->ctl_addr) {
-		if (log_level >= 3) {
-			ctl_log(c);
-			log_puts(": marked as dirty\n");
-		}
-		c->dirty = 1;
-		dev_ref(d);
-	} else {
-		addr -= d->ctl_addr;
-		if (addr >= CTLADDR_SLOT_LEVEL(0) &&
-		    addr <= CTLADDR_SLOT_LEVEL(DEV_NSLOT)) {
-			num = addr - CTLADDR_SLOT_LEVEL(0);
-			slot_setvol(d->slot + num, val);
-			dev_midi_vol(d, d->slot + num);
-		} else if (addr == CTLADDR_MASTER) {
-			dev_master(d, val);
-			dev_midi_master(d);
-		} else
-			return 0;
-	}
-	c->curval = val;
-	c->val_mask = ~mask;
-	return 1;
-}
-
-int
-dev_onctl(struct dev *d, int addr, int val)
-{
-	struct ctl *c;
-
-	c = d->ctl_list;
-	for (;;) {
-		if (c == NULL)
-			return 0;
-		if (c->addr == addr)
-			break;
-		c = c->next;
-	}
-	c->curval = val;
-	c->val_mask = ~0U;
-	return 1;
-}
-
-void
-dev_label(struct dev *d, int i)
-{
-	struct ctl *c;
-	int addr;
-
-	addr = d->ctl_addr + CTLADDR_SLOT_LABEL(i);
-	c = d->ctl_list;
-	for (;;) {
-		if (c == NULL)
-			return;
-		if (c->addr == addr)
-			break;
-		c = c->next;
-	}
-	if (strcmp(c->chan1.str, d->slot[i].name) == 0)
-		return;
-	strlcpy(c->chan1.str, d->slot[i].name, CTL_NAMEMAX);
-	c->desc_mask = ~0;
-}
-
-int
-dev_nctl(struct dev *d)
-{
-	struct ctl *c;
-	int n;
-
-	n = 0;
-	for (c = d->ctl_list; c != NULL; c = c->next)
-		n++;
-	return n;
 }

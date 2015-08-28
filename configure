@@ -18,8 +18,6 @@ Usage: configure [options]
 --disable-alsa			disable alsa audio & midi backends
 --enable-sun			enable sun audio backend [$sun]
 --disable-sun			disable sun audio backend
---enable-sun-mixer		enable sun audio mixer backend [$sun_mixer]
---disable-sun-mixer		disable sun audio mixer backend
 --enable-rmidi			enable character device midi backend [$rmidi]
 --disable-rmidi			disable character device midi backend
 --enable-xvolkeys		build xvolkeys utility (requires X) [$xvolkeys]
@@ -34,7 +32,6 @@ prefix=/usr/local			# where to install sndio
 so="libsndio.so.\${MAJ}.\${MIN}"	# shared libs to build
 alsa=no					# do we want alsa support ?
 sun=no					# do we want sun support ?
-sun_mixer=no				# do we want sun mixer support ?
 rmidi=no				# do we want support for raw char dev ?
 precision=16				# aucat/sndiod arithmetic precision
 user=_sndio				# non-privileged user for sndio daemon
@@ -107,12 +104,6 @@ for i; do
 	--disable-sun)
 		sun=no
 		shift;;
-	--enable-sun-mixer)
-		sun_mixer=yes
-		shift;;
-	--disable-sun-mixer)
-		sun_mixer=no
-		shift;;
 	--enable-rmidi)
 		rmidi=yes
 		shift;;
@@ -170,13 +161,6 @@ if [ $sun = yes ]; then
 fi
 
 #
-# if using Sun mixer API, add corresponding parameters
-#
-if [ $sun_mixer = yes ]; then
-	defs="$defs -DUSE_SUN_MIXER"
-fi
-
-#
 # if using raw character devices for midi, add corresponding parameters
 #
 if [ $rmidi = yes ]; then
@@ -215,7 +199,6 @@ user..................... $user
 precision................ $precision
 alsa..................... $alsa
 sun...................... $sun
-sun mixer................ $sun_mixer
 rmidi.................... $rmidi
 xvolkeys................. $xvolkeys
 
