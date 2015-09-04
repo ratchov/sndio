@@ -70,18 +70,9 @@ dev_siomix_ondesc(void *arg, struct siomix_desc *desc, int val)
 		c->desc_mask = ~0;
 		return;
 	}
-	c = dev_addctl(d, desc->type, desc->addr,
-	    desc->chan0.str, desc->chan0.opt, desc->func,
-	    desc->chan1.str, desc->chan1.opt);
-	c->curval = val;
-#ifdef DEBUG
-	if (log_level >= 3) {
-		dev_log(d);
-		log_puts(": added: ");
-		ctl_log(c);
-		log_puts("\n");
-	}
-#endif
+	dev_addctl(d, desc->type, desc->addr,
+	    desc->chan0.str, desc->chan0.unit, desc->func,
+	    desc->chan1.str, desc->chan1.unit, val);
 }
 
 void

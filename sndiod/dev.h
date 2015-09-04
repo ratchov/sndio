@@ -117,7 +117,7 @@ struct ctl {
 	char func[CTL_NAMEMAX];		/* parameter group name */
 	struct ctl_chan {
 		char str[CTL_NAMEMAX];	/* stream name */
-		char opt[CTL_NAMEMAX];
+		int unit;
 	} chan0, chan1;			/* affected channels */
 	unsigned int val_mask;
 	unsigned int desc_mask;
@@ -289,6 +289,6 @@ int dev_onctl(struct dev *, int, int);
 int dev_nctl(struct dev *);
 void dev_label(struct dev *, int);
 struct ctl *dev_addctl(struct dev *, int, int,
-    char *, char *, char *, char *, char *);
+    char *, int, char *, char *, int, int);
 
 #endif /* !defined(DEV_H) */

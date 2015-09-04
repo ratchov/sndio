@@ -92,7 +92,7 @@ int slot_skip(struct slot *);
 
 void ctl_chan_log(struct ctl_chan *);
 void ctl_log(struct ctl *);
-void dev_uniqname(struct dev *, char *, char *);
+int dev_makeunit(struct dev *, char *);
 
 struct midiops dev_midiops = {
 	dev_midi_imsg,
@@ -1058,9 +1058,8 @@ dev_adjpar(struct dev *d, int mode,
 int
 dev_open(struct dev *d)
 {
-	char ctlname[CTL_NAMEMAX];
 	struct ctl *c;
-	int i;
+	int unit, i;
 
 	d->mode = d->reqmode;
 	d->round = d->reqround;
@@ -1145,20 +1144,18 @@ dev_open(struct dev *d)
 	d->ctl_addr++;
 
 	for (i = 0; i < DEV_NSLOT; i++) {
-		dev_uniqname(d, "prog", ctlname);
+		unit = dev_makeunit(d, "prog");
 		c = dev_addctl(d, CTL_NUM,
 		    d->ctl_addr + CTLADDR_SLOT_LEVEL(i),
-		    ctlname, "", "level", NULL, NULL);
-		c->curval = d->slot[i].vol;
+		    "prog", unit, "level", NULL, -1, d->slot[i].vol);
 		dev_addctl(d, CTL_LABEL,
 		    d->ctl_addr + CTLADDR_SLOT_LABEL(i),
-		    ctlname, "", "name", d->slot[i].name, "");
+		    "prog", unit, "name", d->slot[i].name, -1, 0);
 	}
-	dev_uniqname(d, "sndiod", ctlname);
+	unit = dev_makeunit(d, "sndiod");
 	c = dev_addctl(d, CTL_NUM,
 	    d->ctl_addr + CTLADDR_MASTER,
-	    ctlname, "", "level", NULL, NULL);
-	c->curval = d->master;
+	    "sndiod", unit, "level", NULL, -1, d->master);
 	return 1;
 }
 
@@ -2030,11 +2027,8 @@ void
 ctl_chan_log(struct ctl_chan *c)
 {
 	log_puts(c->str);
-	if (strlen(c->opt) > 0) {
-		log_puts("[");
-		log_puts(c->opt);
-		log_puts("]");
-	}
+	if (c->unit >= 0)
+		log_putu(c->unit);
 }
 
 void
@@ -2062,27 +2056,31 @@ ctl_log(struct ctl *c)
 	log_putu(c->addr);
 }
 
-void
-dev_uniqname(struct dev *d, char *templ, char *name)
+int
+dev_makeunit(struct dev *d, char *name)
 {
 	int i;
 	struct ctl *c;
 
 	i = 0;
 	for (;;) {
-		snprintf(name, CTL_NAMEMAX, "%s%u", templ, i);
 		c = d->ctl_list;
 		for (;;) {
+			/* XXX: find a *range* of units, not only one */
 			if (c == NULL)
-				return;
-			if (strcmp(name, c->chan0.str) == 0 ||
-			    strcmp(name, c->chan1.str) == 0) {
+				return i;
+			if ((strcmp(name, c->chan0.str) == 0 &&
+				c->chan0.unit == i) ||
+			    (strcmp(name, c->chan1.str) == 0 &&
+				c->chan1.unit == i)) {
 				i++;
 				break;
 			}
 			c = c->next;
 		}
 	}
+	/* XXX: not reached */
+	return 0;
 }
 
 /*
@@ -2090,7 +2088,7 @@ dev_uniqname(struct dev *d, char *templ, char *name)
  */
 struct ctl *
 dev_addctl(struct dev *d, int type, int addr,
-    char *str0, char *opt0, char *func, char *str1, char *opt1)
+    char *str0, int unit0, char *func, char *str1, int unit1, int val)
 {
 	struct ctl *c;
 	
@@ -2098,12 +2096,12 @@ dev_addctl(struct dev *d, int type, int addr,
 	c->type = type;
 	strlcpy(c->func, func, CTL_NAMEMAX);
 	strlcpy(c->chan0.str, str0, CTL_NAMEMAX);
-	strlcpy(c->chan0.opt, opt0, CTL_NAMEMAX);
+	c->chan0.unit = unit0;
 	if (c->type == CTL_LABEL ||
 	    c->type == CTL_VEC ||
 	    c->type == CTL_LIST) {
 		strlcpy(c->chan1.str, str1, CTL_NAMEMAX);
-		strlcpy(c->chan1.opt, opt1, CTL_NAMEMAX);
+		c->chan1.unit = unit1;
 	} else
 		memset(&c->chan1, 0, sizeof(struct ctl_chan));
 	c->addr = addr;
@@ -2111,7 +2109,7 @@ dev_addctl(struct dev *d, int type, int addr,
 	c->desc_mask = 0;
 	c->next = d->ctl_list;
 	d->ctl_list = c;
-	c->curval = 0;
+	c->curval = val;
 	c->dirty = 0;
 #ifdef DEBUG
 	if (log_level >= 3) {
