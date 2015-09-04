@@ -108,9 +108,9 @@ It's called once with a NULL argument to indicate that the full
 description was sent and that the caller has a consistent
 representation of the mixer.
 .Pp
-Then, whenever a mixer control description changes (currently only
-label strings may change, see below), the call-back is invoked with the
-updated information followed by a call with a NULL argument.
+Then, whenever a mixer control description changes, the call-back is
+invoked with the updated information followed by a call with a NULL
+argument.
 .Pp
 Controls are described by the
 .Va siomix_ondesc
@@ -118,7 +118,7 @@ stucture as follows:
 .Bd -literal
 struct siomix_chan {
 	char str[SIOMIX_NAMEMAX];	/* stream name */
-	char opt[SIOMIX_NAMEMAX];	/* optional channel */
+	int unit;			/* optional number */
 };
 
 struct siomix_desc {
@@ -127,9 +127,8 @@ struct siomix_desc {
 #define SIOMIX_SW		3	/* on/off switch */
 #define SIOMIX_VEC		4	/* element of array of numbers */
 #define SIOMIX_LIST		5	/* element of array of switches */
-#define SIOMIX_LABEL		6	/* string attached to chan0 */
 	unsigned int type;		/* one of above */
-	char func[SIOMIX_NAMEMAX];	/* parameter group name */
+	char func[SIOMIX_NAMEMAX];	/* function name */
 	struct siomix_chan chan0;	/* affected channels */
 	struct siomix_chan chan1;	/* dito for vec, and list */
 };
@@ -145,7 +144,7 @@ The
 .Va type
 attribute indicates what the structure describes.
 Possible types are:
-.Bl -tag -width "SIOMIX_LABEL"
+.Bl -tag -width "SIOMIX_LIST"
 .It SIOMIX_NUM
 A continuous control in the 0..SIOMIX_INTMAX range.
 For instance the volume of the speaker.
@@ -160,18 +159,6 @@ from the line input to the speaker.
 An element of an array of on/off switches.
 For instance the line-in position of the
 speaker source selector.
-.It SIOMIX_LABEL
-A label attached to the channel.
-In mixers exposed by
-.Xr sndiod 1 ,
-they correspond to program names.
-The label string is stored in the
-.Va chan1
-attribute and is not unique.
-Labels may dynamically change, but their
-.Va addr
-attribute remains the same and can be used to figure out which
-label is changing.
 .El
 .Pp
 The

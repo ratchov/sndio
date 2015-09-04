@@ -115,7 +115,8 @@ struct amsg {
  */
 struct amsg_mix_chan {
 	char str[AMSG_MIX_NAMEMAX];	/* stream name */
-	char opt[AMSG_MIX_NAMEMAX];	/* stream name */
+	int16_t unit;			/* stream number */
+	uint8_t __pad[2];
 };
 
 /*

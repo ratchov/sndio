@@ -86,7 +86,6 @@ _siomix_create(struct siomix_hdl *hdl, struct siomix_ops *ops,
 	hdl->ctl_cb = NULL;
 }
 
-
 int
 _siomix_psleep(struct siomix_hdl *hdl, int event)
 {
@@ -172,11 +171,12 @@ _siomix_ondesc_cb(struct siomix_hdl *hdl,
     struct siomix_desc *desc, unsigned int val)
 {
 	if (desc) {
-		DPRINTF("%u -> %s[%s].%s=%s[%s]\n",
+		DPRINTF("_siomix_ondesc_cb: %u -> %s[%d].%s=%s[%d]:%d\n",
 		    desc->addr,
-		    desc->chan0.str, desc->chan0.opt,
+		    desc->chan0.str, desc->chan0.unit,
 		    desc->func,
-		    desc->chan1.str, desc->chan1.opt);
+		    desc->chan1.str, desc->chan1.unit,
+		    val);
 	}
 	if (hdl->desc_cb)
 		hdl->desc_cb(hdl->desc_arg, desc, val);
@@ -185,6 +185,7 @@ _siomix_ondesc_cb(struct siomix_hdl *hdl,
 void
 _siomix_onctl_cb(struct siomix_hdl *hdl, unsigned int addr, unsigned int val)
 {
+	DPRINTF("_siomix_onctl_cb: %u -> %u\n", addr, val);
 	if (hdl->ctl_cb)
 		hdl->ctl_cb(hdl->ctl_arg, addr, val);
 }

@@ -24,7 +24,6 @@
 
 #define IS_IDENT(c) (((c) >= 'a' && (c) <= 'z') || \
 	    ((c) >= 'A' && (c) <= 'Z') ||	   \
-	    ((c) >= '0' && (c) <= '9') ||	   \
 	    ((c) == '_'))
 
 struct info {
@@ -44,21 +43,21 @@ struct info {
 int cmpdesc(struct siomix_desc *, struct siomix_desc *);
 int isdiag(struct info *);
 struct info *selpos(struct info *);
-struct info *vecent(struct info *, char *, char *);
+struct info *vecent(struct info *, char *, int);
 struct info *nextgrp(struct info *);
 struct info *nextpar(struct info *);
 struct info *firstent(struct info *, char *);
 struct info *nextent(struct info *, int);
-int matchpar(struct info *, char *, char *);
-int matchent(struct info *, char *, char *);
+int matchpar(struct info *, char *, int);
+int matchent(struct info *, char *, int);
 int ismono(struct info *);
 void print_chan(struct siomix_chan *, int);
 void print_desc(struct info *, int);
 void print_val(struct info *, int);
-void print_par(struct info *, int);
+void print_par(struct info *, int, char *);
 int parse_name(char **, char *);
 int parse_dec(char **, unsigned *);
-int parse_chan(char **, char *, char *);
+int parse_chan(char **, char *, int *);
 int parse_modeval(char **, int *, unsigned *);
 void dump(void);
 int cmd(char *);
@@ -69,7 +68,7 @@ void onctl(void *, unsigned, unsigned);
 
 struct siomix_hdl *hdl;
 struct info *infolist;
-int n_flag = 0, i_flag = 0, v_flag = 0, m_flag = 0;
+int i_flag = 0, v_flag = 0, m_flag = 0;
 
 /*
  * compare two siomix_desc structures, used to sort infolist
@@ -88,7 +87,7 @@ cmpdesc(struct siomix_desc *d1, struct siomix_desc *d2)
 	res = strcmp(d1->func, d2->func);
 	if (res != 0)
 		return res;
-	res = strcmp(d1->chan0.opt, d2->chan0.opt);
+	res = d1->chan0.unit - d2->chan0.unit;
 	if (d1->type == SIOMIX_VEC ||
 	    d1->type == SIOMIX_LIST) {
 		if (res != 0)
@@ -96,7 +95,7 @@ cmpdesc(struct siomix_desc *d1, struct siomix_desc *d2)
 		res = strcmp(d1->chan1.str, d2->chan1.str);
 		if (res != 0)
 			return res;	
-		res = strcmp(d1->chan1.opt, d2->chan1.opt);
+		res = d1->chan1.unit - d2->chan1.unit;
 	}
 	return res;
 }
@@ -107,10 +106,9 @@ cmpdesc(struct siomix_desc *d1, struct siomix_desc *d2)
 int
 isdiag(struct info *e)
 {
-	if (strlen(e->desc.chan0.opt) == 0 ||
-	    strlen(e->desc.chan1.opt) == 0)
+	if (e->desc.chan0.unit < 0 || e->desc.chan1.unit < 0)
 		return 1;
-	return strcmp(e->desc.chan1.opt, e->desc.chan0.opt) == 0;
+	return e->desc.chan1.unit == e->desc.chan0.unit;
 }
 
 /*
@@ -132,11 +130,11 @@ selpos(struct info *i)
  * find the selector or vector entry with the given name and channels
  */
 struct info *
-vecent(struct info *i, char *vstr, char *vopt)
+vecent(struct info *i, char *vstr, int vunit)
 {
 	while (i != NULL) {
 		if ((strcmp(i->desc.chan1.str, vstr) == 0) &&
-		    (strlen(vopt) == 0 || strcmp(i->desc.chan1.opt, vopt) == 0))
+		    (vunit < 0 || i->desc.chan1.unit == vunit))
 			break;
 		i = i->next;
 	}
@@ -167,16 +165,18 @@ nextgrp(struct info *i)
 struct info *
 nextpar(struct info *i)
 {
-	char *str, *opt, *func;
+	char *str, *func;
+	int unit;
 
 	func = i->desc.func;
 	str = i->desc.chan0.str;
-	opt = i->desc.chan0.opt;
+	unit = i->desc.chan0.unit;
 	for (i = i->next; i != NULL; i = i->next) {
 		if (strcmp(i->desc.chan0.str, str) != 0 ||
 		    strcmp(i->desc.func, func) != 0)
 			break;
-		if (strcmp(i->desc.chan0.opt, opt) != 0)
+		/* XXX: need to check for -1 ? */
+		if (i->desc.chan0.unit != unit)
 			return i;
 	}
 	return NULL;
@@ -213,18 +213,19 @@ firstent(struct info *g, char *vstr)
 struct info *
 nextent(struct info *i, int mono)
 {
-	char *str, *opt, *func;
+	char *str, *func;
+	int unit;
 
 	func = i->desc.func;
 	str = i->desc.chan0.str;
-	opt = i->desc.chan0.opt;
+	unit = i->desc.chan0.unit;
 	for (i = i->next; i != NULL; i = i->next) {
 		if (strcmp(i->desc.chan0.str, str) != 0 ||
 		    strcmp(i->desc.func, func) != 0)
 			return NULL;
 		if (mono)
 			return i;
-		if (strcmp(i->desc.chan0.opt, opt) == 0)
+		if (i->desc.chan0.unit == unit)
 			return i;
 	}
 	return NULL;
@@ -234,17 +235,17 @@ nextent(struct info *i, int mono)
  * return true if parameter matches the given name and channel range
  */
 int
-matchpar(struct info *i, char *astr, char *aopt)
+matchpar(struct info *i, char *astr, int aunit)
 {
 	if (strcmp(i->desc.chan0.str, astr) != 0)
 		return 0;
-	if (strlen(aopt) == 0)
+	if (aunit < 0)
 		return 1;
-	else if (strlen(i->desc.chan0.opt) == 0) {
-		fprintf(stderr, "opt used for parameter with no opt\n");
+	else if (i->desc.chan0.unit < 0) {
+		fprintf(stderr, "unit used for parameter with no unit\n");
 		exit(1);
 	}
-	return strcmp(i->desc.chan0.opt, aopt) == 0;
+	return i->desc.chan0.unit == aunit;
 }
 
 /*
@@ -252,17 +253,17 @@ matchpar(struct info *i, char *astr, char *aopt)
  * channel range
  */
 int
-matchent(struct info *i, char *vstr, char *vopt)
+matchent(struct info *i, char *vstr, int vunit)
 {
 	if (strcmp(i->desc.chan1.str, vstr) != 0)
 		return 0;
-	if (strlen(vopt) == 0)
+	if (vunit < 0)
 		return 1;
-	else if (strlen(i->desc.chan1.opt) == 0) {
-		fprintf(stderr, "opt used for parameter with no opt\n");
+	else if (i->desc.chan1.unit < 0) {
+		fprintf(stderr, "unit used for parameter with no unit\n");
 		exit(1);
 	}
-	return strcmp(i->desc.chan1.opt, vopt) == 0;
+	return i->desc.chan1.unit == vunit;
 }
 
 /*
@@ -277,8 +278,6 @@ ismono(struct info *g)
 
 	p1 = g;
 	switch (g->desc.type) {
-	case SIOMIX_LABEL:
-		break;
 	case SIOMIX_NUM:
 	case SIOMIX_SW:
 		for (p2 = g; p2 != NULL; p2 = nextpar(p2)) {
@@ -296,7 +295,7 @@ ismono(struct info *g)
 				} else {
 					e1 = vecent(p1,
 					    e2->desc.chan1.str,
-					    p1->desc.chan0.opt);
+					    p1->desc.chan0.unit);
 					if (e1 == NULL)
 						continue;
 					if (e1->curval != e2->curval)
@@ -316,8 +315,8 @@ void
 print_chan(struct siomix_chan *c, int mono)
 {
 	printf("%s", c->str);
-	if (!mono && strlen(c->opt) > 0) {
-		printf("[%s]", c->opt);
+	if (!mono && c->unit >= 0) {
+		printf("%d", c->unit);
 	}
 }
 
@@ -364,10 +363,6 @@ print_val(struct info *p, int mono)
 	int more;
 
 	switch (p->desc.type) {
-	case SIOMIX_LABEL:
-		printf("%s", p->desc.chan1.str);
-		//print_chan(&e->desc.chan1, mono);
-		break;
 	case SIOMIX_NUM:
 	case SIOMIX_SW:
 		printf("%u", p->curval);
@@ -395,34 +390,16 @@ print_val(struct info *p, int mono)
  * print ``<parameter>=<value>'' string (including '\n')
  */
 void
-print_par(struct info *p, int mono)
+print_par(struct info *p, int mono, char *comment)
 {
-	struct info *i;
-	int more;
-
 	print_chan(&p->desc.chan0, mono);
 	printf(".%s=", p->desc.func);
 	if (i_flag)
 		print_desc(p, mono); 
 	else
-		print_val(p, mono); 
-
-	/* append a comment with the labels (if any) */
-	if (!n_flag && p->desc.type != SIOMIX_LABEL) {
-		more = 0;
-		for (i = infolist; i != NULL; i = i->next) {
-			if (i->desc.type != SIOMIX_LABEL)
-				continue;
-			if (strcmp(i->desc.chan0.str, p->desc.chan0.str) == 0 &&
-			    strcmp(i->desc.chan0.opt, p->desc.chan0.opt) == 0) {
-				if (!more) {
-					printf("\t#");
-					more = 1;
-				}
-				printf(" %s=%s", i->desc.func, i->desc.chan1.str);
-			}
-		}
-	}
+		print_val(p, mono);
+	if (comment)
+		printf(" # %s", comment);
 	printf("\n");
 }
 
@@ -436,7 +413,7 @@ parse_name(char **line, char *name)
 	unsigned len = 0;
 
 	if (!IS_IDENT(*p)) {
-		fprintf(stderr, "letter/digit expected near '%s'\n", p);
+		fprintf(stderr, "letter expected near '%s'\n", p);
 		return 0;
 	}
 	while (IS_IDENT(*p)) {
@@ -483,25 +460,19 @@ parse_dec(char **line, unsigned *num)
  * parse a sub-stream, eg. "spkr[4-7]"
  */
 int
-parse_chan(char **line, char *str, char *opt)
+parse_chan(char **line, char *str, int *unit)
 {
 	char *p = *line;
 	
 	if (!parse_name(&p, str))
 		return 0;
-	if (*p != '[') {
-		*opt = 0;
+	if (*p < '0' || *p > '9') {
+		*unit = -1;
 		*line = p;
 		return 1;
 	}
-	p++;
-	if (!parse_name(&p, opt))
+	if (!parse_dec(&p, unit))
 		return 0;
-	if (*p != ']') {
-		fprintf(stderr, "']' expected near '%s'\n", p);
-		return 0;
-	}
-	p++;
 	*line = p;
 	return 1;
 }
@@ -554,9 +525,6 @@ dump(void)
 		printf(".%s", i->desc.func);
 		printf("=");
 		switch (i->desc.type) {
-		case SIOMIX_LABEL:
-			print_chan(&i->desc.chan1, 0);
-			break;
 		case SIOMIX_NUM:
 		case SIOMIX_SW:
 			printf("* (%u)", i->curval);
@@ -579,11 +547,11 @@ cmd(char *line)
 	char *pos = line;
 	struct info *i, *e, *g;
 	char func[SIOMIX_NAMEMAX], astr[SIOMIX_NAMEMAX], vstr[SIOMIX_NAMEMAX];
-	char aopt[SIOMIX_NAMEMAX], vopt[SIOMIX_NAMEMAX];
+	int aunit, vunit;
 	unsigned val, npar = 0, nent = 0;
 	int comma, mode;
 
-	if (!parse_chan(&pos, astr, aopt))
+	if (!parse_chan(&pos, astr, &aunit))
 		return 0;
 	if (*pos != '.') {
 		fprintf(stderr, "'.' expected near '%s'\n", pos);
@@ -621,7 +589,7 @@ cmd(char *line)
 		if (!parse_modeval(&pos, &mode, &val))
 			return 0;
 		for (i = g; i != NULL; i = nextpar(i)) {
-			if (!matchpar(i, astr, aopt))
+			if (!matchpar(i, astr, aunit))
 				continue;
 			i->mode = mode;
 			i->newval = val;
@@ -631,7 +599,7 @@ cmd(char *line)
 	case SIOMIX_VEC:
 	case SIOMIX_LIST:
 		for (i = g; i != NULL; i = nextpar(i)) {
-			if (!matchpar(i, astr, aopt))
+			if (!matchpar(i, astr, aunit))
 				continue;
 			for (e = i; e != NULL; e = nextent(e, 0)) {
 				e->newval = 0;
@@ -648,7 +616,7 @@ cmd(char *line)
 					break;
 				pos++;
 			}
-			if (!parse_chan(&pos, vstr, vopt))
+			if (!parse_chan(&pos, vstr, &vunit))
 				return 0;
 			if (*pos == ':') {
 				pos++;
@@ -660,10 +628,10 @@ cmd(char *line)
 			}
 			nent = 0;
 			for (i = g; i != NULL; i = nextpar(i)) {
-				if (!matchpar(i, astr, aopt))
+				if (!matchpar(i, astr, aunit))
 					continue;
 				for (e = i; e != NULL; e = nextent(e, 0)) {
-					if (matchent(e, vstr, vopt)) {
+					if (matchent(e, vstr, vunit)) {
 						e->newval = val;
 						e->mode = mode;
 						nent++;
@@ -671,8 +639,9 @@ cmd(char *line)
 				}
 			}
 			if (nent == 0) {
-				fprintf(stderr, "%s[%s]: invalid value\n", vstr, vopt);
-				print_par(g, 0);
+				/* XXX: use print_chan()-like routine */
+				fprintf(stderr, "%s[%d]: invalid value\n", vstr, vunit);
+				print_par(g, 0, NULL);
 				exit(1);
 			}
 			comma = 1;
@@ -747,15 +716,15 @@ list(void)
 		if (i_flag) {
 			if (v_flag) {
 				for (p = g; p != NULL; p = nextpar(p))
-					print_par(p, 0);
+					print_par(p, 0, NULL);
 			} else
-				print_par(g, 1);
+				print_par(g, 1, NULL);
 		} else {
 			if (v_flag || !ismono(g)) {
 				for (p = g; p != NULL; p = nextpar(p))
-					print_par(p, 0);
+					print_par(p, 0, NULL);
 			} else
-				print_par(g, 1);
+				print_par(g, 1, NULL);
 		}
 	}
 }
@@ -775,20 +744,26 @@ ondesc(void *arg, struct siomix_desc *d, int curval)
 		return;
 
 	/*
+	 * delete control
+	 */
+	for (pi = &infolist; (i = *pi) != NULL; pi = &i->next) {
+		if (d->addr == i->desc.addr) {
+			if (m_flag)
+				print_par(i, 0, "deleted");
+			*pi = i->next;
+			free(i);
+			break;
+		}
+	}
+
+	/*
 	 * find the right position to insert the new widget
 	 */
 	for (pi = &infolist; (i = *pi) != NULL; pi = &i->next) {
 		cmp = cmpdesc(d, &i->desc);
-		if (cmp == 0) {
-			/* label is updated */
-			if (i->desc.type == SIOMIX_LABEL) {
-				memcpy(i->desc.chan1.str, d->chan1.str,
-				    SIOMIX_NAMEMAX);
-				print_par(i, 0);
-				return;
-			}
+		if (cmp == 0) {			
 			fprintf(stderr, "fatal: duplicate mixer knob:\n");
-			print_par(i, 0);
+			print_par(i, 0, "duplicate");
 			exit(1);
 		}
 		if (cmp < 0)
@@ -805,6 +780,8 @@ ondesc(void *arg, struct siomix_desc *d, int curval)
 	i->mode = MODE_IGNORE;
 	i->next = *pi;
 	*pi = i;
+	if (m_flag)
+		print_par(i, 0, "added");
 }
 
 /*
@@ -815,13 +792,12 @@ onctl(void *arg, unsigned addr, unsigned val)
 {
 	struct info *i;
 
-	if (v_flag >= 1)
-		fprintf(stderr, "onctl (%d, %d)\n", addr, val);
 	for (i = infolist; i != NULL; i = i->next) {
 		if (i->ctladdr != addr)
 			continue;
 		i->curval = val;
-		print_par(i, 0);
+		if (m_flag)
+			print_par(i, 0, "changed");
 	}
 }
 
@@ -834,7 +810,7 @@ main(int argc, char **argv)
 	struct pollfd *pfds;
 	int nfds, revents;
 
-	while ((c = getopt(argc, argv, "df:imnv")) != -1) {
+	while ((c = getopt(argc, argv, "df:imv")) != -1) {
 		switch (c) {
 		case 'd':
 			d_flag = 1;
@@ -848,11 +824,8 @@ main(int argc, char **argv)
 		case 'm':
 			m_flag = 1;
 			break;
-		case 'n':
-			n_flag = 1;
-			break;
 		case 'v':
-			v_flag = 1;
+			v_flag++;
 			break;
 		default:
 			fprintf(stderr, "usage: sndioctl "
@@ -883,11 +856,8 @@ main(int argc, char **argv)
 		dump();
 	} else {
 		if (argc == 0) {
-			for (g = infolist; g != NULL; g = nextgrp(g)) {
-				if (g->desc.type == SIOMIX_LABEL && !n_flag)
-					continue;
+			for (g = infolist; g != NULL; g = nextgrp(g))
 				g->mode = MODE_PRINT;
-			}
 		} else {
 			for (i = 0; i < argc; i++) {
 				if (!cmd(argv[i]))

@@ -50,9 +50,6 @@ Use this
 mixer device.
 .It Fl m
 Monitor and display mixer changes.
-.It Fl n
-Don't hide program names associated to audio streams (by
-default they are displayed as comments).
 .It Fl i
 Display characteristics of requested parameters
 instead of their values.
@@ -66,7 +63,8 @@ parameter to hide details that are not essential.
 If no commands are specified all valid parameters are displayed on
 .Em stdout .
 Unless
-.Fl d
+.Fl d ,
+.Fl m ,
 or
 .Fl i
 are used, displayed parameters are valid commands.
@@ -80,20 +78,19 @@ parameters respectively:
 .Pp
 On the left-hand side, the affected substream is specified
 by the stream name followed by an optional
-channel range.
+channel.
 Examples of left-hand side terms:
 .Pp
 .Dl spkr.level
-.Dl spkr[2-5].level
-.Dl spkr[6].level
+.Dl spkr6.level
 .Pp
-There are three parameter types: numbers, selectors and vectors.
+There are 4 parameter types: switches, numbers, selectors, and vectors.
 .Pp
 Numbers are specified in decimal and follow the same semantics
 as MIDI controllers.
 Values are in the 0..127 range and 64 is the neutral state (if applicable).
-Two-state controls (switches) take any value in the 0..63 range or
-in the 64..127 range typically to the
+Two-state controls (switches) take either 0 or 1 as value,
+typically corresponding to the
 .Em off
 and
 .Em on
@@ -108,7 +105,7 @@ is used instead of a number, then the switch is toggled.
 Examples:
 .Pp
 .Dl spkr.level=85
-.Dl spkr[4-5].level=+10
+.Dl spkr.level=+10
 .Dl spkr.mute=0
 .Dl spkr.mute=!
 .Pp
@@ -120,8 +117,8 @@ If no channel range is specified, the same
 range as the stream specified on the left-hand side is used.
 For instance the following are equivalent:
 .Pp
-.Dl record[1].source=mic
-.Dl record[1].source=mic[1]
+.Dl record1.source=mic
+.Dl record1.source=mic1
 .Pp
 .Pp Vectors
 Vectors are arrays of numbers.
@@ -152,5 +149,5 @@ stream to zero.
 .Pp
 The following commands are equivalent:
 .Pp
-.Dl $ sndioctl record[0].source=mic[0] record[1].source=mic[1]
+.Dl $ sndioctl record0.source=mic0 record1.source=mic1
 .Dl $ sndioctl record.source=mic

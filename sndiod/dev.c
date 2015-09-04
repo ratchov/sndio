@@ -1148,9 +1148,6 @@ dev_open(struct dev *d)
 		c = dev_addctl(d, CTL_NUM,
 		    d->ctl_addr + CTLADDR_SLOT_LEVEL(i),
 		    "prog", unit, "level", NULL, -1, d->slot[i].vol);
-		dev_addctl(d, CTL_LABEL,
-		    d->ctl_addr + CTLADDR_SLOT_LABEL(i),
-		    "prog", unit, "name", d->slot[i].name, -1, 0);
 	}
 	unit = dev_makeunit(d, "sndiod");
 	c = dev_addctl(d, CTL_NUM,
@@ -2048,9 +2045,6 @@ ctl_log(struct ctl *c)
 		ctl_chan_log(&c->chan1);
 		log_puts(":");
 		log_putu(c->curval);
-		break;
-	case CTL_LABEL:
-		ctl_chan_log(&c->chan1);
 	}
 	log_puts(" at ");
 	log_putu(c->addr);
@@ -2097,9 +2091,7 @@ dev_addctl(struct dev *d, int type, int addr,
 	strlcpy(c->func, func, CTL_NAMEMAX);
 	strlcpy(c->chan0.str, str0, CTL_NAMEMAX);
 	c->chan0.unit = unit0;
-	if (c->type == CTL_LABEL ||
-	    c->type == CTL_VEC ||
-	    c->type == CTL_LIST) {
+	if (c->type == CTL_VEC || c->type == CTL_LIST) {
 		strlcpy(c->chan1.str, str1, CTL_NAMEMAX);
 		c->chan1.unit = unit1;
 	} else
@@ -2120,6 +2112,32 @@ dev_addctl(struct dev *d, int type, int addr,
 	}
 #endif		
 	return c;
+}
+
+void
+dev_rmctl(struct dev *d, int addr)
+{
+	struct ctl *c, **pc;
+
+	pc = &d->ctl_list;
+	for (;;) {
+		c = *pc;
+		if (c == NULL)
+			return;
+		if (c->addr == addr)
+			break;
+		pc = &c->next;
+	}
+#ifdef DEBUG
+	if (log_level >= 3) {
+		dev_log(d);
+		log_puts(": removing ");
+		ctl_log(c);
+		log_puts("\n");
+	}
+#endif		
+	*pc = c->next;
+	xfree(c);
 }
 
 int
@@ -2187,7 +2205,7 @@ dev_label(struct dev *d, int i)
 	struct ctl *c;
 	int addr;
 
-	addr = d->ctl_addr + CTLADDR_SLOT_LABEL(i);
+	addr = d->ctl_addr + CTLADDR_SLOT_LEVEL(i);
 	c = d->ctl_list;
 	for (;;) {
 		if (c == NULL)
@@ -2196,9 +2214,9 @@ dev_label(struct dev *d, int i)
 			break;
 		c = c->next;
 	}
-	if (strcmp(c->chan1.str, d->slot[i].name) == 0)
-		return;
-	strlcpy(c->chan1.str, d->slot[i].name, CTL_NAMEMAX);
+	if (strcmp(c->chan0.str, d->slot[i].name) == 0 && c->chan0.unit == i)
+		return;	
+	strlcpy(c->chan0.str, d->slot[i].name, CTL_NAMEMAX);
 	c->desc_mask = ~0;
 }
 

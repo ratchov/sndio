@@ -98,7 +98,7 @@ struct sio_cap {
  */
 struct siomix_chan {
 	char str[SIOMIX_NAMEMAX];	/* stream name */
-	char opt[SIOMIX_NAMEMAX];	/* optional (sub-)stream name */
+	int unit;			/* optional stream number */
 };
 
 /*
@@ -110,9 +110,8 @@ struct siomix_desc {
 #define SIOMIX_SW		3	/* on/off switch (0 or 1) */
 #define SIOMIX_VEC		4	/* number, element of vector */
 #define SIOMIX_LIST		5	/* switch, element of a list */
-#define SIOMIX_LABEL		6	/* label attached to chan0 */
 	unsigned int type;		/* one of above */
-	char func[SIOMIX_NAMEMAX];	/* function name or label */
+	char func[SIOMIX_NAMEMAX];	/* function name */
 	struct siomix_chan chan0;	/* affected channels */
 	struct siomix_chan chan1;	/* dito for SIOMIX_{VEC,LIST} */
 };

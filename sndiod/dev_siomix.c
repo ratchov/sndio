@@ -52,24 +52,14 @@ void
 dev_siomix_ondesc(void *arg, struct siomix_desc *desc, int val)
 {
 	struct dev *d = arg;
-	struct ctl *c;
 
 	if (desc == NULL)
 		return;
 
-	for (c = d->ctl_list; c != NULL; c = c->next) {
-		if (c->addr != desc->addr)
-			continue;
-		if (c->type != SIOMIX_LABEL)
-			continue;
-		ctl_log(c);
-		log_puts(": label -> ");
-		log_puts(desc->chan0.str);
-		log_puts("\n");
-		strlcpy(c->chan0.str, desc->chan0.str, CTL_NAMEMAX);
-		c->desc_mask = ~0;
-		return;
-	}
+	/*
+	 * XXX: can't we just replace the contents ?
+	 */
+	dev_rmctl(d, desc->addr);
 	dev_addctl(d, desc->type, desc->addr,
 	    desc->chan0.str, desc->chan0.unit, desc->func,
 	    desc->chan1.str, desc->chan1.unit, val);

@@ -23,8 +23,7 @@
 #include "dev_siomix.h"
 
 #define CTLADDR_SLOT_LEVEL(n)	(n)
-#define CTLADDR_SLOT_LABEL(n)	(DEV_NSLOT + n)
-#define CTLADDR_MASTER		(DEV_NSLOT + DEV_NSLOT)
+#define CTLADDR_MASTER		(DEV_NSLOT)
 
 /*
  * audio stream state structure
@@ -110,7 +109,6 @@ struct ctl {
 #define CTL_SW		3		/* on/off switch, only bit 7 counts */
 #define CTL_VEC		4		/* number, element of vector */
 #define CTL_LIST	5		/* switch, element of a list */
-#define CTL_LABEL	6		/* attach string to stream */
 	unsigned int type;		/* one of above */
 	unsigned int addr;		/* control address */
 #define CTL_NAMEMAX	16		/* max name lenght */
@@ -290,5 +288,6 @@ int dev_nctl(struct dev *);
 void dev_label(struct dev *, int);
 struct ctl *dev_addctl(struct dev *, int, int,
     char *, int, char *, char *, int, int);
+void dev_rmctl(struct dev *, int);
 
 #endif /* !defined(DEV_H) */
