@@ -96,7 +96,6 @@ siomix_aucat_rdata(struct siomix_aucat_hdl *hdl)
 		}
 		hdl->buf_wpos = 0;
 	}
-	hdl->dump_wait = 0;
 	return 1;
 }
 
@@ -119,6 +118,11 @@ siomix_aucat_runmsg(struct siomix_aucat_hdl *hdl)
 		_siomix_onctl_cb(&hdl->siomix,
 		    ntohs(hdl->aucat.rmsg.u.mixset.addr),
 		    ntohs(hdl->aucat.rmsg.u.mixset.val));
+		break;
+	case AMSG_MIXSYNC:
+		DPRINTF("siomix_aucat_runmsg: got MIXSYNC\n");
+		hdl->dump_wait = 0;
+		_siomix_ondesc_cb(&hdl->siomix, NULL, 0);
 		break;
 	default:
 		DPRINTF("sio_aucat_runmsg: unhandled message %u\n",

@@ -57,6 +57,7 @@ struct amsg {
 #define AMSG_AUTH	12	/* send authentication cookie */
 #define AMSG_MIXSUB	13	/* ondesc/onctl subscription */
 #define AMSG_MIXSET	14	/* set mixer control value */
+#define AMSG_MIXSYNC	15	/* end of mixer description */
 	uint32_t cmd;
 	uint32_t __pad;
 	union {

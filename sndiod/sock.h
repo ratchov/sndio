@@ -50,7 +50,7 @@ struct sock {
 #define SOCK_START	3		/* filling play buffers */
 #define SOCK_STOP	4		/* draining rec buffers */
 	unsigned int pstate;		/* one of the above */
-	int tickpending;		/* tick waiting to be transmitted */	
+	int tickpending;		/* tick waiting to be transmitted */
 	int fillpending;		/* flowctl waiting to be transmitted */
 	int stoppending;		/* last STOP ack to be sent */
 	unsigned int walign;		/* align written data to this */
@@ -61,10 +61,11 @@ struct sock {
 	struct midi *midi;		/* midi endpoint */
 	struct port *port;		/* midi port */
 	struct ctlslot *ctlslot;
-	struct amsg_mix_desc *ctldesc;
+	struct amsg_mix_desc *ctldesc;	/* temporary buffer */
 #define SOCK_CTLDESC	1		/* dump desc and send changes */
 #define SOCK_CTLVAL	2		/* send value changes */
-	unsigned int ctlops;
+	unsigned int ctlops;		/* bitmap of above */
+	int ctlsyncpending;		/* mixsync waiting to be transmitted */
 };
 
 struct sock *sock_new(int fd);

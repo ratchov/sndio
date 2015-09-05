@@ -33,6 +33,8 @@
 #include "utils.h"
 #include "bsd-compat.h"
 
+#define SOCK_CTLDESC_SIZE	3	/* number of entries in s->ctldesc */
+
 void sock_log(struct sock *);
 void sock_close(struct sock *);
 void sock_slot_fill(void *);
@@ -874,7 +876,7 @@ sock_hello(struct sock *f)
 			}
 			return 0;
 		}
-		f->ctldesc = xmalloc(dev_nctl(f->ctlslot->dev) *
+		f->ctldesc = xmalloc(SOCK_CTLDESC_SIZE *
 		    sizeof(struct amsg_mix_desc));
 		f->ctlops = 0;
 		return 1;
@@ -1272,6 +1274,7 @@ sock_execmsg(struct sock *f)
 				}
 			}
 			f->ctlops |= SOCK_CTLDESC;
+			f->ctlsyncpending = 1;
 		} else
 			f->ctlops &= ~SOCK_CTLDESC;
 		if (m->u.mixsub.val) {
@@ -1543,12 +1546,22 @@ sock_buildmsg(struct sock *f)
 		return 1;
 	}
 
+	/*
+	 * XXX: add a flag indicating if there are changes
+	 * in controls not seen by this client, rather
+	 * than walking through the full list of control
+	 * searching for the {desc,val}_mask bits
+	 */
 	if (f->ctlslot && (f->ctlops & SOCK_CTLDESC)) {
 		desc = f->ctldesc;
 		mask = f->ctlslot->mask;
+		size = 0;
 		for (c = f->ctlslot->dev->ctl_list; c != NULL; c = c->next) {
 			if ((c->desc_mask & mask) == 0)
 				continue;
+			if (size == SOCK_CTLDESC_SIZE *
+				sizeof(struct amsg_mix_desc))
+				break;
 			c->desc_mask &= ~mask;
 			c->val_mask &= ~mask;
 			strlcpy(desc->chan0.str, c->chan0.str,
@@ -1561,10 +1574,10 @@ sock_buildmsg(struct sock *f)
 			strlcpy(desc->func, c->func, AMSG_MIX_NAMEMAX);
 			desc->addr = htons(c->addr);
 			desc->curval = htons(c->curval);
+			size += sizeof(struct amsg_mix_desc);
 			desc++;
 		}
-		if (desc != f->ctldesc) {
-			size = (char *)desc - (char *)f->ctldesc;
+		if (size > 0) {
 			AMSG_INIT(&f->wmsg);
 			f->wmsg.cmd = htonl(AMSG_DATA);
 			f->wmsg.u.data.size = htonl(size);
@@ -1599,6 +1612,19 @@ sock_buildmsg(struct sock *f)
 #endif
 			return 1;
 		}
+	}
+	if (f->ctlslot && f->ctlsyncpending) {
+		f->ctlsyncpending = 0;
+		f->wmsg.cmd = htonl(AMSG_MIXSYNC);
+		f->wtodo = sizeof(struct amsg);
+		f->wstate = SOCK_WMSG;
+#ifdef DEBUG
+		if (log_level >= 3) {
+			sock_log(f);
+			log_puts(": building mixer MIXSYNC message\n");
+		}
+#endif
+		return 1;
 	}
 #ifdef DEBUG
 	if (log_level >= 4) {
