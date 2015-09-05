@@ -33,7 +33,7 @@
 #include "utils.h"
 #include "bsd-compat.h"
 
-#define SOCK_CTLDESC_SIZE	3	/* number of entries in s->ctldesc */
+#define SOCK_CTLDESC_SIZE	16	/* number of entries in s->ctldesc */
 
 void sock_log(struct sock *);
 void sock_close(struct sock *);
