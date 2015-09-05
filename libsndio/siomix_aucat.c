@@ -30,7 +30,8 @@ struct siomix_aucat_hdl {
 	struct siomix_hdl siomix;
 	struct aucat aucat;
 	struct siomix_desc desc;
-	struct amsg_mix_desc *tmp;
+	struct amsg_mix_desc buf[16];
+	size_t buf_wpos;
 	int dump_wait;
 };
 
@@ -60,32 +61,41 @@ siomix_aucat_rdata(struct siomix_aucat_hdl *hdl)
 {
 	struct siomix_desc desc;
 	struct amsg_mix_desc *c;
-	int n, size;
+	size_t rpos;
+	int n;
 
-	size = ntohl(hdl->aucat.rmsg.u.data.size);
-	for (;;) {
-		n = _aucat_rdata(&hdl->aucat,
-		    (unsigned char *)hdl->tmp + size - hdl->aucat.rtodo,
-		    hdl->aucat.rtodo, &hdl->siomix.eof);
-		if (n == 0 || hdl->siomix.eof)
-			return 0;
-		if (hdl->aucat.rstate != RSTATE_DATA)
-			break;
+	while (hdl->aucat.rstate == RSTATE_DATA) {
+
+		/* read entries */
+		while (hdl->buf_wpos < sizeof(hdl->buf) && 
+		    hdl->aucat.rstate == RSTATE_DATA) {
+			n = _aucat_rdata(&hdl->aucat,
+			    (unsigned char *)hdl->buf + hdl->buf_wpos,
+			    sizeof(hdl->buf) - hdl->buf_wpos,
+			    &hdl->siomix.eof);
+			if (n == 0 || hdl->siomix.eof)
+				return 0;
+			hdl->buf_wpos += n;
+		}
+
+		/* parse entries */
+		c = hdl->buf;
+		rpos = 0;
+		while (rpos < hdl->buf_wpos) {
+			strlcpy(desc.chan0.str, c->chan0.str, SIOMIX_NAMEMAX);
+			desc.chan0.unit = ntohs(c->chan0.unit);
+			strlcpy(desc.chan1.str, c->chan1.str, SIOMIX_NAMEMAX);
+			desc.chan1.unit = ntohs(c->chan1.unit);
+			strlcpy(desc.func, c->func, SIOMIX_NAMEMAX);
+			desc.type = c->type;
+			desc.addr = ntohs(c->addr);
+			_siomix_ondesc_cb(&hdl->siomix,
+			    &desc, ntohs(c->curval));
+			rpos += sizeof(struct amsg_mix_desc);
+			c++;
+		}
+		hdl->buf_wpos = 0;
 	}
-	c = hdl->tmp;
-	while (size >= sizeof(struct amsg_mix_desc)) {
-		strlcpy(desc.chan0.str, c->chan0.str, SIOMIX_NAMEMAX);
-		desc.chan0.unit = ntohs(c->chan0.unit);
-		strlcpy(desc.chan1.str, c->chan1.str, SIOMIX_NAMEMAX);
-		desc.chan1.unit = ntohs(c->chan1.unit);
-		strlcpy(desc.func, c->func, SIOMIX_NAMEMAX);
-		desc.type = c->type;
-		desc.addr = ntohs(c->addr);
-		_siomix_ondesc_cb(&hdl->siomix, &desc, ntohs(c->curval));
-		size -= sizeof(struct amsg_mix_desc);
-		c++;
-	}
-	free(hdl->tmp);
 	hdl->dump_wait = 0;
 	return 1;
 }
@@ -96,19 +106,11 @@ siomix_aucat_rdata(struct siomix_aucat_hdl *hdl)
 static int
 siomix_aucat_runmsg(struct siomix_aucat_hdl *hdl)
 {
-	int size;
-
 	if (!_aucat_rmsg(&hdl->aucat, &hdl->siomix.eof))
 		return 0;
 	switch (ntohl(hdl->aucat.rmsg.cmd)) {
 	case AMSG_DATA:
-		size = ntohl(hdl->aucat.rmsg.u.data.size);
-		hdl->tmp = malloc(size);
-		if (hdl->tmp == NULL) {
-			DPRINTF("siomix_aucat_runmsg: malloc failed\n");
-			hdl->siomix.eof = 1;
-			return 0;
-		}
+		hdl->buf_wpos = 0;
 		if (!siomix_aucat_rdata(hdl))
 			return 0;
 		break;
@@ -142,7 +144,6 @@ _siomix_aucat_open(const char *str, unsigned int mode, int nbio)
 		return NULL;
 	}
 	_siomix_create(&hdl->siomix, &siomix_aucat_ops, mode, nbio);
-	hdl->tmp = NULL;
 	hdl->dump_wait = 0;
 	return (struct siomix_hdl *)hdl;
 }
