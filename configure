@@ -20,6 +20,8 @@ Usage: configure [options]
 --disable-sun			disable sun audio backend
 --enable-rmidi			enable character device midi backend [$rmidi]
 --disable-rmidi			disable character device midi backend
+--with-libbsd			use the libbsd rather than bsd-compat/*
+--without-libbsd		don't use libbsd
 END
 }
 
@@ -33,6 +35,7 @@ sun=no					# do we want sun support ?
 rmidi=no				# do we want support for raw char dev ?
 precision=16				# aucat/sndiod arithmetic precision
 user=_sndio				# non-privileged user for sndio daemon
+libbsd=no				# use libbsd?
 unset vars				# variables passed as arguments
 unset bindir				# path where to install binaries
 unset datadir				# path where to install doc
@@ -117,6 +120,12 @@ for i; do
 			exit 1
 		fi
 		shift;;
+	--with-libbsd)
+		libbsd=yes
+		shift;;
+	--without-libbsd)
+		libbsd=no
+		shift;;
 	CC=*|CFLAGS=*|LDFLAGS=*)
 		vars="$vars$i$nl"
 		shift;;
@@ -158,6 +167,15 @@ if [ $rmidi = yes ]; then
 	defs="$defs -DUSE_RMIDI"
 fi
 
+#
+# if using libbsd, add corresponding parameters
+#
+if [ $libbsd = yes ]; then
+	# no arc4random as libbsd has a questionable implementation
+	defs="$defs -DHAVE_STRLCPY -DHAVE_STRLCAT -DHAVE_STRTONUM"
+	ldadd="$ldadd -lbsd"
+fi
+
 for f in Makefile aucat/Makefile midicat/Makefile sndiod/Makefile \
 libsndio/Makefile \
 examples/Makefile \
@@ -186,6 +204,7 @@ includedir............... $includedir
 libdir................... $libdir
 mandir................... $mandir
 user..................... $user
+libbsd................... $libbsd
 precision................ $precision
 alsa..................... $alsa
 sun...................... $sun
