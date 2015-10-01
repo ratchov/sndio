@@ -30,21 +30,21 @@
 .Sh SYNOPSIS
 .In sndio.h
 .Ft "struct mio_hdl *"
-.Fn "mio_open" "const char *name" "unsigned int mode" "int nbio_flag"
+.Fn mio_open "const char *name" "unsigned int mode" "int nbio_flag"
 .Ft "void"
-.Fn "mio_close" "struct mio_hdl *hdl"
+.Fn mio_close "struct mio_hdl *hdl"
 .Ft "size_t"
-.Fn "mio_read" "struct mio_hdl *hdl" "void *addr" "size_t nbytes"
+.Fn mio_read "struct mio_hdl *hdl" "void *addr" "size_t nbytes"
 .Ft "size_t"
-.Fn "mio_write" "struct mio_hdl *hdl" "const void *addr" "size_t nbytes"
+.Fn mio_write "struct mio_hdl *hdl" "const void *addr" "size_t nbytes"
 .Ft "int"
-.Fn "mio_nfds" "struct mio_hdl *hdl"
+.Fn mio_nfds "struct mio_hdl *hdl"
 .Ft "int"
-.Fn "mio_pollfd" "struct mio_hdl *hdl" "struct pollfd *pfd" "int events"
+.Fn mio_pollfd "struct mio_hdl *hdl" "struct pollfd *pfd" "int events"
 .Ft "int"
-.Fn "mio_revents" "struct mio_hdl *hdl" "struct pollfd *pfd"
+.Fn mio_revents "struct mio_hdl *hdl" "struct pollfd *pfd"
 .Ft "int"
-.Fn "mio_eof" "struct mio_hdl *hdl"
+.Fn mio_eof "struct mio_hdl *hdl"
 .Sh DESCRIPTION
 The
 .Nm sndio
