@@ -35,6 +35,8 @@
 #include "sio_priv.h"
 #include "bsd-compat.h"
 
+#define DEVNAME_PREFIX "hw:"
+
 #ifdef DEBUG
 static snd_output_t *output = NULL;
 #define DALSA(str, err) fprintf(stderr, "%s: %s\n", str, snd_strerror(err)) 
@@ -45,6 +47,7 @@ static snd_output_t *output = NULL;
 struct sio_alsa_hdl {
 	struct sio_hdl sio;
 	struct sio_par par;
+	char *devname;
 	snd_pcm_t *opcm;
 	snd_pcm_t *ipcm;
 	unsigned ibpf, obpf;		/* bytes per frame */
@@ -273,8 +276,8 @@ struct sio_hdl *
 _sio_alsa_open(const char *str, unsigned mode, int nbio)
 {
 	struct sio_alsa_hdl *hdl;
-	char path[PATH_MAX];
 	struct sio_par par;
+	size_t len;
 	int err;
 
 	switch (*str) {
@@ -282,7 +285,7 @@ _sio_alsa_open(const char *str, unsigned mode, int nbio)
 		str++;
 		break;
 	default:
-		DPRINTF("_sio_sun_open: %s: '/<devnum>' expected\n", str);
+		DPRINTF("_sio_alsa_open: %s: '/<devnum>' expected\n", str);
 		return NULL;
 	}
 	hdl = malloc(sizeof(struct sio_alsa_hdl));
@@ -295,10 +298,14 @@ _sio_alsa_open(const char *str, unsigned mode, int nbio)
 	if (err < 0)
 		DALSA("couldn't attach to stderr", err);
 #endif
-
-	snprintf(path, sizeof(path), "hw:%s", str);
+	len = strlen(str);
+	hdl->devname = malloc(len + sizeof(DEVNAME_PREFIX));
+	if (hdl->devname == NULL)
+		goto bad_free_hdl;
+	memcpy(hdl->devname, DEVNAME_PREFIX, sizeof(DEVNAME_PREFIX) - 1);
+	memcpy(hdl->devname + sizeof(DEVNAME_PREFIX) - 1, str, len + 1);
 	if (mode & SIO_PLAY) {
-		err = snd_pcm_open(&hdl->opcm, path,
+		err = snd_pcm_open(&hdl->opcm, hdl->devname,
 		    SND_PCM_STREAM_PLAYBACK, SND_PCM_NONBLOCK);
 		if (err < 0) {
 			DALSA("couldn't open play stream", err);
@@ -306,7 +313,7 @@ _sio_alsa_open(const char *str, unsigned mode, int nbio)
 		}
 	}
 	if (mode & SIO_REC) {
-		err = snd_pcm_open(&hdl->ipcm, path,
+		err = snd_pcm_open(&hdl->ipcm, hdl->devname,
 		    SND_PCM_STREAM_CAPTURE, SND_PCM_NONBLOCK);
 		if (err < 0) {
 			DALSA("couldn't open rec stream", err);
@@ -345,6 +352,8 @@ bad_free_opcm:
 	if (mode & SIO_PLAY)
 		snd_pcm_close(hdl->opcm);
 bad_free:
+	free(hdl->devname);
+bad_free_hdl:
 	free(hdl);
 	return NULL;
 }
@@ -358,6 +367,7 @@ sio_alsa_close(struct sio_hdl *sh)
 		snd_pcm_close(hdl->opcm);
 	if (hdl->sio.mode & SIO_REC)
 		snd_pcm_close(hdl->ipcm);
+	free(hdl->devname);
 	free(hdl);
 }
 

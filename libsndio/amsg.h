@@ -19,12 +19,28 @@
 
 #include <stdint.h>
 
-/*
- * socket and option names
+/* 
+ * unix-domain socket name is:
+ *
+ * DIR [ '-' UID ] '/' FILE UNIT
+ *
+ * example: "/tmp/aucat-1000/aucat0"
+ *
  */
-#define AUCAT_PATH		"aucat"
+#define SOCKPATH_DIR	"/tmp/aucat"
+#define SOCKPATH_FILE	"aucat"
+#define SOCKPATH_MAX	(1 +		\
+	sizeof(SOCKPATH_DIR) - 1 +	\
+	sizeof(char) +			\
+	sizeof(int) * 3 +		\
+	sizeof(char) +			\
+	sizeof(SOCKPATH_FILE) - 1 +	\
+	sizeof(int) * 3)
+
+/*
+ * server TCP base port number
+ */
 #define AUCAT_PORT		11025
-#define DEFAULT_OPT		"default"
 
 /*
  * limits

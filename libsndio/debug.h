@@ -22,7 +22,7 @@
 
 #define DPRINTFN(n, ...)					\
 	do {							\
-		if (_sndio_debug >= (n))				\
+		if (_sndio_debug >= (n))			\
 			fprintf(stderr, __VA_ARGS__);		\
 	} while(0)
 
@@ -47,5 +47,6 @@ extern int _sndio_debug;
 #endif
 
 const char *_sndio_parsetype(const char *, char *);
+const char *_sndio_parsenum(const char *, unsigned int *, unsigned int);
 
 #endif

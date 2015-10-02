@@ -261,10 +261,10 @@ getbasepath(char *base, size_t size)
 	uid = geteuid();
 	if (uid == 0) {
 		mask = 022;
-		snprintf(base, PATH_MAX, "/tmp/aucat");
+		snprintf(base, SOCKPATH_MAX, SOCKPATH_DIR);
 	} else {
 		mask = 077;
-		snprintf(base, PATH_MAX, "/tmp/aucat-%u", uid);
+		snprintf(base, SOCKPATH_MAX, SOCKPATH_DIR "-%u", uid);
 	}
 	if (mkdir(base, 0777 & ~mask) < 0) {
 		if (errno != EEXIST)
@@ -334,7 +334,7 @@ main(int argc, char **argv)
 {
 	int c, background, unit;
 	int pmin, pmax, rmin, rmax;
-	char base[PATH_MAX], path[PATH_MAX];
+	char base[SOCKPATH_MAX], path[SOCKPATH_MAX];
 	unsigned int mode, dup, mmc, vol;
 	unsigned int hold, autovol, bufsz, round, rate;
 	const char *str;
@@ -467,7 +467,7 @@ main(int argc, char **argv)
 		    mode, vol, mmc, dup);
 	}
 	getbasepath(base, sizeof(base));
-	snprintf(path, PATH_MAX, "%s/%s%u", base, AUCAT_PATH, unit);
+	snprintf(path, SOCKPATH_MAX, "%s/" SOCKPATH_FILE "%u", base, unit);
 	listen_new_un(path);
 	if (geteuid() == 0)
 		privdrop();
