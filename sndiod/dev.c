@@ -2166,7 +2166,7 @@ dev_setctl(struct dev *d, int addr, int val, unsigned int mask)
 	} else {
 		addr -= d->ctl_addr;
 		if (addr >= CTLADDR_SLOT_LEVEL(0) &&
-		    addr <= CTLADDR_SLOT_LEVEL(DEV_NSLOT)) {
+		    addr < CTLADDR_SLOT_LEVEL(DEV_NSLOT)) {
 			num = addr - CTLADDR_SLOT_LEVEL(0);
 			slot_setvol(d->slot + num, val);
 			dev_midi_vol(d, d->slot + num);
