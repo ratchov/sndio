@@ -30,6 +30,11 @@
 #include "debug.h"
 #include "mio_priv.h"
 
+#define DEVPATH_PREFIX	"/dev/rmidi"
+#define DEVPATH_MAX 	(1 +		\
+	sizeof(DEVPATH_PREFIX) - 1 +	\
+	sizeof(int) * 3)
+
 struct mio_rmidi_hdl {
 	struct mio_hdl mio;
 	int fd;
@@ -56,22 +61,27 @@ _mio_rmidi_open(const char *str, unsigned int mode, int nbio)
 {
 	int fd, flags;
 	struct mio_rmidi_hdl *hdl;
-	char path[PATH_MAX];
+	char path[DEVPATH_MAX];
+	unsigned int devnum;
 
 	switch (*str) {
 	case '/':
 		str++;
 		break;
 	default:
-		DPRINTF("_sio_sun_open: %s: '/<devnum>' expected\n", str);
+		DPRINTF("_mio_rmidi_open: %s: '/<devnum>' expected\n", str);
+		return NULL;
+	}
+	str = _sndio_parsenum(str, &devnum, 255);
+	if (str == NULL || *str != '\0') {
+		DPRINTF("_mio_rmidi_open: can't determine device number\n");
 		return NULL;
 	}
 	hdl = malloc(sizeof(struct mio_rmidi_hdl));
 	if (hdl == NULL)
 		return NULL;
 	_mio_create(&hdl->mio, &mio_rmidi_ops, mode, nbio);
-
-	snprintf(path, sizeof(path), "/dev/rmidi%s", str);
+	snprintf(path, sizeof(path), DEVPATH_PREFIX "%u", devnum);
 	if (mode == (MIO_OUT | MIO_IN))
 		flags = O_RDWR;
 	else

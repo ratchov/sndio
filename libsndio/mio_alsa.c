@@ -31,6 +31,8 @@
 #include "debug.h"
 #include "mio_priv.h"
 
+#define DEVNAME_PREFIX "hw:"
+
 #ifdef DEBUG
 static snd_output_t *output = NULL;
 #define DALSA(str, err) fprintf(stderr, "%s: %s\n", str, snd_strerror(err)) 
@@ -40,6 +42,7 @@ static snd_output_t *output = NULL;
 
 struct mio_alsa_hdl {
 	struct mio_hdl mio;
+	char *devname;
 	snd_rawmidi_t *in, *out;
 	int infds, onfds, nfds, events;
 };
@@ -64,7 +67,7 @@ struct mio_hdl *
 mio_alsa_open(const char *str, unsigned int mode, int nbio)
 {
 	struct mio_alsa_hdl *hdl;
-	char path[PATH_MAX];
+	size_t len;
 	int rc;
 
 	switch (*str) {
@@ -84,11 +87,20 @@ mio_alsa_open(const char *str, unsigned int mode, int nbio)
 	if (rc < 0)
 		DALSA("couldn't attach to stderr", rc);
 #endif
-	snprintf(path, sizeof(path), "hw:%s", str);
+	len = strlen(str);
+	hdl->devname = malloc(len + sizeof(DEVNAME_PREFIX));
+	if (hdl->devname == NULL) {
+		free(hdl);
+		return NULL;
+	}
+	memcpy(hdl->devname, DEVNAME_PREFIX, sizeof(DEVNAME_PREFIX) - 1);
+	memcpy(hdl->devname + sizeof(DEVNAME_PREFIX) - 1, str, len + 1);
 	hdl->in = hdl->out = NULL;
-	rc = snd_rawmidi_open(&hdl->in, &hdl->out, path, SND_RAWMIDI_NONBLOCK);
+	rc = snd_rawmidi_open(&hdl->in, &hdl->out,
+	    hdl->devname, SND_RAWMIDI_NONBLOCK);
 	if (rc) {
 		DALSA("could't open port", rc);
+		free(hdl->devname);
 		free(hdl);
 		return NULL;
 	}
@@ -111,6 +123,7 @@ mio_alsa_close(struct mio_hdl *sh)
 		snd_rawmidi_drain(hdl->out);
 		snd_rawmidi_close(hdl->out);
 	}
+	free(hdl->devname);
 	free(hdl);
 }
 
