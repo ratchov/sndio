@@ -298,6 +298,8 @@ sock_new(int fd)
 	f->rtodo = sizeof(struct amsg);
 	f->wmax = f->rmax = 0;
 	f->lastvol = -1;
+	f->ctlops = 0;
+	f->ctlsyncpending = 0;
 	f->file = file_new(&sock_fileops, f, "sock", 1);
 	f->fd = fd;
 	if (f->file == NULL) {
@@ -879,6 +881,7 @@ sock_hello(struct sock *f)
 		f->ctldesc = xmalloc(SOCK_CTLDESC_SIZE *
 		    sizeof(struct amsg_mix_desc));
 		f->ctlops = 0;
+		f->ctlsyncpending = 0;
 		return 1;
 	}
 	f->opt = opt_byname(p->opt, p->devnum);
