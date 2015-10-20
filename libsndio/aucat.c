@@ -251,6 +251,9 @@ aucat_mkcookie(unsigned char *cookie)
 	size_t home_len, path_len;
 	int fd, len;
 
+	/* please gcc */
+	path_len = 0xdeadbeef;
+
 	/*
 	 * try to load the cookie
 	 */
