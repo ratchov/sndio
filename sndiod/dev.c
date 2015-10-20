@@ -977,6 +977,7 @@ dev_new(char *path, struct aparams *par,
 		return NULL;
 	}
 	d = xmalloc(sizeof(struct dev));
+	d->path = xstrdup(path);
 	d->num = dev_sndnum++;
 
 	/*
@@ -988,7 +989,6 @@ dev_new(char *path, struct aparams *par,
 	 */
 	d->midi = midi_new(&dev_midiops, d, MODE_MIDIIN | MODE_MIDIOUT);
 	midi_tag(d->midi, d->num);
-	d->path = path;
 	d->reqpar = *par;
 	d->reqmode = mode;
 	d->reqpchan = d->reqrchan = 0;
@@ -1257,6 +1257,7 @@ dev_del(struct dev *d)
 	}
 	midi_del(d->midi);
 	*p = d->next;
+	xfree(d->path);
 	xfree(d);
 }
 
