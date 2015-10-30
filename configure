@@ -22,6 +22,8 @@ Usage: configure [options]
 --disable-rmidi			disable character device midi backend
 --enable-xvolkeys		build xvolkeys utility (requires X) [$xvolkeys]
 --disable-xvolkeys		don't build xvolkeys
+--with-libbsd			use the libbsd rather than bsd-compat/*
+--without-libbsd		don't use libbsd
 END
 }
 
@@ -36,6 +38,7 @@ rmidi=no				# do we want support for raw char dev ?
 precision=16				# aucat/sndiod arithmetic precision
 user=_sndio				# non-privileged user for sndio daemon
 xvolkeys=yes				# build xvolkeys ?
+libbsd=no				# use libbsd?
 unset vars				# variables passed as arguments
 unset bindir				# path where to install binaries
 unset datadir				# path where to install doc
@@ -126,6 +129,12 @@ for i; do
 			exit 1
 		fi
 		shift;;
+	--with-libbsd)
+		libbsd=yes
+		shift;;
+	--without-libbsd)
+		libbsd=no
+		shift;;
 	CC=*|CFLAGS=*|LDFLAGS=*)
 		vars="$vars$i$nl"
 		shift;;
@@ -167,6 +176,15 @@ if [ $rmidi = yes ]; then
 	defs="$defs -DUSE_RMIDI"
 fi
 
+#
+# if using libbsd, add corresponding parameters
+#
+if [ $libbsd = yes ]; then
+	# no arc4random as libbsd has a questionable implementation
+	defs="$defs -DHAVE_STRLCPY -DHAVE_STRLCAT -DHAVE_STRTONUM"
+	ldadd="$ldadd -lbsd"
+fi
+
 for f in Makefile aucat/Makefile midicat/Makefile sndiod/Makefile \
 libsndio/Makefile sndioctl/Makefile xvolkeys/Makefile \
 examples/Makefile \
@@ -196,6 +214,7 @@ includedir............... $includedir
 libdir................... $libdir
 mandir................... $mandir
 user..................... $user
+libbsd................... $libbsd
 precision................ $precision
 alsa..................... $alsa
 sun...................... $sun

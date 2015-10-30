@@ -314,6 +314,21 @@ mkdev(char *path, struct aparams *par,
 	return d;
 }
 
+struct port *
+mkport(char *path, int hold)
+{
+	struct port *c;
+
+	for (c = port_list; c != NULL; c = c->next) {
+		if (strcmp(c->path, path) == 0)
+			return c;
+	}
+	c = port_new(path, MODE_MIDIMASK, hold);
+	if (c == NULL)
+		exit(1);
+	return c;
+}
+
 struct opt *
 mkopt(char *path, struct dev *d,
     int pmin, int pmax, int rmin, int rmax,
@@ -335,7 +350,8 @@ main(int argc, char **argv)
 	int c, background, unit;
 	int pmin, pmax, rmin, rmax;
 	char base[SOCKPATH_MAX], path[SOCKPATH_MAX];
-	unsigned int mode, dup, mmc, vol;
+	char loc[32];
+	unsigned int mode, dup, mmc, vol, i;
 	unsigned int hold, autovol, bufsz, round, rate;
 	const char *str;
 	struct aparams par;
@@ -414,16 +430,14 @@ main(int argc, char **argv)
 			break;
 		case 's':
 			if ((d = dev_list) == NULL) {
-				d = mkdev(DEFAULT_DEV, &par, 0, bufsz, round, rate,
-				    hold, autovol);
+				d = mkdev(DEFAULT_DEV, &par, 0, bufsz, round,
+				    rate, hold, autovol);
 			}
 			mkopt(optarg, d, pmin, pmax, rmin, rmax,
 			    mode, vol, mmc, dup);
 			break;
 		case 'q':
-			p = port_new(optarg, MODE_MIDIMASK, hold);
-			if (!p)
-				errx(1, "%s: can't open port", optarg);
+			mkport(optarg, hold);
 			break;
 		case 'a':
 			hold = opt_onoff();
@@ -442,10 +456,8 @@ main(int argc, char **argv)
 				errx(1, "%s: block size is %s", optarg, str);
 			break;
 		case 'f':
-			mkdev(optarg, &par, 0, bufsz, round, rate, hold, autovol);
-			break;
-		case 'M':
-			/* XXX: for compatibility with aucat, remove this */
+			mkdev(optarg, &par, 0, bufsz, round,
+			    rate, hold, autovol);
 			break;
 		default:
 			fputs(usagestr, stderr);
@@ -458,8 +470,18 @@ main(int argc, char **argv)
 		fputs(usagestr, stderr);
 		return 1;
 	}
-	if (dev_list == NULL)
-		mkdev(DEFAULT_DEV, &par, 0, bufsz, round, rate, hold, autovol);
+	if (dev_list == NULL) {
+		for (i = 0; i < 4; i++) {
+			snprintf(loc, sizeof(loc), "rsnd/%u", i);
+			mkdev(loc, &par, 0, bufsz, round, rate, hold, autovol);
+		}
+	}
+	if (port_list == NULL) {
+		for (i = 0; i < 8; i++) {
+			snprintf(loc, sizeof(loc), "rmidi/%u", i);
+			mkport(loc, hold);
+		}
+	}
 	for (d = dev_list; d != NULL; d = d->next) {
 		if (opt_byname("default", d->num))
 			continue;

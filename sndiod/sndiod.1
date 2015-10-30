@@ -350,29 +350,22 @@ to which they are attached.
 .Pp
 If no audio devices
 .Pq Fl f
-are specified,
-settings are applied as if
-the default device is specified.
+are specified, first 4 audio devices are added and
+settings are applied to all of them.
+Similarly, if no MIDI ports
+.Pq Fl q
+are specified, first 8 MIDI ports are added and
+settings are applied to all of them.
 If no sub-devices
 .Pq Fl s
 are specified for a device, a default sub-device is
 created attached to it.
-If a device
-.Pq Fl f
+If a device or MIDI port
+.Pq Fl fq
 is defined twice, both definitions are merged:
 parameters of the first one are used but sub-devices
 .Pq Fl s
 of both definitions are created.
-The default
-.Xr sndio 7
-device used by
-.Nm
-is
-.Pa rsnd/0 ,
-and the default sub-device exposed by
-.Nm
-is
-.Pa snd/0 .
 .Pp
 If
 .Nm
