@@ -98,6 +98,7 @@ void unsetsig(void);
 void privdrop(void);
 struct dev *mkdev(char *, struct aparams *,
     int, int, int, int, int, int);
+struct port *mkport(char *, int);
 struct opt *mkopt(char *, struct dev *,
     int, int, int, int, int, int, int, int);
 
