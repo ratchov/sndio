@@ -87,6 +87,7 @@ struct port {
 #define PORT_INIT	1
 #define PORT_DRAIN	2
 	unsigned int state;
+	unsigned int num;		/* port serial number */
 	char *path;			/* hold the port open ? */
 	int hold;
 	struct midi *midi;

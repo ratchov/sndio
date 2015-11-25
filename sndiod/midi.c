@@ -427,18 +427,16 @@ port_exit(void *arg)
 struct port *
 port_new(char *path, unsigned int mode, int hold)
 {
-	struct port *c, **pc;
+	struct port *c;
 
 	c = xmalloc(sizeof(struct port));
 	c->path = xstrdup(path);
 	c->state = PORT_CFG;
 	c->hold = hold;
 	c->midi = midi_new(&port_midiops, c, mode);
-	midi_portnum++;
-	for (pc = &port_list; *pc != NULL; pc = &(*pc)->next)
-		; /* nothing */
-	c->next = NULL;
-	*pc = c;
+	c->num = midi_portnum++;
+	c->next = port_list;
+	port_list = c;
 	return c;
 }
 
@@ -504,7 +502,7 @@ port_bynum(int num)
 	struct port *p;
 
 	for (p = port_list; p != NULL; p = p->next) {
-		if (num-- == 0)
+		if (p->num == num)
 			return p;
 	}
 	return NULL;
