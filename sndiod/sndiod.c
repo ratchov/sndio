@@ -257,7 +257,7 @@ getbasepath(char *base, size_t size)
 {
 	uid_t uid;
 	struct stat sb;
-	mode_t mask;
+	mode_t mask, omask;
 
 	uid = geteuid();
 	if (uid == 0) {
@@ -267,10 +267,12 @@ getbasepath(char *base, size_t size)
 		mask = 077;
 		snprintf(base, SOCKPATH_MAX, SOCKPATH_DIR "-%u", uid);
 	}
-	if (mkdir(base, 0777 & ~mask) < 0) {
+	omask = umask(mask);
+	if (mkdir(base, 0777) < 0) {
 		if (errno != EEXIST)
 			err(1, "mkdir(\"%s\")", base);
 	}
+	umask(omask);	
 	if (stat(base, &sb) < 0)
 		err(1, "stat(\"%s\")", base);
 	if (sb.st_uid != uid || (sb.st_mode & mask) != 0)
