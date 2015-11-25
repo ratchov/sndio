@@ -376,13 +376,11 @@ midi_out(struct midi *oep, unsigned char *idata, int icount)
 	}
 }
 
-#ifdef DEBUG
 void
 port_log(struct port *p)
 {
 	midi_log(p->midi);
 }
-#endif
 
 void
 port_imsg(void *arg, unsigned char *msg, int size)
