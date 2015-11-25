@@ -1214,6 +1214,8 @@ dev_done(struct dev *d)
 		log_puts(": draining\n");
 	}
 #endif
+	if (d->tstate != MMC_STOP)
+		dev_mmcstop(d);
 	if (d->hold)
 		dev_unref(d);
 }
