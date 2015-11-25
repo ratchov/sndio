@@ -1226,7 +1226,7 @@ dev_bynum(int num)
 	struct dev *d;
 
 	for (d = dev_list; d != NULL; d = d->next) {
-		if (num-- == 0)
+		if (d->num == num)
 			return d;
 	}
 	return NULL;
