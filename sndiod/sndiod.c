@@ -95,7 +95,6 @@ unsigned int opt_mode(void);
 void getbasepath(char *, size_t);
 void setsig(void);
 void unsetsig(void);
-void privdrop(void);
 struct dev *mkdev(char *, struct aparams *,
     int, int, int, int, int, int);
 struct port *mkport(char *, int);
@@ -279,21 +278,6 @@ getbasepath(char *base, size_t size)
 		errx(1, "%s has wrong permissions", base);
 }
 
-void
-privdrop(void)
-{
-	struct passwd *pw;
-
-	if ((pw = getpwnam(SNDIO_USER)) == NULL)
-		errx(1, "unknown user %s", SNDIO_USER);
-	if (setpriority(PRIO_PROCESS, 0, SNDIO_PRIO) < 0)
-		err(1, "setpriority");
-	if (setgroups(1, &pw->pw_gid) ||
-	    setresgid(pw->pw_gid, pw->pw_gid, pw->pw_gid) ||
-	    setresuid(pw->pw_uid, pw->pw_uid, pw->pw_uid))
-		err(1, "cannot drop privileges");
-}
-
 struct dev *
 mkdev(char *path, struct aparams *par,
     int mode, int bufsz, int round, int rate, int hold, int autovol)
@@ -361,6 +345,7 @@ main(int argc, char **argv)
 	struct dev *d;
 	struct port *p;
 	struct listen *l;
+	struct passwd *pw;
 
 	atexit(log_flush);
 
@@ -494,8 +479,16 @@ main(int argc, char **argv)
 	getbasepath(base, sizeof(base));
 	snprintf(path, SOCKPATH_MAX, "%s/" SOCKPATH_FILE "%u", base, unit);
 	listen_new_un(path);
-	if (geteuid() == 0)
-		privdrop();
+	if (geteuid() == 0) {
+		if ((pw = getpwnam(SNDIO_USER)) == NULL)
+			errx(1, "unknown user %s", SNDIO_USER);
+		if (setpriority(PRIO_PROCESS, 0, SNDIO_PRIO) < 0)
+			err(1, "setpriority");
+		if (setgroups(1, &pw->pw_gid) ||
+		    setresgid(pw->pw_gid, pw->pw_gid, pw->pw_gid) ||
+		    setresuid(pw->pw_uid, pw->pw_uid, pw->pw_uid))
+			err(1, "cannot drop privileges");
+	}
 	midi_init();
 	for (p = port_list; p != NULL; p = p->next) {
 		if (!port_init(p))
@@ -515,10 +508,6 @@ main(int argc, char **argv)
 		if (daemon(0, 0) < 0)
 			err(1, "daemon");
 	}
-
-	/*
-	 * Loop, start audio.
-	 */
 	for (;;) {
 		if (quit_flag)
 			break;
@@ -542,8 +531,8 @@ main(int argc, char **argv)
 		dev_del(dev_list);
 	while (port_list)
 		port_del(port_list);
-	filelist_done();
 	rmdir(base);
+	filelist_done();
 	unsetsig();
 	return 0;
 }
