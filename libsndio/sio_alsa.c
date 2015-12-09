@@ -275,17 +275,23 @@ sio_alsa_enctofmt(struct sio_alsa_hdl *hdl, snd_pcm_format_t *rfmt,
 struct sio_hdl *
 _sio_alsa_open(const char *str, unsigned mode, int nbio)
 {
+	const char *p;
 	struct sio_alsa_hdl *hdl;
 	struct sio_par par;
 	size_t len;
 	int err;
 
-	switch (*str) {
+	p = _sndio_parsetype(str, "rsnd");
+	if (p == NULL) {
+		DPRINTF("_sio_alsa_open: %s: \"rsnd\" expected\n", str);
+		return NULL;
+	}
+	switch (*p) {
 	case '/':
-		str++;
+		p++;
 		break;
 	default:
-		DPRINTF("_sio_alsa_open: %s: '/<devnum>' expected\n", str);
+		DPRINTF("_sio_alsa_open: %s: '/' expected\n", str);
 		return NULL;
 	}
 	hdl = malloc(sizeof(struct sio_alsa_hdl));
@@ -298,12 +304,12 @@ _sio_alsa_open(const char *str, unsigned mode, int nbio)
 	if (err < 0)
 		DALSA("couldn't attach to stderr", err);
 #endif
-	len = strlen(str);
+	len = strlen(p);
 	hdl->devname = malloc(len + sizeof(DEVNAME_PREFIX));
 	if (hdl->devname == NULL)
 		goto bad_free_hdl;
 	memcpy(hdl->devname, DEVNAME_PREFIX, sizeof(DEVNAME_PREFIX) - 1);
-	memcpy(hdl->devname + sizeof(DEVNAME_PREFIX) - 1, str, len + 1);
+	memcpy(hdl->devname + sizeof(DEVNAME_PREFIX) - 1, p, len + 1);
 	if (mode & SIO_PLAY) {
 		err = snd_pcm_open(&hdl->opcm, hdl->devname,
 		    SND_PCM_STREAM_PLAYBACK, SND_PCM_NONBLOCK);

@@ -45,7 +45,6 @@ sio_open(const char *str, unsigned int mode, int nbio)
 {
 	static char devany[] = SIO_DEVANY;
 	struct sio_hdl *hdl;
-	const char *p;
 
 #ifdef DEBUG
 	_sndio_debug_init();
@@ -60,29 +59,26 @@ sio_open(const char *str, unsigned int mode, int nbio)
 			str = devany;
 	}
 	if (strcmp(str, devany) == 0) {
-		hdl = _sio_aucat_open("/0", mode, nbio);
+		hdl = _sio_aucat_open("snd/0", mode, nbio);
 		if (hdl != NULL)
 			return hdl;
 #if defined(USE_SUN)
-		return _sio_sun_open("/0", mode, nbio);
+		return _sio_sun_open("rsnd/0", mode, nbio);
 #elif defined(USE_ALSA)
-		return _sio_alsa_open("/0", mode, nbio);
+		return _sio_alsa_open("rsnd/0", mode, nbio);
 #else
 		return NULL;
 #endif
 	}
-	if ((p = _sndio_parsetype(str, "snd")) != NULL ||
-	    (p = _sndio_parsetype(str, "aucat")) != NULL)
-		return _sio_aucat_open(p, mode, nbio);
-#if defined(USE_ALSA) || defined(USE_SUN)
-	if ((p = _sndio_parsetype(str, "rsnd")) != NULL ||
-	    (p = _sndio_parsetype(str, "sun")) != NULL) {
+	if (_sndio_parsetype(str, "snd"))
+		return _sio_aucat_open(str, mode, nbio);
+	if (_sndio_parsetype(str, "rsnd"))
 #if defined(USE_SUN)
-		return _sio_sun_open(p, mode, nbio);
+		return _sio_sun_open(str, mode, nbio);
 #elif defined(USE_ALSA)
-		return _sio_alsa_open(p, mode, nbio);
-#endif
-	}
+		return _sio_alsa_open(str, mode, nbio);
+#else
+		return NULL;
 #endif
 	DPRINTF("sio_open: %s: unknown device type\n", str);
 	return NULL;
