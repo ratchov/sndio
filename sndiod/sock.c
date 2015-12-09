@@ -153,6 +153,7 @@ sock_close(struct sock *f)
 	}
 	file_del(f->file);
 	close(f->fd);
+	file_slowaccept = 0;
 	xfree(f);
 }
 
