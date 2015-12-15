@@ -24,6 +24,7 @@ struct listen {
 	struct file *file;
 	char *path;
 	int fd;
+	int slowaccept;
 };
 
 extern struct listen *listen_list;
