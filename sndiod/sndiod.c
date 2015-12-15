@@ -346,6 +346,10 @@ main(int argc, char **argv)
 	struct port *p;
 	struct listen *l;
 	struct passwd *pw;
+	struct tcpaddr {
+		char *host;
+		struct tcpaddr *next;
+	} *tcpaddr_list = NULL, *ta;
 
 	atexit(log_flush);
 
@@ -379,14 +383,15 @@ main(int argc, char **argv)
 			background = 0;
 			break;
 		case 'U':
-			if (listen_list)
-				errx(1, "-U must come before -L");
 			unit = strtonum(optarg, 0, 15, &str);
 			if (str)
 				errx(1, "%s: unit number is %s", optarg, str);
 			break;
 		case 'L':
-			listen_new_tcp(optarg, AUCAT_PORT + unit);
+			ta = xmalloc(sizeof(struct tcpaddr));
+			ta->host = optarg;
+			ta->next = tcpaddr_list;
+			tcpaddr_list = ta;
 			break;
 		case 'm':
 			mode = opt_mode();
@@ -479,6 +484,8 @@ main(int argc, char **argv)
 	getbasepath(base, sizeof(base));
 	snprintf(path, SOCKPATH_MAX, "%s/" SOCKPATH_FILE "%u", base, unit);
 	listen_new_un(path);
+	for (ta = tcpaddr_list; ta != NULL; ta = ta->next)
+		listen_new_tcp(ta->host, AUCAT_PORT + unit);
 	if (geteuid() == 0) {
 		if ((pw = getpwnam(SNDIO_USER)) == NULL)
 			errx(1, "unknown user %s", SNDIO_USER);
