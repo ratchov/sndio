@@ -485,8 +485,8 @@ main(int argc, char **argv)
 		if (setpriority(PRIO_PROCESS, 0, SNDIO_PRIO) < 0)
 			err(1, "setpriority");
 		if (setgroups(1, &pw->pw_gid) ||
-		    setresgid(pw->pw_gid, pw->pw_gid, pw->pw_gid) ||
-		    setresuid(pw->pw_uid, pw->pw_uid, pw->pw_uid))
+		    setgid(pw->pw_gid) ||
+		    setuid(pw->pw_uid))
 			err(1, "cannot drop privileges");
 	}
 	midi_init();

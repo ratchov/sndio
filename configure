@@ -56,6 +56,14 @@ case `uname` in
 		so="$so libsndio.so"
 		defs='-D_GNU_SOURCE -DDEV_RANDOM=\\"/dev/urandom\\"'
 		;;
+	NetBSD)
+		sun=no
+		rmidi=yes
+		user=_sndio
+		so="$so libsndio.so"
+		defs='-DHAVE_ARC4RANDOM -DHAVE_ISSETUGID \\\
+		-DHAVE_STRLCAT -DHAVE_STRLCPY'
+		;;
 	OpenBSD)
 		sun=yes
 		rmidi=yes
