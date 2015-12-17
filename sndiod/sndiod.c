@@ -326,7 +326,7 @@ mkopt(char *path, struct dev *d,
 	o = opt_new(path, d, pmin, pmax, rmin, rmax,
 	    MIDI_TO_ADATA(vol), mmc, dup, mode);
 	if (o == NULL)
-		errx(1, "%s: couldn't create subdev", path);
+		return NULL;
 	dev_adjpar(d, o->mode, o->pmin, o->pmax, o->rmin, o->rmax);
 	return o;
 }
@@ -426,8 +426,9 @@ main(int argc, char **argv)
 				d = mkdev(DEFAULT_DEV, &par, 0, bufsz, round,
 				    rate, hold, autovol);
 			}
-			mkopt(optarg, d, pmin, pmax, rmin, rmax,
-			    mode, vol, mmc, dup);
+			if (mkopt(optarg, d, pmin, pmax, rmin, rmax,
+				mode, vol, mmc, dup) == NULL)
+				return 1;
 			break;
 		case 'q':
 			mkport(optarg, hold);
@@ -478,8 +479,9 @@ main(int argc, char **argv)
 	for (d = dev_list; d != NULL; d = d->next) {
 		if (opt_byname("default", d->num))
 			continue;
-		mkopt("default", d, pmin, pmax, rmin, rmax,
-		    mode, vol, mmc, dup);
+		if (mkopt("default", d, pmin, pmax, rmin, rmax,
+			mode, vol, mmc, dup) == NULL)
+			return 1;
 	}
 	getbasepath(base, sizeof(base));
 	snprintf(path, SOCKPATH_MAX, "%s/" SOCKPATH_FILE "%u", base, unit);
