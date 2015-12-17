@@ -485,9 +485,12 @@ main(int argc, char **argv)
 	}
 	getbasepath(base, sizeof(base));
 	snprintf(path, SOCKPATH_MAX, "%s/" SOCKPATH_FILE "%u", base, unit);
-	listen_new_un(path);
-	for (ta = tcpaddr_list; ta != NULL; ta = ta->next)
-		listen_new_tcp(ta->host, AUCAT_PORT + unit);
+	if (!listen_new_un(path))
+		return 1;
+	for (ta = tcpaddr_list; ta != NULL; ta = ta->next) {
+		if (!listen_new_tcp(ta->host, AUCAT_PORT + unit))
+			return 1;
+	}
 	if (geteuid() == 0) {
 		if ((pw = getpwnam(SNDIO_USER)) == NULL)
 			errx(1, "unknown user %s", SNDIO_USER);
