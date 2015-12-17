@@ -399,8 +399,10 @@ file_poll(void)
 		timo = -1;
 	res = poll(pfds, nfds, timo);
 	if (res < 0) {
-		if (errno != EINTR)
-			err(1, "poll");
+		if (errno != EINTR) {
+			log_puts("poll failed");
+			panic();
+		}
 		return 1;
 	}
 
@@ -450,8 +452,7 @@ filelist_init(void)
 		err(1, "sigprocmask");
 	file_list = NULL;
 	if (clock_gettime(CLOCK_MONOTONIC, &file_ts) < 0) {
-		perror("clock_gettime");
-		exit(1);
+		err(1, "clock_gettime");
 	}
 	log_sync = 0;
 	timo_init();
