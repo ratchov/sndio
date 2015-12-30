@@ -163,6 +163,12 @@ xmalloc(size_t size)
 void
 xfree(void *p)
 {
+#ifdef DEBUG
+	if (p == NULL) {
+		log_puts("xfree with NULL arg\n");
+		panic();
+	}
+#endif
 	free(p);
 }
 
