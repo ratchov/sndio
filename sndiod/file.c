@@ -419,12 +419,14 @@ file_poll(void)
 	if (delta_nsec < 0)
 		log_puts("file_poll: negative time interval\n");
 #endif
-	file_ts = ts;
-	if (delta_nsec >= 0 && delta_nsec < 1000000000LL)
-		timo_update(delta_nsec / 1000);
-	else {
-		if (log_level >= 2)
-			log_puts("ignored huge clock delta\n");
+	file_ts = ts;	
+	if (timo_queue) {
+		if (delta_nsec >= 0 && delta_nsec < 1000000000LL)
+			timo_update(delta_nsec / 1000);
+		else {
+			if (log_level >= 2)
+				log_puts("ignored huge clock delta\n");
+		}
 	}
 
 	/*
