@@ -348,7 +348,7 @@ main(int argc, char **argv)
 	struct tcpaddr {
 		char *host;
 		struct tcpaddr *next;
-	} *tcpaddr_list = NULL, *ta;
+	} *tcpaddr_list, *ta;
 
 	atexit(log_flush);
 
@@ -371,6 +371,7 @@ main(int argc, char **argv)
 	rmax = 1;
 	aparams_init(&par);
 	mode = MODE_PLAY | MODE_REC;
+	tcpaddr_list = NULL;
 
 	setsig();
 	filelist_init();
@@ -542,6 +543,11 @@ main(int argc, char **argv)
 		dev_del(dev_list);
 	while (port_list)
 		port_del(port_list);
+	while (tcpaddr_list) {
+		ta = tcpaddr_list;
+		tcpaddr_list = ta->next;
+		xfree(ta);
+	}
 	rmdir(base);
 	filelist_done();
 	unsetsig();
