@@ -270,7 +270,7 @@ getbasepath(char *base, size_t size)
 		if (errno != EEXIST)
 			err(1, "mkdir(\"%s\")", base);
 	}
-	umask(omask);	
+	umask(omask);
 	if (stat(base, &sb) < 0)
 		err(1, "stat(\"%s\")", base);
 	if (sb.st_uid != uid || (sb.st_mode & mask) != 0)

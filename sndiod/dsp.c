@@ -446,7 +446,7 @@ enc_init(struct conv *p, struct aparams *par, int nch)
 		p->bias = (1U << 31) >> p->shift;
 	} else {
 		p->bias = 0;
-	}	
+	}
 	if (!par->le) {
 		p->bfirst = par->bps - 1;
 		p->bnext = -1;
@@ -539,7 +539,7 @@ dec_init(struct conv *p, struct aparams *par, int nch)
 		p->bias = (1U << 31) >> p->shift;
 	} else {
 		p->bias = 0;
-	}	
+	}
 	if (par->le) {
 		p->bfirst = par->bps - 1;
 		p->bnext = -1;

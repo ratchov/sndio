@@ -53,7 +53,7 @@ abuf_init(struct abuf *buf, unsigned int len)
 void
 abuf_done(struct abuf *buf)
 {
-#ifdef DEBUG	
+#ifdef DEBUG
 	if (buf->used > 0) {
 		if (log_level >= 3) {
 			log_puts("deleting non-empty buffer, used = ");

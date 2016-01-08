@@ -548,12 +548,12 @@ slot_skip(struct slot *s)
 		if (s->mode & MODE_PLAY) {
 			abuf_rdiscard(&s->mix.buf, s->round * s->mix.bpf);
 		}
-		s->skip--;		
+		s->skip--;
 	}
 	return max - s->skip;
 }
 
-int 
+int
 play_filt_resamp(struct slot *s, void *res_in, void *out, int todo)
 {
 	int i, offs, vol, nch;
@@ -583,7 +583,7 @@ play_filt_resamp(struct slot *s, void *res_in, void *out, int todo)
 	return todo;
 }
 
-int 
+int
 play_filt_dec(struct slot *s, void *in, void *out, int todo)
 {
 	void *tmp;
@@ -664,7 +664,7 @@ dev_mix_adjvol(struct dev *d)
 	}
 }
 
-int 
+int
 rec_filt_resamp(struct slot *s, void *in, void *res_out, int todo)
 {
 	int i, vol, offs, nch;
@@ -693,7 +693,7 @@ rec_filt_resamp(struct slot *s, void *in, void *res_out, int todo)
 	return todo;
 }
 
-int 
+int
 rec_filt_enc(struct slot *s, void *in, void *out, int todo)
 {
 	void *tmp;
@@ -848,11 +848,11 @@ dev_cycle(struct dev *d)
 			dev_mix_adjvol(d);
 			continue;
 		}
-		
+
 		/*
 		 * check for xruns
 		 */
-		if (((s->mode & MODE_PLAY) && 
+		if (((s->mode & MODE_PLAY) &&
 			s->mix.buf.used < s->round * s->mix.bpf) ||
 		    ((s->mode & MODE_RECMASK) &&
 			s->sub.buf.len - s->sub.buf.used <
@@ -918,7 +918,7 @@ void
 dev_onmove(struct dev *d, int delta)
 {
 	long long pos;
-	struct slot *s, *snext;	
+	struct slot *s, *snext;
 
 	d->delta += delta;
 
@@ -1287,11 +1287,11 @@ dev_wakeup(struct dev *d)
 		}
 		d->poffs = 0;
 
-		/* 
+		/*
 		 * empty cycles don't increment delta, so it's ok to
 		 * start at 0
 		 **/
-		d->delta = 0; 
+		d->delta = 0;
 
 		d->pstate = DEV_RUN;
 		dev_sio_start(d);
@@ -1609,7 +1609,7 @@ slot_attach(struct slot *s)
 	 * start the device if not started
 	 */
 	dev_wakeup(d);
-	
+
 	/*
 	 * get the current position, the origin is when the first sample
 	 * played and/or recorded
@@ -1711,7 +1711,7 @@ slot_attach(struct slot *s)
 			s->sub.encbuf =
 			    xmalloc(s->round * slot_nch * sizeof(adata_t));
 		}
-	
+
 		/*
 		 * N-th recorded block is the N-th played block
 		 */
@@ -1729,7 +1729,7 @@ slot_ready(struct slot *s)
 	/*
 	 * device may be disconnected, and if so we're called from
 	 * slot->ops->exit() on a closed device
-	 */	
+	 */
 	if (s->dev->pstate == DEV_CFG)
 		return;
 	if (s->tstate == MMC_OFF)
@@ -1770,7 +1770,7 @@ slot_start(struct slot *s)
 			log_puts("\n");
 		}
 #endif
-		s->mix.bpf = s->par.bps * 
+		s->mix.bpf = s->par.bps *
 		    (s->mix.slot_cmax - s->mix.slot_cmin + 1);
 		abuf_init(&s->mix.buf, bufsz * s->mix.bpf);
 	}
@@ -1785,7 +1785,7 @@ slot_start(struct slot *s)
 			log_puts("\n");
 	}
 #endif
-		s->sub.bpf = s->par.bps * 
+		s->sub.bpf = s->par.bps *
 		    (s->sub.slot_cmax - s->sub.slot_cmin + 1);
 		abuf_init(&s->sub.buf, bufsz * s->sub.bpf);
 	}
@@ -1830,7 +1830,7 @@ slot_detach(struct slot *s)
 			panic();
 		}
 #endif
-	}	
+	}
 	*ps = s->next;
 	if (s->mode & MODE_RECMASK) {
 		if (s->sub.encbuf)
