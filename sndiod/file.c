@@ -416,10 +416,6 @@ file_poll(void)
 	if (timo_queue) {
 		delta_nsec = 1000000000LL * (ts.tv_sec - file_ts.tv_sec);
 		delta_nsec += ts.tv_nsec - file_ts.tv_nsec;
-#ifdef DEBUG
-		if (delta_nsec < 0)
-			log_puts("file_poll: negative time interval\n");
-#endif
 		if (delta_nsec >= 0 && delta_nsec < 1000000000LL)
 			timo_update(delta_nsec / 1000);
 		else {
