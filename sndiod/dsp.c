@@ -296,7 +296,8 @@ resamp_do(struct resamp *p, adata_t *in, adata_t *out, int todo)
  * initialize resampler with ibufsz/obufsz factor and "nch" channels
  */
 void
-resamp_init(struct resamp *p, unsigned int iblksz, unsigned int oblksz, int nch)
+resamp_init(struct resamp *p, unsigned int iblksz,
+    unsigned int oblksz, int nch)
 {
 	unsigned int i;
 
