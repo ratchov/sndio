@@ -35,7 +35,7 @@
 
 #ifdef DEBUG
 static snd_output_t *output = NULL;
-#define DALSA(str, err) fprintf(stderr, "%s: %s\n", str, snd_strerror(err)) 
+#define DALSA(str, err) fprintf(stderr, "%s: %s\n", str, snd_strerror(err))
 #else
 #define DALSA(str, err) do {} while (0)
 #endif

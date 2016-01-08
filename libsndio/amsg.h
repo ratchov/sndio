@@ -19,7 +19,7 @@
 
 #include <stdint.h>
 
-/* 
+/*
  * unix-domain socket name is:
  *
  * DIR [ '-' UID ] '/' FILE UNIT

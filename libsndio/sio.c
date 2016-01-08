@@ -165,7 +165,7 @@ sio_setpar(struct sio_hdl *hdl, struct sio_par *par)
 		return 0;
 	}
 	if (par->__magic != SIO_PAR_MAGIC) {
-		DPRINTF("sio_setpar: use of uninitialized sio_par structure\n");
+		DPRINTF("sio_setpar: uninitialized sio_par structure\n");
 		hdl->eof = 1;
 		return 0;
 	}
@@ -448,7 +448,7 @@ sio_onmove(struct sio_hdl *hdl, void (*cb)(void *, int), void *addr)
 #ifdef DEBUG
 void
 _sio_printpos(struct sio_hdl *hdl)
-{	
+{
 	struct timespec ts;
 	long long rpos, rdiff;
 	long long cpos, cdiff;
@@ -461,7 +461,7 @@ _sio_printpos(struct sio_hdl *hdl)
 	rround = hdl->par.round * rbpf;
 	wround = hdl->par.round * wbpf;
 
-	rpos = (hdl->mode & SIO_REC) ? 
+	rpos = (hdl->mode & SIO_REC) ?
 	    hdl->cpos * rbpf - hdl->rused : 0;
 	wpos = (hdl->mode & SIO_PLAY) ?
 	    hdl->cpos * wbpf + hdl->wused : 0;

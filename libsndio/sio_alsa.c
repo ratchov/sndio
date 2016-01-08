@@ -39,7 +39,7 @@
 
 #ifdef DEBUG
 static snd_output_t *output = NULL;
-#define DALSA(str, err) fprintf(stderr, "%s: %s\n", str, snd_strerror(err)) 
+#define DALSA(str, err) fprintf(stderr, "%s: %s\n", str, snd_strerror(err))
 #else
 #define DALSA(str, err) do {} while (0)
 #endif
@@ -103,9 +103,9 @@ static unsigned int cap_rates[] = {
 };
 static snd_pcm_format_t cap_fmts[] = {
 	/* XXX add s24le3 and s24be3 */
-	SND_PCM_FORMAT_S32_LE,	SND_PCM_FORMAT_S32_BE, 
-	SND_PCM_FORMAT_S24_LE,	SND_PCM_FORMAT_S24_BE, 
-	SND_PCM_FORMAT_S16_LE,	SND_PCM_FORMAT_S16_BE, 
+	SND_PCM_FORMAT_S32_LE,	SND_PCM_FORMAT_S32_BE,
+	SND_PCM_FORMAT_S24_LE,	SND_PCM_FORMAT_S24_BE,
+	SND_PCM_FORMAT_S16_LE,	SND_PCM_FORMAT_S16_BE,
 	SND_PCM_FORMAT_U8
 };
 
@@ -498,11 +498,11 @@ sio_alsa_xrun(struct sio_alsa_hdl *hdl)
 	 *
 	 * to understand the formula, draw a picture :)
 	 */
-	rbpf = (hdl->sio.mode & SIO_REC) ? 
+	rbpf = (hdl->sio.mode & SIO_REC) ?
 	    hdl->sio.par.bps * hdl->sio.par.rchan : 1;
 	wbpf = (hdl->sio.mode & SIO_PLAY) ?
 	    hdl->sio.par.bps * hdl->sio.par.pchan : 1;
-	rround = hdl->sio.par.round * rbpf; 
+	rround = hdl->sio.par.round * rbpf;
 
 	clk = hdl->sio.cpos % hdl->sio.par.round;
 	rdrop = (clk * rbpf - hdl->sio.rused) % rround;
@@ -537,12 +537,12 @@ sio_alsa_setpar_hw(snd_pcm_t *pcm, snd_pcm_hw_params_t *hwp,
     snd_pcm_uframes_t *round, unsigned int *periods)
 {
 	static snd_pcm_format_t fmts[] = {
-		SND_PCM_FORMAT_S32_LE,	SND_PCM_FORMAT_S32_BE, 
+		SND_PCM_FORMAT_S32_LE,	SND_PCM_FORMAT_S32_BE,
 		SND_PCM_FORMAT_U32_LE,	SND_PCM_FORMAT_U32_BE,
-		SND_PCM_FORMAT_S24_LE,	SND_PCM_FORMAT_S24_BE, 
+		SND_PCM_FORMAT_S24_LE,	SND_PCM_FORMAT_S24_BE,
 		SND_PCM_FORMAT_U24_LE,	SND_PCM_FORMAT_U24_BE,
-		SND_PCM_FORMAT_S16_LE,	SND_PCM_FORMAT_S16_BE, 
-		SND_PCM_FORMAT_U16_LE,	SND_PCM_FORMAT_U16_BE, 
+		SND_PCM_FORMAT_S16_LE,	SND_PCM_FORMAT_S16_BE,
+		SND_PCM_FORMAT_U16_LE,	SND_PCM_FORMAT_U16_BE,
 		SND_PCM_FORMAT_U8,	SND_PCM_FORMAT_S8
 	};
 	int i, err, dir = 0;
@@ -699,7 +699,7 @@ sio_alsa_getcap(struct sio_hdl *sh, struct sio_cap *cap)
 		sio_alsa_fmttopar(hdl, cap_fmts[i],
 		    &cap->enc[i].bits,
 		    &cap->enc[i].sig,
-		    &cap->enc[i].le);		
+		    &cap->enc[i].le);
 		cap->enc[i].bps = SIO_BPS(cap->enc[0].bits);
 		cap->enc[i].msb = 1;
 	}
@@ -796,7 +796,7 @@ sio_alsa_setpar(struct sio_hdl *sh, struct sio_par *par)
 	    ofmt, orate, (unsigned int)oround, operiods);
 	DPRINTFN(2, "ifmt = %u, irate = %u, iround = %u, iperiods = %u\n",
 	    ifmt, irate, (unsigned int)iround, iperiods);
-	
+
 	if (ifmt != ofmt) {
 		DPRINTF("play and rec formats differ\n");
 		hdl->sio.eof = 1;
@@ -1122,7 +1122,7 @@ sio_alsa_revents(struct sio_hdl *sh, struct pollfd *pfd)
 
 	if (hdl->sio.eof)
 		return POLLHUP;
-	
+
 	for (i = 0; i < hdl->onfds + hdl->infds; i++) {
 		DPRINTFN(4, "sio_alsa_revents: pfds[%d].revents = %x\n",
 		    i, pfd[i].revents);

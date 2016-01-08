@@ -75,7 +75,8 @@ mio_aucat_runmsg(struct mio_aucat_hdl *hdl)
 		    delta, hdl->aucat.maxwrite);
 		break;
 	default:
-		DPRINTF("mio_aucat_runmsg: unhandled message %u\n", hdl->aucat.rmsg.cmd);
+		DPRINTF("mio_aucat_runmsg: unhandled message %u\n",
+		    hdl->aucat.rmsg.cmd);
 		hdl->mio.eof = 1;
 		return 0;
 	}
