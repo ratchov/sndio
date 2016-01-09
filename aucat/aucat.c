@@ -425,7 +425,7 @@ slot_del(struct slot *s)
 	xfree(s);
 }
 
-static int 
+static int
 play_filt_resamp(struct slot *s, void *res_in, void *out, int todo)
 {
 	int i, offs, vol, nch;
@@ -455,7 +455,7 @@ play_filt_resamp(struct slot *s, void *res_in, void *out, int todo)
 	return todo;
 }
 
-static int 
+static int
 play_filt_dec(struct slot *s, void *in, void *out, int todo)
 {
 	void *tmp;
@@ -506,7 +506,7 @@ slot_mix_badd(struct slot *s, adata_t *odata)
 	return done;
 }
 
-static int 
+static int
 rec_filt_resamp(struct slot *s, void *in, void *res_out, int todo)
 {
 	int i, vol, offs, nch;
@@ -535,7 +535,7 @@ rec_filt_resamp(struct slot *s, void *in, void *res_out, int todo)
 	return todo;
 }
 
-static int 
+static int
 rec_filt_enc(struct slot *s, void *in, void *out, int todo)
 {
 	void *tmp;
@@ -1114,7 +1114,7 @@ playrec(char *dev, int mode, int bufsz, char *port)
 				continue;
 			log_puts("poll failed\n");
 			panic();
-		}		
+		}
 		if (dev_pstate == DEV_START) {
 			ev = sio_revents(dev_sh, pfds);
 			if (ev & POLLHUP) {
@@ -1276,7 +1276,7 @@ main(int argc, char **argv)
 	port = NULL;
 	dev = NULL;
 	mode = 0;
-	
+
 	while ((c = getopt(argc, argv, "b:c:de:f:h:i:j:no:q:r:t:v:")) != -1) {
 		switch (c) {
 		case 'b':
@@ -1359,7 +1359,7 @@ main(int argc, char **argv)
 		if (mode == 0) {
 			log_puts("at least -i or -o required\n");
 			return 1;
-		} 
+		}
 		if (!playrec(dev, mode, bufsz, port))
 			return 1;
 	}

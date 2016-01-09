@@ -563,7 +563,7 @@ afile_aiff_readhdr(struct afile *f)
 			log_puts(f->path);
 			log_puts(": failed to read chunk header\n");
 			return 0;
-		}		
+		}
 		csize = be32_get(&chunk.size);
 		if (memcmp(chunk.id, aiff_id_comm, 4) == 0) {
 			if (!afile_aiff_readcomm(f, csize, comp, &nfr))
