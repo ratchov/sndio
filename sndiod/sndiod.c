@@ -273,6 +273,8 @@ getbasepath(char *base, size_t size)
 	umask(omask);
 	if (stat(base, &sb) < 0)
 		err(1, "stat(\"%s\")", base);
+	if (!S_ISDIR(sb.st_mode))
+		errx(1, "%s is not a directory", base);
 	if (sb.st_uid != uid || (sb.st_mode & mask) != 0)
 		errx(1, "%s has wrong permissions", base);
 }
