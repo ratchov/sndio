@@ -478,9 +478,9 @@ _aucat_open(struct aucat *hdl, const char *str, unsigned int mode)
 
 	if ((p = _sndio_parsetype(str, "snd")) != NULL)
 		type = 0;
- 	else if ((p = _sndio_parsetype(str, "midithru")) != NULL)
+	else if ((p = _sndio_parsetype(str, "midithru")) != NULL)
 		type = 1;
- 	else if ((p = _sndio_parsetype(str, "midi")) != NULL)
+	else if ((p = _sndio_parsetype(str, "midi")) != NULL)
 		type = 2;
 	else {
 		DPRINTF("%s: unsupported device type\n", str);

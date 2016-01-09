@@ -175,7 +175,7 @@ mio_rmidi_write(struct mio_hdl *sh, const void *buf, size_t len)
 			DPERROR("mio_rmidi_write: write");
 			hdl->mio.eof = 1;
 		}
- 		return 0;
+		return 0;
 	}
 	return n;
 }

@@ -803,7 +803,7 @@ sio_sun_write(struct sio_hdl *sh, const void *buf, size_t len)
 			DPERROR("sio_sun_write: write");
 			hdl->sio.eof = 1;
 		}
- 		return 0;
+		return 0;
 	}
 	if (hdl->filling) {
 		if (!sio_sun_autostart(hdl))
