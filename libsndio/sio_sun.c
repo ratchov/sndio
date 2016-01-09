@@ -582,7 +582,7 @@ sio_sun_setpar(struct sio_hdl *sh, struct sio_par *par)
 		case AUDIO_ENCODING_ULINEAR:
 			break;
 		default:
-			DPRINTF("sio_sun_setpar: couldn't set encoding\n");
+			DPRINTF("sio_sun_setpar: couldn't find encoding\n");
 			hdl->sio.eof = 1;
 			return 0;
 		}
