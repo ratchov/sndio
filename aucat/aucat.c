@@ -308,7 +308,8 @@ slot_init(struct slot *s)
 		    s->cmin, s->cmax,
 		    0, dev_pchan - 1,
 		    0, dev_pchan - 1);
-		if (s->afile.fmt != AFILE_FMT_PCM || !aparams_native(&s->afile.par)) {
+		if (s->afile.fmt != AFILE_FMT_PCM ||
+		    !aparams_native(&s->afile.par)) {
 			dec_init(&s->conv, &s->afile.par, slot_nch);
 			s->convbuf =
 			    xmalloc(s->round * slot_nch * sizeof(adata_t));
@@ -1032,7 +1033,8 @@ playrec_cycle(void)
 				n = sio_read(dev_sh, p, todo);
 				if (n == 0) {
 					log_puts(dev_name);
-					log_puts(": failed to read from device\n");
+					log_puts(": failed to read "
+					    "from device\n");
 					return 0;
 				}
 				p += n;

@@ -366,7 +366,8 @@ resamp_do(struct resamp *p, adata_t *in, adata_t *out, int todo)
  * initialize resampler with ibufsz/obufsz factor and "nch" channels
  */
 void
-resamp_init(struct resamp *p, unsigned int iblksz, unsigned int oblksz, int nch)
+resamp_init(struct resamp *p, unsigned int iblksz,
+    unsigned int oblksz, int nch)
 {
 	unsigned int i;
 
@@ -673,7 +674,8 @@ dec_do_float(struct conv *p, unsigned char *in, unsigned char *out, int todo)
  * convert samples from ulaw/alaw to adata_t
  */
 void
-dec_do_ulaw(struct conv *p, unsigned char *in, unsigned char *out, int todo, int is_alaw)
+dec_do_ulaw(struct conv *p, unsigned char *in,
+    unsigned char *out, int todo, int is_alaw)
 {
 	unsigned int f;
 	unsigned char *idata;
