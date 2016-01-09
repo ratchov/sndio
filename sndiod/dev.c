@@ -1643,7 +1643,7 @@ slot_attach(struct slot *s)
 #ifdef DEBUG
 	if ((s->mode & d->mode) != s->mode) {
 		slot_log(s);
-	    	log_puts(": mode beyond device mode, not attaching\n");
+		log_puts(": mode beyond device mode, not attaching\n");
 		panic();
 	}
 #endif

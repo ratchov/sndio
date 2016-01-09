@@ -152,7 +152,7 @@ aparams_strtoenc(struct aparams *par, char *istr)
 		return 0;
 
 done:
-       	par->msb = msb;
+	par->msb = msb;
 	par->sig = sig;
 	par->bits = bits;
 	par->bps = bps;
