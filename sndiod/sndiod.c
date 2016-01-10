@@ -338,8 +338,7 @@ main(int argc, char **argv)
 	int c, background, unit;
 	int pmin, pmax, rmin, rmax;
 	char base[SOCKPATH_MAX], path[SOCKPATH_MAX];
-	char loc[32];
-	unsigned int mode, dup, mmc, vol, i;
+	unsigned int mode, dup, mmc, vol;
 	unsigned int hold, autovol, bufsz, round, rate;
 	const char *str;
 	struct aparams par;
@@ -466,18 +465,8 @@ main(int argc, char **argv)
 		fputs(usagestr, stderr);
 		return 1;
 	}
-	if (dev_list == NULL) {
-		for (i = 0; i < 4; i++) {
-			snprintf(loc, sizeof(loc), "rsnd/%u", i);
-			mkdev(loc, &par, 0, bufsz, round, rate, hold, autovol);
-		}
-	}
-	if (port_list == NULL) {
-		for (i = 0; i < 8; i++) {
-			snprintf(loc, sizeof(loc), "rmidi/%u", i);
-			mkport(loc, hold);
-		}
-	}
+	if (dev_list == NULL)
+		mkdev(DEFAULT_DEV, &par, 0, bufsz, round, rate, hold, autovol);
 	for (d = dev_list; d != NULL; d = d->next) {
 		if (opt_byname("default", d->num))
 			continue;
