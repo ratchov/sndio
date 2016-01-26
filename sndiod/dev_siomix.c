@@ -72,9 +72,9 @@ dev_siomix_onctl(void *arg, unsigned int addr, unsigned int val)
 	struct ctl *c;
 
 	dev_log(d);
-	log_puts(": onctl ");
+	log_puts(": onctl: addr = ");
 	log_putu(addr);
-	log_puts(", ");
+	log_puts(", val = ");
 	log_putu(val);
 	log_puts("\n");
 
