@@ -318,8 +318,6 @@ file_poll(void)
 	long long delta_nsec;
 	int nfds, res, timo;
 
-	log_flush();
-
 	/*
 	 * cleanup zombies
 	 */
@@ -355,11 +353,11 @@ file_poll(void)
 		log_puts("poll:");
 		pfd = pfds;
 		for (f = file_list; f != NULL; f = f->next) {
-			if (f->nfds == 0)
-				continue;
 			log_puts(" ");
 			log_puts(f->ops->name);
 			log_puts(":");
+			if (f->nfds == 0)
+				continue;
 			for (i = 0; i < f->nfds; i++) {
 				log_puts(" ");
 				log_putx(pfd->events);
@@ -396,6 +394,7 @@ file_poll(void)
 			timo = TIMER_MSEC;
 	} else
 		timo = -1;
+	log_flush();
 	res = poll(pfds, nfds, timo);
 	if (res < 0) {
 		if (errno != EINTR) {
