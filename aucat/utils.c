@@ -146,7 +146,7 @@ void *
 xmalloc(size_t size)
 {
 	void *p;
-	
+
 	p = malloc(size);
 	if (p == NULL) {
 		log_puts("failed to allocate ");
