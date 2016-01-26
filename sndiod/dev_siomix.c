@@ -52,13 +52,28 @@ void
 dev_siomix_ondesc(void *arg, struct siomix_desc *desc, int val)
 {
 	struct dev *d = arg;
+	struct ctl *c;
 
 	if (desc == NULL)
 		return;
 
 	/*
-	 * XXX: can't we just replace the contents ?
+	 * if this control's name conflicts with
+	 * our local controls, then rename ours
 	 */
+	for (c = d->ctl_list; c != NULL; c = c->next) {
+		if (c->addr < d->ctl_addr ||
+		    c->addr >= d->ctl_addr + CTLADDR_END)
+			continue;
+		if ((strcmp(c->chan0.str, desc->chan0.str) == 0 &&
+		     c->chan0.unit == desc->chan0.unit) ||
+		    (strcmp(c->chan0.str, desc->chan1.str) == 0 &&
+		     c->chan0.unit == desc->chan1.unit)) {
+			c->chan0.unit = dev_makeunit(d, c->chan0.str);
+			c->desc_mask = ~0;
+		}
+	}
+
 	dev_rmctl(d, desc->addr);
 	dev_addctl(d, desc->type, desc->addr,
 	    desc->chan0.str, desc->chan0.unit, desc->func,

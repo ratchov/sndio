@@ -24,6 +24,7 @@
 
 #define CTLADDR_SLOT_LEVEL(n)	(n)
 #define CTLADDR_MASTER		(DEV_NSLOT)
+#define CTLADDR_END		(DEV_NSLOT + 1)
 
 /*
  * audio stream state structure
@@ -289,5 +290,6 @@ void dev_label(struct dev *, int);
 struct ctl *dev_addctl(struct dev *, int, int,
     char *, int, char *, char *, int, int);
 void dev_rmctl(struct dev *, int);
+int dev_makeunit(struct dev *, char *);
 
 #endif /* !defined(DEV_H) */

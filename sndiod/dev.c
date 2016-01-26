@@ -1015,7 +1015,7 @@ dev_new(char *path, struct aparams *par,
 		d->slot[i].vol = MIDI_MAXCTL;
 		d->slot[i].tstate = MMC_OFF;
 		d->slot[i].serial = d->serial++;
-		d->slot[i].name[0] = '\0';
+		strlcpy(d->slot[i].name, "prog", SLOT_NAMEMAX);
 	}
 	for (i = 0; i < DEV_NCTLSLOT; i++) {
 		d->ctlslot[i].dev = d;
@@ -1145,10 +1145,10 @@ dev_open(struct dev *d)
 	d->ctl_addr++;
 
 	for (i = 0; i < DEV_NSLOT; i++) {
-		unit = dev_makeunit(d, "prog");
+		unit = dev_makeunit(d, d->slot[i].name);
 		c = dev_addctl(d, CTL_NUM,
 		    d->ctl_addr + CTLADDR_SLOT_LEVEL(i),
-		    "prog", unit, "level", NULL, -1, d->slot[i].vol);
+		    d->slot[i].name, unit, "level", NULL, -1, d->slot[i].vol);
 	}
 	unit = dev_makeunit(d, "sndiod");
 	c = dev_addctl(d, CTL_NUM,
@@ -2065,7 +2065,6 @@ dev_makeunit(struct dev *d, char *name)
 	for (;;) {
 		c = d->ctl_list;
 		for (;;) {
-			/* XXX: find a *range* of units, not only one */
 			if (c == NULL)
 				return i;
 			if ((strcmp(name, c->chan0.str) == 0 &&
@@ -2090,7 +2089,7 @@ dev_addctl(struct dev *d, int type, int addr,
     char *str0, int unit0, char *func, char *str1, int unit1, int val)
 {
 	struct ctl *c;
-	
+
 	c = xmalloc(sizeof(struct ctl));
 	c->type = type;
 	strlcpy(c->func, func, CTL_NAMEMAX);
@@ -2102,8 +2101,8 @@ dev_addctl(struct dev *d, int type, int addr,
 	} else
 		memset(&c->chan1, 0, sizeof(struct ctl_chan));
 	c->addr = addr;
-	c->val_mask = 0;
-	c->desc_mask = 0;
+	c->val_mask = ~0;
+	c->desc_mask = ~0;
 	c->next = d->ctl_list;
 	d->ctl_list = c;
 	c->curval = val;
@@ -2115,7 +2114,7 @@ dev_addctl(struct dev *d, int type, int addr,
 		ctl_log(c);
 		log_puts("\n");
 	}
-#endif		
+#endif	
 	return c;
 }
 
@@ -2140,7 +2139,7 @@ dev_rmctl(struct dev *d, int addr)
 		ctl_log(c);
 		log_puts("\n");
 	}
-#endif		
+#endif
 	*pc = c->next;
 	xfree(c);
 }
