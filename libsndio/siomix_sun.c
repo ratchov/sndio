@@ -188,7 +188,7 @@ setvol(struct siomix_sun_hdl *hdl, struct wskbd_vol *vol, int addr, int val)
 			DPRINTF("level write failed\n");
 			return 0;
 		}
-		_siomix_onctl_cb(&hdl->siomix, vol->base_addr + i, val);
+		_siomix_onctl_cb(&hdl->siomix, vol->base_addr + addr, val);
 		return 1;
 	}
 
