@@ -173,7 +173,7 @@ setvol(struct siomix_sun_hdl *hdl, struct wskbd_vol *vol, int addr, int val)
 	if (vol->level_idx >= 0 && addr >= 0 && addr < vol->nch) {
 		if (vol->level_val[addr] == val) {
 			DPRINTF("level %d, no change\n", val);
-			return 0;
+			return 1;
 		}
 		vol->level_val[addr] = val;
 		ctrl.dev = vol->level_idx;
