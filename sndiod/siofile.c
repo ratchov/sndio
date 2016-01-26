@@ -213,7 +213,6 @@ dev_sio_open(struct dev *d)
 		d->mode &= ~MODE_REC;
 	sio_onmove(d->sio.hdl, dev_sio_onmove, d);
 	d->sio.file = file_new(&dev_sio_ops, d, d->path, sio_nfds(d->sio.hdl));
-	dev_siomix_open(d);
 	timo_set(&d->sio.watchdog, dev_sio_timeout, d);
 	return 1;
  bad_close:
@@ -231,7 +230,6 @@ dev_sio_close(struct dev *d)
 	}
 #endif
 	timo_del(&d->sio.watchdog);
-	dev_siomix_close(d);
 	file_del(d->sio.file);
 	sio_close(d->sio.hdl);	
 }

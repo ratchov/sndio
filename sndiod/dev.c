@@ -1081,6 +1081,7 @@ dev_open(struct dev *d)
 		}
 		return 0;
 	}
+	dev_siomix_open(d);
 	if (d->mode & MODE_REC) {
 		/*
 		 * Create device <-> demuxer buffer
@@ -1184,6 +1185,7 @@ dev_close(struct dev *d)
 		s->ops = NULL;
 	}
 	d->slot_list = NULL;
+	dev_siomix_close(d);
 	dev_sio_close(d);
 	if (d->mode & MODE_PLAY) {
 		if (d->encbuf != NULL)

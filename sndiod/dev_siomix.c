@@ -150,19 +150,31 @@ dev_siomix_out(void *arg)
 {
 	struct dev *d = arg;
 	struct ctl *c;
+	int cnt;
 
+	/*
+	 * for each dirty ctl, call siomix_setctl() and dev_unref(). As
+	 * dev_unref() may destroy the ctl_list, we must call it after
+	 * we've finished iterating on it.
+	 */
+	cnt = 0;
 	for (c = d->ctl_list; c != NULL; c = c->next) {
 		if (!c->dirty)
 			continue;
-		if (!siomix_setctl(d->siomix.hdl, c->addr, c->curval))
+		if (!siomix_setctl(d->siomix.hdl, c->addr, c->curval)) {
+			ctl_log(c);
+			log_puts(": set failed\n");
 			break;
+		}
 		if (log_level >= 2) {
 			ctl_log(c);
 			log_puts(": changed\n");
 		}
 		c->dirty = 0;
-		dev_unref(d);
+		cnt++;
 	}
+	while (cnt-- > 0)
+		dev_unref(d);
 }
 
 void
