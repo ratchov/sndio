@@ -35,7 +35,7 @@
 
 #ifdef DEBUG
 static snd_output_t *output = NULL;
-#define DALSA(str, err) fprintf(stderr, "%s: %s\n", str, snd_strerror(err)) 
+#define DALSA(str, err) fprintf(stderr, "%s: %s\n", str, snd_strerror(err))
 #else
 #define DALSA(str, err) do {} while (0)
 #endif
@@ -64,18 +64,24 @@ static struct mio_ops mio_alsa_ops = {
 };
 
 struct mio_hdl *
-mio_alsa_open(const char *str, unsigned int mode, int nbio)
+_mio_alsa_open(const char *_str, unsigned int mode, int nbio)
 {
+	const char *p;
 	struct mio_alsa_hdl *hdl;
 	size_t len;
 	int rc;
 
-	switch (*str) {
+	p = _sndio_parsetype(_str, "rmidi");
+	if (p == NULL) {
+		DPRINTF("_mio_alsa_open: %s: \"rsnd\" expected\n", _str);
+		return NULL;
+	}
+	switch (*p) {
 	case '/':
-		str++;
+		p++;
 		break;
 	default:
-		DPRINTF("mio_alsa_open: %s: '/<devnum>' expected\n", str);
+		DPRINTF("_mio_alsa_open: %s: '/' expected\n", _str);
 		return NULL;
 	}
 	hdl = malloc(sizeof(struct mio_alsa_hdl));
@@ -87,14 +93,14 @@ mio_alsa_open(const char *str, unsigned int mode, int nbio)
 	if (rc < 0)
 		DALSA("couldn't attach to stderr", rc);
 #endif
-	len = strlen(str);
+	len = strlen(p);
 	hdl->devname = malloc(len + sizeof(DEVNAME_PREFIX));
 	if (hdl->devname == NULL) {
 		free(hdl);
 		return NULL;
 	}
 	memcpy(hdl->devname, DEVNAME_PREFIX, sizeof(DEVNAME_PREFIX) - 1);
-	memcpy(hdl->devname + sizeof(DEVNAME_PREFIX) - 1, str, len + 1);
+	memcpy(hdl->devname + sizeof(DEVNAME_PREFIX) - 1, p, len + 1);
 	hdl->in = hdl->out = NULL;
 	rc = snd_rawmidi_open(&hdl->in, &hdl->out,
 	    hdl->devname, SND_RAWMIDI_NONBLOCK);

@@ -32,8 +32,15 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+
 #include "debug.h"
 #include "siomix_priv.h"
+#include "bsd-compat.h"
+
+#define DEVPATH_PREFIX	"/dev/mixer"
+#define DEVPATH_MAX 	(1 +		\
+	sizeof(DEVPATH_PREFIX) - 1 +	\
+	sizeof(int) * 3)
 
 #define SUN_TO_SIOMIX(v) (((v) * 127 + 127) / 255)
 #define SIOMIX_TO_SUN(v) (((v) * 255 + 63) / 127)
@@ -261,36 +268,75 @@ scanvol(struct siomix_sun_hdl *hdl, struct wskbd_vol *vol)
 	return 1;
 }
 
-struct siomix_hdl *
-_siomix_sun_open(const char *str, unsigned int mode, int nbio)
+static int
+siomix_sun_getfd(const char *str, unsigned int mode, int nbio)
 {
-	struct siomix_sun_hdl *hdl;
-	char path[PATH_MAX];
-	int flags;
+	const char *p;
+	char path[DEVPATH_MAX];
+ 	unsigned int devnum;
+	int fd, flags;
 
-	if (*str != '/') {
-		DPRINTF("siomix_sun_open: %s: '/<devnum>' expected\n", str);
-		return NULL;
+	p = _sndio_parsetype(str, "rsnd");
+	if (p == NULL) {
+		DPRINTF("siomix_sun_getfd: %s: \"rsnd\" expected\n", str);
+		return -1;
 	}
-	str++;
-	hdl = malloc(sizeof(struct siomix_sun_hdl));
-	if (hdl == NULL)
-		return NULL;
-	_siomix_create(&hdl->siomix, &siomix_sun_ops, mode, nbio);
-	snprintf(path, sizeof(path), "/dev/mixer%s", str);
+	switch (*p) {
+	case '/':
+		p++;
+		break;
+	default:
+		DPRINTF("siomix_sun_getfd: %s: '/' expected\n", str);
+		return -1;
+	}
+	p = _sndio_parsenum(p, &devnum, 255);
+	if (p == NULL || *p != '\0') {
+		DPRINTF("siomix_sun_getfd: %s: number expected after '/'\n", str);
+		return -1;
+	}
+	snprintf(path, sizeof(path), DEVPATH_PREFIX "%u", devnum);
 	if (mode == (SIOMIX_READ | SIOMIX_WRITE))
 		flags = O_RDWR;
 	else
 		flags = (mode & SIOMIX_WRITE) ? O_WRONLY : O_RDONLY;
-	while ((hdl->fd = open(path, flags | O_CLOEXEC)) < 0) {
+	while ((fd = open(path, flags | O_NONBLOCK | O_CLOEXEC)) < 0) {
 		if (errno == EINTR)
 			continue;
 		DPERROR(path);
-		free(hdl);
-		return NULL;
+		return -1;
 	}
+	return fd;
+}
+
+static struct siomix_hdl *
+siomix_sun_fdopen(int fd, unsigned int mode, int nbio)
+{
+	struct siomix_sun_hdl *hdl;
+
+	hdl = malloc(sizeof(struct siomix_sun_hdl));
+	if (hdl == NULL)
+		return NULL;
+	_siomix_create(&hdl->siomix, &siomix_sun_ops, mode, nbio);
+	hdl->fd = fd;
 	init(hdl);
 	return (struct siomix_hdl *)hdl;
+}
+
+struct siomix_hdl *
+_siomix_sun_open(const char *str, unsigned int mode, int nbio)
+{
+	struct siomix_hdl *hdl;
+	int fd;
+
+	fd = siomix_sun_getfd(str, mode, nbio);
+	if (fd < 0)
+		return NULL;
+	hdl = siomix_sun_fdopen(fd, mode, nbio);
+	if (hdl != NULL)
+		return hdl;
+	while (close(fd) < 0 && errno == EINTR)
+		; /* retry */
+	return NULL;
 }
 
 static void

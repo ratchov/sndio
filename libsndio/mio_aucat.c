@@ -75,7 +75,8 @@ mio_aucat_runmsg(struct mio_aucat_hdl *hdl)
 		    delta, hdl->aucat.maxwrite);
 		break;
 	default:
-		DPRINTF("mio_aucat_runmsg: unhandled message %u\n", hdl->aucat.rmsg.cmd);
+		DPRINTF("mio_aucat_runmsg: unhandled message %u\n",
+		    hdl->aucat.rmsg.cmd);
 		hdl->mio.eof = 1;
 		return 0;
 	}
@@ -85,15 +86,14 @@ mio_aucat_runmsg(struct mio_aucat_hdl *hdl)
 }
 
 struct mio_hdl *
-_mio_aucat_open(const char *str, unsigned int mode,
-    int nbio, unsigned int type)
+_mio_aucat_open(const char *str, unsigned int mode, int nbio)
 {
 	struct mio_aucat_hdl *hdl;
 
 	hdl = malloc(sizeof(struct mio_aucat_hdl));
 	if (hdl == NULL)
 		return NULL;
-	if (!_aucat_open(&hdl->aucat, str, mode, type))
+	if (!_aucat_open(&hdl->aucat, str, mode))
 		goto bad;
 	_mio_create(&hdl->mio, &mio_aucat_ops, mode, nbio);
 	if (!_aucat_setfl(&hdl->aucat, 1, &hdl->mio.eof))

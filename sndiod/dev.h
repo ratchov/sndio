@@ -46,7 +46,7 @@ struct slot {
 	void *arg;				/* user data for callbacks */
 	struct aparams par;			/* socket side params */
 	struct {
-		int weight;			/* dynamic range */	
+		int weight;			/* dynamic range */
 		int maxweight;			/* max dynamic range allowed */
 		unsigned int vol;		/* volume within the vol */
 		struct abuf buf;		/* socket side buffer */
@@ -140,7 +140,7 @@ struct dev {
 
 	/*
 	 * audio device (while opened)
-	 */	
+	 */
 	struct dev_sio sio;
 	struct dev_siomix siomix;
 	struct aparams par;			/* encoding */

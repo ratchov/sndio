@@ -91,7 +91,7 @@ log_putx(unsigned long num)
 			c += (c < 10) ? '0' : 'a' - 10;
 			LOG_PUTC(c);
 		}
-	} else 
+	} else
 		LOG_PUTC('0');
 }
 

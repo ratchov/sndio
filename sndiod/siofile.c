@@ -163,7 +163,7 @@ dev_sio_open(struct dev *d)
 		log_putu(par.pchan);
 		log_puts(": unsupported number of play channels\n");
 		goto bad_close;
-	}	
+	}
 	if ((mode & SIO_REC) && par.rchan > NCHAN_MAX) {
 		log_puts(d->path);
 		log_puts(": ");
@@ -296,7 +296,7 @@ dev_sio_pollfd(void *arg, struct pollfd *pfd)
 {
 	struct dev *d = arg;
 	int events;
-	
+
 	events = (d->sio.cstate == DEV_SIO_READ) ? POLLIN : POLLOUT;
 	return sio_pollfd(d->sio.hdl, pfd, events);
 }

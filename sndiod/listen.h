@@ -24,12 +24,13 @@ struct listen {
 	struct file *file;
 	char *path;
 	int fd;
+	int slowaccept;
 };
 
 extern struct listen *listen_list;
 
-void listen_new_un(char *);
-void listen_new_tcp(char *, unsigned int);
+int listen_new_un(char *);
+int listen_new_tcp(char *, unsigned int);
 int listen_init(struct listen *);
 void listen_close(struct listen *);
 

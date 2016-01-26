@@ -73,7 +73,7 @@ struct midi {
 	unsigned int len;		/* expected ``msg'' length */
 	unsigned int txmask;		/* list of ep we send to */
 	unsigned int self;		/* equal (1 << index) */
-	unsigned int tickets;		/* max bytes we can process */
+	int tickets;			/* max bytes we can process */
 	struct abuf obuf;		/* output buffer */
 };
 
@@ -87,6 +87,7 @@ struct port {
 #define PORT_INIT	1
 #define PORT_DRAIN	2
 	unsigned int state;
+	unsigned int num;		/* port serial number */
 	char *path;			/* hold the port open ? */
 	int hold;
 	struct midi *midi;

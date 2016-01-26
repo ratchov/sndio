@@ -36,7 +36,6 @@ siomix_open(const char *str, unsigned int mode, int nbio)
 {
 	static char devany[] = SIOMIX_DEVANY;
 	struct siomix_hdl *hdl;
-	const char *p;
 
 #ifdef DEBUG
 	_sndio_debug_init();
@@ -49,27 +48,26 @@ siomix_open(const char *str, unsigned int mode, int nbio)
 			str = devany;
 	}
 	if (strcmp(str, devany) == 0) {
-		hdl = _siomix_aucat_open("/0", mode, nbio);
+		hdl = _siomix_aucat_open("snd/0", mode, nbio);
 		if (hdl != NULL)
 			return hdl;
 #if defined(USE_SUN_MIXER)
-		return _siomix_sun_open("/0", mode, nbio);
+		return _siomix_sun_open("rsnd/0", mode, nbio);
 #elif defined(USE_ALSA_MIXER)
-		return _siomix_alsa_open("/0", mode, nbio);
+		return _siomix_alsa_open("rsnd/0", mode, nbio);
 #else
 		return NULL;
 #endif
 	}
-	if ((p = _sndio_parsetype(str, "snd")) != NULL)
-		return _siomix_aucat_open(p, mode, nbio);
-#if defined(USE_ALSA_MIXER) || defined(USE_SUN_MIXER)
-	if ((p = _sndio_parsetype(str, "rsnd")) != NULL) {
+	if (_sndio_parsetype(str, "snd"))
+		return _siomix_aucat_open(str, mode, nbio);
+	if (_sndio_parsetype(str, "rsnd"))
 #if defined(USE_SUN_MIXER)
-		return _siomix_sun_open(p, mode, nbio);
+		return _siomix_sun_open(str, mode, nbio);
 #elif defined(USE_ALSA_MIXER)
-		return _siomix_alsa_open(p, mode, nbio);
-#endif
-	}
+		return _siomix_alsa_open(str, mode, nbio);
+#else
+		return NULL;
 #endif
 	DPRINTF("siomix_open: %s: unknown device type\n", str);
 	return NULL;

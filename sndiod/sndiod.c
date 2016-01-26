@@ -14,7 +14,6 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#include <sys/queue.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/resource.h>
@@ -95,9 +94,9 @@ unsigned int opt_mode(void);
 void getbasepath(char *, size_t);
 void setsig(void);
 void unsetsig(void);
-void privdrop(void);
 struct dev *mkdev(char *, struct aparams *,
     int, int, int, int, int, int);
+struct port *mkport(char *, int);
 struct opt *mkopt(char *, struct dev *,
     int, int, int, int, int, int, int, int);
 
@@ -244,11 +243,11 @@ unsetsig(void)
 	sa.sa_flags = SA_RESTART;
 	sa.sa_handler = SIG_DFL;
 	if (sigaction(SIGHUP, &sa, NULL) < 0)
-		err(1, "unsetsig(hup): sigaction failed\n");
+		err(1, "unsetsig(hup): sigaction failed");
 	if (sigaction(SIGTERM, &sa, NULL) < 0)
-		err(1, "unsetsig(term): sigaction failed\n");
+		err(1, "unsetsig(term): sigaction failed");
 	if (sigaction(SIGINT, &sa, NULL) < 0)
-		err(1, "unsetsig(int): sigaction failed\n");
+		err(1, "unsetsig(int): sigaction failed");
 }
 
 void
@@ -256,7 +255,7 @@ getbasepath(char *base, size_t size)
 {
 	uid_t uid;
 	struct stat sb;
-	mode_t mask;
+	mode_t mask, omask;
 
 	uid = geteuid();
 	if (uid == 0) {
@@ -266,29 +265,18 @@ getbasepath(char *base, size_t size)
 		mask = 077;
 		snprintf(base, SOCKPATH_MAX, SOCKPATH_DIR "-%u", uid);
 	}
-	if (mkdir(base, 0777 & ~mask) < 0) {
+	omask = umask(mask);
+	if (mkdir(base, 0777) < 0) {
 		if (errno != EEXIST)
 			err(1, "mkdir(\"%s\")", base);
 	}
+	umask(omask);
 	if (stat(base, &sb) < 0)
 		err(1, "stat(\"%s\")", base);
+	if (!S_ISDIR(sb.st_mode))
+		errx(1, "%s is not a directory", base);
 	if (sb.st_uid != uid || (sb.st_mode & mask) != 0)
 		errx(1, "%s has wrong permissions", base);
-}
-
-void
-privdrop(void)
-{
-	struct passwd *pw;
-
-	if ((pw = getpwnam(SNDIO_USER)) == NULL)
-		errx(1, "unknown user %s", SNDIO_USER);
-	if (setpriority(PRIO_PROCESS, 0, SNDIO_PRIO) < 0)
-		err(1, "setpriority");
-	if (setgroups(1, &pw->pw_gid) ||
-	    setresgid(pw->pw_gid, pw->pw_gid, pw->pw_gid) ||
-	    setresuid(pw->pw_uid, pw->pw_uid, pw->pw_uid))
-		err(1, "cannot drop privileges");
 }
 
 struct dev *
@@ -339,7 +327,7 @@ mkopt(char *path, struct dev *d,
 	o = opt_new(path, d, pmin, pmax, rmin, rmax,
 	    MIDI_TO_ADATA(vol), mmc, dup, mode);
 	if (o == NULL)
-		errx(1, "%s: couldn't create subdev", path);
+		return NULL;
 	dev_adjpar(d, o->mode, o->pmin, o->pmax, o->rmin, o->rmax);
 	return o;
 }
@@ -350,14 +338,18 @@ main(int argc, char **argv)
 	int c, background, unit;
 	int pmin, pmax, rmin, rmax;
 	char base[SOCKPATH_MAX], path[SOCKPATH_MAX];
-	char loc[32];
-	unsigned int mode, dup, mmc, vol, i;
+	unsigned int mode, dup, mmc, vol;
 	unsigned int hold, autovol, bufsz, round, rate;
 	const char *str;
 	struct aparams par;
 	struct dev *d;
 	struct port *p;
 	struct listen *l;
+	struct passwd *pw;
+	struct tcpaddr {
+		char *host;
+		struct tcpaddr *next;
+	} *tcpaddr_list, *ta;
 
 	atexit(log_flush);
 
@@ -380,25 +372,27 @@ main(int argc, char **argv)
 	rmax = 1;
 	aparams_init(&par);
 	mode = MODE_PLAY | MODE_REC;
+	tcpaddr_list = NULL;
 
 	setsig();
 	filelist_init();
 
-	while ((c = getopt(argc, argv, "a:b:c:C:de:f:j:L:m:Mq:r:s:t:U:v:w:x:z:")) != -1) {
+	while ((c = getopt(argc, argv, "a:b:c:C:de:f:j:L:m:q:r:s:t:U:v:w:x:z:")) != -1) {
 		switch (c) {
 		case 'd':
 			log_level++;
 			background = 0;
 			break;
 		case 'U':
-			if (listen_list)
-				errx(1, "-U must come before -L");
 			unit = strtonum(optarg, 0, 15, &str);
 			if (str)
 				errx(1, "%s: unit number is %s", optarg, str);
 			break;
 		case 'L':
-			listen_new_tcp(optarg, AUCAT_PORT + unit);
+			ta = xmalloc(sizeof(struct tcpaddr));
+			ta->host = optarg;
+			ta->next = tcpaddr_list;
+			tcpaddr_list = ta;
 			break;
 		case 'm':
 			mode = opt_mode();
@@ -433,8 +427,9 @@ main(int argc, char **argv)
 				d = mkdev(DEFAULT_DEV, &par, 0, bufsz, round,
 				    rate, hold, autovol);
 			}
-			mkopt(optarg, d, pmin, pmax, rmin, rmax,
-			    mode, vol, mmc, dup);
+			if (mkopt(optarg, d, pmin, pmax, rmin, rmax,
+				mode, vol, mmc, dup) == NULL)
+				return 1;
 			break;
 		case 'q':
 			mkport(optarg, hold);
@@ -470,29 +465,33 @@ main(int argc, char **argv)
 		fputs(usagestr, stderr);
 		return 1;
 	}
-	if (dev_list == NULL) {
-		for (i = 0; i < 4; i++) {
-			snprintf(loc, sizeof(loc), "rsnd/%u", i);
-			mkdev(loc, &par, 0, bufsz, round, rate, hold, autovol);
-		}
-	}
-	if (port_list == NULL) {
-		for (i = 0; i < 8; i++) {
-			snprintf(loc, sizeof(loc), "rmidi/%u", i);
-			mkport(loc, hold);
-		}
-	}
+	if (dev_list == NULL)
+		mkdev(DEFAULT_DEV, &par, 0, bufsz, round, rate, hold, autovol);
 	for (d = dev_list; d != NULL; d = d->next) {
 		if (opt_byname("default", d->num))
 			continue;
-		mkopt("default", d, pmin, pmax, rmin, rmax,
-		    mode, vol, mmc, dup);
+		if (mkopt("default", d, pmin, pmax, rmin, rmax,
+			mode, vol, mmc, dup) == NULL)
+			return 1;
 	}
 	getbasepath(base, sizeof(base));
 	snprintf(path, SOCKPATH_MAX, "%s/" SOCKPATH_FILE "%u", base, unit);
-	listen_new_un(path);
-	if (geteuid() == 0)
-		privdrop();
+	if (!listen_new_un(path))
+		return 1;
+	for (ta = tcpaddr_list; ta != NULL; ta = ta->next) {
+		if (!listen_new_tcp(ta->host, AUCAT_PORT + unit))
+			return 1;
+	}
+	if (geteuid() == 0) {
+		if ((pw = getpwnam(SNDIO_USER)) == NULL)
+			errx(1, "unknown user %s", SNDIO_USER);
+		if (setpriority(PRIO_PROCESS, 0, SNDIO_PRIO) < 0)
+			err(1, "setpriority");
+		if (setgroups(1, &pw->pw_gid) ||
+		    setgid(pw->pw_gid) ||
+		    setuid(pw->pw_uid))
+			err(1, "cannot drop privileges");
+	}
 	midi_init();
 	for (p = port_list; p != NULL; p = p->next) {
 		if (!port_init(p))
@@ -512,10 +511,6 @@ main(int argc, char **argv)
 		if (daemon(0, 0) < 0)
 			err(1, "daemon");
 	}
-
-	/*
-	 * Loop, start audio.
-	 */
 	for (;;) {
 		if (quit_flag)
 			break;
@@ -539,8 +534,13 @@ main(int argc, char **argv)
 		dev_del(dev_list);
 	while (port_list)
 		port_del(port_list);
-	filelist_done();
+	while (tcpaddr_list) {
+		ta = tcpaddr_list;
+		tcpaddr_list = ta->next;
+		xfree(ta);
+	}
 	rmdir(base);
+	filelist_done();
 	unsetsig();
 	return 0;
 }

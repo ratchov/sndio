@@ -152,7 +152,7 @@ aparams_strtoenc(struct aparams *par, char *istr)
 		return 0;
 
 done:
-       	par->msb = msb;
+	par->msb = msb;
 	par->sig = sig;
 	par->bits = bits;
 	par->bps = bps;
@@ -296,7 +296,8 @@ resamp_do(struct resamp *p, adata_t *in, adata_t *out, int todo)
  * initialize resampler with ibufsz/obufsz factor and "nch" channels
  */
 void
-resamp_init(struct resamp *p, unsigned int iblksz, unsigned int oblksz, int nch)
+resamp_init(struct resamp *p, unsigned int iblksz,
+    unsigned int oblksz, int nch)
 {
 	unsigned int i;
 
@@ -446,7 +447,7 @@ enc_init(struct conv *p, struct aparams *par, int nch)
 		p->bias = (1U << 31) >> p->shift;
 	} else {
 		p->bias = 0;
-	}	
+	}
 	if (!par->le) {
 		p->bfirst = par->bps - 1;
 		p->bnext = -1;
@@ -539,7 +540,7 @@ dec_init(struct conv *p, struct aparams *par, int nch)
 		p->bias = (1U << 31) >> p->shift;
 	} else {
 		p->bias = 0;
-	}	
+	}
 	if (par->le) {
 		p->bfirst = par->bps - 1;
 		p->bnext = -1;

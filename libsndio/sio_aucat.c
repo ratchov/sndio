@@ -125,7 +125,8 @@ sio_aucat_runmsg(struct sio_aucat_hdl *hdl)
 		hdl->pstate = PSTATE_INIT;
 		break;
 	default:
-		DPRINTF("sio_aucat_runmsg: unhandled message %u\n", hdl->aucat.rmsg.cmd);
+		DPRINTF("sio_aucat_runmsg: unhandled message %u\n",
+		    hdl->aucat.rmsg.cmd);
 		hdl->sio.eof = 1;
 		return 0;
 	}
@@ -156,7 +157,7 @@ _sio_aucat_open(const char *str, unsigned int mode, int nbio)
 	hdl = malloc(sizeof(struct sio_aucat_hdl));
 	if (hdl == NULL)
 		return NULL;
-	if (!_aucat_open(&hdl->aucat, str, mode, 0)) {
+	if (!_aucat_open(&hdl->aucat, str, mode)) {
 		free(hdl);
 		return NULL;
 	}
