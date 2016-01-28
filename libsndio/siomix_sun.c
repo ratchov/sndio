@@ -197,7 +197,7 @@ setvol(struct siomix_sun_hdl *hdl, struct wskbd_vol *vol, int addr, int val)
 		val = val ? 1 : 0;
 		if (vol->mute_val == val) {
 			DPRINTF("mute %d, no change\n", val);
-			return 0;
+			return 1;
 		}
 		vol->mute_val = val;
 		ctrl.dev = vol->mute_idx;
@@ -224,6 +224,7 @@ scanvol(struct siomix_sun_hdl *hdl, struct wskbd_vol *vol)
 	struct mixer_ctrl ctrl;
 	int i, val;
 
+	memset(&desc, 0, sizeof(struct siomix_desc));
 	if (vol->level_idx >= 0) {
 		ctrl.dev = vol->level_idx;
 		ctrl.type = AUDIO_MIXER_VALUE;
