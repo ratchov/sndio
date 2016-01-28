@@ -128,6 +128,7 @@ struct siomix_desc {
 #define SIOMIX_VEC		4	/* element of array of numbers */
 #define SIOMIX_LIST		5	/* element of array of switches */
 	unsigned int type;		/* one of above */
+	char namespace[SIOMIX_NAMEMAX];	/* group this control belongs to */
 	char func[SIOMIX_NAMEMAX];	/* function name */
 	struct siomix_chan chan0;	/* affected channels */
 	struct siomix_chan chan1;	/* dito for vec, and list */
@@ -185,7 +186,8 @@ and
 .Va chan1
 attributes and
 .Va func
-are static strings usable as unique identifiers.
+are strings usable as unique identifiers within the the given
+.Va namespace .
 .Sh Changing and reading control values
 Controls are changed with the
 .Fn siomix_setctl

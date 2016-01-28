@@ -113,7 +113,8 @@ struct ctl {
 	unsigned int type;		/* one of above */
 	unsigned int addr;		/* control address */
 #define CTL_NAMEMAX	16		/* max name lenght */
-	char func[CTL_NAMEMAX];		/* parameter group name */
+	char func[CTL_NAMEMAX];		/* parameter function name */
+	char namespace[CTL_NAMEMAX];	/* parameter group name */
 	struct ctl_chan {
 		char str[CTL_NAMEMAX];	/* stream name */
 		int unit;
@@ -228,7 +229,6 @@ struct dev {
 	 * control
 	 */
 
-	unsigned int ctl_addr;			/* offset of own ctls */
 	struct ctl *ctl_list;
 #define DEV_NCTLSLOT 8
 	struct ctlslot ctlslot[DEV_NCTLSLOT];
@@ -287,7 +287,7 @@ int dev_setctl(struct dev *, int, int, unsigned int);
 int dev_onctl(struct dev *, int, int);
 int dev_nctl(struct dev *);
 void dev_label(struct dev *, int);
-struct ctl *dev_addctl(struct dev *, int, int,
+struct ctl *dev_addctl(struct dev *, char *, int, int,
     char *, int, char *, char *, int, int);
 void dev_rmctl(struct dev *, int);
 int dev_makeunit(struct dev *, char *);

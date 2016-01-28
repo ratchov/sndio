@@ -52,30 +52,23 @@ void
 dev_siomix_ondesc(void *arg, struct siomix_desc *desc, int val)
 {
 	struct dev *d = arg;
-	struct ctl *c;
+	char ns[CTL_NAMEMAX];
+	int addr;
 
 	if (desc == NULL)
 		return;
-
-	/*
-	 * if this control's name conflicts with
-	 * our local controls, then rename ours
-	 */
-	for (c = d->ctl_list; c != NULL; c = c->next) {
-		if (c->addr < d->ctl_addr ||
-		    c->addr >= d->ctl_addr + CTLADDR_END)
-			continue;
-		if ((strcmp(c->chan0.str, desc->chan0.str) == 0 &&
-		     c->chan0.unit == desc->chan0.unit) ||
-		    (strcmp(c->chan0.str, desc->chan1.str) == 0 &&
-		     c->chan0.unit == desc->chan1.unit)) {
-			c->chan0.unit = dev_makeunit(d, c->chan0.str);
-			c->desc_mask = ~0;
-		}
+	addr = CTLADDR_END + desc->addr;
+	dev_rmctl(d, addr);
+	strlcpy(ns, "dev", CTL_NAMEMAX);
+	if (sizeof("dev") + 1 + strlen(desc->namespace) >= CTL_NAMEMAX) {
+		log_puts("control with namespace, skipped\n");
+		return;
 	}
-
-	dev_rmctl(d, desc->addr);
-	dev_addctl(d, desc->type, desc->addr,
+	if (desc->namespace[0] != 0) {
+		strlcat(ns, "/", CTL_NAMEMAX);
+		strlcat(ns, desc->namespace, CTL_NAMEMAX);
+	}
+	dev_addctl(d, ns, desc->type, addr,
 	    desc->chan0.str, desc->chan0.unit, desc->func,
 	    desc->chan1.str, desc->chan1.unit, val);
 }
@@ -85,6 +78,8 @@ dev_siomix_onctl(void *arg, unsigned int addr, unsigned int val)
 {
 	struct dev *d = arg;
 	struct ctl *c;
+
+	addr += CTLADDR_END;
 
 	dev_log(d);
 	log_puts(": onctl: addr = ");
@@ -176,7 +171,8 @@ dev_siomix_out(void *arg)
 	for (c = d->ctl_list; c != NULL; c = c->next) {
 		if (!c->dirty)
 			continue;
-		if (!siomix_setctl(d->siomix.hdl, c->addr, c->curval)) {
+		if (!siomix_setctl(d->siomix.hdl,
+			c->addr - CTLADDR_END, c->curval)) {
 			ctl_log(c);
 			log_puts(": set failed\n");
 			break;

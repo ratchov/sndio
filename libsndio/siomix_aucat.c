@@ -82,6 +82,7 @@ siomix_aucat_rdata(struct siomix_aucat_hdl *hdl)
 		c = hdl->buf;
 		rpos = 0;
 		while (rpos < hdl->buf_wpos) {
+			strlcpy(desc.namespace, c->namespace, SIOMIX_NAMEMAX);
 			strlcpy(desc.chan0.str, c->chan0.str, SIOMIX_NAMEMAX);
 			desc.chan0.unit = ntohs(c->chan0.unit);
 			strlcpy(desc.chan1.str, c->chan1.str, SIOMIX_NAMEMAX);

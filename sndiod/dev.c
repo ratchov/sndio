@@ -92,7 +92,6 @@ int slot_skip(struct slot *);
 
 void ctl_chan_log(struct ctl_chan *);
 void ctl_log(struct ctl *);
-int dev_makeunit(struct dev *, char *);
 
 struct midiops dev_midiops = {
 	dev_midi_imsg,
@@ -427,8 +426,7 @@ dev_midi_omsg(void *arg, unsigned char *msg, int len)
 		if (chan >= DEV_NSLOT)
 			return;
 		slot_setvol(d->slot + chan, msg[2]);
-		dev_onctl(d,
-		    d->ctl_addr + CTLADDR_SLOT_LEVEL(chan), msg[2]);
+		dev_onctl(d, CTLADDR_SLOT_LEVEL(chan), msg[2]);
 		return;
 	}
 	x = (struct sysex *)msg;
@@ -441,7 +439,7 @@ dev_midi_omsg(void *arg, unsigned char *msg, int len)
 		if (x->id0 == SYSEX_CONTROL && x->id1 == SYSEX_MASTER) {
 			if (len == SYSEX_SIZE(master)) {
 				dev_master(d, x->u.master.coarse);
-				dev_onctl(d, d->ctl_addr + CTLADDR_MASTER,
+				dev_onctl(d, CTLADDR_MASTER,
 				    x->u.master.coarse);
 			}
 			return;
@@ -1058,8 +1056,7 @@ dev_adjpar(struct dev *d, int mode,
 int
 dev_open(struct dev *d)
 {
-	struct ctl *c;
-	int unit, i;
+	int i;
 
 	d->mode = d->reqmode;
 	d->round = d->reqround;
@@ -1137,23 +1134,14 @@ dev_open(struct dev *d)
 		log_puts(" frames\n");
 	}
 
-	d->ctl_addr = 0;
-	for (c = d->ctl_list; c != NULL; c = c->next) {
-		if (d->ctl_addr < c->addr)
-			d->ctl_addr = c->addr;
-	}
-	d->ctl_addr++;
-
 	for (i = 0; i < DEV_NSLOT; i++) {
-		unit = dev_makeunit(d, d->slot[i].name);
-		c = dev_addctl(d, CTL_NUM,
-		    d->ctl_addr + CTLADDR_SLOT_LEVEL(i),
-		    d->slot[i].name, unit, "level", NULL, -1, d->slot[i].vol);
+		dev_addctl(d, "", CTL_NUM,
+		    CTLADDR_SLOT_LEVEL(i),
+		    d->slot[i].name, d->slot[i].unit, "level",
+		    NULL, -1, d->slot[i].vol);
 	}
-	unit = dev_makeunit(d, "sndiod");
-	c = dev_addctl(d, CTL_NUM,
-	    d->ctl_addr + CTLADDR_MASTER,
-	    "sndiod", unit, "level", NULL, -1, d->master);
+	dev_addctl(d, "", CTL_NUM,
+	    CTLADDR_MASTER, "master", -1, "level", NULL, -1, d->master);
 	return 1;
 }
 
@@ -2036,6 +2024,10 @@ ctl_chan_log(struct ctl_chan *c)
 void
 ctl_log(struct ctl *c)
 {
+	if (c->namespace[0] != 0) {
+		log_puts(c->namespace);
+		log_puts("/");
+	}
 	ctl_chan_log(&c->chan0);
 	log_puts(".");
 	log_puts(c->func);
@@ -2055,43 +2047,18 @@ ctl_log(struct ctl *c)
 	log_putu(c->addr);
 }
 
-int
-dev_makeunit(struct dev *d, char *name)
-{
-	int i;
-	struct ctl *c;
-
-	i = 0;
-	for (;;) {
-		c = d->ctl_list;
-		for (;;) {
-			if (c == NULL)
-				return i;
-			if ((strcmp(name, c->chan0.str) == 0 &&
-				c->chan0.unit == i) ||
-			    (strcmp(name, c->chan1.str) == 0 &&
-				c->chan1.unit == i)) {
-				i++;
-				break;
-			}
-			c = c->next;
-		}
-	}
-	/* XXX: not reached */
-	return 0;
-}
-
 /*
  * add a ctl
  */
 struct ctl *
-dev_addctl(struct dev *d, int type, int addr,
+dev_addctl(struct dev *d, char *namespace, int type, int addr,
     char *str0, int unit0, char *func, char *str1, int unit1, int val)
 {
 	struct ctl *c;
 
 	c = xmalloc(sizeof(struct ctl));
 	c->type = type;
+	strlcpy(c->namespace, namespace, CTL_NAMEMAX);
 	strlcpy(c->func, func, CTL_NAMEMAX);
 	strlcpy(c->chan0.str, str0, CTL_NAMEMAX);
 	c->chan0.unit = unit0;
@@ -2154,13 +2121,20 @@ dev_setctl(struct dev *d, int addr, int val, unsigned int mask)
 		return 0;
 	c = d->ctl_list;
 	for (;;) {
-		if (c == NULL)
+		if (c == NULL) {
+			if (log_level >= 3) {
+				dev_log(d);
+				log_puts(": ");
+				log_putu(addr);
+				log_puts(": no such ctl address\n");
+			}
 			return 0;
+		}
 		if (c->addr == addr)
 			break;
 		c = c->next;
 	}
-	if (addr < d->ctl_addr) {
+	if (addr >= CTLADDR_END) {
 		if (log_level >= 3) {
 			ctl_log(c);
 			log_puts(": marked as dirty\n");
@@ -2168,17 +2142,14 @@ dev_setctl(struct dev *d, int addr, int val, unsigned int mask)
 		c->dirty = 1;
 		dev_ref(d);
 	} else {
-		addr -= d->ctl_addr;
-		if (addr >= CTLADDR_SLOT_LEVEL(0) &&
-		    addr < CTLADDR_SLOT_LEVEL(DEV_NSLOT)) {
+		if (addr == CTLADDR_MASTER) {
+			dev_master(d, val);
+			dev_midi_master(d);
+		} else {
 			num = addr - CTLADDR_SLOT_LEVEL(0);
 			slot_setvol(d->slot + num, val);
 			dev_midi_vol(d, d->slot + num);
-		} else if (addr == CTLADDR_MASTER) {
-			dev_master(d, val);
-			dev_midi_master(d);
-		} else
-			return 0;
+		}
 	}
 	c->curval = val;
 	c->val_mask = ~mask;
@@ -2207,14 +2178,12 @@ void
 dev_label(struct dev *d, int i)
 {
 	struct ctl *c;
-	int addr;
 
-	addr = d->ctl_addr + CTLADDR_SLOT_LEVEL(i);
 	c = d->ctl_list;
 	for (;;) {
 		if (c == NULL)
 			return;
-		if (c->addr == addr)
+		if (c->addr == CTLADDR_SLOT_LEVEL(i))
 			break;
 		c = c->next;
 	}

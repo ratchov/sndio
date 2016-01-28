@@ -1244,7 +1244,7 @@ sock_execmsg(struct sock *f)
 		f->lastvol = ctl; /* dont trigger feedback message */
 		slot_setvol(s, ctl);
 		dev_midi_vol(s->dev, s);
-		dev_onctl(s->dev, s->dev->ctl_addr +
+		dev_onctl(s->dev,
 		    CTLADDR_SLOT_LEVEL(f->slot - s->dev->slot), ctl);
 		break;
 	case AMSG_MIXSUB:
@@ -1568,6 +1568,8 @@ sock_buildmsg(struct sock *f)
 				break;
 			c->desc_mask &= ~mask;
 			c->val_mask &= ~mask;
+			strlcpy(desc->namespace, c->namespace,
+			    AMSG_MIX_NAMEMAX);
 			strlcpy(desc->chan0.str, c->chan0.str,
 			    AMSG_MIX_NAMEMAX);
 			desc->chan0.unit = ntohs(c->chan0.unit);
