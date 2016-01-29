@@ -224,8 +224,6 @@ siomix_aucat_setctl(struct siomix_hdl *addr, unsigned int a, unsigned int v)
 static int
 siomix_aucat_nfds(struct siomix_hdl *addr)
 {
-	//struct siomix_aucat_hdl *hdl = (struct siomix_aucat_hdl *)addr;
-
 	return 1;
 }
 
