@@ -231,7 +231,7 @@ dev_sio_close(struct dev *d)
 #endif
 	timo_del(&d->sio.watchdog);
 	file_del(d->sio.file);
-	sio_close(d->sio.hdl);	
+	sio_close(d->sio.hdl);
 }
 
 void
