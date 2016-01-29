@@ -356,8 +356,6 @@ file_poll(void)
 			log_puts(" ");
 			log_puts(f->ops->name);
 			log_puts(":");
-			if (f->nfds == 0)
-				continue;
 			for (i = 0; i < f->nfds; i++) {
 				log_puts(" ");
 				log_putx(pfd->events);
