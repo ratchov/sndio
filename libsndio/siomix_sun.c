@@ -116,9 +116,8 @@ initvol(struct siomix_sun_hdl *hdl, struct wskbd_vol *vol, char *cn, char *dn)
 			vol->nch = dev.un.v.num_channels;
 			vol->level_idx = dev.index;
 			vol->mute_idx = initmute(hdl, &dev);
-			DPRINTF("using %s.%s, %d channels, %s\n",
-			    cn, dn, vol->nch,
-			vol->mute_idx >= 0 ? "mute" : "no mute");
+			DPRINTF("using %s.%s, %d channels, %s\n", cn, dn,
+			    vol->nch, vol->mute_idx >= 0 ? "mute" : "no mute");
 			return 1;
 		}
 	}
@@ -230,7 +229,7 @@ scanvol(struct siomix_sun_hdl *hdl, struct wskbd_vol *vol)
 		ctrl.type = AUDIO_MIXER_VALUE;
 		ctrl.un.value.num_channels = vol->nch;
 		if (ioctl(hdl->fd, AUDIO_MIXER_READ, &ctrl) < 0) {
-			DPRINTF("mute read failed\n");
+			DPRINTF("level read failed\n");
 			return 0;
 		}
 		desc.type = SIOMIX_NUM;
