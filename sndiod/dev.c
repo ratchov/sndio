@@ -28,7 +28,7 @@
 #include "utils.h"
 
 void zomb_onmove(void *);
-void zomb_onvol(void *, unsigned int);
+void zomb_onvol(void *);
 void zomb_fill(void *);
 void zomb_flush(void *);
 void zomb_eof(void *);
@@ -60,7 +60,7 @@ void dev_cycle(struct dev *);
 int dev_getpos(struct dev *);
 struct dev *dev_new(char *, struct aparams *, unsigned int, unsigned int,
     unsigned int, unsigned int, unsigned int, unsigned int);
-void dev_adjpar(struct dev *, int, int, int, int, int);
+void dev_adjpar(struct dev *, int, int, int);
 int dev_open(struct dev *);
 void dev_close(struct dev *);
 int dev_ref(struct dev *);
@@ -163,7 +163,7 @@ zomb_onmove(void *arg)
 }
 
 void
-zomb_onvol(void *arg, unsigned int vol)
+zomb_onvol(void *arg)
 {
 }
 
@@ -1036,7 +1036,7 @@ dev_new(char *path, struct aparams *par,
  */
 void
 dev_adjpar(struct dev *d, int mode,
-    int pmin, int pmax, int rmin, int rmax)
+    int pmax, int rmax)
 {
 	d->reqmode |= mode & MODE_AUDIOMASK;
 	if (mode & MODE_PLAY) {
