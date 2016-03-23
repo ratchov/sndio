@@ -39,7 +39,7 @@ void sock_slot_fill(void *);
 void sock_slot_flush(void *);
 void sock_slot_eof(void *);
 void sock_slot_onmove(void *);
-void sock_slot_onvol(void *, unsigned int);
+void sock_slot_onvol(void *);
 void sock_midi_imsg(void *, unsigned char *, int);
 void sock_midi_omsg(void *, unsigned char *, int);
 void sock_midi_fill(void *, int);
@@ -227,7 +227,7 @@ sock_slot_onmove(void *arg)
 }
 
 void
-sock_slot_onvol(void *arg, unsigned int delta)
+sock_slot_onvol(void *arg)
 {
 	struct sock *f = (struct sock *)arg;
 	struct slot *s = f->slot;

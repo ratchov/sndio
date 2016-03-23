@@ -28,7 +28,7 @@
 struct slotops
 {
 	void (*onmove)(void *);			/* clock tick */
-	void (*onvol)(void *, unsigned int);	/* tell client vol changed */
+	void (*onvol)(void *);	        /* tell client vol changed */
 	void (*fill)(void *);			/* request to fill a play block */
 	void (*flush)(void *);			/* request to flush a rec block */
 	void (*eof)(void *);			/* notify that play drained */
@@ -196,7 +196,7 @@ struct dev *dev_new(char *, struct aparams *, unsigned int, unsigned int,
     unsigned int, unsigned int, unsigned int, unsigned int);
 struct dev *dev_bynum(int);
 void dev_del(struct dev *);
-void dev_adjpar(struct dev *, int, int, int, int, int);
+void dev_adjpar(struct dev *, int, int, int);
 int  dev_init(struct dev *);
 void dev_done(struct dev *);
 int dev_ref(struct dev *);

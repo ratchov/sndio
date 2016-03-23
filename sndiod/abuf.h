@@ -18,9 +18,9 @@
 #define ABUF_H
 
 struct abuf {
-	int start;	/* offset (frames) where stored data starts */
-	int used;	/* frames stored in the buffer */
-	int len;	/* total size of the buffer (frames) */
+	int start;	        /* offset (frames) where stored data starts */
+	int used;	        /* frames stored in the buffer */
+	unsigned int len;	/* total size of the buffer (frames) */
 	unsigned char *data;
 };
 
