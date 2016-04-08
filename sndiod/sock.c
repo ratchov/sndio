@@ -1306,7 +1306,7 @@ sock_execmsg(struct sock *f)
 			return 0;
 		}
 		if (!dev_setctl(f->ctlslot->dev,
-			ntohs(m->u.mixset.addr), 
+			ntohs(m->u.mixset.addr),
 			ntohs(m->u.mixset.val))) {
 #ifdef DEBUG
 			if (log_level >= 1) {
