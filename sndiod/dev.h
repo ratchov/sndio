@@ -283,7 +283,7 @@ void slot_write(struct slot *);
 void ctl_log(struct ctl *);
 struct ctlslot *ctlslot_new(struct dev *);
 void ctlslot_del(struct ctlslot *);
-int dev_setctl(struct dev *, int, int, unsigned int);
+int dev_setctl(struct dev *, int, int);
 int dev_onctl(struct dev *, int, int);
 int dev_nctl(struct dev *);
 void dev_label(struct dev *, int);

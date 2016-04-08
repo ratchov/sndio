@@ -2112,7 +2112,7 @@ dev_rmctl(struct dev *d, int addr)
 }
 
 int
-dev_setctl(struct dev *d, int addr, int val, unsigned int mask)
+dev_setctl(struct dev *d, int addr, int val)
 {
 	struct ctl *c;
 	int num;
@@ -2152,7 +2152,7 @@ dev_setctl(struct dev *d, int addr, int val, unsigned int mask)
 		}
 	}
 	c->curval = val;
-	c->val_mask = ~mask;
+	c->val_mask = ~0U;
 	return 1;
 }
 
