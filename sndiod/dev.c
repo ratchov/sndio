@@ -2117,7 +2117,7 @@ dev_setctl(struct dev *d, int addr, int val)
 	struct ctl *c;
 	int num;
 
-	if (val < 0 && val >= MIDI_MAXCTL)
+	if (val < 0 || val >= MIDI_MAXCTL)
 		return 0;
 	c = d->ctl_list;
 	for (;;) {
