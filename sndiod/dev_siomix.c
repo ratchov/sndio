@@ -60,13 +60,13 @@ dev_siomix_ondesc(void *arg, struct siomix_desc *desc, int val)
 	addr = CTLADDR_END + desc->addr;
 	dev_rmctl(d, addr);
 	strlcpy(ns, "dev", CTL_NAMEMAX);
-	if (sizeof("dev") + 1 + strlen(desc->namespace) >= CTL_NAMEMAX) {
-		log_puts("control with namespace, skipped\n");
+	if (sizeof("dev") + 1 + strlen(desc->group) >= CTL_NAMEMAX) {
+		log_puts("control with group, skipped\n");
 		return;
 	}
-	if (desc->namespace[0] != 0) {
+	if (desc->group[0] != 0) {
 		strlcat(ns, "/", CTL_NAMEMAX);
-		strlcat(ns, desc->namespace, CTL_NAMEMAX);
+		strlcat(ns, desc->group, CTL_NAMEMAX);
 	}
 	dev_addctl(d, ns, desc->type, addr,
 	    desc->chan0.str, desc->chan0.unit, desc->func,

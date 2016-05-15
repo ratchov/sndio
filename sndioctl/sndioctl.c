@@ -78,7 +78,7 @@ cmpdesc(struct siomix_desc *d1, struct siomix_desc *d2)
 {
 	int res;
 
-	res = strcmp(d1->namespace, d2->namespace);
+	res = strcmp(d1->group, d2->group);
 	if (res != 0)
 		return res;
 	res = strcmp(d1->chan0.str, d2->chan0.str);
@@ -395,8 +395,8 @@ print_val(struct info *p, int mono)
 void
 print_par(struct info *p, int mono, char *comment)
 {
-	if (p->desc.namespace[0] != 0)
-		printf("%s/", p->desc.namespace);
+	if (p->desc.group[0] != 0)
+		printf("%s/", p->desc.group);
 	print_chan(&p->desc.chan0, mono);
 	printf(".%s=", p->desc.func);
 	if (i_flag)

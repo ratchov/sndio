@@ -2024,8 +2024,8 @@ ctl_chan_log(struct ctl_chan *c)
 void
 ctl_log(struct ctl *c)
 {
-	if (c->namespace[0] != 0) {
-		log_puts(c->namespace);
+	if (c->group[0] != 0) {
+		log_puts(c->group);
 		log_puts("/");
 	}
 	ctl_chan_log(&c->chan0);
@@ -2051,14 +2051,14 @@ ctl_log(struct ctl *c)
  * add a ctl
  */
 struct ctl *
-dev_addctl(struct dev *d, char *namespace, int type, int addr,
+dev_addctl(struct dev *d, char *group, int type, int addr,
     char *str0, int unit0, char *func, char *str1, int unit1, int val)
 {
 	struct ctl *c;
 
 	c = xmalloc(sizeof(struct ctl));
 	c->type = type;
-	strlcpy(c->namespace, namespace, CTL_NAMEMAX);
+	strlcpy(c->group, group, CTL_NAMEMAX);
 	strlcpy(c->func, func, CTL_NAMEMAX);
 	strlcpy(c->chan0.str, str0, CTL_NAMEMAX);
 	c->chan0.unit = unit0;
