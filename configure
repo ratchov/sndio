@@ -214,6 +214,8 @@ do
 	< $f.in > $f
 done
 
+chmod +x contrib/init.d.sndiod
+
 cat <<EOF
 
 bindir................... $bindir
