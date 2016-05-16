@@ -42,7 +42,7 @@
 struct sio_sun_hdl {
 	struct sio_hdl sio;
 	int fd;
-	int filltodo;
+	int filling;
 	unsigned int ibpf, obpf;	/* bytes per frame */
 	unsigned int ibytes, obytes;	/* bytes the hw transferred */
 	unsigned int ierr, oerr;	/* frames the hw dropped */
@@ -326,6 +326,7 @@ sio_sun_fdopen(int fd, unsigned int mode, int nbio)
 		return NULL;
 	}
 	hdl->fd = fd;
+	hdl->filling = 0;
 	return (struct sio_hdl *)hdl;
 }
 
@@ -372,10 +373,10 @@ sio_sun_start(struct sio_hdl *sh)
 
 	if (hdl->sio.mode & SIO_PLAY) {
 		/*
-		 * keep the device paused and let sio_sun_write() trigger the
+		 * keep the device paused and let sio_sun_pollfd() trigger the
 		 * start later, to avoid buffer underruns
 		 */
-		hdl->filltodo = hdl->sio.par.bufsz * hdl->obpf;
+		hdl->filling = 1;
 	} else {
 		/*
 		 * no play buffers to fill, start now!
@@ -385,7 +386,6 @@ sio_sun_start(struct sio_hdl *sh)
 			hdl->sio.eof = 1;
 			return 0;
 		}
-		hdl->filltodo = 0;
 		_sio_onmove_cb(&hdl->sio, 0);
 	}
 	return 1;
@@ -396,8 +396,10 @@ sio_sun_stop(struct sio_hdl *sh)
 {
 	struct sio_sun_hdl *hdl = (struct sio_sun_hdl *)sh;
 
-	if (hdl->filltodo > 0)
+	if (hdl->filling) {
+		hdl->filling = 0;
 		return 1;
+	}
 	if (ioctl(hdl->fd, AUDIO_STOP) < 0) {
 		DPERROR("AUDIO_STOP");
 		hdl->sio.eof = 1;
@@ -522,8 +524,9 @@ sio_sun_pollfd(struct sio_hdl *sh, struct pollfd *pfd, int events)
 
 	pfd->fd = hdl->fd;
 	pfd->events = events;
-	if (hdl->filltodo > 0 && hdl->sio.wused == hdl->filltodo) {
-		hdl->filltodo = 0;
+	if (hdl->filling && hdl->sio.wused == hdl->sio.par.bufsz *
+		hdl->sio.par.pchan * hdl->sio.par.bps) {
+		hdl->filling = 0;
 		if (ioctl(hdl->fd, AUDIO_START) < 0) {
 			DPERROR("AUDIO_START");
 			hdl->sio.eof = 1;
