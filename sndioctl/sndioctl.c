@@ -56,9 +56,9 @@ void print_desc(struct info *, int);
 void print_val(struct info *, int);
 void print_par(struct info *, int, char *);
 int parse_name(char **, char *);
-int parse_dec(char **, unsigned *);
+int parse_dec(char **, int *);
 int parse_chan(char **, char *, int *);
-int parse_modeval(char **, int *, unsigned *);
+int parse_modeval(char **, int *, int *);
 void dump(void);
 int cmd(char *);
 void commit(void);
@@ -439,22 +439,28 @@ parse_name(char **line, char *name)
  * parse a decimal number
  */
 int
-parse_dec(char **line, unsigned *num)
+parse_dec(char **line, int *num)
 {
+#define MAXQ 	(SIOMIX_INTMAX / 10)
+#define MAXR 	(SIOMIX_INTMAX % 10)
 	char *p = *line;
-	unsigned val = 0;
+	unsigned int dig, val;
 
-	if (*p < '0' || *p > '9') {
+	val = 0;
+	for (;;) {
+		dig = *p - '0';
+		if (dig >= 10)
+			break;
+		if (val > MAXQ || (val == MAXQ && dig > MAXR)) {
+			fprintf(stderr, "integer overflow\n");
+			return 0;
+		}
+		val = val * 10 + dig;
+		p++;
+	}
+	if (p == *line) {
 		fprintf(stderr, "number expected near '%s'\n", p);
 		return 0;
-	}
-	while (*p >= '0' && *p <= '9') {
-		val = 10 * val + (*p - '0');
-		if (val > SIOMIX_INTMAX) {
-			fprintf(stderr, "integer too large\n");
-                        return 0;
-                }
-		p++;
 	}
 	*num = val;
 	*line = p;
@@ -486,7 +492,7 @@ parse_chan(char **line, char *str, int *unit)
  * parse a decimal prefixed by the optional mode
  */
 int
-parse_modeval(char **line, int *rmode, unsigned *rval)
+parse_modeval(char **line, int *rmode, int *rval)
 {
 	char *p = *line;
 	unsigned mode;
@@ -553,8 +559,8 @@ cmd(char *line)
 	struct info *i, *e, *g;
 	char func[SIOMIX_NAMEMAX], astr[SIOMIX_NAMEMAX], vstr[SIOMIX_NAMEMAX];
 	int aunit, vunit;
-	unsigned val, npar = 0, nent = 0;
-	int comma, mode;
+	unsigned npar = 0, nent = 0;
+	int val, comma, mode;
 
 	if (!parse_chan(&pos, astr, &aunit))
 		return 0;
