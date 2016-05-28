@@ -268,10 +268,38 @@ aparams_native(struct aparams *par)
 }
 
 /*
- * resample the given number of frames
+ * return the number of output frames resamp_do() would produce with
+ * the given number of input frames
  */
 int
-resamp_do(struct resamp *p, adata_t *in, adata_t *out, int todo)
+resamp_ocnt(struct resamp *p, int icnt)
+{
+	return ((long long)p->oblksz * icnt + p->diff) / p->iblksz;
+}
+
+/*
+ * return the number of input frames resamp_do() needs in order to
+ * produce the given number of output frames
+ */
+int
+resamp_icnt(struct resamp *p, int ocnt)
+{
+	return ((long long)p->iblksz * ocnt - p->diff +
+	    p->oblksz - 1) / p->oblksz;
+}
+
+/*
+ * Resample the given number of frames. The number of output frames
+ * must match the coresponding number the input frames. Either
+ * use:
+ *
+ *	 icnt * orate = ocnt * irate
+ *
+ * or use resamp_icnt() or resamp_ocnt() to calculate the proper
+ * numbers.
+ */
+void
+resamp_do(struct resamp *p, adata_t *in, adata_t *out, int icnt, int ocnt)
 {
 	unsigned int nch;
 	adata_t *idata;
@@ -298,8 +326,8 @@ resamp_do(struct resamp *p, adata_t *in, adata_t *out, int todo)
 	ctxbuf = p->ctx;
 	ctx_start = p->ctx_start;
 	nch = p->nch;
-	ifr = todo;
-	ofr = oblksz;
+	ifr = icnt;
+	ofr = ocnt;
 
 	/*
 	 * Start conversion.
@@ -307,9 +335,11 @@ resamp_do(struct resamp *p, adata_t *in, adata_t *out, int todo)
 #ifdef DEBUG
 	if (log_level >= 4) {
 		log_puts("resamp: copying ");
-		log_puti(todo);
+		log_puti(ifr);
+		log_puts(" -> ");
+		log_putu(ofr);
 		log_puts(" frames, diff = ");
-		log_putu(diff);
+		log_puti(diff);
 		log_puts("\n");
 	}
 #endif
@@ -359,7 +389,33 @@ resamp_do(struct resamp *p, adata_t *in, adata_t *out, int todo)
 	}
 	p->diff = diff;
 	p->ctx_start = ctx_start;
-	return oblksz - ofr;
+#ifdef DEBUG
+	if (ifr != 0) {
+		log_puts("resamp_do: ");
+		log_puti(ifr);
+		log_puts(": too many input frames\n");
+		panic();
+	}
+	if (ofr != 0) {
+		log_puts("resamp_do: ");
+		log_puti(ofr);
+		log_puts(": too many output frames\n");
+		panic();
+	}
+#endif
+}
+
+static unsigned int
+uint_gcd(unsigned int a, unsigned int b)
+{
+	unsigned int r;
+
+	while (b > 0) {
+		r = a % b;
+		a = b;
+		b = r;
+	}
+	return a;
 }
 
 /*
@@ -369,7 +425,22 @@ void
 resamp_init(struct resamp *p, unsigned int iblksz,
     unsigned int oblksz, int nch)
 {
-	unsigned int i;
+	unsigned int i, g;
+
+	/*
+	 * reduice iblksz/oblksz fraction
+	 */
+	g = uint_gcd(iblksz, oblksz);
+	iblksz /= g;
+	oblksz /= g;
+
+	/*
+	 * ensure weired rates dont cause integer overflows
+	 */
+	while (iblksz > ADATA_UNIT || oblksz > ADATA_UNIT) {
+		iblksz >>= 1;
+		oblksz >>= 1;
+	}
 
 	p->iblksz = iblksz;
 	p->oblksz = oblksz;
