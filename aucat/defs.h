@@ -18,6 +18,11 @@
 #define DEFS_H
 
 /*
+ * units used for MTC clock.
+ */
+#define MTC_SEC			2400	/* 1 second is 2400 ticks */
+
+/*
  * limits
  */
 #define NCHAN_MAX	16		/* max channel in a stream */
