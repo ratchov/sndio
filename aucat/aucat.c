@@ -103,7 +103,7 @@ unsigned int dev_round;			/* device block size */
 int dev_rate;				/* device sample rate (Hz) */
 unsigned int dev_pchan, dev_rchan;	/* play & rec channels count */
 adata_t *dev_pbuf, *dev_rbuf;		/* play & rec buffers */
-unsigned int dev_mmcpos;		/* last MMC position */
+long long dev_pos;			/* last MMC position in frames */
 #define DEV_STOP	0		/* stopped */
 #define DEV_START	1		/* started */
 unsigned int dev_pstate;		/* one of above */
@@ -351,10 +351,8 @@ slot_init(struct slot *s)
 }
 
 static void
-slot_start(struct slot *s, unsigned int mmc)
+slot_start(struct slot *s, long long pos)
 {
-	off_t mmcpos;
-
 #ifdef DEBUG
 	if (s->pstate != SLOT_INIT) {
 		slot_log(s);
@@ -362,8 +360,15 @@ slot_start(struct slot *s, unsigned int mmc)
 		panic();
 	}
 #endif
-	mmcpos = ((off_t)mmc * s->afile.rate / MTC_SEC) * s->bpf;
-	if (!afile_seek(&s->afile, mmcpos)) {
+	/*
+	 * convert pos to slot sample rate
+	 *
+	 * At this stage, we could adjust s->resamp.diff to get
+	 * sub-frame accuracy.
+	 */
+	pos = pos * s->afile.rate / dev_rate;
+
+	if (!afile_seek(&s->afile, pos * s->bpf)) {
 		s->pstate = SLOT_INIT;
 		return;
 	}
@@ -662,7 +667,7 @@ dev_open(char *dev, int mode, int bufsz, char *port)
 		dev_rchan = par.rchan;
 		dev_rbuf = xmalloc(sizeof(adata_t) * dev_rchan * dev_round);
 	}
-	dev_mmcpos = 0;
+	dev_pos = 0;
 	dev_pstate = DEV_STOP;
 	if (log_level >= 2) {
 		log_puts(dev_name);
@@ -753,7 +758,7 @@ dev_mmcstart(void)
 	if (dev_pstate == DEV_STOP) {
 		dev_pstate = DEV_START;
 		for (s = slot_list; s != NULL; s = s->next)
-			slot_start(s, dev_mmcpos);
+			slot_start(s, dev_pos);
 		dev_prime = (dev_mode & SIO_PLAY) ? dev_bufsz / dev_round : 0;
 		sio_start(dev_sh);
 		if (log_level >= 2)
@@ -793,20 +798,35 @@ dev_mmcstop(void)
  * relocate all slots simultaneously
  */
 static void
-dev_mmcloc(unsigned int mmc)
+dev_mmcloc(int hr, int min, int sec, int fr, int cent, int fps)
 {
-	if (dev_mmcpos == mmc)
+	long long pos;
+
+	pos = dev_rate * hr * 3600 +
+	    dev_rate * min * 60 +
+	    dev_rate * sec +
+	    dev_rate * fr / fps +
+	    dev_rate * cent / (100 * fps);
+	if (dev_pos == pos)
 		return;
-	dev_mmcpos = mmc;
+	dev_pos = pos;
 	if (log_level >= 2) {
 		log_puts("relocated to ");
-		log_putu((dev_mmcpos / (MTC_SEC * 3600)) % 24);
+		log_putu(hr);
 		log_puts(":");
-		log_putu((dev_mmcpos / (MTC_SEC * 60)) % 60);
+		log_putu(min);
 		log_puts(":");
-		log_putu((dev_mmcpos / (MTC_SEC)) % 60);
+		log_putu(sec);
 		log_puts(".");
-		log_putu((dev_mmcpos / (MTC_SEC / 100)) % 100);
+		log_putu(fr);
+		log_puts(".");
+		log_putu(cent);
+		log_puts(" at ");
+		log_putu(fps);
+		log_puts("fps\n");
+
+		log_puts("pos: ");
+		log_putu(pos);
 		log_puts("\n");
 	}
 	if (dev_pstate == DEV_START) {
@@ -870,11 +890,12 @@ dev_imsg(unsigned char *msg, unsigned int len)
 			dev_mmcstop();
 			return;
 		}
-		dev_mmcloc((x->u.loc.hr & 0x1f) * 3600 * MTC_SEC +
-		    x->u.loc.min * 60 * MTC_SEC +
-		    x->u.loc.sec * MTC_SEC +
-		    x->u.loc.fr * (MTC_SEC / fps) +
-		    x->u.loc.cent * (MTC_SEC / 100 / fps));
+		dev_mmcloc(x->u.loc.hr & 0x1f,
+		    x->u.loc.min,
+		    x->u.loc.sec,
+		    x->u.loc.fr,
+		    x->u.loc.cent,
+		    fps);
 		break;
 	}
 }
@@ -1010,7 +1031,7 @@ offline(void)
 	dev_pchan = dev_rchan = cmax + 1;
 	dev_pbuf = dev_rbuf = xmalloc(sizeof(adata_t) * dev_pchan * dev_round);
 	dev_pstate = DEV_STOP;
-	dev_mmcpos = 0;
+	dev_pos = 0;
 	for (s = slot_list; s != NULL; s = s->next)
 		slot_init(s);
 	for (s = slot_list; s != NULL; s = s->next)
