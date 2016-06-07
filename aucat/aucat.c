@@ -439,16 +439,18 @@ slot_del(struct slot *s)
 	xfree(s);
 }
 
-static int
-slot_ocnt(struct slot *s, int icnt)
+static void
+slot_getcnt(struct slot *s, int *icnt, int *ocnt)
 {
-	return s->resampbuf ? resamp_ocnt(&s->resamp, icnt) : icnt;
-}
+	int cnt;
 
-static int
-slot_icnt(struct slot *s, int ocnt)
-{
-	return s->resampbuf ? resamp_icnt(&s->resamp, ocnt) : ocnt;
+	if (s->resampbuf)
+		resamp_getcnt(&s->resamp, icnt, ocnt);
+	else {
+		cnt = (*icnt < *ocnt) ? *icnt : *ocnt;
+		*icnt = cnt;
+		*ocnt = cnt;
+	}
 }
 
 static void
@@ -529,13 +531,9 @@ slot_mix_badd(struct slot *s, adata_t *odata)
 	}
 	while (otodo > 0) {
 		idata = (adata_t *)abuf_rgetblk(&s->buf, &len);
-
 		icnt = len / s->bpf;
-		ocnt = slot_ocnt(s, icnt);
-		if (ocnt > otodo) {
-			ocnt = otodo;
-			icnt = slot_icnt(s, ocnt);
-		}
+		ocnt = otodo;
+		slot_getcnt(s, &icnt, &ocnt);
 		if (icnt == 0)
 			break;
 		play_filt_dec(s, idata, odata, icnt, ocnt);
@@ -607,13 +605,9 @@ slot_sub_bcopy(struct slot *s, adata_t *idata, int itodo)
 
 	while (itodo > 0) {
 		odata = (adata_t *)abuf_wgetblk(&s->buf, &len);
-
 		ocnt = len / s->bpf;
-		icnt = slot_icnt(s, ocnt);
-		if (icnt > itodo) {
-			icnt = itodo;
-			ocnt = slot_ocnt(s, icnt);
-		}
+		icnt = itodo;
+		slot_getcnt(s, &icnt, &ocnt);
 		if (ocnt == 0)
 			break;
 		rec_filt_enc(s, idata, odata, icnt, ocnt);
