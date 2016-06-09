@@ -116,7 +116,6 @@ struct resamp {
 	adata_t ctx[NCHAN_MAX * RESAMP_NCTX];
 	unsigned int iblksz, oblksz;
 	int diff;
-	int idelta, odelta;		/* remainder of ipos/opos */
 	int nch;
 };
 
