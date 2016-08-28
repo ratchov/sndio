@@ -61,7 +61,7 @@ dev_siomix_ondesc(void *arg, struct siomix_desc *desc, int val)
 	dev_rmctl(d, addr);
 	strlcpy(ns, "dev", CTL_NAMEMAX);
 	if (sizeof("dev") + 1 + strlen(desc->group) >= CTL_NAMEMAX) {
-		log_puts("control with group, skipped\n");
+		log_puts("group name too, long skipped\n");
 		return;
 	}
 	if (desc->group[0] != 0) {
