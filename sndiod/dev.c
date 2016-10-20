@@ -433,9 +433,8 @@ dev_midi_omsg(void *arg, unsigned char *msg, int len)
 	switch (x->type) {
 	case SYSEX_TYPE_RT:
 		if (x->id0 == SYSEX_CONTROL && x->id1 == SYSEX_MASTER) {
-			if (len == SYSEX_SIZE(master)) {
+			if (len == SYSEX_SIZE(master))
 				dev_master(d, x->u.master.coarse);
-			}
 			return;
 		}
 		if (x->id0 != SYSEX_MMC)
