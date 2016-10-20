@@ -374,9 +374,6 @@ main(int argc, char **argv)
 	mode = MODE_PLAY | MODE_REC;
 	tcpaddr_list = NULL;
 
-	setsig();
-	filelist_init();
-
 	while ((c = getopt(argc, argv, "a:b:c:C:de:f:j:L:m:q:r:s:t:U:v:w:x:z:")) != -1) {
 		switch (c) {
 		case 'd':
@@ -474,6 +471,15 @@ main(int argc, char **argv)
 			mode, vol, mmc, dup) == NULL)
 			return 1;
 	}
+
+	setsig();
+	filelist_init();
+
+	if (geteuid() == 0) {
+		if ((pw = getpwnam(SNDIO_USER)) == NULL)
+			errx(1, "unknown user %s", SNDIO_USER);
+	} else
+		pw = NULL;
 	getbasepath(base);
 	snprintf(path, SOCKPATH_MAX, "%s/" SOCKPATH_FILE "%u", base, unit);
 	if (!listen_new_un(path))
@@ -482,15 +488,9 @@ main(int argc, char **argv)
 		if (!listen_new_tcp(ta->host, AUCAT_PORT + unit))
 			return 1;
 	}
-	if (geteuid() == 0) {
-		if ((pw = getpwnam(SNDIO_USER)) == NULL)
-			errx(1, "unknown user %s", SNDIO_USER);
-		if (setpriority(PRIO_PROCESS, 0, SNDIO_PRIO) < 0)
-			err(1, "setpriority");
-		if (setgroups(1, &pw->pw_gid) ||
-		    setgid(pw->pw_gid) ||
-		    setuid(pw->pw_uid))
-			err(1, "cannot drop privileges");
+	for (l = listen_list; l != NULL; l = l->next) {
+		if (!listen_init(l))
+			return 1;
 	}
 	midi_init();
 	for (p = port_list; p != NULL; p = p->next) {
@@ -501,15 +501,19 @@ main(int argc, char **argv)
 		if (!dev_init(d))
 			return 1;
 	}
-	for (l = listen_list; l != NULL; l = l->next) {
-		if (!listen_init(l))
-			return 1;
-	}
 	if (background) {
 		log_flush();
 		log_level = 0;
 		if (daemon(0, 0) < 0)
 			err(1, "daemon");
+	}
+	if (pw != NULL) {
+		if (setpriority(PRIO_PROCESS, 0, SNDIO_PRIO) < 0)
+			err(1, "setpriority");
+		if (setgroups(1, &pw->pw_gid) ||
+		    setresgid(pw->pw_gid, pw->pw_gid, pw->pw_gid) ||
+		    setresuid(pw->pw_uid, pw->pw_uid, pw->pw_uid))
+			err(1, "cannot drop privileges");
 	}
 	for (;;) {
 		if (quit_flag)
@@ -521,15 +525,16 @@ main(int argc, char **argv)
 		listen_close(listen_list);
 	while (sock_list != NULL)
 		sock_close(sock_list);
-	while (opt_list != NULL)
-		opt_del(opt_list);
 	for (d = dev_list; d != NULL; d = d->next)
 		dev_done(d);
 	for (p = port_list; p != NULL; p = p->next)
 		port_done(p);
-	midi_done();
 	while (file_poll())
 		; /* nothing */
+	midi_done();
+
+	while (opt_list != NULL)
+		opt_del(opt_list);
 	while (dev_list)
 		dev_del(dev_list);
 	while (port_list)
