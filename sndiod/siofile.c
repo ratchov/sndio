@@ -135,7 +135,7 @@ dev_sio_open(struct dev *d)
 
 #ifdef DEBUG
 	/*
-	 * We support any parameters combination exposed by the kernel,
+	 * We support any parameter combination exposed by the kernel,
 	 * and we have no other choice than trusting the kernel for
 	 * returning correct parameters. But let's check parameters
 	 * early and nicely report kernel bugs rather than crashing

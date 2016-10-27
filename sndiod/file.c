@@ -376,8 +376,8 @@ file_poll(void)
 	}
 
 	/*
-	 * Sleep. Calculate the number off milliseconds poll(2) must
-	 * wait before the timo_update() needs to be called. If there're
+	 * Sleep. Calculate the number of milliseconds poll(2) must
+	 * wait before the timo_update() needs to be called. If there are
 	 * no timeouts scheduled, then call poll(2) with infinite
 	 * timeout (i.e -1).
 	 */
