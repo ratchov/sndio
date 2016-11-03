@@ -45,16 +45,17 @@ struct sio_oss_fmt {
 	unsigned int le;
 	unsigned int msb;
 };
+
 static struct sio_oss_fmt formats[] = {
 	/* See http://manuals.opensound.com/developer/formats.html.
 	 * AFMT_{S8,U16}_* are marked as obsolete so are missing here.
 	 */
 
 	/* le+msb not important */
-	{ AFMT_U8,      8, 1, 0, 0, 0 },
-	{ AFMT_U8,      8, 1, 0, 1, 0 },
-	{ AFMT_U8,      8, 1, 0, 0, 1 },
-	{ AFMT_U8,      8, 1, 0, 1, 1 },
+	{ AFMT_U8,	8, 1, 0, 0, 0 },
+	{ AFMT_U8,	8, 1, 0, 1, 0 },
+	{ AFMT_U8,	8, 1, 0, 0, 1 },
+	{ AFMT_U8,	8, 1, 0, 1, 1 },
 
 	/* msb not important */
 	{ AFMT_S16_BE, 16, 2, 1, 0, 0 },
@@ -338,22 +339,22 @@ sio_oss_stop(struct sio_hdl *sh)
 {
 	struct sio_oss_hdl *hdl = (struct sio_oss_hdl*)sh;
 
-        if (ioctl(hdl->fd, SNDCTL_DSP_SYNC, NULL) < 0) {
-            DPERROR("sio_oss_stop: SYNC");
-            hdl->sio.eof = 1;
-            return 0;
-        }
-        if (ioctl(hdl->fd, SNDCTL_DSP_HALT, NULL) < 0) {
-            DPERROR("sio_oss_stop: HALT");
-            hdl->sio.eof = 1;
-            return 0;
-        }
+	if (ioctl(hdl->fd, SNDCTL_DSP_SYNC, NULL) < 0) {
+		DPERROR("sio_oss_stop: SYNC");
+		hdl->sio.eof = 1;
+		return 0;
+	}
+	if (ioctl(hdl->fd, SNDCTL_DSP_HALT, NULL) < 0) {
+		DPERROR("sio_oss_stop: HALT");
+		hdl->sio.eof = 1;
+		return 0;
+	}
 
-        /* Reset device parameters.  When we do not do this, resuming
-         * playback/recording will trigger poll with revents=POLLIN
-         * too often, which leads to sndiod using 100 % CPU.
-         */
-        return sio_oss_setpar(sh, &hdl->sio.par);
+	/* Reset device parameters.  When we do not do this, resuming
+	 * playback/recording will trigger poll with revents=POLLIN
+	 * too often, which leads to sndiod using 100 % CPU.
+	 */
+	return sio_oss_setpar(sh, &hdl->sio.par);
 }
 
 static int
@@ -365,10 +366,10 @@ sio_oss_setpar(struct sio_hdl *sh, struct sio_par *par)
 
 	hdl->fmt = AFMT_S16_LE;
 	for (i = 0; i < sizeof(formats)/sizeof(formats[0]); i++) {
-		if (formats[i].bits == par->bits
-		    && formats[i].le == par->le
-		    && formats[i].sig == par->sig
-		    && formats[i].msb == par->msb) {
+		if (formats[i].bits == par->bits &&
+		    formats[i].le == par->le &&
+		    formats[i].sig == par->sig &&
+		    formats[i].msb == par->msb) {
 			hdl->fmt = formats[i].fmt;
 			break;
 		}
