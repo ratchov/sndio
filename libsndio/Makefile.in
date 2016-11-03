@@ -99,7 +99,7 @@ clean:
 #
 OBJS = debug.o aucat.o \
 mio.o mio_rmidi.o mio_alsa.o mio_aucat.o \
-sio.o sio_alsa.o sio_aucat.o sio_sun.o \
+sio.o sio_alsa.o sio_aucat.o sio_oss.o sio_sun.o \
 issetugid.o strlcat.o strlcpy.o strtonum.o
 
 .c.o:
@@ -139,4 +139,6 @@ sio_alsa.o:	sio_alsa.c debug.h sio_priv.h sndio.h \
 sio_aucat.o:	sio_aucat.c aucat.h amsg.h debug.h sio_priv.h sndio.h \
 		../bsd-compat/bsd-compat.h
 sio_sun.o:	sio_sun.c debug.h sio_priv.h sndio.h \
+		../bsd-compat/bsd-compat.h
+sio_oss.o:	sio_oss.c debug.h sio_priv.h sndio.h \
 		../bsd-compat/bsd-compat.h
