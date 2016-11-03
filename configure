@@ -34,6 +34,7 @@ prefix=/usr/local			# where to install sndio
 so="libsndio.so.\${MAJ}.\${MIN}"	# shared libs to build
 alsa=no					# do we want alsa support ?
 sun=no					# do we want sun support ?
+oss=no					# do we want oss support ?
 rmidi=no				# do we want support for raw char dev ?
 precision=16				# aucat/sndiod arithmetic precision
 user=_sndio				# non-privileged user for sndio daemon
@@ -74,6 +75,14 @@ case `uname` in
 		defs='-DHAVE_ARC4RANDOM -DHAVE_ISSETUGID \\\
 		-DHAVE_STRLCAT -DHAVE_STRLCPY -DHAVE_STRTONUM'
 		;;
+	DragonFly|FreeBSD)
+		user=_sndio
+		so="$so libsndio.so"
+		defs='-DHAVE_ARC4RANDOM -DHAVE_ISSETUGID \\\
+		-DHAVE_STRLCAT -DHAVE_STRLCPY -DHAVE_STRTONUM'
+		oss=yes
+		mandir=${prefix}/man
+		;;
 esac
 
 # shell word separator (none)
@@ -108,6 +117,12 @@ for i; do
 		shift;;
 	--disable-alsa)
 		alsa=no
+		shift;;
+	--enable-oss)
+		oss=yes
+		shift;;
+	--disable-oss)
+		oss=no
 		shift;;
 	--enable-sun)
 		sun=yes
@@ -171,6 +186,13 @@ if [ $alsa = yes ]; then
 fi
 
 #
+# if using OSS, add corresponding parameters
+#
+if [ $oss = yes ]; then
+	defs="$defs -DUSE_OSS"
+fi
+
+#
 # if using Sun API, add corresponding parameters
 #
 if [ $sun = yes ]; then
@@ -227,6 +249,7 @@ user..................... $user
 libbsd................... $libbsd
 precision................ $precision
 alsa..................... $alsa
+oss...................... $oss
 sun...................... $sun
 rmidi.................... $rmidi
 xvolkeys................. $xvolkeys
