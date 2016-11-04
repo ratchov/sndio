@@ -435,6 +435,7 @@ sio_oss_getpar(struct sio_hdl *sh, struct sio_par *par)
 {
 	struct sio_oss_hdl *hdl = (struct sio_oss_hdl *)sh;
 	unsigned int i, found = 0;
+	audio_buf_info pbi, rbi;
 
 	for (i = 0; i < sizeof(formats)/sizeof(formats[0]); i++) {
 		if (formats[i].fmt == hdl->fmt) {
@@ -456,10 +457,41 @@ sio_oss_getpar(struct sio_hdl *sh, struct sio_par *par)
 	par->rate = hdl->rate;
 	par->pchan = hdl->chan;
 	par->rchan = hdl->chan;
-	par->round = hdl->round;
-	par->appbufsz = par->bufsz = hdl->appbufsz;
 	par->xrun = SIO_IGNORE;
 
+	if (hdl->sio.mode & SIO_PLAY) {
+		if (ioctl(hdl->fd, SNDCTL_DSP_GETOSPACE, &pbi) < 0) {
+			DPERROR("sio_oss_getpar: SNDCTL_DSP_GETOSPACE");
+			hdl->sio.eof = 1;
+			return 0;
+		}
+		par->round = pbi.fragsize / (par->pchan * par->bps);
+		par->bufsz = pbi.fragstotal * par->round;
+	}
+	if (hdl->sio.mode & SIO_REC) {
+		if (ioctl(hdl->fd, SNDCTL_DSP_GETISPACE, &rbi) < 0) {
+			DPERROR("sio_oss_getpar: SNDCTL_DSP_GETISPACE");
+			hdl->sio.eof = 1;
+			return 0;
+		}
+		par->round = rbi.fragsize / (par->rchan * par->bps);
+		par->bufsz = rbi.fragstotal * par->round;
+	}
+	par->appbufsz = par->bufsz;
+#ifdef DEBUG
+	if ((hdl->sio.mode & (SIO_REC | SIO_PLAY)) == (SIO_REC | SIO_PLAY)) {
+		if (pbi.fragstotal != rbi.fragstotal ||
+		    pbi.fragsize != rbi.fragsize) {
+			DPRINTF("sio_oss_getpar: frag size/count mismatch\n"
+			    "play: size = %d, count = %d\n"
+			    "rec:  size = %d, count = %d\n",
+			    pbi.fragstotal, pbi.fragsize,
+			    rbi.fragstotal, rbi.fragsize);
+			hdl->sio.eof = 1;
+			return 0;
+		}
+	}
+#endif
 	return 1;
 }
 
