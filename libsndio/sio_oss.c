@@ -415,6 +415,16 @@ sio_oss_setpar(struct sio_hdl *sh, struct sio_par *par)
 		return 0;
 	}
 
+	for (i = 0; ; i++) {
+		if (i == sizeof(formats) / sizeof(formats[0])) {
+			DPRINTF("sio_oss_setpar: unknown fmt %d\n", hdl->fmt);
+			hdl->sio.eof = 1;
+			return 0;
+		}
+		if (formats[i].fmt == hdl->fmt)
+			break;
+	}
+
 	if (ioctl(hdl->fd, SNDCTL_DSP_SPEED, &hdl->rate) < 0) {
 		DPERROR("sio_oss_setpar: SPEED");
 		hdl->sio.eof = 1;
