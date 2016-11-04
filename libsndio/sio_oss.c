@@ -361,8 +361,8 @@ static int
 sio_oss_setpar(struct sio_hdl *sh, struct sio_par *par)
 {
 	struct sio_oss_hdl *hdl = (struct sio_oss_hdl *)sh;
-	unsigned int i;
-	int policy;
+	unsigned int i, round, bufsz;
+	int frag_max, frag_shift, frag_count, frag;
 
 	hdl->fmt = AFMT_S16_LE;
 	for (i = 0; i < sizeof(formats)/sizeof(formats[0]); i++) {
@@ -386,28 +386,6 @@ sio_oss_setpar(struct sio_hdl *sh, struct sio_par *par)
 		hdl->chan = par->pchan;
 	else if (hdl->sio.mode & SIO_REC)
 		hdl->chan = par->rchan;
-
-	if (par->round != ~0U && par->appbufsz != ~0U) {
-		hdl->round = par->round;
-		hdl->appbufsz = par->appbufsz;
-	} else if (par->round != ~0U) {
-		hdl->round = par->round;
-		hdl->appbufsz = 2 * par->round;
-	} else if (par->appbufsz != ~0U) {
-		hdl->round = par->appbufsz / 2;
-		hdl->appbufsz = par->appbufsz;
-	}
-
-	/* Set timing policy to 5 which is OSS' default.  The
-	 * user-settable hw.snd.latency sysctl influences the default
-	 * policy.
-	 */
-	policy = 5;
-	if (ioctl(hdl->fd, SNDCTL_DSP_POLICY, &policy) < 0) {
-		DPERROR("sio_oss_setpar: POLICY");
-		hdl->sio.eof = 1;
-		return 0;
-	}
 
 	if (ioctl(hdl->fd, SNDCTL_DSP_SETFMT, &hdl->fmt) < 0) {
 		DPERROR("sio_oss_setpar: SETFMT");
@@ -433,6 +411,43 @@ sio_oss_setpar(struct sio_hdl *sh, struct sio_par *par)
 
 	if (ioctl(hdl->fd, SNDCTL_DSP_CHANNELS, &hdl->chan) < 0) {
 		DPERROR("sio_oss_setpar: CHANNELS");
+		hdl->sio.eof = 1;
+		return 0;
+	}
+
+	if (par->round != ~0U && par->appbufsz != ~0U) {
+		round = par->round;
+		bufsz = par->appbufsz;
+	} else if (par->round != ~0U) {
+		round = par->round;
+		bufsz = 2 * par->round;
+	} else if (par->appbufsz != ~0U) {
+		round = par->appbufsz / 2;
+		bufsz = par->appbufsz;
+	} else {
+		/*
+		 * even if it's not specified, we have to set the
+		 * block size to ensure that both play and record
+		 * direction get the same block size. Pick an
+		 * arbitrary value that would work for most players at
+		 * 48kHz, stereo, 16-bit.
+		 */
+		round = 512;
+		bufsz = 1024;
+	}
+
+	frag_max = round * hdl->chan * formats[i].bps;
+	frag_shift = 0;
+	while (1 << (frag_shift + 1) < frag_max)
+		frag_shift++;
+
+	frag_count = bufsz / round;
+	if (frag_count < 2)
+		frag_count = 2;
+
+	frag = frag_count << 16 | frag_shift;
+	if (ioctl(hdl->fd, SNDCTL_DSP_SETFRAGMENT, &frag) < 0) {
+		DPERROR("sio_oss_setpar: SETFRAGMENT");
 		hdl->sio.eof = 1;
 		return 0;
 	}
