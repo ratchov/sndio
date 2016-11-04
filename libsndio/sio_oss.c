@@ -232,7 +232,7 @@ sio_oss_getfd(const char *str, unsigned int mode, int nbio)
 	const char *p;
 	char path[DEVPATH_MAX];
 	unsigned int devnum;
-	int fd, flags;
+	int fd, flags, val;
 
 	p = _sndio_parsetype(str, "rsnd");
 	if (p == NULL) {
@@ -261,6 +261,12 @@ sio_oss_getfd(const char *str, unsigned int mode, int nbio)
 		if (errno == EINTR)
 			continue;
 		DPERROR(path);
+		return -1;
+	}
+	val = 1;
+	if (ioctl(fd, SNDCTL_DSP_LOW_WATER, &val) < 0) {
+		DPERROR("sio_oss_start: LOW_WATER");
+		close(fd);
 		return -1;
 	}
 	return fd;
