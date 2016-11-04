@@ -89,6 +89,8 @@ struct sio_oss_hdl {
 	unsigned int chan;
 	unsigned int appbufsz;
 	unsigned int round;
+
+	int filling;
 };
 
 static struct sio_hdl *sio_oss_fdopen(const char *, int, unsigned int, int);
@@ -280,7 +282,7 @@ sio_oss_fdopen(const char *str, int fd, unsigned int mode, int nbio)
 	hdl->chan = 2;
 	hdl->round = 960;
 	hdl->appbufsz = 8 * 960;
-
+	hdl->filling = 0;
 	hdl->fd = fd;
 
 	return (struct sio_hdl *)hdl;
@@ -320,17 +322,33 @@ static int
 sio_oss_start(struct sio_hdl *sh)
 {
 	struct sio_oss_hdl *hdl = (struct sio_oss_hdl *)sh;
+	int trig;
 
 	hdl->isamples = 0;
 	hdl->osamples = 0;
 	hdl->idelta = 0;
 	hdl->odelta = 0;
 
-	/* Nothing else to do here.  OSS starts playing/recording
-	 * on first write/read.
-	 */
-	_sio_onmove_cb(&hdl->sio, 0);
-
+	if (hdl->sio.mode & SIO_PLAY) {
+		/*
+		 * keep the device paused and let sio_oss_pollfd() trigger the
+		 * start later, to avoid buffer underruns
+		 */
+		hdl->filling = 1;
+		trig = 0;
+	} else {
+		/*
+		 * no play buffers to fill, start now!
+		 */
+		trig = PCM_ENABLE_INPUT;
+		_sio_onmove_cb(&hdl->sio, 0);
+	}
+	DPRINTF("trig = 0x%x\n", trig);
+	if (ioctl(hdl->fd, SNDCTL_DSP_SETTRIGGER, &trig) < 0) {
+		DPERROR("sio_oss_start: SETTRIGGER");
+		hdl->sio.eof = 1;
+		return 0;
+	}
 	return 1;
 }
 
@@ -338,23 +356,19 @@ static int
 sio_oss_stop(struct sio_hdl *sh)
 {
 	struct sio_oss_hdl *hdl = (struct sio_oss_hdl*)sh;
+	int trig;
 
-	if (ioctl(hdl->fd, SNDCTL_DSP_SYNC, NULL) < 0) {
-		DPERROR("sio_oss_stop: SYNC");
+	if (hdl->filling) {
+		hdl->filling = 0;
+		return 1;
+	}
+	trig = 0;
+	if (ioctl(hdl->fd, SNDCTL_DSP_SETTRIGGER, &trig) < 0) {
+		DPERROR("sio_oss_stop: SETTRIGGER");
 		hdl->sio.eof = 1;
 		return 0;
 	}
-	if (ioctl(hdl->fd, SNDCTL_DSP_HALT, NULL) < 0) {
-		DPERROR("sio_oss_stop: HALT");
-		hdl->sio.eof = 1;
-		return 0;
-	}
-
-	/* Reset device parameters.  When we do not do this, resuming
-	 * playback/recording will trigger poll with revents=POLLIN
-	 * too often, which leads to sndiod using 100 % CPU.
-	 */
-	return sio_oss_setpar(sh, &hdl->sio.par);
+	return 1;
 }
 
 static int
@@ -575,10 +589,25 @@ static int
 sio_oss_pollfd(struct sio_hdl *sh, struct pollfd *pfd, int events)
 {
 	struct sio_oss_hdl *hdl = (struct sio_oss_hdl *)sh;
+	int trig;
 
 	pfd->fd = hdl->fd;
 	pfd->events = events;
-
+	if (hdl->filling && hdl->sio.wused == hdl->sio.par.bufsz *
+		hdl->sio.par.pchan * hdl->sio.par.bps) {
+		hdl->filling = 0;
+		trig = 0;
+		if (hdl->sio.mode & SIO_PLAY)
+			trig |= PCM_ENABLE_OUTPUT;
+		if (hdl->sio.mode & SIO_REC)
+			trig |= PCM_ENABLE_INPUT;
+		if (ioctl(hdl->fd, SNDCTL_DSP_SETTRIGGER, &trig) < 0) {
+			DPERROR("sio_oss_pollfd: SETTRIGGER");
+			hdl->sio.eof = 1;
+			return 0;
+		}
+		_sio_onmove_cb(&hdl->sio, 0);
+	}
 	return 1;
 }
 
