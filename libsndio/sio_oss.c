@@ -343,7 +343,6 @@ sio_oss_start(struct sio_hdl *sh)
 		trig = PCM_ENABLE_INPUT;
 		_sio_onmove_cb(&hdl->sio, 0);
 	}
-	DPRINTF("trig = 0x%x\n", trig);
 	if (ioctl(hdl->fd, SNDCTL_DSP_SETTRIGGER, &trig) < 0) {
 		DPERROR("sio_oss_start: SETTRIGGER");
 		hdl->sio.eof = 1;
