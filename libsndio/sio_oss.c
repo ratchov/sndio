@@ -460,7 +460,7 @@ sio_oss_setpar(struct sio_hdl *sh, struct sio_par *par)
 
 	frag_max = round * hdl->chan * formats[i].bps;
 	frag_shift = 0;
-	while (1 << (frag_shift + 1) < frag_max)
+	while (1 << (frag_shift + 1) <= frag_max)
 		frag_shift++;
 
 	frag_count = bufsz / round;
