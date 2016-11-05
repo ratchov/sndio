@@ -80,9 +80,10 @@ static struct sio_oss_fmt formats[] = {
 struct sio_oss_hdl {
 	struct sio_hdl sio;
 	int fd;
-	unsigned int isamples;
-	unsigned int osamples;
 	int idelta, odelta;
+	int iused;
+	int oused;
+	int bpf;
 
 	int fmt;
 	unsigned int rate;
@@ -330,8 +331,8 @@ sio_oss_start(struct sio_hdl *sh)
 	struct sio_oss_hdl *hdl = (struct sio_oss_hdl *)sh;
 	int trig;
 
-	hdl->isamples = 0;
-	hdl->osamples = 0;
+	hdl->iused = 0;
+	hdl->oused = 0;
 	hdl->idelta = 0;
 	hdl->odelta = 0;
 
@@ -433,6 +434,8 @@ sio_oss_setpar(struct sio_hdl *sh, struct sio_par *par)
 		hdl->sio.eof = 1;
 		return 0;
 	}
+
+	hdl->bpf = formats[i].bps * hdl->chan;
 
 	if (par->round != ~0U && par->appbufsz != ~0U) {
 		round = par->round;
@@ -560,6 +563,7 @@ sio_oss_read(struct sio_hdl *sh, void *buf, size_t len)
 		return 0;
 	}
 
+	hdl->idelta += n;
 	return n;
 }
 
@@ -581,6 +585,7 @@ sio_oss_write(struct sio_hdl *sh, const void *buf, size_t len)
 		return 0;
 	}
 
+	hdl->odelta += n;
 	return n;
 }
 
@@ -656,11 +661,11 @@ sio_oss_xrun(struct sio_oss_hdl *hdl)
 	if (!sio_oss_start(&hdl->sio))
 		return 0;
 	if (hdl->sio.mode & SIO_PLAY) {
-		hdl->odelta -= cmove;
+		hdl->odelta -= cmove * hdl->bpf;
 		hdl->sio.wsil = wsil;
 	}
 	if (hdl->sio.mode & SIO_REC) {
-		hdl->idelta -= cmove;
+		hdl->idelta -= cmove * hdl->bpf;
 		hdl->sio.rdrop = rdrop;
 	}
 	DPRINTFN(2, "xrun: corrected\n");
@@ -674,9 +679,8 @@ sio_oss_revents(struct sio_hdl *sh, struct pollfd *pfd)
 {
 	struct sio_oss_hdl *hdl = (struct sio_oss_hdl *)sh;
 	audio_errinfo ei;
-	int delta;
+	int delta, iused, oused;
 	int revents = pfd->revents;
-	long long play_pos, rec_pos;
 	oss_count_t optr, iptr;
 
 	if ((pfd->revents & POLLHUP) ||
@@ -701,12 +705,11 @@ sio_oss_revents(struct sio_hdl *sh, struct pollfd *pfd)
 			hdl->sio.eof = 1;
 			return POLLHUP;
 		}
-		play_pos = optr.samples - optr.fifo_samples;
-		delta = play_pos - hdl->osamples;
-		hdl->osamples = play_pos;
-		hdl->odelta += delta;
+		oused = optr.fifo_samples * hdl->bpf;
+		hdl->odelta -= oused - hdl->oused;
+		hdl->oused = oused;
 		if (!(hdl->sio.mode & SIO_REC)) {
-			hdl->idelta += delta;
+			hdl->idelta = hdl->odelta;
 		}
 	}
 	if (hdl->sio.mode & SIO_REC) {
@@ -715,18 +718,17 @@ sio_oss_revents(struct sio_hdl *sh, struct pollfd *pfd)
 			hdl->sio.eof = 1;
 			return POLLHUP;
 		}
-		rec_pos = iptr.samples - iptr.fifo_samples;
-		delta = rec_pos - hdl->isamples;
-		hdl->isamples = rec_pos;
-		hdl->idelta += delta;
+		iused = iptr.fifo_samples * hdl->bpf;
+		hdl->idelta += iused - hdl->iused;
+		hdl->iused = iused;
 		if (!(hdl->sio.mode & SIO_PLAY)) {
-			hdl->odelta += delta;
+			hdl->odelta = hdl->idelta;
 		}
 	}
 
 	delta = (hdl->idelta > hdl->odelta) ? hdl->idelta : hdl->odelta;
 	if (delta > 0) {
-		_sio_onmove_cb(&hdl->sio, delta);
+		_sio_onmove_cb(&hdl->sio, delta / hdl->bpf);
 		hdl->idelta -= delta;
 		hdl->odelta -= delta;
 	}
