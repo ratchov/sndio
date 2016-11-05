@@ -521,17 +521,18 @@ sio_oss_getpar(struct sio_hdl *sh, struct sio_par *par)
 			hdl->sio.eof = 1;
 			return 0;
 		}
-		par->round = rbi.fragsize / (par->rchan * par->bps);
-		par->bufsz = rbi.fragstotal * par->round;
+		if (!(hdl->sio.mode & SIO_PLAY)) {
+			par->round = rbi.fragsize / (par->rchan * par->bps);
+			par->bufsz = rbi.fragstotal * par->round;
+		}
 	}
 	par->appbufsz = par->bufsz;
 #ifdef DEBUG
 	if ((hdl->sio.mode & (SIO_REC | SIO_PLAY)) == (SIO_REC | SIO_PLAY)) {
-		if (pbi.fragstotal != rbi.fragstotal ||
-		    pbi.fragsize != rbi.fragsize) {
+		if (pbi.fragsize != rbi.fragsize) {
 			DPRINTF("sio_oss_getpar: frag size/count mismatch\n"
-			    "play: size = %d, count = %d\n"
-			    "rec:  size = %d, count = %d\n",
+			    "play: count = %d, size = %d\n"
+			    "rec:  count = %d, size = %d\n",
 			    pbi.fragstotal, pbi.fragsize,
 			    rbi.fragstotal, rbi.fragsize);
 			hdl->sio.eof = 1;
