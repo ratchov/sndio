@@ -20,6 +20,8 @@ Usage: configure [options]
 --disable-sun			disable sun audio backend
 --enable-rmidi			enable character device midi backend [$rmidi]
 --disable-rmidi			disable character device midi backend
+--enable-umidi			enable usb-midi backend [$umidi]
+--disable-umidi			disable usb-midi backend
 --with-libbsd			use the libbsd rather than bsd-compat/*
 --without-libbsd		don't use libbsd
 END
@@ -34,6 +36,7 @@ alsa=no					# do we want alsa support ?
 sun=no					# do we want sun support ?
 oss=no					# do we want oss support ?
 rmidi=no				# do we want support for raw char dev ?
+umidi=no				# do we want support for umidi ?
 precision=16				# aucat/sndiod arithmetic precision
 user=_sndio				# non-privileged user for sndio daemon
 libbsd=no				# use libbsd?
@@ -73,6 +76,7 @@ case `uname` in
 		-DHAVE_STRLCAT -DHAVE_STRLCPY -DHAVE_STRTONUM'
 		;;
 	DragonFly|FreeBSD)
+		umidi=yes
 		user=_sndio
 		so="$so libsndio.so"
 		defs='-DHAVE_ARC4RANDOM -DHAVE_ISSETUGID \\\
@@ -133,6 +137,12 @@ for i; do
 	--disable-rmidi)
 		rmidi=no
 		shift;;
+	--enable-umidi)
+		umidi=yes
+		shift;;
+	--disable-umidi)
+		umidi=no
+		shift;;
 	--privsep-user=*)
 		user="${i#--privsep-user=}"
 		shift;;
@@ -169,6 +179,13 @@ libdir="${libdir:-$prefix/lib}"
 mandir="${mandir:-$prefix/share/man}"
 
 #
+# umidi implies rmidi
+#
+if [ $umidi = yes ]; then
+	rmidi=yes
+fi
+
+#
 # if using ALSA, add corresponding parameters
 #
 if [ $alsa = yes ]; then
@@ -195,6 +212,13 @@ fi
 #
 if [ $rmidi = yes ]; then
 	defs="$defs -DUSE_RMIDI"
+fi
+
+#
+# if using usb-midi raw devices for midi, add corresponding parameters
+#
+if [ $umidi = yes ]; then
+	defs="$defs -DUSE_UMIDI"
 fi
 
 #
@@ -242,6 +266,7 @@ alsa..................... $alsa
 oss...................... $oss
 sun...................... $sun
 rmidi.................... $rmidi
+umidi.................... $umidi
 
 Do "make && make install" to compile and install sndio
 

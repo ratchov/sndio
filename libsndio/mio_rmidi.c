@@ -31,10 +31,19 @@
 #include "debug.h"
 #include "mio_priv.h"
 
+#ifdef USE_UMIDI
+#define DEVPATH_PREFIX	"/dev/umidi"
+#define DEVPATH_MAX 	(1 +		\
+	sizeof(DEVPATH_PREFIX) - 1 +	\
+	sizeof(int) * 3 +		\
+	1 +				\
+	sizeof(int) * 3)
+#else
 #define DEVPATH_PREFIX	"/dev/rmidi"
 #define DEVPATH_MAX 	(1 +		\
 	sizeof(DEVPATH_PREFIX) - 1 +	\
 	sizeof(int) * 3)
+#endif
 
 struct mio_rmidi_hdl {
 	struct mio_hdl mio;
@@ -63,6 +72,9 @@ mio_rmidi_getfd(const char *str, unsigned int mode, int nbio)
 	const char *p;
 	char path[DEVPATH_MAX];
 	unsigned int devnum;
+#ifdef USE_UMIDI
+	unsigned int subdevnum = 0;
+#endif
 	int fd, flags;
 
 	p = _sndio_parsetype(str, "rmidi");
@@ -79,11 +91,37 @@ mio_rmidi_getfd(const char *str, unsigned int mode, int nbio)
 		return -1;
 	}
 	p = _sndio_parsenum(p, &devnum, 255);
-	if (p == NULL || *p != '\0') {
+	if (p == NULL) {
 		DPRINTF("mio_rmidi_getfd: %s: number expected after '/'\n", str);
 		return -1;
 	}
+#ifdef USE_UMIDI
+	switch (*p) {
+	case '.':
+		p++;
+		p = _sndio_parsenum(p, &subdevnum, 255);
+		if (p == NULL) {
+			DPRINTF("mio_rmidi_getfd: %s: "
+				"number expected after '.'\n", str);
+			return -1;
+		}
+		break;
+	case '\0':
+		break;
+	default:
+		DPRINTF("mio_rmidi_getfd: %s: '.' expected\n", str);
+		return -1;
+	}
+#endif
+	if (*p != '\0') {
+		DPRINTF("mio_rmidi_getfd: junk at end of string: %s\n", p);
+		return -1;
+	}
+#ifdef USE_UMIDI
+	snprintf(path, sizeof(path), DEVPATH_PREFIX "%u.%u", devnum, subdevnum);
+#else
 	snprintf(path, sizeof(path), DEVPATH_PREFIX "%u", devnum);
+#endif
 	if (mode == (MIO_IN | MIO_OUT))
 		flags = O_RDWR;
 	else
