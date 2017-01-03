@@ -24,6 +24,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include "utils.h"
 
 /*
@@ -95,7 +96,7 @@ log_putx(unsigned long num)
 }
 
 /*
- * store a unsigned decimal in the log
+ * store an unsigned decimal in the log
  */
 void
 log_putu(unsigned long num)
@@ -139,7 +140,7 @@ panic(void)
 }
 
 /*
- * allocate a (small) abount of memory, and abort if it fails
+ * allocate a (small) amount of memory, and abort if it fails
  */
 void *
 xmalloc(size_t size)
@@ -162,6 +163,12 @@ xmalloc(size_t size)
 void
 xfree(void *p)
 {
+#ifdef DEBUG
+	if (p == NULL) {
+		log_puts("xfree with NULL arg\n");
+		panic();
+	}
+#endif
 	free(p);
 }
 
