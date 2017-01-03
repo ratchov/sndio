@@ -17,6 +17,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/resource.h>
+#include <sys/socket.h>
 
 #include <err.h>
 #include <errno.h>
