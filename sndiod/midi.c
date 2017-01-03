@@ -98,7 +98,7 @@ midi_new(struct midiops *ops, void *arg, int mode)
 	ep->mode = mode;
 
 	/*
-	 * the output buffer is the client intput
+	 * the output buffer is the client input
 	 */
 	if (ep->mode & MODE_MIDIIN)
 		abuf_init(&ep->obuf, MIDI_BUFSZ);
@@ -148,7 +148,7 @@ midi_link(struct midi *ep, struct midi *peer)
 			panic();
 		}
 #endif
-		/* ep has empry buffer, so no need to call midi_tickets() */
+		/* ep has empty buffer, so no need to call midi_tickets() */
 		peer->txmask |= ep->self;
 	}
 }

@@ -96,7 +96,7 @@ log_putx(unsigned long num)
 }
 
 /*
- * store a unsigned decimal in the log
+ * store an unsigned decimal in the log
  */
 void
 log_putu(unsigned long num)
@@ -140,7 +140,7 @@ panic(void)
 }
 
 /*
- * allocate a (small) abount of memory, and abort if it fails
+ * allocate a (small) amount of memory, and abort if it fails
  */
 void *
 xmalloc(size_t size)
