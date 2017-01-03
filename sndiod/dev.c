@@ -1427,7 +1427,7 @@ slot_new(struct dev *d, char *who, struct slotops *ops, void *arg, int mode)
 	struct slot *s;
 
 	/*
-	 * create a ``valid'' control name (lowcase, remove [^a-z], trucate)
+	 * create a ``valid'' control name (lowcase, remove [^a-z], truncate)
 	 */
 	for (i = 0, p = who; ; p++) {
 		if (i == SLOT_NAMEMAX - 1 || *p == '\0') {
