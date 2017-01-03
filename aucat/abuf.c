@@ -22,9 +22,7 @@
  * as follows: the write starts filling at offset (start + used), once the data
  * is ready, the writer adds to used the count of bytes available.
  */
-#include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
 #include "abuf.h"
 #include "utils.h"
