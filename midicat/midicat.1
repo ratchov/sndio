@@ -24,8 +24,9 @@
 .Nm midicat
 .Bk -words
 .Op Fl d
-.Op Fl i Ar port
-.Op Fl o Ar port
+.Op Fl i Ar file
+.Op Fl o Ar file
+.Op Fl q Ar port
 .Ek
 .Sh DESCRIPTION
 The
@@ -36,21 +37,39 @@ The options are as follows:
 .Bl -tag -width Ds
 .It Fl d
 Dump transferred data in hex on stderr.
-.It Fl i Ar port
+.It Fl i Ar file
+Read MIDI data from this file instead of receiving it from the MIDI port.
+If the option argument is
+.Sq -
+then standard input will be used.
+.It Fl o Ar file
+Write MIDI data to this file instead of sending it to the MIDI port.
+If the option argument is
+.Sq -
+then standard output will be used.
+.It Fl q Ar port
 Use this
 .Xr sndio 7
-MIDI port as input instead of stdin.
-.It Fl o Ar port
-Use this
-.Xr sndio 7
-MIDI port as output instead of stdout.
+MIDI port for input/output.
+If the option is used twice, the first one specifies
+the input port and the second one the output port.
 .El
+.Pp
+If no files are specified, then
+.Nm
+transfers data from the MIDI input port to the MIDI output port.
 .Sh EXAMPLES
+Send the given file to
+.Pa rmidi/0 :
+.Bd -literal -offset indent
+$ midicat -i file.syx -q rmidi/0
+.Ed
+.Pp
 Dump data received from
 .Pa rmidi/0
 to stderr:
 .Bd -literal -offset indent
-$ midicat -di rmidi/0 >/dev/null
+$ midicat -d -q rmidi/0 -o /dev/null
 .Ed
 .Pp
 Send data from
@@ -58,8 +77,9 @@ Send data from
 to
 .Pa midithru/0:
 .Bd -literal -offset indent
-$ midicat -i rmidi/0 -o midithru/0
+$ midicat -q rmidi/0 -q midithru/0
 .Ed
 .Sh SEE ALSO
 .Xr midi 4 ,
-.Xr sndio 7
+.Xr sndio 7 ,
+.Xr sndiod 8

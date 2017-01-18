@@ -18,9 +18,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <string.h>
 #include "bsd-compat.h"
 
-char usagestr[] = "usage: midicat [-d] [-i port] [-o port]\n";
+char usagestr[] = "usage: midicat [-d] [-i in-file] [-o out-file] "
+	"[-q in-port] [-q out-port]\n";
 
 int
 main(int argc, char **argv)
@@ -28,25 +30,35 @@ main(int argc, char **argv)
 #define MIDI_BUFSZ	1024
 	unsigned char buf[MIDI_BUFSZ];
 	struct mio_hdl *ih, *oh;
-	char *in, *out;
-	int dump, c, i, len, sep;
+	char *port0, *port1, *ifile, *ofile;
+	int ifd, ofd;
+	int dump, c, i, len, n, sep, mode;
 
 	dump = 0;
-	in = NULL;
-	out = NULL;
-	ih = NULL;
-	oh = NULL;
-	
-	while ((c = getopt(argc, argv, "di:o:")) != -1) {
+	port0 = port1 = ifile = ofile = NULL;
+	ih = oh = NULL;
+	ifd = ofd = -1;
+
+	while ((c = getopt(argc, argv, "di:o:q:")) != -1) {
 		switch (c) {
 		case 'd':
 			dump = 1;
 			break;
+		case 'q':
+			if (port0 == NULL)
+				port0 = optarg;
+			else if (port1 == NULL)
+				port1 = optarg;
+			else {
+				fputs("too many -q options\n", stderr);
+				return 1;
+			}
+			break;
 		case 'i':
-			in = optarg;
+			ifile = optarg;
 			break;
 		case 'o':
-			out = optarg;
+			ofile = optarg;
 			break;
 		default:
 			goto bad_usage;
@@ -59,44 +71,106 @@ main(int argc, char **argv)
 		fputs(usagestr, stderr);
 		return 1;
 	}
-	if (in == NULL && out == NULL) {
-		fputs("either -i or -o required\n", stderr);
-		exit(1);
+
+	/* we don't support more than one data flow */
+	if (ifile != NULL && ofile != NULL) {
+		fputs("-i and -o are exclusive\n", stderr);
+		return 1;
 	}
-	if (in) {
-		ih = mio_open(in, MIO_IN, 0);
-		if (ih == NULL) {
-			fprintf(stderr, "%s: couldn't open MIDI in\n", in);
-			exit(1);
-		}
+
+	/* second port makes sense only for port-to-port transfers */
+	if (port1 != NULL && !(ifile == NULL && ofile == NULL)) {
+		fputs("too many -q options\n", stderr);
+		return 1;
 	}
-	if (out) {
-		oh = mio_open(out, MIO_OUT, 0);
-		if (oh == NULL) {
-			fprintf(stderr, "%s: couldn't open MIDI out\n", out);
-			exit(1);
-		}
-	}
-	for (;;) {
-		if (in) {
-			len = mio_read(ih, buf, sizeof(buf));
-			if (len == 0) {
-				fprintf(stderr, "%s: disconnected\n", in);
-				break;
+
+	/* if there're neither files nor ports, then we've nothing to do */
+	if (port0 == NULL && ifile == NULL && ofile == NULL)
+		goto bad_usage;
+
+	/* if no port specified, use default one */
+	if (port0 == NULL)
+		port0 = MIO_PORTANY;
+
+	/* open input or output file (if any) */
+	if (ifile) {
+		if (strcmp(ifile, "-") == 0)
+			ifd = STDIN_FILENO;
+		else {
+			ifd = open(ifile, O_RDONLY, 0);
+			if (ifd < 0) {
+				perror(ifile);
+				return 1;
 			}
-		} else {
-			len = read(STDIN_FILENO, buf, sizeof(buf));
+		}
+	} else if (ofile) {
+		if (strcmp(ofile, "-") == 0)
+			ofd = STDOUT_FILENO;
+		else {
+			ofd = open(ofile, O_WRONLY | O_CREAT | O_TRUNC, 0666);
+			if (ofd < 0) {
+				perror(ofile);
+				return 1;
+			}
+		}
+	}
+
+	/* open first port for input and output (if output needed) */
+	if (ofile)
+		mode = MIO_IN;
+	else if (ifile)
+		mode = MIO_OUT;
+	else if (port1 == NULL)
+		mode = MIO_IN | MIO_OUT;
+	else
+		mode = MIO_IN;
+	ih = mio_open(port0, mode, 0);
+	if (ih == NULL) {
+		fprintf(stderr, "%s: couldn't open port\n", port0);
+		return 1;
+	}
+
+	/* open second port, output only */
+	if (port1 == NULL)
+		oh = ih;
+	else {
+		oh = mio_open(port1, MIO_OUT, 0);
+		if (oh == NULL) {
+			fprintf(stderr, "%s: couldn't open port\n", port1);
+			exit(1);
+		}
+	}
+
+	/* transfer until end-of-file or error */
+	for (;;) {
+		if (ifile != NULL) {
+			len = read(ifd, buf, sizeof(buf));
 			if (len == 0)
 				break;
 			if (len < 0) {
 				perror("stdin");
-				exit(1);
+				break;
+			}
+		} else {
+			len = mio_read(ih, buf, sizeof(buf));
+			if (len == 0) {
+				fprintf(stderr, "%s: disconnected\n", port0);
+				break;
 			}
 		}
-		if (out)
-			mio_write(oh, buf, len);
-		else
-			write(STDOUT_FILENO, buf, len);
+		if (ofile != NULL) {
+			n = write(ofd, buf, len);
+			if (n != len) {
+				fprintf(stderr, "%s: short write\n", ofile);
+				break;
+			}
+		} else {
+			n = mio_write(oh, buf, len);
+			if (n != len) {
+				fprintf(stderr, "%s: disconnected\n", port1);
+				break;
+			}
+		}
 		if (dump) {
 			for (i = 0; i < len; i++) {
 				sep = (i % 16 == 15 || i == len - 1) ?
@@ -105,9 +179,15 @@ main(int argc, char **argv)
 			}
 		}
 	}
-	if (in)
+
+	/* clean-up */
+	if (port0)
 		mio_close(ih);
-	if (out)
+	if (port1)
 		mio_close(oh);
+	if (ifile)
+		close(ifd);
+	if (ofile)
+		close(ofd);
 	return 0;
 }
