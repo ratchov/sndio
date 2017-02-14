@@ -240,7 +240,9 @@ if [ $libbsd = yes ]; then
 fi
 
 for f in Makefile aucat/Makefile midicat/Makefile sndiod/Makefile \
-libsndio/Makefile sndioctl/Makefile xvolkeys/Makefile \
+libsndio/Makefile \
+sndioctl/Makefile \
+xvolkeys/Makefile \
 examples/Makefile \
 contrib/init.d.sndiod
 do
