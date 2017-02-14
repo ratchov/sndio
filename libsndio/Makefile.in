@@ -138,7 +138,7 @@ sio_alsa.o:	sio_alsa.c debug.h sio_priv.h sndio.h \
 		../bsd-compat/bsd-compat.h
 sio_aucat.o:	sio_aucat.c aucat.h amsg.h debug.h sio_priv.h sndio.h \
 		../bsd-compat/bsd-compat.h
-sio_sun.o:	sio_sun.c debug.h sio_priv.h sndio.h \
-		../bsd-compat/bsd-compat.h
 sio_oss.o:	sio_oss.c debug.h sio_priv.h sndio.h \
+		../bsd-compat/bsd-compat.h
+sio_sun.o:	sio_sun.c debug.h sio_priv.h sndio.h \
 		../bsd-compat/bsd-compat.h
