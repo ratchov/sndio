@@ -1857,7 +1857,7 @@ slot_detach(struct slot *s)
 #endif
 	for (ps = &s->dev->slot_list; *ps != s; ps = &(*ps)->next) {
 #ifdef DEBUG
-		if (s == NULL) {
+		if (*ps == NULL) {
 			slot_log(s);
 			log_puts(": can't detach, not on list\n");
 			panic();
