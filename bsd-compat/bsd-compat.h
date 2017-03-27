@@ -33,4 +33,8 @@ struct timespec;
 int clock_gettime(int, struct timespec *);
 #endif
 
+#ifndef HAVE_SOCK_CLOEXEC
+#define SOCK_CLOEXEC	0
+#endif
+
 #endif /* !defined(BSD_COMPAT_H) */

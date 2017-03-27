@@ -343,25 +343,6 @@ done:
 }
 
 static int
-socket_cloexec(int f, int t, int p)
-{
-#ifdef SOCK_CLOEXEC
-	return socket(f, t | SOCK_CLOEXEC, p);
-#else
-	int s;
-
-	s = socket(f, t, p);
-	if (s < 0)
-		return -1;
-	if (fcntl(s, F_SETFL, FD_CLOEXEC) < 0) {
-		close(s);
-		return -1;
-	}
-	return s;
-#endif
-}
-
-static int
 aucat_connect_tcp(struct aucat *hdl, char *host, unsigned int unit)
 {
 	int s, error, opt;
@@ -379,12 +360,20 @@ aucat_connect_tcp(struct aucat *hdl, char *host, unsigned int unit)
 	}
 	s = -1;
 	for (ai = ailist; ai != NULL; ai = ai->ai_next) {
-		s = socket_cloexec(ai->ai_family, ai->ai_socktype,
+		s = socket(ai->ai_family, ai->ai_socktype | SOCK_CLOEXEC,
 		    ai->ai_protocol);
 		if (s < 0) {
 			DPERROR("socket");
 			continue;
 		}
+#ifndef HAVE_SOCK_CLOEXEC
+		if (fcntl(s, F_SETFL, FD_CLOEXEC) < 0) {
+			DPERROR("FD_CLOEXEC");
+			close(s);
+			s = - 1;
+			continue;
+		}
+#endif
 	restart:
 		if (connect(s, ai->ai_addr, ai->ai_addrlen) < 0) {
 			if (errno == EINTR)
@@ -421,9 +410,16 @@ aucat_connect_un(struct aucat *hdl, unsigned int unit)
 	snprintf(ca.sun_path, sizeof(ca.sun_path),
 	    SOCKPATH_DIR "-%u/" SOCKPATH_FILE "%u", uid, unit);
 	ca.sun_family = AF_UNIX;
-	s = socket_cloexec(AF_UNIX, SOCK_STREAM, 0);
+	s = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
 	if (s < 0)
 		return 0;
+#ifndef HAVE_SOCK_CLOEXEC
+	if (fcntl(s, F_SETFL, FD_CLOEXEC) < 0) {
+		DPERROR("FD_CLOEXEC");
+		close(s);
+		return 0;
+	}
+#endif
 	while (connect(s, (struct sockaddr *)&ca, len) < 0) {
 		if (errno == EINTR)
 			continue;
