@@ -14,7 +14,7 @@ LDADD = @ldadd@
 SO_CFLAGS = -fPIC
 
 # extra compiler flags to produce a shared library with the given name
-SO_LDFLAGS = -shared -Wl,-soname=libsndio.so.${MAJ}.${MIN}
+SO_LDFLAGS = -shared #-Wl,-soname=libsndio.so.${MAJ}.${MIN}
 
 # variables defined on configure script command line (if any)
 @vars@
@@ -45,6 +45,7 @@ MAN7 = sndio.7
 MAJ = 6
 MIN = 1
 SO = @so@
+SO_LINK = @so_link@
 
 all:		${SO}
 
@@ -54,7 +55,7 @@ install:
 		mkdir -p ${DESTDIR}${MAN3_DIR}
 		mkdir -p ${DESTDIR}${MAN7_DIR}
 		cp sndio.h ${DESTDIR}${INCLUDE_DIR}
-		cp -R ${SO} ${DESTDIR}${LIB_DIR}
+		cp -R ${SO} ${SO_LINK} ${DESTDIR}${LIB_DIR}
 		cp sio_open.3 ${DESTDIR}${MAN3_DIR}
 		ln -sf sio_open.3 ${DESTDIR}${MAN3_DIR}/sio_close.3
 		ln -sf sio_open.3 ${DESTDIR}${MAN3_DIR}/sio_setpar.3
@@ -84,7 +85,7 @@ install:
 
 uninstall:
 		rm -f ${DESTDIR}${INCLUDE_DIR}/sndio.h
-		cd ${DESTDIR}${LIB_DIR} && rm -f ${SO}
+		cd ${DESTDIR}${LIB_DIR} && rm -f ${SO} ${SO_LINK}
 		cd ${DESTDIR}${MAN3_DIR} && rm -f ${MAN3}
 		cd ${DESTDIR}${MAN7_DIR} && rm -f ${MAN7}
 
@@ -100,16 +101,16 @@ clean:
 OBJS = debug.o aucat.o \
 mio.o mio_rmidi.o mio_alsa.o mio_aucat.o \
 sio.o sio_alsa.o sio_aucat.o sio_oss.o sio_sun.o \
-issetugid.o strlcat.o strlcpy.o strtonum.o
+issetugid.o strlcat.o strlcpy.o strtonum.o clock_gettime.o
 
 .c.o:
 		${CC} ${CFLAGS} ${SO_CFLAGS} -I. ${INCLUDE} ${DEFS} -o $@ -c $<
 
-libsndio.so.${MAJ}.${MIN}:	${OBJS}
-		${CC} ${LDFLAGS} ${SO_CFLAGS} ${SO_LDFLAGS} -o libsndio.so.${MAJ}.${MIN} ${OBJS} ${LDADD}
+${SO}:		${OBJS}
+		${CC} ${LDFLAGS} ${SO_CFLAGS} ${SO_LDFLAGS} -o ${SO} ${OBJS} ${LDADD}
 
-libsndio.so:
-		ln -sf libsndio.so.${MAJ}.${MIN} libsndio.so
+${SO_LINK}:
+		ln -sf ${SO} ${SO_LINK}
 
 issetugid.o:	../bsd-compat/issetugid.c
 		${CC} ${CFLAGS} ${SO_CFLAGS} ${INCLUDE} ${DEFS} -c -o issetugid.o ../bsd-compat/issetugid.c
@@ -122,6 +123,9 @@ strlcpy.o:	../bsd-compat/strlcpy.c
 
 strtonum.o:	../bsd-compat/strtonum.c
 		${CC} ${CFLAGS} ${SO_CFLAGS} ${INCLUDE} ${DEFS} -c -o strtonum.o ../bsd-compat/strtonum.c
+
+clock_gettime.o:	../bsd-compat/clock_gettime.c
+		${CC} ${CFLAGS} ${SO_CFLAGS} ${INCLUDE} ${DEFS} -c -o clock_gettime.o ../bsd-compat/clock_gettime.c
 
 aucat.o:	aucat.c aucat.h amsg.h debug.h \
 		../bsd-compat/bsd-compat.h
