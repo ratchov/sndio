@@ -67,8 +67,8 @@ case `uname` in
 		user=_sndio
 		so_link="libsndio.so"
 		defs='-DHAVE_ARC4RANDOM -DHAVE_ISSETUGID \\\
-		-DHAVE_STRLCAT -DHAVE_STRLCPY -DHAVE_SOCK_CLOEXEC \\\
-		-DHAVE_CLOCK_GETTIME'
+		-DHAVE_STRLCAT -DHAVE_STRLCPY \\\
+		-DHAVE_SOCK_CLOEXEC -DHAVE_CLOCK_GETTIME'
 		;;
 	OpenBSD)
 		sun=yes
