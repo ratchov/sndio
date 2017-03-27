@@ -14,7 +14,9 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 #include <sys/time.h>
+#include <sys/types.h>
 #include <errno.h>
+#include <stddef.h>
 #include "bsd-compat.h"
 
 #ifndef HAVE_CLOCK_GETTIME
@@ -36,4 +38,5 @@ _sndio_clock_gettime(int timer, struct timespec *ts)
 	ts->tv_nsec = tv.tv_usec * 1000;
 	return 0;
 }
+
 #endif
