@@ -59,7 +59,7 @@ case `uname` in
 		user=sndiod
 		so_link="libsndio.so"
 		defs='-D_GNU_SOURCE -DDEV_RANDOM=\\"/dev/urandom\\" \\\
-		-DHAVE_SOCK_CLOEXEC'
+		-DHAVE_SOCK_CLOEXEC -DHAVE_CLOCK_GETTIME'
 		;;
 	NetBSD)
 		sun=no
@@ -67,21 +67,24 @@ case `uname` in
 		user=_sndio
 		so_link="libsndio.so"
 		defs='-DHAVE_ARC4RANDOM -DHAVE_ISSETUGID \\\
-		-DHAVE_STRLCAT -DHAVE_STRLCPY -DHAVE_SOCK_CLOEXEC'
+		-DHAVE_STRLCAT -DHAVE_STRLCPY -DHAVE_SOCK_CLOEXEC \\\
+		-DHAVE_CLOCK_GETTIME'
 		;;
 	OpenBSD)
 		sun=yes
 		rmidi=yes
 		user=_sndio
 		defs='-DHAVE_ARC4RANDOM -DHAVE_ISSETUGID \\\
-		-DHAVE_STRLCAT -DHAVE_STRLCPY -DHAVE_STRTONUM -DHAVE_SOCK_CLOEXEC'
+		-DHAVE_STRLCAT -DHAVE_STRLCPY -DHAVE_STRTONUM \\\
+		-DHAVE_SOCK_CLOEXEC -DHAVE_CLOCK_GETTIME'
 		;;
 	DragonFly|FreeBSD)
 		umidi=yes
 		user=_sndio
 		so_link="libsndio.so"
 		defs='-DHAVE_ARC4RANDOM -DHAVE_ISSETUGID \\\
-		-DHAVE_STRLCAT -DHAVE_STRLCPY -DHAVE_STRTONUM -DHAVE_SOCK_CLOEXEC'
+		-DHAVE_STRLCAT -DHAVE_STRLCPY -DHAVE_STRTONUM \\\
+		-DHAVE_SOCK_CLOEXEC -DHAVE_CLOCK_GETTIME'
 		;;
 	Darwin)
 		rmidi=no
