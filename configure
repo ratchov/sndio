@@ -60,33 +60,40 @@ case `uname` in
 		alsa=yes
 		ldadd="-lrt"
 		user=sndiod
-		so="$so libsndio.so"
-		defs='-D_GNU_SOURCE -DDEV_RANDOM=\\"/dev/urandom\\"'
+		so_link="libsndio.so"
+		defs='-D_GNU_SOURCE -DDEV_RANDOM=\\"/dev/urandom\\" \\\
+		-DHAVE_SOCK_CLOEXEC -DHAVE_CLOCK_GETTIME'
 		;;
 	NetBSD)
 		sun=no
 		rmidi=yes
 		user=_sndio
-		so="$so libsndio.so"
+		so_link="libsndio.so"
 		defs='-DHAVE_ARC4RANDOM -DHAVE_ISSETUGID \\\
-		-DHAVE_STRLCAT -DHAVE_STRLCPY'
+		-DHAVE_STRLCAT -DHAVE_STRLCPY \\\
+		-DHAVE_SOCK_CLOEXEC -DHAVE_CLOCK_GETTIME'
 		;;
 	OpenBSD)
 		sun=yes
 		rmidi=yes
 		user=_sndio
 		defs='-DHAVE_ARC4RANDOM -DHAVE_ISSETUGID \\\
-		-DHAVE_STRLCAT -DHAVE_STRLCPY -DHAVE_STRTONUM'
+		-DHAVE_STRLCAT -DHAVE_STRLCPY -DHAVE_STRTONUM \\\
+		-DHAVE_SOCK_CLOEXEC -DHAVE_CLOCK_GETTIME'
 		;;
 	DragonFly|FreeBSD)
 		umidi=yes
 		user=_sndio
-		so="$so libsndio.so"
+		so_link="libsndio.so"
 		defs='-DHAVE_ARC4RANDOM -DHAVE_ISSETUGID \\\
-		-DHAVE_STRLCAT -DHAVE_STRLCPY -DHAVE_STRTONUM'
-		oss=yes
-		mandir=${prefix}/man
+		-DHAVE_STRLCAT -DHAVE_STRLCPY -DHAVE_STRTONUM \\\
+		-DHAVE_SOCK_CLOEXEC -DHAVE_CLOCK_GETTIME'
 		;;
+	Darwin)
+		rmidi=no
+		so="libsndio.\${MAJ}.\${MIN}.dylib"
+		defs='-DHAVE_ARC4RANDOM -DHAVE_ISSETUGID \\\
+		-DHAVE_STRLCAT -DHAVE_STRLCPY'
 esac
 
 # shell word separator (none)
@@ -255,6 +262,7 @@ do
 	-e "s:@defs@:$defs:" \
 	-e "s:@ldadd@:$ldadd:" \
 	-e "s:@so@:$so:" \
+	-e "s:@so_link@:$so_link:" \
 	-e "s:@vars@:${vars}:" \
 	-e "s:@precision@:$precision:" \
 	-e "s:@user@:$user:" \

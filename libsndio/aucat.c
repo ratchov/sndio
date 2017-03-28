@@ -366,6 +366,14 @@ aucat_connect_tcp(struct aucat *hdl, char *host, unsigned int unit)
 			DPERROR("socket");
 			continue;
 		}
+#ifndef HAVE_SOCK_CLOEXEC
+		if (fcntl(s, F_SETFL, FD_CLOEXEC) < 0) {
+			DPERROR("FD_CLOEXEC");
+			close(s);
+			s = - 1;
+			continue;
+		}
+#endif
 	restart:
 		if (connect(s, ai->ai_addr, ai->ai_addrlen) < 0) {
 			if (errno == EINTR)
@@ -405,6 +413,13 @@ aucat_connect_un(struct aucat *hdl, unsigned int unit)
 	s = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
 	if (s < 0)
 		return 0;
+#ifndef HAVE_SOCK_CLOEXEC
+	if (fcntl(s, F_SETFL, FD_CLOEXEC) < 0) {
+		DPERROR("FD_CLOEXEC");
+		close(s);
+		return 0;
+	}
+#endif
 	while (connect(s, (struct sockaddr *)&ca, len) < 0) {
 		if (errno == EINTR)
 			continue;
