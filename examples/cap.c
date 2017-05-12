@@ -51,7 +51,7 @@ print_cap(struct sio_cap *cap)
 				printf(" %d", cap->rate[i]);
 		}
 		printf("\n");
-	}	
+	}
 }
 
 int
@@ -59,7 +59,7 @@ main(int argc, char **argv) {
 	int ch;
 	unsigned mode = SIO_PLAY | SIO_REC;
 	struct sio_hdl *hdl;
-	
+
 	while ((ch = getopt(argc, argv, "pr")) != -1) {
 		switch(ch) {
 		case 'p':
@@ -75,7 +75,7 @@ main(int argc, char **argv) {
 		}
 	}
 	if (mode == 0) {
-		fprintf(stderr, "-p and -r flags are mutualy exclusive\n");
+		fprintf(stderr, "-p and -r flags are mutually exclusive\n");
 		exit(1);
 	}
 	hdl = sio_open(NULL, mode, 0);
