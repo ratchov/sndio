@@ -14,7 +14,7 @@ LDADD = -lX11 -lsndio @ldadd@
 @vars@
 
 #
-# binaries, documentation, man pages and examples will be installed in 
+# binaries, documentation, man pages and examples will be installed in
 # ${BIN_DIR}, ${MAN1_DIR}
 #
 BIN_DIR = @bindir@
