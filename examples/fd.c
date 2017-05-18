@@ -79,10 +79,10 @@ buf_write(struct buf *buf, int fd)
 {
 	unsigned count;
 	int n;
-	
+
 	while (buf->used) {
 		count = BUF_LEN - buf->start;
-		if (count > buf->used) 
+		if (count > buf->used)
 			count = buf->used;
 		n = write(fd, buf->data + buf->start, count);
 		if (n < 0) {
@@ -141,10 +141,10 @@ buf_play(struct buf *buf, struct sio_hdl *hdl)
 {
 	unsigned count, done = 0;
 	int n;
-	
+
 	while (buf->used) {
 		count = BUF_LEN - buf->start;
-		if (count > buf->used) 
+		if (count > buf->used)
 			count = buf->used;
 		/* try to confuse the server */
 		if (randomize)
@@ -175,7 +175,7 @@ usage(void)
 	    "usage: fd [-vRX] [-b size] [-c pchan] [-C rchan] [-e enc]\n"
 	    "          [-i file] [-o file] [-r rate] [-x mode]\n");
 }
- 
+
 int
 main(int argc, char **argv)
 {
@@ -185,7 +185,7 @@ main(int argc, char **argv)
 #define NFDS 16
 	struct pollfd pfd[NFDS];
 	unsigned mode;
-	
+
 	recfd = -1;
 	recpath = NULL;
 	playfd = -1;
@@ -244,14 +244,14 @@ main(int argc, char **argv)
 			for (par.xrun = 0;; par.xrun++) {
 				if (par.xrun ==
 				    sizeof(xstr) / sizeof(char *)) {
-					fprintf(stderr, 
+					fprintf(stderr,
 					    "%s: bad xrun mode\n", optarg);
 					exit(1);
 				}
 				if (strcmp(xstr[par.xrun], optarg) == 0)
 					break;
 			}
-			break;			
+			break;
 		case 'R':
 			randomize = 1;
 			break;
@@ -297,7 +297,7 @@ main(int argc, char **argv)
 		exit(1);
 	}
 
-	events = 0;	
+	events = 0;
 	if (recpath) {
 		recfd = open(recpath, O_CREAT | O_WRONLY | O_TRUNC, 0666);
 		if (recfd < 0) {
@@ -312,7 +312,7 @@ main(int argc, char **argv)
 			perror(playpath);
 			exit(1);
 		}
-		events |= POLLOUT;		
+		events |= POLLOUT;
 		buf_read(&playbuf, playfd);
 		buf_play(&playbuf, hdl);
 	}
@@ -331,7 +331,7 @@ main(int argc, char **argv)
 		}
 		if (tick) {
 			fprintf(stderr, "pos = %+7lld, "
-			    "plat = %+7lld, rlat = %+7lld\n", 
+			    "plat = %+7lld, rlat = %+7lld\n",
 			    hwpos,
 			    wrpos - hwpos * par.pchan * par.bps,
 			    hwpos * par.rchan * par.bps - rdpos);
