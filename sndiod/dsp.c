@@ -304,8 +304,6 @@ resamp_init(struct resamp *p, unsigned int iblksz,
 	p->iblksz = iblksz;
 	p->oblksz = oblksz;
 	p->diff = 0;
-	p->idelta = 0;
-	p->odelta = 0;
 	p->nch = nch;
 	p->ctx_start = 0;
 	for (i = 0; i < NCHAN_MAX * RESAMP_NCTX; i++)
