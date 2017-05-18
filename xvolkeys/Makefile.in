@@ -44,7 +44,7 @@ clean:
 OBJS = xvolkeys.o
 
 xvolkeys:	${OBJS}
-		${CC} ${LDFLAGS} ${LIB} -o xvolkeys ${OBJS} ${LDADD} 
+		${CC} ${LDFLAGS} ${LIB} -o xvolkeys ${OBJS} ${LDADD}
 
 .c.o:
 		${CC} ${CFLAGS} ${INCLUDE} ${DEFS} -c $<

@@ -237,7 +237,6 @@ main(int argc, char **argv)
 		case 'v':
 			verbose++;
 			break;
-			
 		case 'q': /* compat */
 		case 'f':
 			dev_name = optarg;

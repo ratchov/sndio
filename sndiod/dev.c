@@ -2081,7 +2081,7 @@ dev_addctl(struct dev *d, char *group, int type, int addr,
 		ctl_log(c);
 		log_puts("\n");
 	}
-#endif	
+#endif
 	return c;
 }
 
@@ -2195,7 +2195,7 @@ dev_label(struct dev *d, int i)
 		c = c->next;
 	}
 	if (strcmp(c->chan0.str, d->slot[i].name) == 0 && c->chan0.unit == i)
-		return;	
+		return;
 	strlcpy(c->chan0.str, d->slot[i].name, CTL_NAMEMAX);
 	c->desc_mask = ~0;
 }

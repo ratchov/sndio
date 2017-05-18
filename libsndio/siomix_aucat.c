@@ -67,7 +67,7 @@ siomix_aucat_rdata(struct siomix_aucat_hdl *hdl)
 	while (hdl->aucat.rstate == RSTATE_DATA) {
 
 		/* read entries */
-		while (hdl->buf_wpos < sizeof(hdl->buf) && 
+		while (hdl->buf_wpos < sizeof(hdl->buf) &&
 		    hdl->aucat.rstate == RSTATE_DATA) {
 			n = _aucat_rdata(&hdl->aucat,
 			    (unsigned char *)hdl->buf + hdl->buf_wpos,
@@ -216,7 +216,7 @@ siomix_aucat_setctl(struct siomix_hdl *addr, unsigned int a, unsigned int v)
 	hdl->aucat.wstate = WSTATE_MSG;
 	hdl->aucat.wtodo = sizeof(struct amsg);
 	hdl->aucat.wmsg.cmd = htonl(AMSG_MIXSET);
-	hdl->aucat.wmsg.u.mixset.addr = htons(a);	
+	hdl->aucat.wmsg.u.mixset.addr = htons(a);
 	hdl->aucat.wmsg.u.mixset.val = htons(v);
 	return _aucat_wmsg(&hdl->aucat, &hdl->siomix.eof);
 }

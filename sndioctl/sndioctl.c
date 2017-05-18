@@ -94,10 +94,10 @@ cmpdesc(struct siomix_desc *d1, struct siomix_desc *d2)
 	if (d1->type == SIOMIX_VEC ||
 	    d1->type == SIOMIX_LIST) {
 		if (res != 0)
-			return res;	
+			return res;
 		res = strcmp(d1->chan1.str, d2->chan1.str);
 		if (res != 0)
-			return res;	
+			return res;
 		res = d1->chan1.unit - d2->chan1.unit;
 	}
 	return res;
@@ -129,7 +129,7 @@ selpos(struct info *i)
 	abort();
 }
 
-/* 
+/*
  * find the selector or vector entry with the given name and channels
  */
 struct info *
@@ -400,7 +400,7 @@ print_par(struct info *p, int mono, char *comment)
 	print_chan(&p->desc.chan0, mono);
 	printf(".%s=", p->desc.func);
 	if (i_flag)
-		print_desc(p, mono); 
+		print_desc(p, mono);
 	else
 		print_val(p, mono);
 	if (comment)
@@ -464,7 +464,7 @@ parse_dec(char **line, int *num)
 	}
 	*num = val;
 	*line = p;
-	return 1;	    
+	return 1;
 }
 
 /*
@@ -474,7 +474,7 @@ int
 parse_chan(char **line, char *str, int *unit)
 {
 	char *p = *line;
-	
+
 	if (!parse_name(&p, str))
 		return 0;
 	if (*p < '0' || *p > '9') {
@@ -720,7 +720,7 @@ void
 list(void)
 {
 	struct info *p, *g;
-	
+
 	for (g = infolist; g != NULL; g = nextgrp(g)) {
 		if (g->mode == MODE_IGNORE)
 			continue;
@@ -772,7 +772,7 @@ ondesc(void *arg, struct siomix_desc *d, int curval)
 	 */
 	for (pi = &infolist; (i = *pi) != NULL; pi = &i->next) {
 		cmp = cmpdesc(d, &i->desc);
-		if (cmp == 0) {			
+		if (cmp == 0) {
 			fprintf(stderr, "fatal: duplicate mixer knob:\n");
 			print_par(i, 0, "duplicate");
 			exit(1);
@@ -884,7 +884,7 @@ main(int argc, char **argv)
 			perror("malloc");
 			exit(1);
 		}
-		for (;;) {			
+		for (;;) {
 			nfds = siomix_pollfd(hdl, pfds, POLLIN);
 			if (nfds == 0)
 				break;
