@@ -133,7 +133,7 @@ struct ctlslot {
 };
 
 /*
- * audio device with plenty of slots and knobs
+ * audio device with plenty of slots
  */
 struct dev {
 	struct dev *next;

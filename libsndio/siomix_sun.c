@@ -273,7 +273,7 @@ siomix_sun_getfd(const char *str, unsigned int mode, int nbio)
 {
 	const char *p;
 	char path[DEVPATH_MAX];
- 	unsigned int devnum;
+	unsigned int devnum;
 	int fd, flags;
 
 	p = _sndio_parsetype(str, "rsnd");
