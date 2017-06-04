@@ -47,7 +47,8 @@ MIN = 1
 SO = @so@
 SO_LINK = @so_link@
 
-all:		${SO}
+all:		${SO} ${SO_LINK}
+
 
 install:
 		mkdir -p ${DESTDIR}${INCLUDE_DIR}
@@ -90,7 +91,7 @@ uninstall:
 		cd ${DESTDIR}${MAN7_DIR} && rm -f ${MAN7}
 
 clean:
-		rm -f -- *.so *.so.* *.o
+		rm -f -- ${SO} ${SO_LINK} *.o
 
 # ---------------------------------------------------------- dependencies ---
 
