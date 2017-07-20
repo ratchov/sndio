@@ -92,6 +92,7 @@ case `uname` in
 	Darwin)
 		rmidi=no
 		so="libsndio.\${MAJ}.\${MIN}.dylib"
+		so_link="libsndio.dylib"
 		defs='-DHAVE_ARC4RANDOM -DHAVE_ISSETUGID \\\
 		-DHAVE_STRLCAT -DHAVE_STRLCPY'
 esac
