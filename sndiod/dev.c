@@ -1056,7 +1056,8 @@ dev_adjpar(struct dev *d, int mode,
 int
 dev_open(struct dev *d)
 {
-	int i;
+	int i, gunit;
+	struct ctl *c;
 
 	d->mode = d->reqmode;
 	d->round = d->reqround;
@@ -1134,13 +1135,32 @@ dev_open(struct dev *d)
 		log_puts(" frames\n");
 	}
 
+
+	/*
+	 * we use the "sndiod" group name. find a unused
+	 * unit number for it
+	 */
+	gunit = 0;
+	c = d->ctl_list;
+	while (1) {
+		if (c == NULL)
+			break;
+		if (strcmp(c->group.str, "sndiod") == 0 &&
+		    c->group.unit == gunit) {
+			gunit++;
+			c = d->ctl_list;
+			continue;
+		}
+		c = c->next;
+	}
+
 	for (i = 0; i < DEV_NSLOT; i++) {
-		dev_addctl(d, "", CTL_NUM,
+		dev_addctl(d, "sndiod", gunit, CTL_NUM,
 		    CTLADDR_SLOT_LEVEL(i),
 		    d->slot[i].name, d->slot[i].unit, "level",
 		    NULL, -1, d->slot[i].vol);
 	}
-	dev_addctl(d, "", CTL_NUM,
+	dev_addctl(d, "sndiod", gunit, CTL_NUM,
 	    CTLADDR_MASTER, "master", -1, "level", NULL, -1, d->master);
 	return 1;
 }
@@ -2024,8 +2044,8 @@ ctl_chan_log(struct ctl_chan *c)
 void
 ctl_log(struct ctl *c)
 {
-	if (c->group[0] != 0) {
-		log_puts(c->group);
+	if (c->group.str[0] != 0) {
+		ctl_chan_log(&c->group);
 		log_puts("/");
 	}
 	ctl_chan_log(&c->chan0);
@@ -2051,15 +2071,16 @@ ctl_log(struct ctl *c)
  * add a ctl
  */
 struct ctl *
-dev_addctl(struct dev *d, char *group, int type, int addr,
+dev_addctl(struct dev *d, char *gstr, int gunit, int type, int addr,
     char *str0, int unit0, char *func, char *str1, int unit1, int val)
 {
 	struct ctl *c;
 
 	c = xmalloc(sizeof(struct ctl));
 	c->type = type;
-	strlcpy(c->group, group, CTL_NAMEMAX);
 	strlcpy(c->func, func, CTL_NAMEMAX);
+	strlcpy(c->group.str, gstr, CTL_NAMEMAX);
+	c->group.unit = gunit;
 	strlcpy(c->chan0.str, str0, CTL_NAMEMAX);
 	c->chan0.unit = unit0;
 	if (c->type == CTL_VEC || c->type == CTL_LIST) {

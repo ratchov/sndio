@@ -111,8 +111,8 @@ struct siomix_desc {
 #define SIOMIX_VEC		4	/* number, element of vector */
 #define SIOMIX_LIST		5	/* switch, element of a list */
 	unsigned int type;		/* one of above */
-	char group[SIOMIX_NAMEMAX];	/* or class name */
 	char func[SIOMIX_NAMEMAX];	/* function name */
+	struct siomix_chan group;	/* group this control belongs to */
 	struct siomix_chan chan0;	/* affected channels */
 	struct siomix_chan chan1;	/* dito for SIOMIX_{VEC,LIST} */
 };

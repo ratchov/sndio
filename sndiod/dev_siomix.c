@@ -52,23 +52,14 @@ void
 dev_siomix_ondesc(void *arg, struct siomix_desc *desc, int val)
 {
 	struct dev *d = arg;
-	char ns[CTL_NAMEMAX];
 	int addr;
 
 	if (desc == NULL)
 		return;
 	addr = CTLADDR_END + desc->addr;
 	dev_rmctl(d, addr);
-	strlcpy(ns, "dev", CTL_NAMEMAX);
-	if (sizeof("dev") + 1 + strlen(desc->group) >= CTL_NAMEMAX) {
-		log_puts("group name too, long skipped\n");
-		return;
-	}
-	if (desc->group[0] != 0) {
-		strlcat(ns, "/", CTL_NAMEMAX);
-		strlcat(ns, desc->group, CTL_NAMEMAX);
-	}
-	dev_addctl(d, ns, desc->type, addr,
+	dev_addctl(d,
+	    desc->group.str, desc->group.unit, desc->type, addr,
 	    desc->chan0.str, desc->chan0.unit, desc->func,
 	    desc->chan1.str, desc->chan1.unit, val);
 }

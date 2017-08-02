@@ -122,16 +122,16 @@ struct siomix_chan {
 };
 
 struct siomix_desc {
-	unsigned int addr;		/* control's address */
-#define SIOMIX_NUM		2	/* number in the 0..127 range */
-#define SIOMIX_SW		3	/* on/off switch */
-#define SIOMIX_VEC		4	/* element of array of numbers */
-#define SIOMIX_LIST		5	/* element of array of switches */
+	unsigned int addr;		/* control address */
+#define SIOMIX_NUM		2	/* integer in the 0..127 range */
+#define SIOMIX_SW		3	/* on/off switch (0 or 1) */
+#define SIOMIX_VEC		4	/* number, element of vector */
+#define SIOMIX_LIST		5	/* switch, element of a list */
 	unsigned int type;		/* one of above */
-	char namespace[SIOMIX_NAMEMAX];	/* group this control belongs to */
 	char func[SIOMIX_NAMEMAX];	/* function name */
+	struct siomix_chan group;	/* group this control belongs to */
 	struct siomix_chan chan0;	/* affected channels */
-	struct siomix_chan chan1;	/* dito for vec, and list */
+	struct siomix_chan chan1;	/* dito for SIOMIX_{VEC,LIST} */
 };
 .Ed
 .Pp

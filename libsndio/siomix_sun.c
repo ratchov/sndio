@@ -224,6 +224,8 @@ scanvol(struct siomix_sun_hdl *hdl, struct wskbd_vol *vol)
 	int i, val;
 
 	memset(&desc, 0, sizeof(struct siomix_desc));
+	strlcpy(desc.group.str, "hw", sizeof(desc.group.str));
+	desc.group.unit = -1;
 	if (vol->level_idx >= 0) {
 		ctrl.dev = vol->level_idx;
 		ctrl.type = AUDIO_MIXER_VALUE;
