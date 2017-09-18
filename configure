@@ -241,7 +241,8 @@ fi
 for f in Makefile aucat/Makefile midicat/Makefile sndiod/Makefile \
 libsndio/Makefile \
 examples/Makefile \
-contrib/init.d.sndiod
+contrib/init.d.sndiod \
+contrib/sndiod.service
 do
 	sed \
 	-e "s:@bindir@:$bindir:" \
