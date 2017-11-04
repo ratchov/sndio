@@ -135,11 +135,14 @@ mio_rmidi_getfd(const char *str, unsigned int mode, int nbio)
 	return fd;
 }
 
-static struct mio_hdl *
+struct mio_hdl *
 mio_rmidi_fdopen(int fd, unsigned int mode, int nbio)
 {
 	struct mio_rmidi_hdl *hdl;
 
+#ifdef DEBUG
+	_sndio_debug_init();
+#endif
 	hdl = malloc(sizeof(struct mio_rmidi_hdl));
 	if (hdl == NULL)
 		return NULL;
