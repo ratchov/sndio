@@ -66,7 +66,7 @@ static struct mio_ops mio_rmidi_ops = {
 	mio_rmidi_revents
 };
 
-static int
+int
 mio_rmidi_getfd(const char *str, unsigned int mode, int nbio)
 {
 	const char *p;
@@ -77,6 +77,9 @@ mio_rmidi_getfd(const char *str, unsigned int mode, int nbio)
 #endif
 	int fd, flags;
 
+#ifdef DEBUG
+	_sndio_debug_init();
+#endif
 	p = _sndio_parsetype(str, "rmidi");
 	if (p == NULL) {
 		DPRINTF("mio_rmidi_getfd: %s: \"rsnd\" expected\n", str);
@@ -135,11 +138,14 @@ mio_rmidi_getfd(const char *str, unsigned int mode, int nbio)
 	return fd;
 }
 
-static struct mio_hdl *
+struct mio_hdl *
 mio_rmidi_fdopen(int fd, unsigned int mode, int nbio)
 {
 	struct mio_rmidi_hdl *hdl;
 
+#ifdef DEBUG
+	_sndio_debug_init();
+#endif
 	hdl = malloc(sizeof(struct mio_rmidi_hdl));
 	if (hdl == NULL)
 		return NULL;

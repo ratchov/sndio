@@ -267,7 +267,7 @@ sio_sun_getcap(struct sio_hdl *sh, struct sio_cap *cap)
 	return 1;
 }
 
-static int
+int
 sio_sun_getfd(const char *str, unsigned int mode, int nbio)
 {
 	const char *p;
@@ -275,6 +275,9 @@ sio_sun_getfd(const char *str, unsigned int mode, int nbio)
 	unsigned int devnum;
 	int fd, flags;
 
+#ifdef DEBUG
+	_sndio_debug_init();
+#endif
 	p = _sndio_parsetype(str, "rsnd");
 	if (p == NULL) {
 		DPRINTF("sio_sun_getfd: %s: \"rsnd\" expected\n", str);
@@ -307,11 +310,14 @@ sio_sun_getfd(const char *str, unsigned int mode, int nbio)
 	return fd;
 }
 
-static struct sio_hdl *
+struct sio_hdl *
 sio_sun_fdopen(int fd, unsigned int mode, int nbio)
 {
 	struct sio_sun_hdl *hdl;
 
+#ifdef DEBUG
+	_sndio_debug_init();
+#endif
 	hdl = malloc(sizeof(struct sio_sun_hdl));
 	if (hdl == NULL)
 		return NULL;

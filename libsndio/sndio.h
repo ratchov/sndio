@@ -191,6 +191,11 @@ int siomix_pollfd(struct siomix_hdl *, struct pollfd *, int);
 int siomix_revents(struct siomix_hdl *, struct pollfd *);
 int siomix_eof(struct siomix_hdl *);
 
+int mio_rmidi_getfd(const char *, unsigned int, int);
+struct mio_hdl *mio_rmidi_fdopen(int, unsigned int, int);
+int sio_sun_getfd(const char *, unsigned int, int);
+struct sio_hdl *sio_sun_fdopen(int, unsigned int, int);
+
 #ifdef __cplusplus
 }
 #endif
