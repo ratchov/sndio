@@ -66,7 +66,7 @@ static struct mio_ops mio_rmidi_ops = {
 	mio_rmidi_revents
 };
 
-static int
+int
 mio_rmidi_getfd(const char *str, unsigned int mode, int nbio)
 {
 	const char *p;
