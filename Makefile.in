@@ -40,4 +40,5 @@ distclean:	clean
 		sndioctl/Makefile \
 		xvolkeys/Makefile \
 		examples/Makefile \
-		contrib/init.d.sndiod
+		contrib/init.d.sndiod \
+		contrib/sndiod.service

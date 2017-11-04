@@ -1763,6 +1763,10 @@ slot_attach(struct slot *s)
 			enc_init(&s->sub.enc, &s->par, slot_nch);
 			s->sub.encbuf =
 			    xmalloc(s->round * slot_nch * sizeof(adata_t));
+			enc_sil_do(&s->sub.enc, s->sub.buf.data, s->appbufsz);
+		} else {
+			memset(s->sub.buf.data, 0,
+			    s->appbufsz * slot_nch * sizeof(adata_t));
 		}
 
 		/*
