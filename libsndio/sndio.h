@@ -144,6 +144,11 @@ int mio_pollfd(struct mio_hdl *, struct pollfd *, int);
 int mio_revents(struct mio_hdl *, struct pollfd *);
 int mio_eof(struct mio_hdl *);
 
+int mio_rmidi_getfd(const char *, unsigned int, int);
+struct mio_hdl *mio_rmidi_fdopen(int, unsigned int, int);
+int sio_sun_getfd(const char *, unsigned int, int);
+struct sio_hdl *sio_sun_fdopen(int, unsigned int, int);
+
 #ifdef __cplusplus
 }
 #endif
