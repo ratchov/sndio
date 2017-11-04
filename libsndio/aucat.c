@@ -335,10 +335,8 @@ bad_gen:
 		unlink(tmp);
 	}
 done:
-	if (tmp)
-		free(tmp);
-	if (path)
-		free(path);
+	free(tmp);
+	free(path);
 	return 1;
 }
 
