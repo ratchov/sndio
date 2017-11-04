@@ -77,6 +77,9 @@ mio_rmidi_getfd(const char *str, unsigned int mode, int nbio)
 #endif
 	int fd, flags;
 
+#ifdef DEBUG
+	_sndio_debug_init();
+#endif
 	p = _sndio_parsetype(str, "rmidi");
 	if (p == NULL) {
 		DPRINTF("mio_rmidi_getfd: %s: \"rsnd\" expected\n", str);
