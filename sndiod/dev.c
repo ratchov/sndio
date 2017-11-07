@@ -1710,7 +1710,20 @@ slot_attach(struct slot *s)
 			enc_init(&s->sub.enc, &s->par, slot_nch);
 			s->sub.encbuf =
 			    xmalloc(s->round * slot_nch * sizeof(adata_t));
-			enc_sil_do(&s->sub.enc, s->sub.buf.data, s->appbufsz);
+		}
+
+		/*
+		 * cmap_copy() doesn't write samples in all channels,
+	         * for instance when mono->stereo conversion is
+	         * disabled. So we have to prefill cmap_copy() output
+	         * with silence.
+	         */
+		if (s->sub.resampbuf) {
+			memset(s->sub.resampbuf, 0,
+			    d->round * slot_nch * sizeof(adata_t));
+		} else if (s->sub.encbuf) {
+			memset(s->sub.encbuf, 0,
+			    s->round * slot_nch * sizeof(adata_t));
 		} else {
 			memset(s->sub.buf.data, 0,
 			    s->appbufsz * slot_nch * sizeof(adata_t));
