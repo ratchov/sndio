@@ -270,7 +270,7 @@ scanvol(struct siomix_sun_hdl *hdl, struct wskbd_vol *vol)
 	return 1;
 }
 
-static int
+int
 siomix_sun_getfd(const char *str, unsigned int mode, int nbio)
 {
 	const char *p;
@@ -278,6 +278,9 @@ siomix_sun_getfd(const char *str, unsigned int mode, int nbio)
 	unsigned int devnum;
 	int fd, flags;
 
+#ifdef DEBUG
+	_sndio_debug_init();
+#endif
 	p = _sndio_parsetype(str, "rsnd");
 	if (p == NULL) {
 		DPRINTF("siomix_sun_getfd: %s: \"rsnd\" expected\n", str);
@@ -310,11 +313,14 @@ siomix_sun_getfd(const char *str, unsigned int mode, int nbio)
 	return fd;
 }
 
-static struct siomix_hdl *
+struct siomix_hdl *
 siomix_sun_fdopen(int fd, unsigned int mode, int nbio)
 {
 	struct siomix_sun_hdl *hdl;
 
+#ifdef DEBUG
+	_sndio_debug_init();
+#endif
 	hdl = malloc(sizeof(struct siomix_sun_hdl));
 	if (hdl == NULL)
 		return NULL;
