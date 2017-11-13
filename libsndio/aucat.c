@@ -40,7 +40,7 @@
 #ifndef HAVE_ARC4RANDOM
 
 #ifndef DEV_RANDOM
-#define DEV_RANDOM "/dev/arandom"
+#define DEV_RANDOM "/dev/urandom"
 #endif
 
 static int
