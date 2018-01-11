@@ -40,6 +40,7 @@ umidi=no				# do we want support for umidi ?
 precision=16				# aucat/sndiod arithmetic precision
 user=_sndio				# non-privileged user for sndio daemon
 libbsd=no				# use libbsd?
+so_ldflags=				# extra linker flags for shared libs
 unset vars				# variables passed as arguments
 unset bindir				# path where to install binaries
 unset datadir				# path where to install doc
@@ -57,6 +58,7 @@ case `uname` in
 		alsa=yes
 		ldadd="-lrt"
 		user=sndiod
+		so_ldflags="-Wl,-soname=libsndio.so.\${MAJ}.\${MIN}"
 		so_link="libsndio.so"
 		defs='-D_GNU_SOURCE -DHAVE_SOCK_CLOEXEC -DHAVE_CLOCK_GETTIME'
 		;;
@@ -253,6 +255,7 @@ do
 	-e "s:@ldadd@:$ldadd:" \
 	-e "s:@so@:$so:" \
 	-e "s:@so_link@:$so_link:" \
+	-e "s:@so_ldflags@:$so_ldflags:" \
 	-e "s:@vars@:${vars}:" \
 	-e "s:@precision@:$precision:" \
 	-e "s:@user@:$user:" \
