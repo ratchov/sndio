@@ -264,6 +264,21 @@ sio_oss_getfd(const char *str, unsigned int mode, int nbio)
 		DPERROR(path);
 		return -1;
 	}
+
+	/*
+	 * Check if the device supports playing/recording.
+	 * Unfortunately, it's possible for devices to be opened RDWR
+	 * even when they don't support playing/recording.
+	 */
+	if (mode & SIO_PLAY && ioctl(fd, SNDCTL_DSP_GETOSPACE, &bi) < 0) {
+		close(fd);
+		return -1;
+	}
+	if (mode & SIO_REC && ioctl(fd, SNDCTL_DSP_GETISPACE, &bi) < 0) {
+		close(fd);
+		return -1;
+	}
+
 	val = 1;
 	if (ioctl(fd, SNDCTL_DSP_LOW_WATER, &val) < 0) {
 		DPERROR("sio_oss_start: LOW_WATER");
