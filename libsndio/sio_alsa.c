@@ -304,6 +304,8 @@ _sio_alsa_open(const char *str, unsigned mode, int nbio)
 	if (err < 0)
 		DALSA("couldn't attach to stderr", err);
 #endif
+	if (strcmp(p, "default") == 0)
+		p = "0";
 	len = strlen(p);
 	hdl->devname = malloc(len + sizeof(DEVNAME_PREFIX));
 	if (hdl->devname == NULL)

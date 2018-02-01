@@ -82,7 +82,7 @@
  * default device in server mode
  */
 #ifndef DEFAULT_DEV
-#define DEFAULT_DEV "rsnd/0"
+#define DEFAULT_DEV "rsnd/default"
 #endif
 
 void sigint(int);

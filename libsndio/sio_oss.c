@@ -249,12 +249,16 @@ sio_oss_getfd(const char *str, unsigned int mode, int nbio)
 		DPRINTF("sio_oss_getfd: %s: '/' expected\n", str);
 		return -1;
 	}
-	p = _sndio_parsenum(p, &devnum, 255);
-	if (p == NULL || *p != '\0') {
-		DPRINTF("sio_oss_getfd: %s: number expected after '/'\n", str);
-		return -1;
+	if (strcmp(p, "default") == 0) {
+		strlcpy(path, DEVPATH_PREFIX, sizeof(path));
+	} else {
+		p = _sndio_parsenum(p, &devnum, 255);
+		if (p == NULL || *p != '\0') {
+			DPRINTF("sio_sun_getfd: %s: number expected after '/'\n", str);
+			return -1;
+		}
+		snprintf(path, sizeof(path), DEVPATH_PREFIX "%u", devnum);
 	}
-	snprintf(path, sizeof(path), DEVPATH_PREFIX "%u", devnum);
 	if (mode == (SIO_PLAY | SIO_REC))
 		flags = O_RDWR;
 	else
