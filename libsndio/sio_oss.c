@@ -234,6 +234,7 @@ sio_oss_getfd(const char *str, unsigned int mode, int nbio)
 	char path[DEVPATH_MAX];
 	unsigned int devnum;
 	int fd, flags, val;
+	audio_buf_info bi;
 
 	p = _sndio_parsetype(str, "rsnd");
 	if (p == NULL) {
