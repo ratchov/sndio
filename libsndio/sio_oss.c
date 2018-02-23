@@ -264,6 +264,21 @@ sio_oss_getfd(const char *str, unsigned int mode, int nbio)
 		DPERROR(path);
 		return -1;
 	}
+
+	/*
+	 * Check if the device supports playing/recording.
+	 * Unfortunately, it's possible for devices to be opened RDWR
+	 * even when they don't support playing/recording.
+	 */
+	if (mode & SIO_PLAY && ioctl(fd, SNDCTL_DSP_GETOSPACE, &bi) < 0) {
+		close(fd);
+		return -1;
+	}
+	if (mode & SIO_REC && ioctl(fd, SNDCTL_DSP_GETISPACE, &bi) < 0) {
+		close(fd);
+		return -1;
+	}
+
 	val = 1;
 	if (ioctl(fd, SNDCTL_DSP_LOW_WATER, &val) < 0) {
 		DPERROR("sio_oss_start: LOW_WATER");
@@ -383,13 +398,25 @@ sio_oss_setpar(struct sio_hdl *sh, struct sio_par *par)
 	struct sio_oss_hdl *hdl = (struct sio_oss_hdl *)sh;
 	unsigned int i, round, bufsz;
 	int frag_max, frag_shift, frag_count, frag;
+	unsigned int le, sig, msb;
+
+	le = par->le;
+	sig = par->sig;
+	msb = par->msb;
+
+	if (le == ~0U)
+		le = 0;
+	if (sig == ~0U)
+		sig = 0;
+	if (msb == ~0U)
+		msb = 0;
 
 	hdl->fmt = AFMT_S16_LE;
 	for (i = 0; i < sizeof(formats)/sizeof(formats[0]); i++) {
 		if (formats[i].bits == par->bits &&
-		    formats[i].le == par->le &&
-		    formats[i].sig == par->sig &&
-		    formats[i].msb == par->msb) {
+		    formats[i].le == le &&
+		    formats[i].sig == sig &&
+		    formats[i].msb == msb) {
 			hdl->fmt = formats[i].fmt;
 			break;
 		}
