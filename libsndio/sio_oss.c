@@ -108,6 +108,8 @@ static int sio_oss_xrun(struct sio_oss_hdl *);
 static size_t sio_oss_read(struct sio_hdl *, void *, size_t);
 static size_t sio_oss_write(struct sio_hdl *, const void *, size_t);
 static void sio_oss_close(struct sio_hdl *);
+static int sio_oss_setvol(struct sio_hdl *, unsigned int);
+static void sio_oss_getvol(struct sio_hdl *);
 
 static struct sio_ops sio_oss_ops = {
 	sio_oss_close,
@@ -121,8 +123,8 @@ static struct sio_ops sio_oss_ops = {
 	sio_oss_nfds,
 	sio_oss_pollfd,
 	sio_oss_revents,
-	NULL, /* setvol */
-	NULL, /* getvol */
+	sio_oss_setvol,
+	sio_oss_getvol,
 };
 
 /*
@@ -766,6 +768,42 @@ sio_oss_revents(struct sio_hdl *sh, struct pollfd *pfd)
 		hdl->odelta -= delta;
 	}
 	return revents;
+}
+
+static int
+sio_oss_setvol(struct sio_hdl *sh, unsigned int vol)
+{
+	struct sio_oss_hdl *hdl = (struct sio_oss_hdl *)sh;
+	int newvol;
+
+	/* Scale to 0..100 */
+	newvol = 1.0 * 100 * vol / SIO_MAXVOL;
+	newvol = newvol | (newvol << 8);
+
+	if (ioctl(hdl->fd, SNDCTL_DSP_SETPLAYVOL, &newvol) < 0) {
+		DPERROR("sio_oss_setvol");
+		hdl->sio.eof = 1;
+		return 0;
+	}
+
+	return 1;
+}
+
+static void
+sio_oss_getvol(struct sio_hdl *sh)
+{
+	struct sio_oss_hdl *hdl = (struct sio_oss_hdl *)sh;
+	int vol;
+
+	if (ioctl(hdl->fd, SNDCTL_DSP_GETPLAYVOL, &vol) < 0) {
+		DPERROR("sio_oss_getvol");
+		hdl->sio.eof = 1;
+		return;
+	}
+
+	/* Use left channel volume and scale to SIO_MAXVOL */
+	vol = SIO_MAXVOL * 1.0 * (vol & 0x7f) / 100;
+	_sio_onvol_cb(&hdl->sio, vol);
 }
 
 #endif /* defined USE_OSS */
