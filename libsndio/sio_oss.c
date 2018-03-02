@@ -777,7 +777,7 @@ sio_oss_setvol(struct sio_hdl *sh, unsigned int vol)
 	int newvol;
 
 	/* Scale to 0..100 */
-	newvol = 1.0 * 100 * vol / SIO_MAXVOL;
+	newvol = (100 * vol + SIO_MAXVOL / 2) / SIO_MAXVOL;
 	newvol = newvol | (newvol << 8);
 
 	if (ioctl(hdl->fd, SNDCTL_DSP_SETPLAYVOL, &newvol) < 0) {
@@ -802,7 +802,7 @@ sio_oss_getvol(struct sio_hdl *sh)
 	}
 
 	/* Use left channel volume and scale to SIO_MAXVOL */
-	vol = SIO_MAXVOL * 1.0 * (vol & 0x7f) / 100;
+	vol = (SIO_MAXVOL * (vol & 0x7f) + 50) / 100;
 	_sio_onvol_cb(&hdl->sio, vol);
 }
 
