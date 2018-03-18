@@ -37,4 +37,8 @@ int clock_gettime(int, struct timespec *);
 #define SOCK_CLOEXEC	0
 #endif
 
+#if !defined(CLOCK_UPTIME) && defined(CLOCK_MONOTONIC)
+#define CLOCK_UPTIME CLOCK_MONOTONIC
+#endif
+
 #endif /* !defined(BSD_COMPAT_H) */
