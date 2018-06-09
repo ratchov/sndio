@@ -1875,31 +1875,35 @@ slot_stop(struct slot *s)
 		s->pstate = SLOT_READY;
 		slot_ready(s);
 	}
+
+	if (s->tstate != MMC_OFF)
+		s->tstate = MMC_STOP;
+
 	if (s->mode & MODE_RECMASK)
 		abuf_done(&s->sub.buf);
-	if (s->pstate == SLOT_READY) {
+
+	if (s->pstate == SLOT_RUN) {
+		if (s->mode & MODE_PLAY) {
+			/*
+			 * Don't detach, dev_cycle() will do it for us
+			 * when the buffer is drained.
+			 */
+			s->pstate = SLOT_STOP;
+			return;
+		}
+		slot_detach(s);
+	} else {
 #ifdef DEBUG
 		if (log_level >= 3) {
 			slot_log(s);
 			log_puts(": not drained (blocked by mmc)\n");
 		}
 #endif
-		if (s->mode & MODE_PLAY)
-			abuf_done(&s->mix.buf);
-		s->ops->eof(s->arg);
-		s->pstate = SLOT_INIT;
-	} else {
-		/* s->pstate == SLOT_RUN */
-		if (s->mode & MODE_PLAY)
-			s->pstate = SLOT_STOP;
-		else {
-			slot_detach(s);
-			s->pstate = SLOT_INIT;
-			s->ops->eof(s->arg);
-		}
 	}
-	if (s->tstate != MMC_OFF)
-		s->tstate = MMC_STOP;
+	if (s->mode & MODE_PLAY)
+		abuf_done(&s->mix.buf);
+	s->pstate = SLOT_INIT;
+	s->ops->eof(s->arg);
 }
 
 void
