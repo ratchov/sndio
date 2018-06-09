@@ -33,7 +33,8 @@ void
 usage(void)
 {
 	fprintf(stderr,
-	    "usage: rec [-b size] [-c nchan] [-e enc] [-r rate]\n");
+	    "usage: rec [-b size] [-c nchan] [-e enc] [-n nbytes] "
+	    "[-r rate] [-x xrun]\n");
 }
 
 int
@@ -42,7 +43,7 @@ main(int argc, char **argv)
 	int ch;
 	struct sio_hdl *hdl;
 	size_t bufsz;
-	ssize_t n;
+	ssize_t n, nbytes;
 	
 	/*
 	 * defaults parameters
@@ -52,18 +53,19 @@ main(int argc, char **argv)
 	par.bits = 16;
 	par.rchan = 2;
 	par.rate = 48000;
+	nbytes = -1;
 
-	while ((ch = getopt(argc, argv, "r:c:e:b:x:")) != -1) {
-		switch(ch) {
-		case 'r':
-			if (sscanf(optarg, "%u", &par.rate) != 1) {
-				fprintf(stderr, "%s: bad rate\n", optarg);
+	while ((ch = getopt(argc, argv, "b:c:e:n:r:x:")) != -1) {
+		switch (ch) {
+		case 'b':
+			if (sscanf(optarg, "%u", &par.appbufsz) != 1) {
+				fprintf(stderr, "%s: bad buf size\n", optarg);
 				exit(1);
 			}
 			break;
 		case 'c':
 			if (sscanf(optarg, "%u", &par.rchan) != 1) {
-				fprintf(stderr, "%s: channels number\n", optarg);
+				fprintf(stderr, "%s: bad channels number\n", optarg);
 				exit(1);
 			}
 			break;
@@ -73,9 +75,15 @@ main(int argc, char **argv)
 				exit(1);
 			}
 			break;
-		case 'b':
-			if (sscanf(optarg, "%u", &par.appbufsz) != 1) {
-				fprintf(stderr, "%s: bad buf size\n", optarg);
+		case 'n':
+			if (sscanf(optarg, "%zu", &nbytes) != 1) {
+				fprintf(stderr, "%s: bad bytes count\n", optarg);
+				exit(1);
+			}
+			break;
+		case 'r':
+			if (sscanf(optarg, "%u", &par.rate) != 1) {
+				fprintf(stderr, "%s: bad rate\n", optarg);
 				exit(1);
 			}
 			break;
@@ -123,12 +131,16 @@ main(int argc, char **argv)
 		fprintf(stderr, "sio_start() failed\n");
 		exit(1);
 	}
-	for (;;) {
-		n = sio_read(hdl, buf, bufsz);
+	while (nbytes != 0) {
+		n = bufsz;
+		if (nbytes >= 0 && n > nbytes)
+			n = nbytes;
+		n = sio_read(hdl, buf, n);
 		if (n == 0) {
 			fprintf(stderr, "sio_write: failed\n");
 			exit(1);
 		}
+		nbytes -= n;
 		readpos += n;
 		if (tick) {
 			fprintf(stderr,
