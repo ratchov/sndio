@@ -1867,11 +1867,13 @@ slot_stop(struct slot *s)
 	}
 #endif
 	if (s->pstate == SLOT_START) {
-		if (s->mode & MODE_PLAY) {
-			s->pstate = SLOT_READY;
-			slot_ready(s);
-		} else
-			s->pstate = SLOT_INIT;
+		/*
+		 * If in rec-only mode, we're already in the READY or
+		 * RUN states. We're here because the play buffer was
+		 * not full enough, try to start so it's drained.
+		 */
+		s->pstate = SLOT_READY;
+		slot_ready(s);
 	}
 	if (s->mode & MODE_RECMASK)
 		abuf_done(&s->sub.buf);
