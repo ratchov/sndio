@@ -765,7 +765,6 @@ int
 sock_hello(struct sock *f)
 {
 	struct amsg_hello *p = &f->rmsg.u.hello;
-	struct slot *s;
 	struct port *c;
 	struct dev *d;
 	struct opt *opt;
@@ -855,11 +854,10 @@ sock_hello(struct sock *f)
 		log_puts("\n");
 	}
 #endif
-	s = slot_new(d, opt, p->who, &sock_slotops, f, mode);
-	if (s == NULL)
+	f->slot = slot_new(d, opt, p->who, &sock_slotops, f, mode);
+	if (f->slot == NULL)
 		return 0;
 	f->midi = NULL;
-	f->slot = s;
 	return 1;
 }
 
