@@ -842,18 +842,6 @@ sock_hello(struct sock *f)
 	opt = opt_byname(d, p->opt);
 	if (opt == NULL)
 		return 0;
-#ifdef DEBUG
-	if (log_level >= 3) {
-		sock_log(f);
-		log_puts(": using ");
-		dev_log(d);
-		log_puts(".");
-		log_puts(opt->name);
-		log_puts(", mode = ");
-		log_putx(mode);
-		log_puts("\n");
-	}
-#endif
 	f->slot = slot_new(d, opt, p->who, &sock_slotops, f, mode);
 	if (f->slot == NULL)
 		return 0;

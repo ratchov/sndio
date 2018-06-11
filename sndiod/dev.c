@@ -1684,6 +1684,18 @@ found:
 	s->rate = d->rate;
 	dev_midi_slotdesc(d, s);
 	dev_midi_vol(d, s);
+#ifdef DEBUG
+	if (log_level >= 3) {
+		slot_log(s);
+		log_puts(": using ");
+		dev_log(d);
+		log_puts(".");
+		log_puts(opt->name);
+		log_puts(", mode = ");
+		log_putx(mode);
+		log_puts("\n");
+	}
+#endif
 	return s;
 }
 
