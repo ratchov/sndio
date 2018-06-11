@@ -1431,7 +1431,7 @@ slot_allocbufs(struct slot *s)
 		s->mix.resampbuf = NULL;
 		s->mix.join = 1;
 		s->mix.expand = 1;
-		if (s->dup) {
+		if (s->opt->dup) {
 			if (dev_nch > slot_nch)
 				s->mix.expand = dev_nch / slot_nch;
 			else if (dev_nch < slot_nch)
@@ -1466,7 +1466,7 @@ slot_allocbufs(struct slot *s)
 		s->sub.resampbuf = NULL;
 		s->sub.join = 1;
 		s->sub.expand = 1;
-		if (s->dup) {
+		if (s->opt->dup) {
 			if (dev_nch > slot_nch)
 				s->sub.join = dev_nch / slot_nch;
 			else if (dev_nch < slot_nch)
@@ -1685,7 +1685,6 @@ found:
 		s->xrun = XRUN_IGNORE;
 		s->tstate = MMC_OFF;
 	}
-	s->dup = s->opt->dup;
 	s->appbufsz = d->bufsz;
 	s->round = d->round;
 	s->rate = d->rate;

@@ -71,7 +71,6 @@ struct slot {
 	} sub;
 	int xrun;				/* underrun policy */
 	int skip;				/* cycles to skip (for xrun) */
-	int dup;				/* mono-to-stereo and alike */
 #define SLOT_BUFSZ(s) \
 	((s)->appbufsz + (s)->dev->bufsz / (s)->dev->round * (s)->round)
 	int appbufsz;				/* slot-side buffer size */
