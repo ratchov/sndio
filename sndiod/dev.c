@@ -1866,7 +1866,6 @@ slot_start(struct slot *s)
 	}
 #endif
 	slot_allocbufs(s);
-	s->mix.weight = MIDI_TO_ADATA(MIDI_MAXCTL);
 	if (s->mode & MODE_PLAY) {
 		s->pstate = SLOT_START;
 	} else {
