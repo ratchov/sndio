@@ -1774,16 +1774,9 @@ slot_attach(struct slot *s)
 #endif
 	s->next = d->slot_list;
 	d->slot_list = s;
-	s->skip = 0;
 	if (s->mode & MODE_PLAY) {
 		s->mix.vol = MIDI_TO_ADATA(s->vol);
 		dev_mix_adjvol(d);
-	}
-	if (s->mode & MODE_RECMASK) {
-		/*
-		 * N-th recorded block is the N-th played block
-		 */
-		s->sub.prime = -startpos / (int)s->round;
 	}
 }
 
@@ -1841,6 +1834,15 @@ slot_start(struct slot *s)
 	}
 #endif
 	slot_allocbufs(s);
+
+	if (s->mode & MODE_RECMASK) {
+		/*
+		 * N-th recorded block is the N-th played block
+		 */
+		s->sub.prime = -dev_getpos(s->dev) / s->dev->round;
+	}
+	s->skip = 0;
+
 	if (s->mode & MODE_PLAY) {
 		s->pstate = SLOT_START;
 	} else {
