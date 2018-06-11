@@ -640,8 +640,8 @@ dev_mix_adjvol(struct dev *d)
 			}
 			weight /= n;
 		}
-		if (weight > i->mix.maxweight)
-			weight = i->mix.maxweight;
+		if (weight > i->opt->maxweight)
+			weight = i->opt->maxweight;
 		i->mix.weight = ADATA_MUL(weight, MIDI_TO_ADATA(d->master));
 #ifdef DEBUG
 		if (log_level >= 3) {
@@ -649,7 +649,7 @@ dev_mix_adjvol(struct dev *d)
 			log_puts(": set weight: ");
 			log_puti(i->mix.weight);
 			log_puts("/");
-			log_puti(i->mix.maxweight);
+			log_puti(i->opt->maxweight);
 			log_puts("\n");
 		}
 #endif
@@ -1685,7 +1685,6 @@ found:
 		s->xrun = XRUN_IGNORE;
 		s->tstate = MMC_OFF;
 	}
-	s->mix.maxweight = s->opt->maxweight;
 	s->dup = s->opt->dup;
 	s->appbufsz = d->bufsz;
 	s->round = d->round;

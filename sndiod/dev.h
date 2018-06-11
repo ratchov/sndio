@@ -44,7 +44,6 @@ struct slot {
 	struct aparams par;			/* socket side params */
 	struct {
 		int weight;			/* dynamic range */
-		int maxweight;			/* max dynamic range allowed */
 		unsigned int vol;		/* volume within the vol */
 		struct abuf buf;		/* socket side buffer */
 		int bpf;			/* byte per frame */
