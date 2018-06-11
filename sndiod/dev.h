@@ -89,7 +89,6 @@ struct slot {
 	unsigned int unit;			/* instance of name */
 	unsigned int serial;			/* global unique number */
 	unsigned int vol;			/* current (midi) volume */
-	unsigned int tstate;			/* mmc state */
 };
 
 struct opt {
@@ -190,7 +189,6 @@ struct dev {
 	/*
 	 * MIDI machine control (MMC)
 	 */
-#define MMC_OFF		0			/* ignore MMC messages */
 #define MMC_STOP	1			/* stopped, can't start */
 #define MMC_START	2			/* attempting to start */
 #define MMC_RUN		3			/* started */
