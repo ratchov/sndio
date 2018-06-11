@@ -48,7 +48,6 @@ struct slot {
 		struct abuf buf;		/* socket side buffer */
 		int bpf;			/* byte per frame */
 		int slot_cmin, slot_cmax;	/* slot source chans */
-		int dev_cmin, dev_cmax;		/* device destination chans */
 		struct cmap cmap;		/* channel mapper state */
 		struct resamp resamp;		/* resampler state */
 		struct conv dec;		/* format decoder params */
@@ -61,7 +60,6 @@ struct slot {
 		int prime;			/* initial cycles to skip */
 		int bpf;			/* byte per frame */
 		int slot_cmin, slot_cmax;	/* slot destination chans */
-		int dev_cmin, dev_cmax;		/* device source chans */
 		struct cmap cmap;		/* channel mapper state */
 		struct resamp resamp;		/* buffer for resampling */
 		struct conv enc;		/* buffer for encoding */
