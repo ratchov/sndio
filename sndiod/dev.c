@@ -1738,8 +1738,6 @@ slot_setvol(struct slot *s, unsigned int vol)
 	}
 #endif
 	s->vol = vol;
-	if (s->ops == NULL)
-		return;
 	s->mix.vol = MIDI_TO_ADATA(s->vol);
 }
 
