@@ -627,7 +627,7 @@ sock_setpar(struct sock *f)
 			rchan = 1;
 		else if (rchan > NCHAN_MAX)
 			rchan = NCHAN_MAX;
-		s->sub.slot_cmax = s->opt->rmin + rchan - 1;
+		s->sub.nch = rchan;
 #ifdef DEBUG
 		if (log_level >= 3) {
 			sock_log(f);
@@ -638,7 +638,7 @@ sock_setpar(struct sock *f)
 			log_puts(" -> ");
 			log_putu(s->opt->rmin);
 			log_puts(":");
-			log_putu(s->sub.slot_cmax);
+			log_putu(s->opt->rmin + s->sub.nch - 1);
 			log_puts("\n");
 		}
 #endif
@@ -648,14 +648,14 @@ sock_setpar(struct sock *f)
 			pchan = 1;
 		else if (pchan > NCHAN_MAX)
 			pchan = NCHAN_MAX;
-		s->mix.slot_cmax = s->opt->pmin + pchan - 1;
+		s->mix.nch = pchan;
 #ifdef DEBUG
 		if (log_level >= 3) {
 			sock_log(f);
 			log_puts(": playback channels ");
 			log_putu(s->opt->pmin);
 			log_puts(":");
-			log_putu(s->mix.slot_cmax);
+			log_putu(s->opt->pmin + s->mix.nch - 1);
 			log_puts(" -> ");
 			log_putu(s->opt->pmin);
 			log_puts(":");
@@ -1013,13 +1013,13 @@ sock_execmsg(struct sock *f)
 				log_puts(", play ");
 				log_puti(s->opt->pmin);
 				log_puts(":");
-				log_puti(s->mix.slot_cmax);
+				log_puti(s->opt->pmin + s->mix.nch - 1);
 			}
 			if (s->mode & MODE_RECMASK) {
 				log_puts(", rec ");
 				log_puti(s->opt->rmin);
 				log_puts(":");
-				log_puti(s->sub.slot_cmax);
+				log_puti(s->opt->rmin + s->sub.nch - 1);
 			}
 			log_puts(", ");
 			log_putu(s->appbufsz / s->round);
@@ -1122,14 +1122,10 @@ sock_execmsg(struct sock *f)
 		m->u.par.sig = s->par.sig;
 		m->u.par.le = s->par.le;
 		m->u.par.msb = s->par.msb;
-		if (s->mode & MODE_PLAY) {
-			m->u.par.pchan = htons(s->mix.slot_cmax -
-			    s->opt->pmin + 1);
-		}
-		if (s->mode & MODE_RECMASK) {
-			m->u.par.rchan = htons(s->sub.slot_cmax -
-			    s->opt->rmin + 1);
-		}
+		if (s->mode & MODE_PLAY)
+			m->u.par.pchan = htons(s->mix.nch);
+		if (s->mode & MODE_RECMASK)
+			m->u.par.rchan = htons(s->sub.nch);
 		m->u.par.rate = htonl(s->rate);
 		m->u.par.appbufsz = htonl(s->appbufsz);
 		m->u.par.bufsz = htonl(SLOT_BUFSZ(s));

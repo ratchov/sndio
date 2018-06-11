@@ -47,7 +47,7 @@ struct slot {
 		unsigned int vol;		/* volume within the vol */
 		struct abuf buf;		/* socket side buffer */
 		int bpf;			/* byte per frame */
-		int slot_cmax;			/* slot source chans */
+		int nch;			/* number of play chans */
 		struct cmap cmap;		/* channel mapper state */
 		struct resamp resamp;		/* resampler state */
 		struct conv dec;		/* format decoder params */
@@ -59,7 +59,7 @@ struct slot {
 		struct abuf buf;		/* socket side buffer */
 		int prime;			/* initial cycles to skip */
 		int bpf;			/* byte per frame */
-		int slot_cmax;			/* slot destination chans */
+		int nch;			/* number of rec chans */
 		struct cmap cmap;		/* channel mapper state */
 		struct resamp resamp;		/* buffer for resampling */
 		struct conv enc;		/* buffer for encoding */
