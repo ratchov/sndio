@@ -39,6 +39,7 @@ struct slot {
 	struct slotops *ops;			/* client callbacks */
 	struct slot *next;			/* next on the play list */
 	struct dev *dev;			/* device this belongs to */
+	struct opt *opt;			/* config used */
 	void *arg;				/* user data for callbacks */
 	struct aparams par;			/* socket side params */
 	struct {

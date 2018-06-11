@@ -19,7 +19,6 @@
 
 #include "amsg.h"
 
-struct opt;
 struct file;
 struct slot;
 struct midi;
@@ -56,7 +55,6 @@ struct sock {
 	unsigned int walign;		/* align written data to this */
 	unsigned int ralign;		/* read data is aligned to this */
 	int lastvol;			/* last volume */
-	struct opt *opt;		/* "subdevice" definition */
 	struct slot *slot;		/* audio device slot number */
 	struct midi *midi;		/* midi endpoint */
 	struct port *port;		/* midi port */
