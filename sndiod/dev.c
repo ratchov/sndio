@@ -24,6 +24,7 @@
 #include "dsp.h"
 #include "siofile.h"
 #include "midi.h"
+#include "opt.h"
 #include "sysex.h"
 #include "utils.h"
 
@@ -73,11 +74,12 @@ void dev_mmcstop(struct dev *);
 void dev_mmcloc(struct dev *, unsigned int);
 
 void slot_log(struct slot *);
-struct slot *slot_new(struct dev *, char *, struct slotops *, void *, int);
 void slot_del(struct slot *);
 void slot_setvol(struct slot *, unsigned int);
 void slot_attach(struct slot *);
 void slot_ready(struct slot *);
+void slot_allocbufs(struct slot *);
+void slot_freebufs(struct slot *);
 void slot_start(struct slot *);
 void slot_detach(struct slot *);
 void slot_stop(struct slot *);
@@ -133,9 +135,6 @@ slot_log(struct slot *s)
 	static char *pstates[] = {
 		"ini", "sta", "rdy", "run", "stp", "mid"
 	};
-	static char *tstates[] = {
-		"off", "sta", "run", "stp"
-	};
 #endif
 	log_puts(s->name);
 	log_putu(s->unit);
@@ -146,8 +145,6 @@ slot_log(struct slot *s)
 		if (s->ops) {
 			log_puts(",pst=");
 			log_puts(pstates[s->pstate]);
-			log_puts(",mmc=");
-			log_puts(tstates[s->tstate]);
 		}
 	}
 #endif
@@ -624,11 +621,12 @@ dev_mix_adjvol(struct dev *d)
 {
 	unsigned int n;
 	struct slot *i, *j;
-	int weight;
+	int jcmax, icmax, weight;
 
 	for (i = d->slot_list; i != NULL; i = i->next) {
 		if (!(i->mode & MODE_PLAY))
 			continue;
+		icmax = i->opt->pmin + i->mix.nch - 1;
 		weight = ADATA_UNIT;
 		if (d->autovol) {
 			/*
@@ -639,14 +637,15 @@ dev_mix_adjvol(struct dev *d)
 			for (j = d->slot_list; j != NULL; j = j->next) {
 				if (!(j->mode & MODE_PLAY))
 					continue;
-				if (i->mix.slot_cmin <= j->mix.slot_cmax &&
-				    i->mix.slot_cmax >= j->mix.slot_cmin)
+				jcmax = j->opt->pmin + j->mix.nch - 1;
+				if (i->opt->pmin <= jcmax &&
+				    icmax >= j->opt->pmin)
 					n++;
 			}
 			weight /= n;
 		}
-		if (weight > i->mix.maxweight)
-			weight = i->mix.maxweight;
+		if (weight > i->opt->maxweight)
+			weight = i->opt->maxweight;
 		i->mix.weight = ADATA_MUL(weight, MIDI_TO_ADATA(d->master));
 #ifdef DEBUG
 		if (log_level >= 3) {
@@ -654,7 +653,7 @@ dev_mix_adjvol(struct dev *d)
 			log_puts(": set weight: ");
 			log_puti(i->mix.weight);
 			log_puts("/");
-			log_puti(i->mix.maxweight);
+			log_puti(i->opt->maxweight);
 			log_puts("\n");
 		}
 #endif
@@ -833,15 +832,17 @@ dev_cycle(struct dev *d)
 			 * layer, so s->mix.buf.used == 0 and we can
 			 * destroy the buffer
 			 */
-			s->pstate = SLOT_INIT;
-			abuf_done(&s->mix.buf);
-			if (s->mix.decbuf)
-				xfree(s->mix.decbuf);
-			if (s->mix.resampbuf)
-				xfree(s->mix.resampbuf);
-			s->ops->eof(s->arg);
 			*ps = s->next;
+			s->pstate = SLOT_INIT;
+			s->ops->eof(s->arg);
+			slot_freebufs(s);
 			dev_mix_adjvol(d);
+#ifdef DEBUG
+			if (log_level >= 3) {
+				slot_log(s);
+				log_puts(": drained\n");
+			}
+#endif
 			continue;
 		}
 
@@ -975,6 +976,7 @@ dev_new(char *path, struct aparams *par,
 	d = xmalloc(sizeof(struct dev));
 	d->path = xstrdup(path);
 	d->num = dev_sndnum++;
+	d->opt_list = NULL;
 
 	/*
 	 * XXX: below, we allocate a midi input buffer, since we don't
@@ -1000,7 +1002,6 @@ dev_new(char *path, struct aparams *par,
 		d->slot[i].unit = i;
 		d->slot[i].ops = NULL;
 		d->slot[i].vol = MIDI_MAXCTL;
-		d->slot[i].tstate = MMC_OFF;
 		d->slot[i].serial = d->serial++;
 		strlcpy(d->slot[i].name, "prog", SLOT_NAMEMAX);
 	}
@@ -1287,6 +1288,8 @@ dev_del(struct dev *d)
 		log_puts(": deleting\n");
 	}
 #endif
+	while (d->opt_list != NULL)
+		opt_del(d, d->opt_list);
 	if (d->pstate != DEV_CFG)
 		dev_close(d);
 	for (p = &dev_list; *p != d; p = &(*p)->next) {
@@ -1358,9 +1361,9 @@ dev_sync_attach(struct dev *d)
 	}
 	for (i = 0; i < DEV_NSLOT; i++) {
 		s = d->slot + i;
-		if (!s->ops || s->tstate == MMC_OFF)
+		if (!s->ops || !s->opt->mmc)
 			continue;
-		if (s->tstate != MMC_START || s->pstate != SLOT_READY) {
+		if (s->pstate != SLOT_READY) {
 #ifdef DEBUG
 			if (log_level >= 3) {
 				slot_log(s);
@@ -1374,18 +1377,10 @@ dev_sync_attach(struct dev *d)
 		return;
 	for (i = 0; i < DEV_NSLOT; i++) {
 		s = d->slot + i;
-		if (!s->ops)
+		if (!s->ops || !s->opt->mmc)
 			continue;
-		if (s->tstate == MMC_START) {
-#ifdef DEBUG
-			if (log_level >= 3) {
-				slot_log(s);
-				log_puts(": started\n");
-			}
-#endif
-			s->tstate = MMC_RUN;
-			slot_attach(s);
-		}
+		slot_attach(s);
+		s->pstate = SLOT_RUN;
 	}
 	d->tstate = MMC_RUN;
 	dev_midi_full(d);
@@ -1455,11 +1450,140 @@ dev_mmcloc(struct dev *d, unsigned int origin)
 		dev_mmcstart(d);
 }
 
+
+/*
+ * allocate buffers & conversion chain
+ */
+void
+slot_allocbufs(struct slot *s)
+{
+	unsigned int dev_nch;
+	struct dev *d = s->dev;
+
+	if (s->mode & MODE_PLAY) {
+		s->mix.bpf = s->par.bps * s->mix.nch;
+		abuf_init(&s->mix.buf, s->appbufsz * s->mix.bpf);
+
+		dev_nch = s->opt->pmax - s->opt->pmin + 1;
+		s->mix.decbuf = NULL;
+		s->mix.resampbuf = NULL;
+		s->mix.join = 1;
+		s->mix.expand = 1;
+		if (s->opt->dup) {
+			if (dev_nch > s->mix.nch)
+				s->mix.expand = dev_nch / s->mix.nch;
+			else if (dev_nch < s->mix.nch)
+				s->mix.join = s->mix.nch / dev_nch;
+		}
+		cmap_init(&s->mix.cmap,
+		    s->opt->pmin, s->opt->pmin + s->mix.nch - 1,
+		    s->opt->pmin, s->opt->pmin + s->mix.nch - 1,
+		    0, d->pchan - 1,
+		    s->opt->pmin, s->opt->pmax);
+		if (!aparams_native(&s->par)) {
+			dec_init(&s->mix.dec, &s->par, s->mix.nch);
+			s->mix.decbuf =
+			    xmalloc(s->round * s->mix.nch * sizeof(adata_t));
+		}
+		if (s->rate != d->rate) {
+			resamp_init(&s->mix.resamp, s->round, d->round,
+			    s->mix.nch);
+			s->mix.resampbuf =
+			    xmalloc(d->round * s->mix.nch * sizeof(adata_t));
+		}
+	}
+
+	if (s->mode & MODE_RECMASK) {
+		s->sub.bpf = s->par.bps * s->sub.nch;
+		abuf_init(&s->sub.buf, s->appbufsz * s->sub.bpf);
+
+		dev_nch = s->opt->rmax - s->opt->rmin + 1;
+		s->sub.encbuf = NULL;
+		s->sub.resampbuf = NULL;
+		s->sub.join = 1;
+		s->sub.expand = 1;
+		if (s->opt->dup) {
+			if (dev_nch > s->sub.nch)
+				s->sub.join = dev_nch / s->sub.nch;
+			else if (dev_nch < s->sub.nch)
+				s->sub.expand = s->sub.nch / dev_nch;
+		}
+		cmap_init(&s->sub.cmap,
+		    0, ((s->mode & MODE_MON) ? d->pchan : d->rchan) - 1,
+		    s->opt->rmin, s->opt->rmax,
+		    s->opt->rmin, s->opt->rmin + s->sub.nch - 1,
+		    s->opt->rmin, s->opt->rmin + s->sub.nch - 1);
+		if (s->rate != d->rate) {
+			resamp_init(&s->sub.resamp, d->round, s->round,
+			    s->sub.nch);
+			s->sub.resampbuf =
+			    xmalloc(d->round * s->sub.nch * sizeof(adata_t));
+		}
+		if (!aparams_native(&s->par)) {
+			enc_init(&s->sub.enc, &s->par, s->sub.nch);
+			s->sub.encbuf =
+			    xmalloc(s->round * s->sub.nch * sizeof(adata_t));
+		}
+
+		/*
+		 * cmap_copy() doesn't write samples in all channels,
+	         * for instance when mono->stereo conversion is
+	         * disabled. So we have to prefill cmap_copy() output
+	         * with silence.
+	         */
+		if (s->sub.resampbuf) {
+			memset(s->sub.resampbuf, 0,
+			    d->round * s->sub.nch * sizeof(adata_t));
+		} else if (s->sub.encbuf) {
+			memset(s->sub.encbuf, 0,
+			    s->round * s->sub.nch * sizeof(adata_t));
+		} else {
+			memset(s->sub.buf.data, 0,
+			    s->appbufsz * s->sub.nch * sizeof(adata_t));
+		}
+	}
+
+#ifdef DEBUG
+	if (log_level >= 3) {
+		slot_log(s);
+		log_puts(": allocated ");
+		log_putu(s->appbufsz);
+		log_puts("/");
+		log_putu(SLOT_BUFSZ(s));
+		log_puts(" fr buffers\n");
+	}
+#endif
+}
+
+/*
+ * free buffers & conversion chain
+ */
+void
+slot_freebufs(struct slot *s)
+{
+	if (s->mode & MODE_RECMASK) {
+		abuf_done(&s->sub.buf);
+		if (s->sub.encbuf)
+			xfree(s->sub.encbuf);
+		if (s->sub.resampbuf)
+			xfree(s->sub.resampbuf);
+	}
+
+	if (s->mode & MODE_PLAY) {
+		abuf_done(&s->mix.buf);
+		if (s->mix.decbuf)
+			xfree(s->mix.decbuf);
+		if (s->mix.resampbuf)
+			xfree(s->mix.resampbuf);
+	}
+}
+
 /*
  * allocate a new slot and register the given call-backs
  */
 struct slot *
-slot_new(struct dev *d, char *who, struct slotops *ops, void *arg, int mode)
+slot_new(struct dev *d, struct opt *opt, char *who,
+    struct slotops *ops, void *arg, int mode)
 {
 	char *p;
 	char name[SLOT_NAMEMAX];
@@ -1554,6 +1678,17 @@ slot_new(struct dev *d, char *who, struct slotops *ops, void *arg, int mode)
 #endif
 
 found:
+	if ((mode & MODE_REC) && (opt->mode & MODE_MON)) {
+		mode |= MODE_MON;
+		mode &= ~MODE_REC;
+	}
+	if ((mode & opt->mode) != mode) {
+		if (log_level >= 1) {
+			slot_log(s);
+			log_puts(": requested mode not allowed\n");
+		}
+		return 0;
+	}
 	if (!dev_ref(d))
 		return NULL;
 	dev_label(d, s - d->slot);
@@ -1566,29 +1701,34 @@ found:
 		return 0;
 	}
 	s->dev = d;
+	s->opt = opt;
 	s->ops = ops;
 	s->arg = arg;
 	s->pstate = SLOT_INIT;
-	s->tstate = MMC_OFF;
 	s->mode = mode;
 	aparams_init(&s->par);
-	if (s->mode & MODE_PLAY) {
-		s->mix.slot_cmin = s->mix.dev_cmin = 0;
-		s->mix.slot_cmax = s->mix.dev_cmax = d->pchan - 1;
-	}
-	if (s->mode & MODE_RECMASK) {
-		s->sub.slot_cmin = s->sub.dev_cmin = 0;
-		s->sub.slot_cmax = s->sub.dev_cmax =
-		    ((s->mode & MODE_MON) ? d->pchan : d->rchan) - 1;
-	}
-	s->xrun = XRUN_IGNORE;
-	s->dup = 0;
+	if (s->mode & MODE_PLAY)
+		s->mix.nch = s->opt->pmax - s->opt->pmin + 1;
+	if (s->mode & MODE_RECMASK)
+		s->sub.nch = s->opt->rmax - s->opt->rmin + 1;
+	s->xrun = s->opt->mmc ? XRUN_SYNC : XRUN_IGNORE;
 	s->appbufsz = d->bufsz;
 	s->round = d->round;
 	s->rate = d->rate;
-	s->mix.maxweight = ADATA_UNIT;
 	dev_midi_slotdesc(d, s);
 	dev_midi_vol(d, s);
+#ifdef DEBUG
+	if (log_level >= 3) {
+		slot_log(s);
+		log_puts(": using ");
+		dev_log(d);
+		log_puts(".");
+		log_puts(opt->name);
+		log_puts(", mode = ");
+		log_putx(mode);
+		log_puts("\n");
+	}
+#endif
 	return s;
 }
 
@@ -1631,8 +1771,6 @@ slot_setvol(struct slot *s, unsigned int vol)
 	}
 #endif
 	s->vol = vol;
-	if (s->ops == NULL)
-		return;
 	s->mix.vol = MIDI_TO_ADATA(s->vol);
 }
 
@@ -1643,7 +1781,6 @@ void
 slot_attach(struct slot *s)
 {
 	struct dev *d = s->dev;
-	unsigned int slot_nch, dev_nch;
 	long long pos;
 	int startpos;
 
@@ -1665,7 +1802,6 @@ slot_attach(struct slot *s)
 	s->delta = startpos + pos / (int)d->round;
 	s->delta_rem = pos % d->round;
 
-	s->pstate = SLOT_RUN;
 #ifdef DEBUG
 	if (log_level >= 2) {
 		slot_log(s);
@@ -1691,90 +1827,9 @@ slot_attach(struct slot *s)
 #endif
 	s->next = d->slot_list;
 	d->slot_list = s;
-	s->skip = 0;
 	if (s->mode & MODE_PLAY) {
-		slot_nch = s->mix.slot_cmax - s->mix.slot_cmin + 1;
-		dev_nch = s->mix.dev_cmax - s->mix.dev_cmin + 1;
-		s->mix.decbuf = NULL;
-		s->mix.resampbuf = NULL;
-		s->mix.join = 1;
-		s->mix.expand = 1;
-		if (s->dup) {
-			if (dev_nch > slot_nch)
-				s->mix.expand = dev_nch / slot_nch;
-			else if (dev_nch < slot_nch)
-				s->mix.join = slot_nch / dev_nch;
-		}
-		cmap_init(&s->mix.cmap,
-		    s->mix.slot_cmin, s->mix.slot_cmax,
-		    s->mix.slot_cmin, s->mix.slot_cmax,
-		    0, d->pchan - 1,
-		    s->mix.dev_cmin, s->mix.dev_cmax);
-		if (!aparams_native(&s->par)) {
-			dec_init(&s->mix.dec, &s->par, slot_nch);
-			s->mix.decbuf =
-			    xmalloc(s->round * slot_nch * sizeof(adata_t));
-		}
-		if (s->rate != d->rate) {
-			resamp_init(&s->mix.resamp, s->round, d->round,
-			    slot_nch);
-			s->mix.resampbuf =
-			    xmalloc(d->round * slot_nch * sizeof(adata_t));
-		}
 		s->mix.vol = MIDI_TO_ADATA(s->vol);
 		dev_mix_adjvol(d);
-	}
-	if (s->mode & MODE_RECMASK) {
-		slot_nch = s->sub.slot_cmax - s->sub.slot_cmin + 1;
-		dev_nch = s->sub.dev_cmax - s->sub.dev_cmin + 1;
-		s->sub.encbuf = NULL;
-		s->sub.resampbuf = NULL;
-		s->sub.join = 1;
-		s->sub.expand = 1;
-		if (s->dup) {
-			if (dev_nch > slot_nch)
-				s->sub.join = dev_nch / slot_nch;
-			else if (dev_nch < slot_nch)
-				s->sub.expand = slot_nch / dev_nch;
-		}
-		cmap_init(&s->sub.cmap,
-		    0, ((s->mode & MODE_MON) ? d->pchan : d->rchan) - 1,
-		    s->sub.dev_cmin, s->sub.dev_cmax,
-		    s->sub.slot_cmin, s->sub.slot_cmax,
-		    s->sub.slot_cmin, s->sub.slot_cmax);
-		if (s->rate != d->rate) {
-			resamp_init(&s->sub.resamp, d->round, s->round,
-			    slot_nch);
-			s->sub.resampbuf =
-			    xmalloc(d->round * slot_nch * sizeof(adata_t));
-		}
-		if (!aparams_native(&s->par)) {
-			enc_init(&s->sub.enc, &s->par, slot_nch);
-			s->sub.encbuf =
-			    xmalloc(s->round * slot_nch * sizeof(adata_t));
-		}
-
-		/*
-		 * cmap_copy() doesn't write samples in all channels,
-	         * for instance when mono->stereo conversion is
-	         * disabled. So we have to prefill cmap_copy() output
-	         * with silence.
-	         */
-		if (s->sub.resampbuf) {
-			memset(s->sub.resampbuf, 0,
-			    d->round * slot_nch * sizeof(adata_t));
-		} else if (s->sub.encbuf) {
-			memset(s->sub.encbuf, 0,
-			    s->round * slot_nch * sizeof(adata_t));
-		} else {
-			memset(s->sub.buf.data, 0,
-			    s->appbufsz * slot_nch * sizeof(adata_t));
-		}
-
-		/*
-		 * N-th recorded block is the N-th played block
-		 */
-		s->sub.prime = -startpos / (int)s->round;
 	}
 }
 
@@ -1791,12 +1846,11 @@ slot_ready(struct slot *s)
 	 */
 	if (s->dev->pstate == DEV_CFG)
 		return;
-	if (s->tstate == MMC_OFF)
+	if (!s->opt->mmc) {
 		slot_attach(s);
-	else {
-		s->tstate = MMC_START;
+		s->pstate = SLOT_RUN;
+	} else
 		dev_sync_attach(s->dev);
-	}
 }
 
 /*
@@ -1806,59 +1860,43 @@ slot_ready(struct slot *s)
 void
 slot_start(struct slot *s)
 {
-	unsigned int bufsz;
 #ifdef DEBUG
-	struct dev *d = s->dev;
-
-
 	if (s->pstate != SLOT_INIT) {
 		slot_log(s);
 		log_puts(": slot_start: wrong state\n");
 		panic();
 	}
-#endif
-	bufsz = s->appbufsz;
 	if (s->mode & MODE_PLAY) {
-#ifdef DEBUG
 		if (log_level >= 3) {
 			slot_log(s);
 			log_puts(": playing ");
 			aparams_log(&s->par);
 			log_puts(" -> ");
-			aparams_log(&d->par);
+			aparams_log(&s->dev->par);
 			log_puts("\n");
 		}
-#endif
-		s->mix.bpf = s->par.bps *
-		    (s->mix.slot_cmax - s->mix.slot_cmin + 1);
-		abuf_init(&s->mix.buf, bufsz * s->mix.bpf);
 	}
 	if (s->mode & MODE_RECMASK) {
-#ifdef DEBUG
 		if (log_level >= 3) {
 			slot_log(s);
 			log_puts(": recording ");
 			aparams_log(&s->par);
 			log_puts(" <- ");
-			aparams_log(&d->par);
+			aparams_log(&s->dev->par);
 			log_puts("\n");
+		}
 	}
 #endif
-		s->sub.bpf = s->par.bps *
-		    (s->sub.slot_cmax - s->sub.slot_cmin + 1);
-		abuf_init(&s->sub.buf, bufsz * s->sub.bpf);
+	slot_allocbufs(s);
+
+	if (s->mode & MODE_RECMASK) {
+		/*
+		 * N-th recorded block is the N-th played block
+		 */
+		s->sub.prime = -dev_getpos(s->dev) / s->dev->round;
 	}
-	s->mix.weight = MIDI_TO_ADATA(MIDI_MAXCTL);
-#ifdef DEBUG
-	if (log_level >= 3) {
-		slot_log(s);
-		log_puts(": allocated ");
-		log_putu(s->appbufsz);
-		log_puts("/");
-		log_putu(SLOT_BUFSZ(s));
-		log_puts(" fr buffers\n");
-	}
-#endif
+	s->skip = 0;
+
 	if (s->mode & MODE_PLAY) {
 		s->pstate = SLOT_START;
 	} else {
@@ -1891,19 +1929,8 @@ slot_detach(struct slot *s)
 #endif
 	}
 	*ps = s->next;
-	if (s->mode & MODE_RECMASK) {
-		if (s->sub.encbuf)
-			xfree(s->sub.encbuf);
-		if (s->sub.resampbuf)
-			xfree(s->sub.resampbuf);
-	}
-	if (s->mode & MODE_PLAY) {
-		if (s->mix.decbuf)
-			xfree(s->mix.decbuf);
-		if (s->mix.resampbuf)
-			xfree(s->mix.resampbuf);
+	if (s->mode & MODE_PLAY)
 		dev_mix_adjvol(s->dev);
-	}
 }
 
 /*
@@ -1920,37 +1947,37 @@ slot_stop(struct slot *s)
 	}
 #endif
 	if (s->pstate == SLOT_START) {
-		if (s->mode & MODE_PLAY) {
-			s->pstate = SLOT_READY;
-			slot_ready(s);
-		} else
-			s->pstate = SLOT_INIT;
+		/*
+		 * If in rec-only mode, we're already in the READY or
+		 * RUN states. We're here because the play buffer was
+		 * not full enough, try to start so it's drained.
+		 */
+		s->pstate = SLOT_READY;
+		slot_ready(s);
 	}
-	if (s->mode & MODE_RECMASK)
-		abuf_done(&s->sub.buf);
-	if (s->pstate == SLOT_READY) {
+
+	if (s->pstate == SLOT_RUN) {
+		if (s->mode & MODE_PLAY) {
+			/*
+			 * Don't detach, dev_cycle() will do it for us
+			 * when the buffer is drained.
+			 */
+			s->pstate = SLOT_STOP;
+			return;
+		}
+		slot_detach(s);
+	} else {
 #ifdef DEBUG
 		if (log_level >= 3) {
 			slot_log(s);
 			log_puts(": not drained (blocked by mmc)\n");
 		}
 #endif
-		if (s->mode & MODE_PLAY)
-			abuf_done(&s->mix.buf);
-		s->ops->eof(s->arg);
-		s->pstate = SLOT_INIT;
-	} else {
-		/* s->pstate == SLOT_RUN */
-		if (s->mode & MODE_PLAY)
-			s->pstate = SLOT_STOP;
-		else {
-			slot_detach(s);
-			s->pstate = SLOT_INIT;
-			s->ops->eof(s->arg);
-		}
 	}
-	if (s->tstate != MMC_OFF)
-		s->tstate = MMC_STOP;
+
+	s->pstate = SLOT_INIT;
+	s->ops->eof(s->arg);
+	slot_freebufs(s);
 }
 
 void
