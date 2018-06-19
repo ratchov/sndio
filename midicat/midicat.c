@@ -21,23 +21,59 @@
 #include <string.h>
 #include "bsd-compat.h"
 
+#define MIDI_BUFSZ	1024
+
 char usagestr[] = "usage: midicat [-d] [-i in-file] [-o out-file] "
 	"[-q in-port] [-q out-port]\n";
+
+char *port0, *port1, *ifile, *ofile;
+struct mio_hdl *ih, *oh;
+unsigned char buf[MIDI_BUFSZ];
+int buf_used = 0;
+int ifd = -1, ofd = -1;
+int dump;
+
+static int
+midi_flush(void)
+{
+	int i, n, sep;
+
+	if (buf_used == 0)
+		return 1;
+
+	if (ofile != NULL) {
+		n = write(ofd, buf, buf_used);
+		if (n != buf_used) {
+			fprintf(stderr, "%s: short write\n", ofile);
+			buf_used = 0;
+			return 0;
+		}
+	} else {
+		n = mio_write(oh, buf, buf_used);
+		if (n != buf_used) {
+			fprintf(stderr, "%s: port disconnected\n",
+			   ih == oh ? port0 : port1);
+			buf_used = 0;
+			return 0;
+		}
+	}
+
+	if (dump) {
+		for (i = 0; i < buf_used; i++) {
+			sep = (i % 16 == 15 || i == buf_used - 1) ?
+			    '\n' : ' ';
+			fprintf(stderr, "%02x%c", buf[i], sep);
+		}
+	}
+
+	buf_used = 0;
+	return 1;
+}
 
 int
 main(int argc, char **argv)
 {
-#define MIDI_BUFSZ	1024
-	unsigned char buf[MIDI_BUFSZ];
-	struct mio_hdl *ih, *oh;
-	char *port0, *port1, *ifile, *ofile;
-	int ifd, ofd;
-	int dump, c, i, len, n, sep, mode;
-
-	dump = 0;
-	port0 = port1 = ifile = ofile = NULL;
-	ih = oh = NULL;
-	ifd = ofd = -1;
+	int c, mode;
 
 	while ((c = getopt(argc, argv, "di:o:q:")) != -1) {
 		switch (c) {
@@ -144,39 +180,23 @@ main(int argc, char **argv)
 	/* transfer until end-of-file or error */
 	for (;;) {
 		if (ifile != NULL) {
-			len = read(ifd, buf, sizeof(buf));
-			if (len == 0)
-				break;
-			if (len < 0) {
+			buf_used = read(ifd, buf, sizeof(buf));
+			if (buf_used < 0) {
 				perror("stdin");
 				break;
 			}
+			if (buf_used == 0)
+				break;
+			if (!midi_flush())
+				break;
 		} else {
-			len = mio_read(ih, buf, sizeof(buf));
-			if (len == 0) {
+			buf_used = mio_read(ih, buf, sizeof(buf));
+			if (buf_used == 0) {
 				fprintf(stderr, "%s: disconnected\n", port0);
 				break;
 			}
-		}
-		if (ofile != NULL) {
-			n = write(ofd, buf, len);
-			if (n != len) {
-				fprintf(stderr, "%s: short write\n", ofile);
+			if (!midi_flush())
 				break;
-			}
-		} else {
-			n = mio_write(oh, buf, len);
-			if (n != len) {
-				fprintf(stderr, "%s: disconnected\n", port1);
-				break;
-			}
-		}
-		if (dump) {
-			for (i = 0; i < len; i++) {
-				sep = (i % 16 == 15 || i == len - 1) ?
-				    '\n' : ' ';
-				fprintf(stderr, "%02x%c", buf[i], sep);
-			}
 		}
 	}
 
