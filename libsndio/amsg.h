@@ -24,11 +24,11 @@
  *
  * DIR [ '-' UID ] '/' FILE UNIT
  *
- * example: "/tmp/aucat-1000/aucat0"
+ * example: "/tmp/sndio-1000/sock0"
  *
  */
-#define SOCKPATH_DIR	"/tmp/aucat"
-#define SOCKPATH_FILE	"aucat"
+#define SOCKPATH_DIR	"/tmp/sndio"
+#define SOCKPATH_FILE	"sock"
 #define SOCKPATH_MAX	(1 +		\
 	sizeof(SOCKPATH_DIR) - 1 +	\
 	sizeof(char) +			\
