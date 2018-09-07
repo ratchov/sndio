@@ -42,7 +42,7 @@ clean:
 
 # ---------------------------------------------------------- dependencies ---
 
-OBJS = midicat.o
+OBJS = midicat.o smf.o
 
 midicat:	${OBJS}
 		${CC} ${LDFLAGS} ${LIB} -o midicat ${OBJS} ${LDADD} 
@@ -50,4 +50,5 @@ midicat:	${OBJS}
 .c.o:
 		${CC} ${CFLAGS} ${INCLUDE} ${DEFS} -c $<
 
-midicat.o:	midicat.c
+midicat.o:	midicat.c smf.h ../bsd-compat/bsd-compat.h
+smf.o:		smf.c smf.h
