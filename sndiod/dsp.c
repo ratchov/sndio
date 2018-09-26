@@ -268,14 +268,11 @@ void
 resamp_init(struct resamp *p, unsigned int iblksz,
     unsigned int oblksz, int nch)
 {
-	unsigned int i;
-
 	p->iblksz = iblksz;
 	p->oblksz = oblksz;
 	p->nch = nch;
 	p->ctx_start = 0;
-	for (i = 0; i < NCHAN_MAX * RESAMP_NCTX; i++)
-		p->ctx[i] = 0;
+	memset(p->ctx, 0, sizeof(p->ctx));
 #ifdef DEBUG
 	if (log_level >= 3) {
 		log_puts("resamp: ");
