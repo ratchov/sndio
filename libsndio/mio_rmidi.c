@@ -82,7 +82,7 @@ mio_rmidi_getfd(const char *str, unsigned int mode, int nbio)
 #endif
 	p = _sndio_parsetype(str, "rmidi");
 	if (p == NULL) {
-		DPRINTF("mio_rmidi_getfd: %s: \"rsnd\" expected\n", str);
+		DPRINTF("mio_rmidi_getfd: %s: \"rmidi\" expected\n", str);
 		return -1;
 	}
 	switch (*p) {
