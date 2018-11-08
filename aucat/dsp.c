@@ -660,11 +660,11 @@ f32_to_adata(unsigned int x)
 	 * 31 - (BITS - 1) - (e - 127)
 	 *
 	 * to ensure output is in the 0..(2^BITS)-1 range, the minimum
-	 * shift is 31 - (BITS - 1), and maximum shift is 31
+	 * shift is 31 - (BITS - 1) + 1, and maximum shift is 31
 	 */
 	if (e < 127 - (ADATA_BITS - 1))
 		y = 0;
-	else if (e > 127)
+	else if (e >= 127)
 		y = ADATA_UNIT - 1;
 	else
 		y = m >> (127 + (32 - ADATA_BITS) - e);
