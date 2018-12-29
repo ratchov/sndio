@@ -14,93 +14,31 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 #include <fcntl.h>
-#include <signal.h>
 #include <sndio.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
-#include <time.h>
-#include <sys/time.h>
-#include "smf.h"
 #include "bsd-compat.h"
-
-#define MIDI_BUFSZ	1024
 
 char usagestr[] = "usage: midicat [-d] [-i in-file] [-o out-file] "
 	"[-q in-port] [-q out-port]\n";
 
-char *port0, *port1, *ifile, *ofile;
-struct mio_hdl *ih, *oh;
-unsigned char buf[MIDI_BUFSZ];
-int buf_used = 0;
-int ifd = -1, ofd = -1;
-int dump;
-
-static int
-midi_flush(void)
-{
-	int i, n, sep;
-
-	if (buf_used == 0)
-		return 1;
-
-	if (ofile != NULL) {
-		n = write(ofd, buf, buf_used);
-		if (n != buf_used) {
-			fprintf(stderr, "%s: short write\n", ofile);
-			buf_used = 0;
-			return 0;
-		}
-	} else {
-		n = mio_write(oh, buf, buf_used);
-		if (n != buf_used) {
-			fprintf(stderr, "%s: port disconnected\n",
-			   ih == oh ? port0 : port1);
-			buf_used = 0;
-			return 0;
-		}
-	}
-
-	if (dump) {
-		for (i = 0; i < buf_used; i++) {
-			sep = (i % 16 == 15 || i == buf_used - 1) ?
-			    '\n' : ' ';
-			fprintf(stderr, "%02x%c", buf[i], sep);
-		}
-	}
-
-	buf_used = 0;
-	return 1;
-}
-
-static int
-midi_send(void *arg, unsigned int val)
-{
-	buf[buf_used++] = val;
-	if (buf_used == MIDI_BUFSZ)
-		return midi_flush();
-	return 1;
-}
-
-static void
-sigalrm(int s)
-{
-}
-
 int
 main(int argc, char **argv)
 {
-	long long clock_nsec, delta_nsec;
-	struct timespec ts, ts_last;
-	struct sigaction sa;
-	struct itimerval it;
-	struct smf *smf;
-	char *ext;
-	int c, mode;
-	sigset_t sigset;
+#define MIDI_BUFSZ	1024
+	unsigned char buf[MIDI_BUFSZ];
+	struct mio_hdl *ih, *oh;
+	char *port0, *port1, *ifile, *ofile;
+	int ifd, ofd;
+	int dump, c, i, len, n, sep, mode;
 
-	smf = NULL;
+	dump = 0;
+	port0 = port1 = ifile = ofile = NULL;
+	ih = oh = NULL;
+	ifd = ofd = -1;
+
 	while ((c = getopt(argc, argv, "di:o:q:")) != -1) {
 		switch (c) {
 		case 'd':
@@ -159,20 +97,10 @@ main(int argc, char **argv)
 		if (strcmp(ifile, "-") == 0)
 			ifd = STDIN_FILENO;
 		else {
-			ext = strrchr(ifile, '.');
-			if (ext != NULL && strcasecmp(ext + 1, "mid") == 0) {
-				smf = smf_open(ifile, midi_send, NULL);
-				if (smf == NULL) {
-					fprintf(stderr,
-					    "%s: couldn't open file\n", ifile);
-					return 1;
-				}
-			} else {
-				ifd = open(ifile, O_RDONLY, 0);
-				if (ifd < 0) {
-					perror(ifile);
-					return 1;
-				}
+			ifd = open(ifile, O_RDONLY, 0);
+			if (ifd < 0) {
+				perror(ifile);
+				return 1;
 			}
 		}
 	} else if (ofile) {
@@ -213,66 +141,43 @@ main(int argc, char **argv)
 		}
 	}
 
-	sa.sa_flags = SA_RESTART;
-	sa.sa_handler = sigalrm;
-	sigfillset(&sa.sa_mask);
-	sigaction(SIGALRM, &sa, NULL);
-
-	it.it_interval.tv_sec = it.it_value.tv_sec = 0;
-	it.it_interval.tv_usec = it.it_value.tv_usec = 1000;
-	setitimer(ITIMER_REAL, &it, NULL);
-
-	if (clock_gettime(CLOCK_MONOTONIC, &ts_last) < 0) {
-		fprintf(stderr, "CLOCK_MONOTONIC not supported\n");
-		return 1;
-	}
-
-	/* make write() and mio_write() return error */
-	sigemptyset(&sigset);
-	sigaddset(&sigset, SIGPIPE);
-	sigprocmask(SIG_BLOCK, &sigset, NULL);
-
 	/* transfer until end-of-file or error */
-	clock_nsec = delta_nsec = 0;
 	for (;;) {
-		if (smf != NULL) {
-			if (!smf_play(smf, &delta_nsec))
+		if (ifile != NULL) {
+			len = read(ifd, buf, sizeof(buf));
+			if (len == 0)
 				break;
-			if (!midi_flush())
-				break;
-			if (delta_nsec == 0)
-				break;
-		} else if (ifile != NULL) {
-			buf_used = read(ifd, buf, sizeof(buf));
-			if (buf_used < 0) {
+			if (len < 0) {
 				perror("stdin");
 				break;
 			}
-			if (buf_used == 0)
-				break;
-			if (!midi_flush())
-				break;
 		} else {
-			buf_used = mio_read(ih, buf, sizeof(buf));
-			if (buf_used == 0) {
+			len = mio_read(ih, buf, sizeof(buf));
+			if (len == 0) {
 				fprintf(stderr, "%s: disconnected\n", port0);
 				break;
 			}
-			if (!midi_flush())
+		}
+		if (ofile != NULL) {
+			n = write(ofd, buf, len);
+			if (n != len) {
+				fprintf(stderr, "%s: short write\n", ofile);
 				break;
+			}
+		} else {
+			n = mio_write(oh, buf, len);
+			if (n != len) {
+				fprintf(stderr, "%s: disconnected\n", port1);
+				break;
+			}
 		}
-
-		/*
-		 * wait delta ticks (for .mid files only)
-		 */
-		while (clock_nsec < delta_nsec) {
-			pause();
-			clock_gettime(CLOCK_MONOTONIC, &ts);
-			clock_nsec += ts.tv_nsec - ts_last.tv_nsec +
-			    1000000000L * (ts.tv_sec - ts_last.tv_sec);
-			ts_last = ts;
+		if (dump) {
+			for (i = 0; i < len; i++) {
+				sep = (i % 16 == 15 || i == len - 1) ?
+				    '\n' : ' ';
+				fprintf(stderr, "%02x%c", buf[i], sep);
+			}
 		}
-		clock_nsec -= delta_nsec;
 	}
 
 	/* clean-up */
@@ -280,12 +185,8 @@ main(int argc, char **argv)
 		mio_close(ih);
 	if (port1)
 		mio_close(oh);
-	if (ifile) {
-		if (smf)
-			smf_close(smf);
-		else
-			close(ifd);
-	}
+	if (ifile)
+		close(ifd);
 	if (ofile)
 		close(ofd);
 	return 0;
