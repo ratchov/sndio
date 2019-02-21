@@ -284,6 +284,11 @@ Applications that need to have a set of working
 parameter combinations in advance can use the
 .Fn sio_getcap
 function.
+However, for most new applications it's generally
+not recommended to use
+.Fn sio_getcap .
+Instead, follow the recommendations for negotiating
+device parameters (see above).
 .Pp
 The
 .Vt sio_cap
@@ -367,6 +372,11 @@ structure, then the second element of the
 array of the
 .Vt sio_cap
 structure is valid for this configuration.
+As such, when reading the array elements in the
+.Vt sio_cap
+structure, the corresponding
+.Vt sio_conf
+bitmasks should always be used.
 .El
 .Ss Starting and stopping the device
 The
