@@ -1165,6 +1165,7 @@ playrec(char *dev, int mode, int bufsz, char *port)
 	if (dev_mh)
 		n += mio_nfds(dev_mh);
 	pfds = xmalloc(n * sizeof(struct pollfd));
+
 	for (s = slot_list; s != NULL; s = s->next)
 		slot_init(s);
 	if (dev_mh == NULL)
