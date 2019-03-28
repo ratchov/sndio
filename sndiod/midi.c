@@ -239,6 +239,16 @@ midi_tickets(struct midi *iep)
 	int i, tickets, avail, maxavail;
 	struct midi *oep;
 
+	/*
+	 * don't request iep->ops->fill() too often as it generates
+	 * useless network traffic: wait until we reach half of the
+	 * max tickets count. As in the worst case (see comment below)
+	 * one ticket may consume two bytes, the max ticket count is
+	 * BUFSZ / 2 and halt of it is simply BUFSZ / 4.
+	 */
+	if (iep->tickets >= MIDI_BUFSZ / 4)
+		return;
+
 	maxavail = MIDI_BUFSZ;
 	for (i = 0; i < MIDI_NEP ; i++) {
 		if ((iep->txmask & (1 << i)) == 0)
