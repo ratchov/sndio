@@ -309,8 +309,7 @@ midi_in(struct midi *iep, unsigned char *idata, int icount)
 			iep->idx = 0;
 		} else if (c >= 0xf0) {
 			iep->msg[0] = c;
-			iep->len = common_len[c >> 5];
-			log_puti(iep->len);
+			iep->len = common_len[c & 7];
 			iep->st = c;
 			iep->idx = 1;
 		} else if (c >= 0x80) {
