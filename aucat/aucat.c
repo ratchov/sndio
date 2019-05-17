@@ -278,7 +278,8 @@ slot_init(struct slot *s)
 	}
 #endif
 	s->bpf = s->afile.par.bps * (s->cmax - s->cmin + 1);
-	s->round = (dev_round * s->afile.rate + dev_rate - 1) / dev_rate;
+	s->round = ((long long)dev_round * s->afile.rate +
+	    dev_rate - 1) / dev_rate;
 
 	bufsz = s->round * (dev_bufsz / dev_round);
 	bufsz -= bufsz % s->round;
