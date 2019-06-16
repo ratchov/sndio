@@ -474,8 +474,7 @@ dev_midi_omsg(void *arg, unsigned char *msg, int len)
 			    (x->u.loc.hr & 0x1f) * 3600 * MTC_SEC +
 			     x->u.loc.min * 60 * MTC_SEC +
 			     x->u.loc.sec * MTC_SEC +
-			     x->u.loc.fr * (MTC_SEC / fps) +
-			     x->u.loc.cent * (MTC_SEC / 100 / fps));
+			     x->u.loc.fr * (MTC_SEC / fps));
 			break;
 		}
 		break;
