@@ -227,11 +227,11 @@ setsig(void)
 	sigfillset(&sa.sa_mask);
 	sa.sa_flags = SA_RESTART;
 	sa.sa_handler = sigint;
-	if (sigaction(SIGINT, &sa, NULL) < 0)
+	if (sigaction(SIGINT, &sa, NULL) == -1)
 		err(1, "sigaction(int) failed");
-	if (sigaction(SIGTERM, &sa, NULL) < 0)
+	if (sigaction(SIGTERM, &sa, NULL) == -1)
 		err(1, "sigaction(term) failed");
-	if (sigaction(SIGHUP, &sa, NULL) < 0)
+	if (sigaction(SIGHUP, &sa, NULL) == -1)
 		err(1, "sigaction(hup) failed");
 }
 
@@ -243,11 +243,11 @@ unsetsig(void)
 	sigfillset(&sa.sa_mask);
 	sa.sa_flags = SA_RESTART;
 	sa.sa_handler = SIG_DFL;
-	if (sigaction(SIGHUP, &sa, NULL) < 0)
+	if (sigaction(SIGHUP, &sa, NULL) == -1)
 		err(1, "unsetsig(hup): sigaction failed");
-	if (sigaction(SIGTERM, &sa, NULL) < 0)
+	if (sigaction(SIGTERM, &sa, NULL) == -1)
 		err(1, "unsetsig(term): sigaction failed");
-	if (sigaction(SIGINT, &sa, NULL) < 0)
+	if (sigaction(SIGINT, &sa, NULL) == -1)
 		err(1, "unsetsig(int): sigaction failed");
 }
 
@@ -267,12 +267,12 @@ getbasepath(char *base)
 		snprintf(base, SOCKPATH_MAX, SOCKPATH_DIR "-%u", uid);
 	}
 	omask = umask(mask);
-	if (mkdir(base, 0777) < 0) {
+	if (mkdir(base, 0777) == -1) {
 		if (errno != EEXIST)
 			err(1, "mkdir(\"%s\")", base);
 	}
 	umask(omask);
-	if (stat(base, &sb) < 0)
+	if (stat(base, &sb) == -1)
 		err(1, "stat(\"%s\")", base);
 	if (!S_ISDIR(sb.st_mode))
 		errx(1, "%s is not a directory", base);
@@ -505,15 +505,15 @@ main(int argc, char **argv)
 	if (background) {
 		log_flush();
 		log_level = 0;
-		if (daemon(0, 0) < 0)
+		if (daemon(0, 0) == -1)
 			err(1, "daemon");
 	}
 	if (pw != NULL) {
-		if (setpriority(PRIO_PROCESS, 0, SNDIO_PRIO) < 0)
+		if (setpriority(PRIO_PROCESS, 0, SNDIO_PRIO) == -1)
 			err(1, "setpriority");
-		if (setgroups(1, &pw->pw_gid) ||
-		    setgid(pw->pw_gid) ||
-		    setuid(pw->pw_uid))
+		if (setgroups(1, &pw->pw_gid) == -1 ||
+		    setgid(pw->pw_gid) == -1 ||
+		    setuid(pw->pw_uid) == -1)
 			err(1, "cannot drop privileges");
 	}
 	for (;;) {

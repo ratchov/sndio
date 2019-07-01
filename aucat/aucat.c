@@ -140,6 +140,19 @@ char usagestr[] = "usage: aucat [-dn] [-b size] "
     "[-h fmt] [-i file] [-j flag] [-o file] [-p position] [-q port]\n\t"
     "[-r rate] [-v volume]\n";
 
+static void *
+allocbuf(int nfr, int nch)
+{
+	size_t fsize;
+
+	if (nch < 0 || nch > NCHAN_MAX) {
+		log_puts("allocbuf: bogus channel count\n");
+		panic();
+	}
+	fsize = nch * sizeof(adata_t);
+	return xmalloc(nfr * fsize);
+}
+
 static void
 slot_log(struct slot *s)
 {
@@ -315,14 +328,12 @@ slot_init(struct slot *s)
 		if (s->afile.fmt != AFILE_FMT_PCM ||
 		    !aparams_native(&s->afile.par)) {
 			dec_init(&s->conv, &s->afile.par, slot_nch);
-			s->convbuf =
-			    xmalloc(s->round * slot_nch * sizeof(adata_t));
+			s->convbuf = allocbuf(s->round, slot_nch);
 		}
 		if (s->afile.rate != dev_rate) {
 			resamp_init(&s->resamp, s->afile.rate, dev_rate,
 			    slot_nch);
-			s->resampbuf =
-			    xmalloc(dev_round * slot_nch * sizeof(adata_t));
+			s->resampbuf = allocbuf(dev_round, slot_nch);
 		}
 	}
 	if (s->mode & SIO_REC) {
@@ -340,13 +351,11 @@ slot_init(struct slot *s)
 		if (s->afile.rate != dev_rate) {
 			resamp_init(&s->resamp, dev_rate, s->afile.rate,
 			    slot_nch);
-			s->resampbuf =
-			    xmalloc(dev_round * slot_nch * sizeof(adata_t));
+			s->resampbuf = allocbuf(dev_round, slot_nch);
 		}
 		if (!aparams_native(&s->afile.par)) {
 			enc_init(&s->conv, &s->afile.par, slot_nch);
-			s->convbuf =
-			    xmalloc(s->round * slot_nch * sizeof(adata_t));
+			s->convbuf = allocbuf(s->round, slot_nch);
 		}
 
 		/*
@@ -710,11 +719,11 @@ dev_open(char *dev, int mode, int bufsz, char *port)
 	dev_round = par.round;
 	if (mode & SIO_PLAY) {
 		dev_pchan = par.pchan;
-		dev_pbuf = xmalloc(sizeof(adata_t) * dev_pchan * dev_round);
+		dev_pbuf = allocbuf(dev_round, dev_pchan);
 	}
 	if (mode & SIO_REC) {
 		dev_rchan = par.rchan;
-		dev_rbuf = xmalloc(sizeof(adata_t) * dev_rchan * dev_round);
+		dev_rbuf = allocbuf(dev_round, dev_rchan);
 	}
 	dev_pstate = DEV_STOP;
 	if (log_level >= 2) {
@@ -1073,7 +1082,7 @@ offline(void)
 	dev_bufsz = rate;
 	dev_round = rate;
 	dev_pchan = dev_rchan = cmax + 1;
-	dev_pbuf = dev_rbuf = xmalloc(sizeof(adata_t) * dev_pchan * dev_round);
+	dev_pbuf = dev_rbuf = allocbuf(dev_round, dev_pchan);
 	dev_pstate = DEV_STOP;
 	for (s = slot_list; s != NULL; s = s->next)
 		slot_init(s);
@@ -1197,7 +1206,7 @@ playrec(char *dev, int mode, int bufsz, char *port)
 			nm = mio_pollfd(dev_mh, pfds + ns, POLLIN);
 		else
 			nm = 0;
-		if (poll(pfds, ns + nm, -1) < 0) {
+		if (poll(pfds, ns + nm, -1) == -1) {
 			if (errno == EINTR)
 				continue;
 			log_puts("poll failed\n");

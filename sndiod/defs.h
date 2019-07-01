@@ -23,7 +23,8 @@
 #define MIDI_BUFSZ		3125	/* 1 second at 31.25kbit/s */
 
 /*
- * units used for MTC clock.
+ * units used for MTC clock. Must allow a quarter of frame to be
+ * represented at any of the standard 24, 25, or 30 fps.
  */
 #define MTC_SEC			2400	/* 1 second is 2400 ticks */
 
