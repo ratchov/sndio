@@ -128,7 +128,7 @@ mio_rmidi_getfd(const char *str, unsigned int mode, int nbio)
 		flags = O_RDWR;
 	else
 		flags = (mode & MIO_OUT) ? O_WRONLY : O_RDONLY;
-	while ((fd = open(path, flags | O_NONBLOCK | O_CLOEXEC)) < 0) {
+	while ((fd = open(path, flags | O_NONBLOCK | O_CLOEXEC)) == -1) {
 		if (errno == EINTR)
 			continue;
 		DPERROR(path);
@@ -160,12 +160,12 @@ _mio_rmidi_open(const char *str, unsigned int mode, int nbio)
 	int fd;
 
 	fd = mio_rmidi_getfd(str, mode, nbio);
-	if (fd < 0)
+	if (fd == -1)
 		return NULL;
 	hdl = mio_rmidi_fdopen(fd, mode, nbio);
 	if (hdl != NULL)
 		return hdl;
-	while (close(fd) < 0 && errno == EINTR)
+	while (close(fd) == -1 && errno == EINTR)
 		; /* retry */
 	return NULL;
 }
@@ -178,7 +178,7 @@ mio_rmidi_close(struct mio_hdl *sh)
 
 	do {
 		rc = close(hdl->fd);
-	} while (rc < 0 && errno == EINTR);
+	} while (rc == -1 && errno == EINTR);
 	free(hdl);
 }
 
@@ -188,7 +188,7 @@ mio_rmidi_read(struct mio_hdl *sh, void *buf, size_t len)
 	struct mio_rmidi_hdl *hdl = (struct mio_rmidi_hdl *)sh;
 	ssize_t n;
 
-	while ((n = read(hdl->fd, buf, len)) < 0) {
+	while ((n = read(hdl->fd, buf, len)) == -1) {
 		if (errno == EINTR)
 			continue;
 		if (errno != EAGAIN) {
@@ -211,7 +211,7 @@ mio_rmidi_write(struct mio_hdl *sh, const void *buf, size_t len)
 	struct mio_rmidi_hdl *hdl = (struct mio_rmidi_hdl *)sh;
 	ssize_t n;
 
-	while ((n = write(hdl->fd, buf, len)) < 0) {
+	while ((n = write(hdl->fd, buf, len)) == -1) {
 		if (errno == EINTR)
 			continue;
 		if (errno != EAGAIN) {

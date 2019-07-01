@@ -107,7 +107,7 @@ mio_psleep(struct mio_hdl *hdl, int event)
 	}
 	for (;;) {
 		nfds = mio_pollfd(hdl, pfd, event);
-		while (poll(pfd, nfds, -1) < 0) {
+		while (poll(pfd, nfds, -1) == -1) {
 			if (errno == EINTR)
 				continue;
 			DPERROR("mio_psleep: poll");

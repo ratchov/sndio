@@ -321,7 +321,7 @@ sock_fdwrite(struct sock *f, void *data, int count)
 	int n;
 
 	n = write(f->fd, data, count);
-	if (n < 0) {
+	if (n == -1) {
 #ifdef DEBUG
 		if (errno == EFAULT) {
 			log_puts("sock_fdwrite: fault\n");
@@ -362,7 +362,7 @@ sock_fdread(struct sock *f, void *data, int count)
 	int n;
 
 	n = read(f->fd, data, count);
-	if (n < 0) {
+	if (n == -1) {
 #ifdef DEBUG
 		if (errno == EFAULT) {
 			log_puts("sock_fdread: fault\n");

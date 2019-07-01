@@ -81,12 +81,12 @@ sio_sun_adjpar(struct sio_sun_hdl *hdl, struct audio_swpar *ap)
 {
 	if (hdl->sio.eof)
 		return 0;
-	if (ioctl(hdl->fd, AUDIO_SETPAR, ap)) {
+	if (ioctl(hdl->fd, AUDIO_SETPAR, ap) == -1) {
 		DPERROR("AUDIO_SETPAR");
 		hdl->sio.eof = 1;
 		return 0;
 	}
-	if (ioctl(hdl->fd, AUDIO_GETPAR, ap)) {
+	if (ioctl(hdl->fd, AUDIO_GETPAR, ap) == -1) {
 		DPERROR("AUDIO_GETPAR");
 		hdl->sio.eof = 1;
 		return 0;
@@ -165,7 +165,7 @@ sio_sun_getcap(struct sio_hdl *sh, struct sio_cap *cap)
 	unsigned int enc_map = 0, rchan_map = 0, pchan_map = 0, rate_map;
 	unsigned int i, j, conf;
 
-	if (ioctl(hdl->fd, AUDIO_GETPAR, &savepar)) {
+	if (ioctl(hdl->fd, AUDIO_GETPAR, &savepar) == -1) {
 		DPERROR("AUDIO_GETPAR");
 		hdl->sio.eof = 1;
 		return 0;
@@ -258,7 +258,7 @@ sio_sun_getcap(struct sio_hdl *sh, struct sio_cap *cap)
 	}
 	cap->nconf = nconf;
 
-	if (ioctl(hdl->fd, AUDIO_SETPAR, &savepar)) {
+	if (ioctl(hdl->fd, AUDIO_SETPAR, &savepar) == -1) {
 		DPERROR("AUDIO_SETPAR");
 		hdl->sio.eof = 1;
 		return 0;
@@ -304,7 +304,7 @@ sio_sun_getfd(const char *str, unsigned int mode, int nbio)
 		flags = O_RDWR;
 	else
 		flags = (mode & SIO_PLAY) ? O_WRONLY : O_RDONLY;
-	while ((fd = open(path, flags | O_NONBLOCK | O_CLOEXEC)) < 0) {
+	while ((fd = open(path, flags | O_NONBLOCK | O_CLOEXEC)) == -1) {
 		if (errno == EINTR)
 			continue;
 		DPERROR(path);
@@ -329,7 +329,7 @@ sio_sun_fdopen(int fd, unsigned int mode, int nbio)
 	/*
 	 * pause the device
 	 */
-	if (ioctl(fd, AUDIO_STOP) < 0) {
+	if (ioctl(fd, AUDIO_STOP) == -1) {
 		DPERROR("AUDIO_STOP");
 		free(hdl);
 		return NULL;
@@ -346,12 +346,12 @@ _sio_sun_open(const char *str, unsigned int mode, int nbio)
 	int fd;
 
 	fd = sio_sun_getfd(str, mode, nbio);
-	if (fd < 0)
+	if (fd == -1)
 		return NULL;
 	hdl = sio_sun_fdopen(fd, mode, nbio);
 	if (hdl != NULL)
 		return hdl;
-	while (close(fd) < 0 && errno == EINTR)
+	while (close(fd) == -1 && errno == EINTR)
 		; /* retry */
 	return NULL;
 }
@@ -361,7 +361,7 @@ sio_sun_close(struct sio_hdl *sh)
 {
 	struct sio_sun_hdl *hdl = (struct sio_sun_hdl *)sh;
 
-	while (close(hdl->fd) < 0 && errno == EINTR)
+	while (close(hdl->fd) == -1 && errno == EINTR)
 		; /* retry */
 	free(hdl);
 }
@@ -390,7 +390,7 @@ sio_sun_start(struct sio_hdl *sh)
 		/*
 		 * no play buffers to fill, start now!
 		 */
-		if (ioctl(hdl->fd, AUDIO_START) < 0) {
+		if (ioctl(hdl->fd, AUDIO_START) == -1) {
 			DPERROR("AUDIO_START");
 			hdl->sio.eof = 1;
 			return 0;
@@ -409,7 +409,7 @@ sio_sun_stop(struct sio_hdl *sh)
 		hdl->filling = 0;
 		return 1;
 	}
-	if (ioctl(hdl->fd, AUDIO_STOP) < 0) {
+	if (ioctl(hdl->fd, AUDIO_STOP) == -1) {
 		DPERROR("AUDIO_STOP");
 		hdl->sio.eof = 1;
 		return 0;
@@ -444,7 +444,7 @@ sio_sun_setpar(struct sio_hdl *sh, struct sio_par *par)
 		ap.round = par->appbufsz / 2;
 		ap.nblks = 2;
 	}
-	if (ioctl(hdl->fd, AUDIO_SETPAR, &ap) < 0) {
+	if (ioctl(hdl->fd, AUDIO_SETPAR, &ap) == -1) {
 		DPERROR("AUDIO_SETPAR");
 		hdl->sio.eof = 1;
 		return 0;
@@ -458,7 +458,7 @@ sio_sun_getpar(struct sio_hdl *sh, struct sio_par *par)
 	struct sio_sun_hdl *hdl = (struct sio_sun_hdl *)sh;
 	struct audio_swpar ap;
 
-	if (ioctl(hdl->fd, AUDIO_GETPAR, &ap) < 0) {
+	if (ioctl(hdl->fd, AUDIO_GETPAR, &ap) == -1) {
 		DPERROR("AUDIO_GETPAR");
 		hdl->sio.eof = 1;
 		return 0;
@@ -483,7 +483,7 @@ sio_sun_read(struct sio_hdl *sh, void *buf, size_t len)
 	struct sio_sun_hdl *hdl = (struct sio_sun_hdl *)sh;
 	ssize_t n;
 
-	while ((n = read(hdl->fd, buf, len)) < 0) {
+	while ((n = read(hdl->fd, buf, len)) == -1) {
 		if (errno == EINTR)
 			continue;
 		if (errno != EAGAIN) {
@@ -508,7 +508,7 @@ sio_sun_write(struct sio_hdl *sh, const void *buf, size_t len)
 	ssize_t n, todo;
 
 	todo = len;
-	while ((n = write(hdl->fd, data, todo)) < 0) {
+	while ((n = write(hdl->fd, data, todo)) == -1) {
 		if (errno == EINTR)
 			continue;
 		if (errno != EAGAIN) {
@@ -536,7 +536,7 @@ sio_sun_pollfd(struct sio_hdl *sh, struct pollfd *pfd, int events)
 	if (hdl->filling && hdl->sio.wused == hdl->sio.par.bufsz *
 		hdl->sio.par.pchan * hdl->sio.par.bps) {
 		hdl->filling = 0;
-		if (ioctl(hdl->fd, AUDIO_START) < 0) {
+		if (ioctl(hdl->fd, AUDIO_START) == -1) {
 			DPERROR("AUDIO_START");
 			hdl->sio.eof = 1;
 			return 0;
@@ -557,7 +557,7 @@ sio_sun_revents(struct sio_hdl *sh, struct pollfd *pfd)
 	if ((pfd->revents & POLLHUP) ||
 	    (pfd->revents & (POLLIN | POLLOUT)) == 0)
 		return pfd->revents;
-	if (ioctl(hdl->fd, AUDIO_GETPOS, &ap) < 0) {
+	if (ioctl(hdl->fd, AUDIO_GETPOS, &ap) == -1) {
 		DPERROR("sio_sun_revents: GETPOS");
 		hdl->sio.eof = 1;
 		return POLLHUP;

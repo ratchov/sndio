@@ -237,7 +237,7 @@ sio_psleep(struct sio_hdl *hdl, int event)
 	}
 	for (;;) {
 		nfds = sio_pollfd(hdl, pfd, event);
-		while (poll(pfd, nfds, -1) < 0) {
+		while (poll(pfd, nfds, -1) == -1) {
 			if (errno == EINTR)
 				continue;
 			DPERROR("sio_psleep: poll");

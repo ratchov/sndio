@@ -86,12 +86,12 @@ listen_new_un(char *path)
 	struct listen *f;
 
 	sock = socket(AF_UNIX, SOCK_STREAM, 0);
-	if (sock < 0) {
+	if (sock == -1) {
 		log_puts(path);
 		log_puts(": failed to create socket\n");
 		return 0;
 	}
-	if (unlink(path) < 0 && errno != ENOENT) {
+	if (unlink(path) == -1 && errno != ENOENT) {
 		log_puts(path);
 		log_puts(": failed to unlink socket\n");
 		goto bad_close;
@@ -100,12 +100,12 @@ listen_new_un(char *path)
 	strlcpy(sockname.sun_path, path, sizeof(sockname.sun_path));
 	oldumask = umask(0111);
 	if (bind(sock, (struct sockaddr *)&sockname,
-		sizeof(struct sockaddr_un)) < 0) {
+		sizeof(struct sockaddr_un)) == -1) {
 		log_puts(path);
 		log_puts(": failed to bind socket\n");
 		goto bad_close;
 	}
-	if (listen(sock, 1) < 0) {
+	if (listen(sock, 1) == -1) {
 		log_puts(path);
 		log_puts(": failed to listen\n");
 		goto bad_close;
@@ -155,14 +155,14 @@ listen_new_tcp(char *addr, unsigned int port)
 	 */
 	for (ai = ailist; ai != NULL; ai = ai->ai_next) {
 		s = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol);
-		if (s < 0) {
+		if (s == -1) {
 			log_puts(addr);
 			log_puts(": failed to create socket\n");
 			continue;
 		}
 		opt = 1;
 		if (setsockopt(s, SOL_SOCKET, SO_REUSEADDR,
-			&opt, sizeof(int)) < 0) {
+			&opt, sizeof(int)) == -1) {
 			log_puts(addr);
 			log_puts(": failed to set SO_REUSEADDR\n");
 			goto bad_close;
@@ -175,19 +175,19 @@ listen_new_tcp(char *addr, unsigned int port)
 			 */
 			opt = 1;
 			if (setsockopt(s, IPPROTO_IPV6, IPV6_V6ONLY,
-				&opt, sizeof(int)) < 0) {
+				&opt, sizeof(int)) == -1) {
 				log_puts(addr);
 				log_puts(": failed to set IPV6_V6ONLY\n");
 				goto bad_close;
 			}
 		}
 
-		if (bind(s, ai->ai_addr, ai->ai_addrlen) < 0) {
+		if (bind(s, ai->ai_addr, ai->ai_addrlen) == -1) {
 			log_puts(addr);
 			log_puts(": failed to bind socket\n");
 			goto bad_close;
 		}
-		if (listen(s, 1) < 0) {
+		if (listen(s, 1) == -1) {
 			log_puts(addr);
 			log_puts(": failed to listen\n");
 			goto bad_close;
@@ -247,14 +247,14 @@ listen_in(void *arg)
 	int sock, opt;
 
 	caddrlen = sizeof(caddrlen);
-	while ((sock = accept(f->fd, &caddr, &caddrlen)) < 0) {
+	while ((sock = accept(f->fd, &caddr, &caddrlen)) == -1) {
 		if (errno == EINTR)
 			continue;
 		if (errno == ENFILE || errno == EMFILE)
 			file_slowaccept = 1;
 		return;
 	}
-	if (fcntl(sock, F_SETFL, O_NONBLOCK) < 0) {
+	if (fcntl(sock, F_SETFL, O_NONBLOCK) == -1) {
 		file_log(f->file);
 		log_puts(": failed to set non-blocking mode\n");
 		goto bad_close;
@@ -262,7 +262,7 @@ listen_in(void *arg)
 	if (f->path == NULL) {
 		opt = 1;
 		if (setsockopt(sock, IPPROTO_TCP, TCP_NODELAY,
-			&opt, sizeof(int)) < 0) {
+			&opt, sizeof(int)) == -1) {
 			file_log(f->file);
 			log_puts(": failed to set TCP_NODELAY flag\n");
 			goto bad_close;
