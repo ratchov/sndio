@@ -162,7 +162,7 @@ listen_new_tcp(char *addr, unsigned int port)
 		}
 		opt = 1;
 		if (setsockopt(s, SOL_SOCKET, SO_REUSEADDR,
-			&opt, sizeof(int)) == -1) {
+		    &opt, sizeof(int)) == -1) {
 			log_puts(addr);
 			log_puts(": failed to set SO_REUSEADDR\n");
 			goto bad_close;
@@ -262,7 +262,7 @@ listen_in(void *arg)
 	if (f->path == NULL) {
 		opt = 1;
 		if (setsockopt(sock, IPPROTO_TCP, TCP_NODELAY,
-			&opt, sizeof(int)) == -1) {
+		    &opt, sizeof(int)) == -1) {
 			file_log(f->file);
 			log_puts(": failed to set TCP_NODELAY flag\n");
 			goto bad_close;
