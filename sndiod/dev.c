@@ -1644,7 +1644,7 @@ found:
 			log_puts(": requested mode not supported\n");
 		}
 		dev_unref(d);
-		return 0;
+		return NULL;
 	}
 	s->dev = d;
 	s->opt = opt;
