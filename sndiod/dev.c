@@ -1600,28 +1600,29 @@ slot_new(struct dev *d, struct opt *opt, char *who,
 			bestidx = i;
 		}
 	}
-	if (bestidx == DEV_NSLOT) {
-		if (log_level >= 1) {
+	if (bestidx != DEV_NSLOT) {
+		s = d->slot + bestidx;
+		s->vol = MIDI_MAXCTL;
+		strlcpy(s->name, name, SLOT_NAMEMAX);
+		s->serial = d->serial++;
+		s->unit = unit;
+#ifdef DEBUG
+		if (log_level >= 3) {
 			log_puts(name);
 			log_putu(unit);
-			log_puts(": out of sub-device slots\n");
+			log_puts(": overwritten slot ");
+			log_putu(bestidx);
+			log_puts("\n");
 		}
-		return NULL;
+#endif
+		goto found;
 	}
-	s = d->slot + bestidx;
-	s->vol = MIDI_MAXCTL;
-	strlcpy(s->name, name, SLOT_NAMEMAX);
-	s->serial = d->serial++;
-	s->unit = unit;
-#ifdef DEBUG
-	if (log_level >= 3) {
+	if (log_level >= 1) {
 		log_puts(name);
 		log_putu(unit);
-		log_puts(": overwritten slot ");
-		log_putu(bestidx);
-		log_puts("\n");
+		log_puts(": out of sub-device slots\n");
 	}
-#endif
+	return NULL;
 
 found:
 	if ((mode & MODE_REC) && (opt->mode & MODE_MON)) {
