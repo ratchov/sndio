@@ -1609,8 +1609,7 @@ slot_new(struct dev *d, struct opt *opt, char *who,
 		return NULL;
 	}
 	s = d->slot + bestidx;
-	if (s->name[0] != '\0')
-		s->vol = MIDI_MAXCTL;
+	s->vol = MIDI_MAXCTL;
 	strlcpy(s->name, name, SLOT_NAMEMAX);
 	s->serial = d->serial++;
 	s->unit = unit;
