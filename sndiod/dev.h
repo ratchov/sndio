@@ -89,6 +89,7 @@ struct slot {
 	unsigned int unit;			/* instance of name */
 	unsigned int serial;			/* global unique number */
 	unsigned int vol;			/* current (midi) volume */
+	unsigned int id;			/* process id */
 };
 
 struct opt {
@@ -231,7 +232,7 @@ void dev_midi_vol(struct dev *, struct slot *);
  * sio_open(3) like interface for clients
  */
 void slot_log(struct slot *);
-struct slot *slot_new(struct dev *, struct opt *, char *,
+struct slot *slot_new(struct dev *, struct opt *, unsigned int, char *,
     struct slotops *, void *, int);
 void slot_del(struct slot *);
 void slot_setvol(struct slot *, unsigned int);

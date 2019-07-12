@@ -99,7 +99,7 @@ struct amsg {
 #define AMSG_VERSION	7
 			uint8_t version;	/* protocol version */
 			uint8_t devnum;		/* device number */
-			uint32_t _reserved[1];	/* for future use */
+			uint32_t id;		/* client id */
 #define AMSG_OPTMAX	12
 			char opt[AMSG_OPTMAX];	/* profile name */
 			char who[12];		/* hint for leases */
