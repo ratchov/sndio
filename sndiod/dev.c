@@ -1581,13 +1581,13 @@ slot_freebufs(struct slot *s)
  * allocate a new slot and register the given call-backs
  */
 struct slot *
-slot_new(struct dev *d, struct opt *opt, char *who,
+slot_new(struct dev *d, struct opt *opt, unsigned int id, char *who,
     struct slotops *ops, void *arg, int mode)
 {
 	char *p;
 	char name[SLOT_NAMEMAX];
-	unsigned int i, unit, umap = 0;
-	unsigned int ser, bestser, bestidx;
+	unsigned int i, ser, bestser, bestidx;
+	struct slot *unit[DEV_NSLOT];
 	struct slot *s;
 
 	/*
@@ -1606,33 +1606,32 @@ slot_new(struct dev *d, struct opt *opt, char *who,
 		strlcpy(name, "noname", SLOT_NAMEMAX);
 
 	/*
-	 * find the first unused "unit" number for this name
+	 * build a unit-to-slot map for this name
 	 */
-	for (i = 0, s = d->slot; i < DEV_NSLOT; i++, s++) {
-		if (s->ops == NULL)
-			continue;
+	for (i = 0; i < DEV_NSLOT; i++)
+		unit[i] = NULL;
+	for (i = 0; i < DEV_NSLOT; i++) {
+		s = d->slot + i;
 		if (strcmp(s->name, name) == 0)
-			umap |= (1 << s->unit);
-	}
-	for (unit = 0; ; unit++) {
-		if ((umap & (1 << unit)) == 0)
-			break;
+			unit[s->unit] = s;
 	}
 
 	/*
-	 * find a free controller slot with the same name/unit
+	 * find the free slot with the least unit number and same id
 	 */
-	for (i = 0, s = d->slot; i < DEV_NSLOT; i++, s++) {
-		if (s->ops == NULL &&
-		    strcmp(s->name, name) == 0 &&
-		    s->unit == unit) {
-#ifdef DEBUG
-			if (log_level >= 3) {
-				log_puts(name);
-				log_putu(unit);
-				log_puts(": reused\n");
-			}
-#endif
+	for (i = 0; i < DEV_NSLOT; i++) {
+		s = unit[i];
+		if (s != NULL && s->ops == NULL && s->id == id)
+			goto found;
+	}
+
+	/*
+	 * find the free slot with the least unit number
+	 */
+	for (i = 0; i < DEV_NSLOT; i++) {
+		s = unit[i];
+		if (s != NULL && s->ops == NULL) {
+			s->id = id;
 			goto found;
 		}
 	}
@@ -1652,29 +1651,23 @@ slot_new(struct dev *d, struct opt *opt, char *who,
 			bestidx = i;
 		}
 	}
-	if (bestidx == DEV_NSLOT) {
-		if (log_level >= 1) {
-			log_puts(name);
-			log_putu(unit);
-			log_puts(": out of sub-device slots\n");
-		}
-		return NULL;
-	}
-	s = d->slot + bestidx;
-	if (s->name[0] != '\0')
+	if (bestidx != DEV_NSLOT) {
+		s = d->slot + bestidx;
 		s->vol = MIDI_MAXCTL;
-	strlcpy(s->name, name, SLOT_NAMEMAX);
-	s->serial = d->serial++;
-	s->unit = unit;
-#ifdef DEBUG
-	if (log_level >= 3) {
-		log_puts(name);
-		log_putu(unit);
-		log_puts(": overwritten slot ");
-		log_putu(bestidx);
-		log_puts("\n");
+		strlcpy(s->name, name, SLOT_NAMEMAX);
+		s->serial = d->serial++;
+		for (i = 0; unit[i] != NULL; i++)
+			; /* nothing */
+		s->unit = i;
+		s->id = id;
+		goto found;
 	}
-#endif
+
+	if (log_level >= 1) {
+		log_puts(name);
+		log_puts(": out of sub-device slots\n");
+	}
+	return NULL;
 
 found:
 	if ((mode & MODE_REC) && (opt->mode & MODE_MON)) {
@@ -1697,7 +1690,7 @@ found:
 			log_puts(": requested mode not supported\n");
 		}
 		dev_unref(d);
-		return 0;
+		return NULL;
 	}
 	s->dev = d;
 	s->opt = opt;

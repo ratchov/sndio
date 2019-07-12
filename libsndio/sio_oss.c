@@ -155,7 +155,7 @@ sio_oss_getcap(struct sio_hdl *sh, struct sio_cap *cap)
 	unsigned int i, j, k, conf;
 	int fmts;
 
-	if (ioctl(hdl->fd, SNDCTL_DSP_GETFMTS, &fmts) < 0) {
+	if (ioctl(hdl->fd, SNDCTL_DSP_GETFMTS, &fmts) == -1) {
 		DPERROR("sio_oss_getcap: GETFMTS");
 		hdl->sio.eof = 1;
 		return 0;
@@ -265,7 +265,7 @@ sio_oss_getfd(const char *str, unsigned int mode, int nbio)
 		flags = O_RDWR;
 	else
 		flags = (mode & SIO_PLAY) ? O_WRONLY : O_RDONLY;
-	while ((fd = open(path, flags | O_NONBLOCK | O_CLOEXEC)) < 0) {
+	while ((fd = open(path, flags | O_NONBLOCK | O_CLOEXEC)) == -1) {
 		if (errno == EINTR)
 			continue;
 		DPERROR(path);
@@ -277,17 +277,17 @@ sio_oss_getfd(const char *str, unsigned int mode, int nbio)
 	 * Unfortunately, it's possible for devices to be opened RDWR
 	 * even when they don't support playing/recording.
 	 */
-	if (mode & SIO_PLAY && ioctl(fd, SNDCTL_DSP_GETOSPACE, &bi) < 0) {
+	if (mode & SIO_PLAY && ioctl(fd, SNDCTL_DSP_GETOSPACE, &bi) == -1) {
 		close(fd);
 		return -1;
 	}
-	if (mode & SIO_REC && ioctl(fd, SNDCTL_DSP_GETISPACE, &bi) < 0) {
+	if (mode & SIO_REC && ioctl(fd, SNDCTL_DSP_GETISPACE, &bi) == -1) {
 		close(fd);
 		return -1;
 	}
 
 	val = 1;
-	if (ioctl(fd, SNDCTL_DSP_LOW_WATER, &val) < 0) {
+	if (ioctl(fd, SNDCTL_DSP_LOW_WATER, &val) == -1) {
 		DPERROR("sio_oss_start: LOW_WATER");
 		close(fd);
 		return -1;
@@ -324,14 +324,14 @@ _sio_oss_open(const char *str, unsigned int mode, int nbio)
 	int fd;
 
 	fd = sio_oss_getfd(str, mode, nbio);
-	if (fd < 0)
+	if (fd == -1)
 		return NULL;
 
 	hdl = (struct sio_oss_hdl *)sio_oss_fdopen(str, fd, mode, nbio);
 	if (hdl != NULL)
 		return (struct sio_hdl*)hdl;
 
-	while (close(fd) < 0 && errno == EINTR)
+	while (close(fd) == -1 && errno == EINTR)
 		; /* retry */
 
 	return NULL;
@@ -342,7 +342,7 @@ sio_oss_close(struct sio_hdl *sh)
 {
 	struct sio_oss_hdl *hdl = (struct sio_oss_hdl *)sh;
 
-	while (close(hdl->fd) < 0 && errno == EINTR)
+	while (close(hdl->fd) == -1 && errno == EINTR)
 		; /* retry */
 	free(hdl);
 }
@@ -372,7 +372,7 @@ sio_oss_start(struct sio_hdl *sh)
 		trig = PCM_ENABLE_INPUT;
 		_sio_onmove_cb(&hdl->sio, 0);
 	}
-	if (ioctl(hdl->fd, SNDCTL_DSP_SETTRIGGER, &trig) < 0) {
+	if (ioctl(hdl->fd, SNDCTL_DSP_SETTRIGGER, &trig) == -1) {
 		DPERROR("sio_oss_start: SETTRIGGER");
 		hdl->sio.eof = 1;
 		return 0;
@@ -391,7 +391,7 @@ sio_oss_stop(struct sio_hdl *sh)
 		return 1;
 	}
 	trig = 0;
-	if (ioctl(hdl->fd, SNDCTL_DSP_SETTRIGGER, &trig) < 0) {
+	if (ioctl(hdl->fd, SNDCTL_DSP_SETTRIGGER, &trig) == -1) {
 		DPERROR("sio_oss_stop: SETTRIGGER");
 		hdl->sio.eof = 1;
 		return 0;
@@ -441,7 +441,7 @@ sio_oss_setpar(struct sio_hdl *sh, struct sio_par *par)
 	else if (hdl->sio.mode & SIO_REC)
 		hdl->chan = par->rchan;
 
-	if (ioctl(hdl->fd, SNDCTL_DSP_SETFMT, &hdl->fmt) < 0) {
+	if (ioctl(hdl->fd, SNDCTL_DSP_SETFMT, &hdl->fmt) == -1) {
 		DPERROR("sio_oss_setpar: SETFMT");
 		hdl->sio.eof = 1;
 		return 0;
@@ -457,13 +457,13 @@ sio_oss_setpar(struct sio_hdl *sh, struct sio_par *par)
 			break;
 	}
 
-	if (ioctl(hdl->fd, SNDCTL_DSP_SPEED, &hdl->rate) < 0) {
+	if (ioctl(hdl->fd, SNDCTL_DSP_SPEED, &hdl->rate) == -1) {
 		DPERROR("sio_oss_setpar: SPEED");
 		hdl->sio.eof = 1;
 		return 0;
 	}
 
-	if (ioctl(hdl->fd, SNDCTL_DSP_CHANNELS, &hdl->chan) < 0) {
+	if (ioctl(hdl->fd, SNDCTL_DSP_CHANNELS, &hdl->chan) == -1) {
 		DPERROR("sio_oss_setpar: CHANNELS");
 		hdl->sio.eof = 1;
 		return 0;
@@ -502,7 +502,7 @@ sio_oss_setpar(struct sio_hdl *sh, struct sio_par *par)
 		frag_count = 2;
 
 	frag = frag_count << 16 | frag_shift;
-	if (ioctl(hdl->fd, SNDCTL_DSP_SETFRAGMENT, &frag) < 0) {
+	if (ioctl(hdl->fd, SNDCTL_DSP_SETFRAGMENT, &frag) == -1) {
 		DPERROR("sio_oss_setpar: SETFRAGMENT");
 		hdl->sio.eof = 1;
 		return 0;
@@ -541,7 +541,7 @@ sio_oss_getpar(struct sio_hdl *sh, struct sio_par *par)
 	par->xrun = SIO_IGNORE;
 
 	if (hdl->sio.mode & SIO_PLAY) {
-		if (ioctl(hdl->fd, SNDCTL_DSP_GETOSPACE, &pbi) < 0) {
+		if (ioctl(hdl->fd, SNDCTL_DSP_GETOSPACE, &pbi) == -1) {
 			DPERROR("sio_oss_getpar: SNDCTL_DSP_GETOSPACE");
 			hdl->sio.eof = 1;
 			return 0;
@@ -550,7 +550,7 @@ sio_oss_getpar(struct sio_hdl *sh, struct sio_par *par)
 		par->bufsz = pbi.fragstotal * par->round;
 	}
 	if (hdl->sio.mode & SIO_REC) {
-		if (ioctl(hdl->fd, SNDCTL_DSP_GETISPACE, &rbi) < 0) {
+		if (ioctl(hdl->fd, SNDCTL_DSP_GETISPACE, &rbi) == -1) {
 			DPERROR("sio_oss_getpar: SNDCTL_DSP_GETISPACE");
 			hdl->sio.eof = 1;
 			return 0;
@@ -583,7 +583,7 @@ sio_oss_read(struct sio_hdl *sh, void *buf, size_t len)
 	struct sio_oss_hdl *hdl = (struct sio_oss_hdl *)sh;
 	ssize_t n;
 
-	while ((n = read(hdl->fd, buf, len)) < 0) {
+	while ((n = read(hdl->fd, buf, len)) == -1) {
 		if (errno == EINTR)
 			continue;
 		if (errno != EAGAIN) {
@@ -610,7 +610,7 @@ sio_oss_write(struct sio_hdl *sh, const void *buf, size_t len)
 	ssize_t n, todo;
 
 	todo = len;
-	while ((n = write(hdl->fd, data, todo)) < 0) {
+	while ((n = write(hdl->fd, data, todo)) == -1) {
 		if (errno == EINTR)
 			continue;
 		if (errno != EAGAIN) {
@@ -646,7 +646,7 @@ sio_oss_pollfd(struct sio_hdl *sh, struct pollfd *pfd, int events)
 			trig |= PCM_ENABLE_OUTPUT;
 		if (hdl->sio.mode & SIO_REC)
 			trig |= PCM_ENABLE_INPUT;
-		if (ioctl(hdl->fd, SNDCTL_DSP_SETTRIGGER, &trig) < 0) {
+		if (ioctl(hdl->fd, SNDCTL_DSP_SETTRIGGER, &trig) == -1) {
 			DPERROR("sio_oss_pollfd: SETTRIGGER");
 			hdl->sio.eof = 1;
 			return 0;
@@ -723,7 +723,7 @@ sio_oss_revents(struct sio_hdl *sh, struct pollfd *pfd)
 		return pfd->revents;
 
 	/* Hide xruns from clients */
-	if (ioctl(hdl->fd, SNDCTL_DSP_GETERROR, &ei) < 0) {
+	if (ioctl(hdl->fd, SNDCTL_DSP_GETERROR, &ei) == -1) {
 		DPERROR("sio_oss_revents: GETERROR");
 		hdl->sio.eof = 1;
 		return POLLHUP;
@@ -735,7 +735,7 @@ sio_oss_revents(struct sio_hdl *sh, struct pollfd *pfd)
 	}
 
 	if (hdl->sio.mode & SIO_PLAY) {
-		if (ioctl(hdl->fd, SNDCTL_DSP_CURRENT_OPTR, &optr) < 0) {
+		if (ioctl(hdl->fd, SNDCTL_DSP_CURRENT_OPTR, &optr) == -1) {
 			DPERROR("sio_oss_revents: CURRENT_OPTR");
 			hdl->sio.eof = 1;
 			return POLLHUP;
@@ -748,7 +748,7 @@ sio_oss_revents(struct sio_hdl *sh, struct pollfd *pfd)
 		}
 	}
 	if (hdl->sio.mode & SIO_REC) {
-		if (ioctl(hdl->fd, SNDCTL_DSP_CURRENT_IPTR, &iptr) < 0) {
+		if (ioctl(hdl->fd, SNDCTL_DSP_CURRENT_IPTR, &iptr) == -1) {
 			DPERROR("sio_oss_revents: CURRENT_IPTR");
 			hdl->sio.eof = 1;
 			return POLLHUP;
@@ -780,7 +780,7 @@ sio_oss_setvol(struct sio_hdl *sh, unsigned int vol)
 	newvol = (100 * vol + SIO_MAXVOL / 2) / SIO_MAXVOL;
 	newvol = newvol | (newvol << 8);
 
-	if (ioctl(hdl->fd, SNDCTL_DSP_SETPLAYVOL, &newvol) < 0) {
+	if (ioctl(hdl->fd, SNDCTL_DSP_SETPLAYVOL, &newvol) == -1) {
 		DPERROR("sio_oss_setvol");
 		hdl->sio.eof = 1;
 		return 0;
@@ -795,7 +795,7 @@ sio_oss_getvol(struct sio_hdl *sh)
 	struct sio_oss_hdl *hdl = (struct sio_oss_hdl *)sh;
 	int vol;
 
-	if (ioctl(hdl->fd, SNDCTL_DSP_GETPLAYVOL, &vol) < 0) {
+	if (ioctl(hdl->fd, SNDCTL_DSP_GETPLAYVOL, &vol) == -1) {
 		DPERROR("sio_oss_getvol");
 		hdl->sio.eof = 1;
 		return;

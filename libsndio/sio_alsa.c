@@ -875,7 +875,7 @@ sio_alsa_setpar(struct sio_hdl *sh, struct sio_par *par)
 			return 0;
 		}
 		err = snd_pcm_sw_params_set_start_threshold(hdl->opcm,
-		    oswp, hdl->par.bufsz);
+		    oswp, hdl->par.bufsz - hdl->par.round);
 		if (err < 0) {
 			DALSA("couldn't set play start threshold", err);
 			hdl->sio.eof = 1;

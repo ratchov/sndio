@@ -548,6 +548,7 @@ _aucat_open(struct aucat *hdl, const char *str, unsigned int mode)
 	hdl->wmsg.u.hello.version = AMSG_VERSION;
 	hdl->wmsg.u.hello.mode = htons(mode);
 	hdl->wmsg.u.hello.devnum = devnum;
+	hdl->wmsg.u.hello.id = htonl(getpid());
 	strlcpy(hdl->wmsg.u.hello.who, __progname,
 	    sizeof(hdl->wmsg.u.hello.who));
 	strlcpy(hdl->wmsg.u.hello.opt, opt,
