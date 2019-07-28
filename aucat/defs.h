@@ -20,7 +20,7 @@
 /*
  * limits
  */
-#define NCHAN_MAX	16		/* max channel in a stream */
+#define NCHAN_MAX	64		/* max channel in a stream */
 #define RATE_MIN	4000		/* min sample rate */
 #define RATE_MAX	192000		/* max sample rate */
 #define BITS_MIN	1		/* min bits per sample */
