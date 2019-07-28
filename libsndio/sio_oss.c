@@ -665,8 +665,10 @@ sio_oss_xrun(struct sio_oss_hdl *hdl)
 	int wbpf;
 
 	DPRINTFN(2, "sio_oss_xrun:\n");
+#ifdef DEBUG
 	if (_sndio_debug >= 2)
 		_sio_printpos(&hdl->sio);
+#endif
 
 	/*
 	 * we assume rused/wused are zero if rec/play modes are not
