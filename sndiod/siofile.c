@@ -143,35 +143,35 @@ dev_sio_open(struct dev *d)
 	 */
 
 	if (par.bits > BITS_MAX) {
-		log_puts(d->path);
+		dev_log(d);
 		log_puts(": ");
 		log_putu(par.bits);
 		log_puts(": unsupported number of bits\n");
 		goto bad_close;
 	}
 	if (par.bps > SIO_BPS(BITS_MAX)) {
-		log_puts(d->path);
+		dev_log(d);
 		log_puts(": ");
 		log_putu(par.bps);
 		log_puts(": unsupported sample size\n");
 		goto bad_close;
 	}
 	if ((mode & SIO_PLAY) && par.pchan > NCHAN_MAX) {
-		log_puts(d->path);
+		dev_log(d);
 		log_puts(": ");
 		log_putu(par.pchan);
 		log_puts(": unsupported number of play channels\n");
 		goto bad_close;
 	}
 	if ((mode & SIO_REC) && par.rchan > NCHAN_MAX) {
-		log_puts(d->path);
+		dev_log(d);
 		log_puts(": ");
 		log_putu(par.rchan);
 		log_puts(": unsupported number of rec channels\n");
 		goto bad_close;
 	}
 	if (par.bufsz == 0 || par.bufsz > RATE_MAX) {
-		log_puts(d->path);
+		dev_log(d);
 		log_puts(": ");
 		log_putu(par.bufsz);
 		log_puts(": unsupported buffer size\n");
@@ -179,14 +179,14 @@ dev_sio_open(struct dev *d)
 	}
 	if (par.round == 0 || par.round > par.bufsz ||
 	    par.bufsz % par.round != 0) {
-		log_puts(d->path);
+		dev_log(d);
 		log_puts(": ");
 		log_putu(par.round);
 		log_puts(": unsupported block size\n");
 		goto bad_close;
 	}
 	if (par.rate == 0 || par.rate > RATE_MAX) {
-		log_puts(d->path);
+		dev_log(d);
 		log_puts(": ");
 		log_putu(par.rate);
 		log_puts(": unsupported rate\n");
