@@ -1109,15 +1109,29 @@ dev_open(struct dev *d)
 }
 
 /*
+ * Force all slots to exit
+ */
+void
+dev_exitall(struct dev *d)
+{
+	int i;
+	struct slot *s;
+
+	for (s = d->slot, i = DEV_NSLOT; i > 0; i--, s++) {
+		if (s->ops)
+			s->ops->exit(s->arg);
+		s->ops = NULL;
+	}
+	d->slot_list = NULL;
+}
+
+/*
  * force the device to go in DEV_CFG state, the caller is supposed to
  * ensure buffers are drained
  */
 void
 dev_close(struct dev *d)
 {
-	int i;
-	struct slot *s;
-
 #ifdef DEBUG
 	if (log_level >= 3) {
 		dev_log(d);
@@ -1125,12 +1139,7 @@ dev_close(struct dev *d)
 	}
 #endif
 	d->pstate = DEV_CFG;
-	for (s = d->slot, i = DEV_NSLOT; i > 0; i--, s++) {
-		if (s->ops)
-			s->ops->exit(s->arg);
-		s->ops = NULL;
-	}
-	d->slot_list = NULL;
+	dev_exitall(d);
 	dev_sio_close(d);
 	if (d->mode & MODE_PLAY) {
 		if (d->encbuf != NULL)
