@@ -439,7 +439,8 @@ port_new(char *path, unsigned int mode, int hold)
 	struct port *c;
 
 	c = xmalloc(sizeof(struct port));
-	c->path = xstrdup(path);
+	c->path_list = NULL;
+	namelist_add(&c->path_list, path);
 	c->state = PORT_CFG;
 	c->hold = hold;
 	c->midi = midi_new(&port_midiops, c, mode);
@@ -469,7 +470,7 @@ port_del(struct port *c)
 #endif
 	}
 	*p = c->next;
-	xfree(c->path);
+	namelist_clear(&c->path_list);
 	xfree(c);
 }
 
@@ -593,4 +594,27 @@ port_done(struct port *c)
 {
 	if (c->state == PORT_INIT)
 		port_drain(c);
+}
+
+void
+port_reopen(struct port *p)
+{
+	if (p->state == PORT_CFG)
+		return;
+
+	if (log_level >= 1) {
+		port_log(p);
+		log_puts(": reopening port\n");
+	}
+
+	port_mio_close(p);
+
+	if (!port_mio_open(p)) {
+		if (log_level >= 1) {
+			port_log(p);
+			log_puts(": found no working alternate port\n");
+		}
+		p->state = PORT_CFG;
+		port_exitall(p);
+	}
 }

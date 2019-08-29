@@ -969,7 +969,8 @@ dev_new(char *path, struct aparams *par,
 		return NULL;
 	}
 	d = xmalloc(sizeof(struct dev));
-	d->path = xstrdup(path);
+	d->path_list = NULL;
+	namelist_add(&d->path_list, path);
 	d->num = dev_sndnum++;
 	d->opt_list = NULL;
 
@@ -1174,6 +1175,94 @@ dev_close(struct dev *d)
 	dev_close_do(d);
 }
 
+/*
+ * Close the device, but attempt to migrate everything to a new sndio
+ * device.
+ */
+void
+dev_reopen(struct dev *d)
+{
+	struct slot *s;
+	long long pos;
+	unsigned int mode, round, bufsz, rate, pstate;
+	int delta;
+
+	/* not opened */
+	if (d->pstate == DEV_CFG)
+		return;
+
+	if (log_level >= 1) {
+		dev_log(d);
+		log_puts(": reopening device\n");
+	}
+
+	/* save state */
+	mode = d->mode;
+	round = d->round;
+	bufsz = d->bufsz;
+	rate = d->rate;
+	delta = d->delta;
+	pstate = d->pstate;
+
+	/* close device */
+	dev_close_do(d);
+
+	/* open device */
+	if (!dev_open_do(d)) {
+		if (log_level >= 1) {
+			dev_log(d);
+			log_puts(": found no working alternate device\n");
+		}
+		dev_exitall(d);
+		return;
+	}
+
+	/* check if new parameters are compatible with old ones */
+	if (d->mode != mode ||
+	    d->round != round ||
+	    d->bufsz != bufsz ||
+	    d->rate != rate) {
+		if (log_level >= 1) {
+			dev_log(d);
+			log_puts(": alternate device not compatible\n");
+		}
+		dev_close(d);
+		return;
+	}
+
+	/*
+	 * adjust time positions, make anything go back delta ticks, so
+	 * that the new device can start at zero
+	 */
+	for (s = d->slot_list; s != NULL; s = s->next) {
+		pos = (long long)(d->round - delta) * s->round + s->delta_rem;
+		s->delta_rem = pos % d->round;
+		s->delta += pos / (int)d->round;
+		s->delta -= s->round;
+		if (log_level >= 2) {
+			slot_log(s);
+			log_puts(": adjusted: delta -> ");
+			log_puti(s->delta);
+			log_puts(", delta_rem -> ");
+			log_puti(s->delta_rem);
+			log_puts("\n");
+		}
+	}
+	if (d->tstate == MMC_RUN) {
+		d->mtc.delta -= delta * MTC_SEC;
+		if (log_level >= 2) {
+			dev_log(d);
+			log_puts(": adjusted mtc: delta ->");
+			log_puti(d->mtc.delta);
+			log_puts("\n");
+		}
+	}
+
+	/* start the device if needed */
+	if (pstate == DEV_RUN)
+		dev_wakeup(d);
+}
+
 int
 dev_ref(struct dev *d)
 {
@@ -1280,7 +1369,7 @@ dev_del(struct dev *d)
 	}
 	midi_del(d->midi);
 	*p = d->next;
-	xfree(d->path);
+	namelist_clear(&d->path_list);
 	xfree(d);
 }
 

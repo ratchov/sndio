@@ -20,6 +20,11 @@
 
 #include <stddef.h>
 
+struct name {
+	struct name *next;
+	char str[];
+};
+
 void log_puts(char *);
 void log_putx(unsigned long);
 void log_putu(unsigned long);
@@ -30,6 +35,9 @@ void log_flush(void);
 void *xmalloc(size_t);
 char *xstrdup(char *);
 void xfree(void *);
+
+void namelist_add(struct name **, char *);
+void namelist_clear(struct name **);
 
 /*
  * Log levels:

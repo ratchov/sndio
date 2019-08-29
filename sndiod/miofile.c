@@ -44,13 +44,35 @@ struct fileops port_mio_ops = {
 	port_mio_hup
 };
 
+/*
+ * open the port using one of the provided paths
+ */
+static char *
+port_mio_openlist(struct port *c, unsigned int mode)
+{
+	struct name *n;
+
+	n = c->path_list;
+	while (1) {
+		if (n == NULL)
+			break;
+		c->mio.hdl = mio_open(n->str, mode, 1);
+		if (c->mio.hdl != NULL)
+			return n->str;
+		n = n->next;
+	}
+	return NULL;
+}
+
 int
 port_mio_open(struct port *p)
 {
-	p->mio.hdl = mio_open(p->path, p->midi->mode, 1);
+	char *path;
+
+	path = port_mio_openlist(p, p->midi->mode);
 	if (p->mio.hdl == NULL)
 		return 0;
-	p->mio.file = file_new(&port_mio_ops, p, p->path, mio_nfds(p->mio.hdl));
+	p->mio.file = file_new(&port_mio_ops, p, path, mio_nfds(p->mio.hdl));
 	return 1;
 }
 
@@ -128,5 +150,5 @@ port_mio_hup(void *arg)
 {
 	struct port *p = arg;
 
-	port_close(p);
+	port_reopen(p);
 }
