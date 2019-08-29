@@ -58,6 +58,7 @@ int dev_getpos(struct dev *);
 struct dev *dev_new(char *, struct aparams *, unsigned int, unsigned int,
     unsigned int, unsigned int, unsigned int, unsigned int);
 void dev_adjpar(struct dev *, int, int, int);
+int dev_open_do(struct dev *);
 int dev_open(struct dev *);
 void dev_exitall(struct dev *);
 void dev_close(struct dev *);
@@ -1030,24 +1031,11 @@ dev_adjpar(struct dev *d, int mode,
  * monitor, midi control, and any necessary conversions.
  */
 int
-dev_open(struct dev *d)
+dev_open_do(struct dev *d)
 {
-	d->mode = d->reqmode;
-	d->round = d->reqround;
-	d->bufsz = d->reqbufsz;
-	d->rate = d->reqrate;
-	d->pchan = d->reqpchan;
-	d->rchan = d->reqrchan;
-	d->par = d->reqpar;
-	if (d->pchan == 0)
-		d->pchan = 2;
-	if (d->rchan == 0)
-		d->rchan = 2;
 	if (!dev_sio_open(d)) {
 		if (log_level >= 1) {
 			dev_log(d);
-			log_puts(": ");
-			log_puts(d->path);
 			log_puts(": failed to open audio device\n");
 		}
 		return 0;
@@ -1106,6 +1094,28 @@ dev_open(struct dev *d)
 		log_putu(d->round);
 		log_puts(" frames\n");
 	}
+	return 1;
+}
+
+/*
+ * Reset parameters and open the device.
+ */
+int
+dev_open(struct dev *d)
+{
+	d->mode = d->reqmode;
+	d->round = d->reqround;
+	d->bufsz = d->reqbufsz;
+	d->rate = d->reqrate;
+	d->pchan = d->reqpchan;
+	d->rchan = d->reqrchan;
+	d->par = d->reqpar;
+	if (d->pchan == 0)
+		d->pchan = 2;
+	if (d->rchan == 0)
+		d->rchan = 2;
+	if (!dev_open_do(d))
+		return 0;
 	return 1;
 }
 
