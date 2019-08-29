@@ -521,7 +521,7 @@ port_open(struct port *c)
 {
 	if (!port_mio_open(c)) {
 		if (log_level >= 1) {
-			log_puts(c->path);
+			port_log(c);
 			log_puts(": failed to open midi port\n");
 		}
 		return 0;
