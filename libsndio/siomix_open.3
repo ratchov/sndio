@@ -123,6 +123,7 @@ struct siomix_chan {
 
 struct siomix_desc {
 	unsigned int addr;		/* control address */
+#define SIOMIX_NONE		0	/* control deleted */
 #define SIOMIX_NUM		2	/* integer in the 0..127 range */
 #define SIOMIX_SW		3	/* on/off switch (0 or 1) */
 #define SIOMIX_VEC		4	/* number, element of vector */
@@ -146,6 +147,8 @@ The
 attribute indicates what the structure describes.
 Possible types are:
 .Bl -tag -width "SIOMIX_LIST"
+.It SIOMIX_NONE
+A previously valid control was deleted.
 .It SIOMIX_NUM
 A continuous control in the 0..SIOMIX_INTMAX range.
 For instance the volume of the speaker.

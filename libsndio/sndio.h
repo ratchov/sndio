@@ -106,6 +106,7 @@ struct siomix_chan {
  */
 struct siomix_desc {
 	unsigned int addr;		/* control address */
+#define SIOMIX_NONE		0	/* deleted */
 #define SIOMIX_NUM		2	/* integer in the 0..127 range */
 #define SIOMIX_SW		3	/* on/off switch (0 or 1) */
 #define SIOMIX_VEC		4	/* number, element of vector */
