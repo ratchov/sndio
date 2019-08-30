@@ -1049,9 +1049,6 @@ dev_adjpar(struct dev *d, int mode,
 int
 dev_open_do(struct dev *d)
 {
-	int i, gunit;
-	struct ctl *c;
-
 	if (!dev_sio_open(d)) {
 		if (log_level >= 1) {
 			dev_log(d);
@@ -1113,6 +1110,31 @@ dev_open_do(struct dev *d)
 		log_putu(d->round);
 		log_puts(" frames\n");
 	}
+	return 1;
+}
+
+/*
+ * Reset parameters and open the device.
+ */
+int
+dev_open(struct dev *d)
+{
+	int i, gunit;
+	struct ctl *c;
+
+	d->mode = d->reqmode;
+	d->round = d->reqround;
+	d->bufsz = d->reqbufsz;
+	d->rate = d->reqrate;
+	d->pchan = d->reqpchan;
+	d->rchan = d->reqrchan;
+	d->par = d->reqpar;
+	if (d->pchan == 0)
+		d->pchan = 2;
+	if (d->rchan == 0)
+		d->rchan = 2;
+	if (!dev_open_do(d))
+		return 0;
 
 
 	/*
@@ -1141,28 +1163,6 @@ dev_open_do(struct dev *d)
 	}
 	dev_addctl(d, "sndiod", gunit, CTL_NUM,
 	    CTLADDR_MASTER, "master", -1, "level", NULL, -1, d->master);
-	return 1;
-}
-
-/*
- * Reset parameters and open the device.
- */
-int
-dev_open(struct dev *d)
-{
-	d->mode = d->reqmode;
-	d->round = d->reqround;
-	d->bufsz = d->reqbufsz;
-	d->rate = d->reqrate;
-	d->pchan = d->reqpchan;
-	d->rchan = d->reqrchan;
-	d->par = d->reqpar;
-	if (d->pchan == 0)
-		d->pchan = 2;
-	if (d->rchan == 0)
-		d->rchan = 2;
-	if (!dev_open_do(d))
-		return 0;
 	return 1;
 }
 
