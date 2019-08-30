@@ -1174,6 +1174,7 @@ dev_exitall(struct dev *d)
 {
 	int i;
 	struct slot *s;
+	struct ctlslot *c;
 
 	for (s = d->slot, i = DEV_NSLOT; i > 0; i--, s++) {
 		if (s->ops)
@@ -1181,6 +1182,12 @@ dev_exitall(struct dev *d)
 		s->ops = NULL;
 	}
 	d->slot_list = NULL;
+
+	for (c = d->ctlslot, i = DEV_NCTLSLOT; i > 0; i--, c++) {
+		if (c->ops)
+			c->ops->exit(c->arg);
+		c->ops = NULL;
+	}
 }
 
 /*
