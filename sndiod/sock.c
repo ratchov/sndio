@@ -91,6 +91,10 @@ struct midiops sock_midiops = {
 	sock_exit
 };
 
+struct ctlops sock_ctlops = {
+	sock_exit
+};
+
 struct sock *sock_list = NULL;
 unsigned int sock_sesrefs = 0;		/* connections to the session */
 uint8_t sock_sescookie[AMSG_COOKIELEN];	/* owner of the session */
@@ -870,7 +874,7 @@ sock_hello(struct sock *f)
 			}
 			return 0;
 		}
-		f->ctlslot = ctlslot_new(d);
+		f->ctlslot = ctlslot_new(d, &sock_ctlops, f);
 		if (f->ctlslot == NULL) {
 			if (log_level >= 2) {
 				sock_log(f);

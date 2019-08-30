@@ -33,10 +33,15 @@
 struct slotops
 {
 	void (*onmove)(void *);			/* clock tick */
-	void (*onvol)(void *);	        /* tell client vol changed */
+	void (*onvol)(void *);			/* tell client vol changed */
 	void (*fill)(void *);			/* request to fill a play block */
 	void (*flush)(void *);			/* request to flush a rec block */
 	void (*eof)(void *);			/* notify that play drained */
+	void (*exit)(void *);			/* delete client */
+};
+
+struct ctlops
+{
 	void (*exit)(void *);			/* delete client */
 };
 
@@ -134,10 +139,11 @@ struct ctl {
 };
 
 struct ctlslot {
+	struct ctlops *ops;
+	void *arg;
 	struct dev *dev;
 	unsigned int mask;
 	unsigned int mode;
-	int inuse;
 };
 
 /*
@@ -291,7 +297,7 @@ void slot_write(struct slot *);
  * control related functions
  */
 void ctl_log(struct ctl *);
-struct ctlslot *ctlslot_new(struct dev *);
+struct ctlslot *ctlslot_new(struct dev *, struct ctlops *, void *);
 void ctlslot_del(struct ctlslot *);
 int dev_setctl(struct dev *, int, int);
 int dev_onctl(struct dev *, int, int);

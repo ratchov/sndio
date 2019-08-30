@@ -1009,10 +1009,10 @@ dev_new(char *path, struct aparams *par,
 		strlcpy(d->slot[i].name, "prog", SLOT_NAMEMAX);
 	}
 	for (i = 0; i < DEV_NCTLSLOT; i++) {
+		d->ctlslot[i].ops = NULL;
 		d->ctlslot[i].dev = d;
 		d->ctlslot[i].mask = 0;
 		d->ctlslot[i].mode = 0;
-		d->ctlslot[i].inuse = 0;
 	}
 	d->slot_list = NULL;
 	d->master = MIDI_MAXCTL;
@@ -2144,7 +2144,7 @@ slot_read(struct slot *s)
  * allocate at control slot
  */
 struct ctlslot *
-ctlslot_new(struct dev *d)
+ctlslot_new(struct dev *d, struct ctlops *ops, void *arg)
 {
 	struct ctlslot *s;
 	int i;
@@ -2154,7 +2154,7 @@ ctlslot_new(struct dev *d)
 		if (i == DEV_NCTLSLOT)
 			return NULL;
 		s = d->ctlslot + i;
-		if (!s->inuse)
+		if (s->ops == NULL)
 			break;
 		i++;
 	}
@@ -2162,7 +2162,8 @@ ctlslot_new(struct dev *d)
 	s->mask = 1 << i;
 	if (!dev_ref(d))
 		return NULL;
-	s->inuse = 1;
+	s->ops = ops;
+	s->arg = arg;
 	return s;
 }
 
@@ -2172,7 +2173,7 @@ ctlslot_new(struct dev *d)
 void
 ctlslot_del(struct ctlslot *s)
 {
-	s->inuse = 0;
+	s->ops = NULL;
 	dev_unref(s->dev);
 }
 
