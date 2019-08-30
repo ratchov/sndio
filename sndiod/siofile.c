@@ -85,6 +85,26 @@ dev_sio_timeout(void *arg)
 }
 
 /*
+ * open the device using one of the provided paths
+ */
+static char *
+dev_sio_openlist(struct dev *d, unsigned int mode)
+{
+	struct name *n;
+
+	n = d->path_list;
+	while (1) {
+		if (n == NULL)
+			break;
+		d->sio.hdl = sio_open(n->str, mode, 1);
+		if (d->sio.hdl != NULL)
+			return n->str;
+		n = n->next;
+	}
+	return NULL;
+}
+
+/*
  * open the device.
  */
 int
@@ -92,17 +112,18 @@ dev_sio_open(struct dev *d)
 {
 	struct sio_par par;
 	unsigned int mode = d->mode & (MODE_PLAY | MODE_REC);
+	char *path;
 
-	d->sio.hdl = sio_open(d->path, mode, 1);
-	if (d->sio.hdl == NULL) {
+	path = dev_sio_openlist(d, mode);
+	if (path == NULL) {
 		if (mode != (SIO_PLAY | SIO_REC))
 			return 0;
-		d->sio.hdl = sio_open(d->path, SIO_PLAY, 1);
-		if (d->sio.hdl != NULL)
+		path = dev_sio_openlist(d, SIO_PLAY);
+		if (path != NULL)
 			mode = SIO_PLAY;
 		else {
-			d->sio.hdl = sio_open(d->path, SIO_REC, 1);
-			if (d->sio.hdl != NULL)
+			path = dev_sio_openlist(d, SIO_REC);
+			if (path != NULL)
 				mode = SIO_REC;
 			else
 				return 0;
@@ -144,35 +165,35 @@ dev_sio_open(struct dev *d)
 	 */
 
 	if (par.bits > BITS_MAX) {
-		log_puts(d->path);
+		dev_log(d);
 		log_puts(": ");
 		log_putu(par.bits);
 		log_puts(": unsupported number of bits\n");
 		goto bad_close;
 	}
 	if (par.bps > SIO_BPS(BITS_MAX)) {
-		log_puts(d->path);
+		dev_log(d);
 		log_puts(": ");
 		log_putu(par.bps);
 		log_puts(": unsupported sample size\n");
 		goto bad_close;
 	}
 	if ((mode & SIO_PLAY) && par.pchan > NCHAN_MAX) {
-		log_puts(d->path);
+		dev_log(d);
 		log_puts(": ");
 		log_putu(par.pchan);
 		log_puts(": unsupported number of play channels\n");
 		goto bad_close;
 	}
 	if ((mode & SIO_REC) && par.rchan > NCHAN_MAX) {
-		log_puts(d->path);
+		dev_log(d);
 		log_puts(": ");
 		log_putu(par.rchan);
 		log_puts(": unsupported number of rec channels\n");
 		goto bad_close;
 	}
 	if (par.bufsz == 0 || par.bufsz > RATE_MAX) {
-		log_puts(d->path);
+		dev_log(d);
 		log_puts(": ");
 		log_putu(par.bufsz);
 		log_puts(": unsupported buffer size\n");
@@ -180,14 +201,14 @@ dev_sio_open(struct dev *d)
 	}
 	if (par.round == 0 || par.round > par.bufsz ||
 	    par.bufsz % par.round != 0) {
-		log_puts(d->path);
+		dev_log(d);
 		log_puts(": ");
 		log_putu(par.round);
 		log_puts(": unsupported block size\n");
 		goto bad_close;
 	}
 	if (par.rate == 0 || par.rate > RATE_MAX) {
-		log_puts(d->path);
+		dev_log(d);
 		log_puts(": ");
 		log_putu(par.rate);
 		log_puts(": unsupported rate\n");
@@ -212,8 +233,14 @@ dev_sio_open(struct dev *d)
 	if (!(mode & MODE_REC))
 		d->mode &= ~MODE_REC;
 	sio_onmove(d->sio.hdl, dev_sio_onmove, d);
-	d->sio.file = file_new(&dev_sio_ops, d, d->path, sio_nfds(d->sio.hdl));
+	d->sio.file = file_new(&dev_sio_ops, d, path, sio_nfds(d->sio.hdl));
 	timo_set(&d->sio.watchdog, dev_sio_timeout, d);
+	if (log_level >= 1) {
+		dev_log(d);
+		log_puts(": using ");
+		log_puts(path);
+		log_puts("\n");
+	}
 	return 1;
  bad_close:
 	sio_close(d->sio.hdl);
@@ -494,5 +521,5 @@ dev_sio_hup(void *arg)
 		log_puts(": disconnected\n");
 	}
 #endif
-	dev_close(d);
+	dev_reopen(d);
 }
