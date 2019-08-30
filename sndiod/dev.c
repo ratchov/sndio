@@ -1203,7 +1203,6 @@ dev_close_do(struct dev *d)
 		xfree(c);
 	}
 	d->pstate = DEV_CFG;
-	dev_siomix_close(d);
 	dev_sio_close(d);
 	if (d->mode & MODE_PLAY) {
 		if (d->encbuf != NULL)
