@@ -1197,7 +1197,7 @@ dev_exitall(struct dev *d)
 void
 dev_close_do(struct dev *d)
 {
-	struct ctl *c;
+	struct ctl *c, **pc;
 
 #ifdef DEBUG
 	if (log_level >= 3) {
@@ -1205,9 +1205,18 @@ dev_close_do(struct dev *d)
 		log_puts(": closing\n");
 	}
 #endif
-	while ((c = d->ctl_list) != NULL) {
-		d->ctl_list = c->next;
-		xfree(c);
+	pc = &d->ctl_list;
+	while ((c = *pc) != NULL) {
+		if (c->addr >= CTLADDR_END) {
+			if (c->refs_mask == 0) {
+				*pc = c->next;
+				xfree(c);
+				continue;
+			}
+			c->type = CTL_NONE;
+			c->desc_mask = ~0;
+		}
+		pc = &c->next;
 	}
 	d->pstate = DEV_CFG;
 	dev_sio_close(d);
@@ -1229,8 +1238,16 @@ dev_close_do(struct dev *d)
 void
 dev_close(struct dev *d)
 {
+	struct ctl *c;
+
 	dev_exitall(d);
 	dev_close_do(d);
+
+	/* there are no clients, just free remaining local controls */
+	while ((c = d->ctl_list) != NULL) {
+		d->ctl_list = c->next;
+		xfree(c);
+	}
 }
 
 /*
@@ -2154,6 +2171,7 @@ struct ctlslot *
 ctlslot_new(struct dev *d, struct ctlops *ops, void *arg)
 {
 	struct ctlslot *s;
+	struct ctl *c;
 	int i;
 
 	i = 0;
@@ -2171,6 +2189,8 @@ ctlslot_new(struct dev *d, struct ctlops *ops, void *arg)
 		return NULL;
 	s->ops = ops;
 	s->arg = arg;
+	for (c = d->ctl_list; c != NULL; c = c->next)
+		c->refs_mask |= s->mask;
 	return s;
 }
 
@@ -2180,6 +2200,17 @@ ctlslot_new(struct dev *d, struct ctlops *ops, void *arg)
 void
 ctlslot_del(struct ctlslot *s)
 {
+	struct ctl *c, **pc;
+
+	pc = &s->dev->ctl_list;
+	while ((c = *pc) != NULL) {
+		c->refs_mask &= ~s->mask;
+		if (c->refs_mask == 0) {
+			*pc = c->next;
+			xfree(c);
+		} else
+			pc = &c->next;
+	}
 	s->ops = NULL;
 	dev_unref(s->dev);
 }
@@ -2225,7 +2256,8 @@ struct ctl *
 dev_addctl(struct dev *d, char *gstr, int gunit, int type, int addr,
     char *str0, int unit0, char *func, char *str1, int unit1, int val)
 {
-	struct ctl *c;
+	struct ctl *c, **pc;
+	int i;
 
 	c = xmalloc(sizeof(struct ctl));
 	c->type = type;
@@ -2242,10 +2274,17 @@ dev_addctl(struct dev *d, char *gstr, int gunit, int type, int addr,
 	c->addr = addr;
 	c->val_mask = ~0;
 	c->desc_mask = ~0;
-	c->next = d->ctl_list;
-	d->ctl_list = c;
 	c->curval = val;
 	c->dirty = 0;
+	c->refs_mask = 0;
+	for (i = 0; i < DEV_NCTLSLOT; i++) {
+		if (d->ctlslot[i].ops != NULL)
+			c->refs_mask |= 1 << i;
+	}
+	for (pc = &d->ctl_list; *pc != NULL; pc = &(*pc)->next)
+		; /* nothing */
+	c->next = NULL;
+	*pc = c;
 #ifdef DEBUG
 	if (log_level >= 3) {
 		dev_log(d);
@@ -2267,18 +2306,23 @@ dev_rmctl(struct dev *d, int addr)
 		c = *pc;
 		if (c == NULL)
 			return;
-		if (c->addr == addr)
+		if (c->type != CTL_NONE && c->addr == addr)
 			break;
 		pc = &c->next;
 	}
+	c->type = CTL_NONE;
 #ifdef DEBUG
 	if (log_level >= 3) {
 		dev_log(d);
 		log_puts(": removing ");
 		ctl_log(c);
+		log_puts(", refs_mask = 0x");
+		log_putx(c->refs_mask);
 		log_puts("\n");
 	}
 #endif
+	if (c->refs_mask != 0)
+		return;
 	*pc = c->next;
 	xfree(c);
 }
@@ -2309,7 +2353,7 @@ dev_setctl(struct dev *d, int addr, int val)
 			}
 			return 0;
 		}
-		if (c->addr == addr)
+		if (c->type != CTL_NONE && c->addr == addr)
 			break;
 		c = c->next;
 	}
@@ -2344,7 +2388,7 @@ dev_onctl(struct dev *d, int addr, int val)
 	for (;;) {
 		if (c == NULL)
 			return 0;
-		if (c->addr == addr)
+		if (c->type != CTL_NONE && c->addr == addr)
 			break;
 		c = c->next;
 	}

@@ -1370,7 +1370,7 @@ sock_buildmsg(struct sock *f)
 {
 	unsigned int size, mask;
 	struct amsg_mix_desc *desc;
-	struct ctl *c;
+	struct ctl *c, **pc;
 
 	/*
 	 * If pos changed (or initial tick), build a MOVE message.
@@ -1520,9 +1520,13 @@ sock_buildmsg(struct sock *f)
 		desc = f->ctldesc;
 		mask = f->ctlslot->mask;
 		size = 0;
-		for (c = f->ctlslot->dev->ctl_list; c != NULL; c = c->next) {
-			if ((c->desc_mask & mask) == 0)
+		pc = &f->ctlslot->dev->ctl_list;
+		while ((c = *pc) != NULL) {
+			if ((c->desc_mask & mask) == 0 ||
+			    (c->refs_mask & mask) == 0) {
+				pc = &c->next;
 				continue;
+			}
 			if (size == SOCK_CTLDESC_SIZE *
 				sizeof(struct amsg_mix_desc))
 				break;
@@ -1543,6 +1547,18 @@ sock_buildmsg(struct sock *f)
 			desc->curval = htons(c->curval);
 			size += sizeof(struct amsg_mix_desc);
 			desc++;
+
+			/* if this is a deleted entry unref it */
+			if (c->type == CTL_NONE) {
+				c->refs_mask &= ~mask;
+				if (c->refs_mask == 0) {
+					*pc = c->next;
+					xfree(c);
+					continue;
+				}
+			}
+
+			pc = &c->next;
 		}
 		if (size > 0) {
 			AMSG_INIT(&f->wmsg);

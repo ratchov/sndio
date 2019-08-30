@@ -120,6 +120,7 @@ struct opt {
 
 struct ctl {
 	struct ctl *next;
+#define CTL_NONE	0		/* deleted */
 #define CTL_NUM		2		/* number (aka integer value) */
 #define CTL_SW		3		/* on/off switch, only bit 7 counts */
 #define CTL_VEC		4		/* number, element of vector */
@@ -134,6 +135,7 @@ struct ctl {
 	} group, chan0, chan1;			/* affected channels */
 	unsigned int val_mask;
 	unsigned int desc_mask;
+	unsigned int refs_mask;
 	unsigned int curval;
 	int dirty;
 };
