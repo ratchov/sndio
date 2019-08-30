@@ -774,6 +774,9 @@ ondesc(void *arg, struct siomix_desc *d, int curval)
 		}
 	}
 
+	if (d->type == SIOMIX_NONE)
+		return;
+
 	/*
 	 * find the right position to insert the new widget
 	 */
