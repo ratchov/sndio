@@ -1059,7 +1059,6 @@ dev_open_do(struct dev *d)
 		}
 		return 0;
 	}
-	dev_siomix_open(d);
 	if (d->mode & MODE_REC) {
 		/*
 		 * Create device <-> demuxer buffer
@@ -1175,7 +1174,6 @@ dev_exitall(struct dev *d)
 {
 	int i;
 	struct slot *s;
-	struct ctl *c;
 
 	for (s = d->slot, i = DEV_NSLOT; i > 0; i--, s++) {
 		if (s->ops)
@@ -1192,6 +1190,8 @@ dev_exitall(struct dev *d)
 void
 dev_close_do(struct dev *d)
 {
+	struct ctl *c;
+
 #ifdef DEBUG
 	if (log_level >= 3) {
 		dev_log(d);

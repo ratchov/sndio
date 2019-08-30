@@ -241,6 +241,7 @@ dev_sio_open(struct dev *d)
 		log_puts(path);
 		log_puts("\n");
 	}
+	dev_siomix_open(d, path);
 	return 1;
  bad_close:
 	sio_close(d->sio.hdl);
@@ -250,6 +251,7 @@ dev_sio_open(struct dev *d)
 void
 dev_sio_close(struct dev *d)
 {
+	dev_siomix_close(d);
 #ifdef DEBUG
 	if (log_level >= 3) {
 		dev_log(d);
