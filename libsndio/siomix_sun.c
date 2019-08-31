@@ -392,7 +392,7 @@ siomix_sun_setctl(struct siomix_hdl *arg, unsigned int addr, unsigned int val)
 static int
 siomix_sun_nfds(struct siomix_hdl *addr)
 {
-	return 1;
+	return 0;
 }
 
 static int
@@ -401,8 +401,6 @@ siomix_sun_pollfd(struct siomix_hdl *addr, struct pollfd *pfd, int events)
 	struct siomix_sun_hdl *hdl = (struct siomix_sun_hdl *)addr;
 
 	hdl->events = events;
-	pfd->events = 0;
-	pfd->fd = hdl->fd;
 	return 0;
 }
 
@@ -411,6 +409,6 @@ siomix_sun_revents(struct siomix_hdl *addr, struct pollfd *pfd)
 {
 	struct siomix_sun_hdl *hdl = (struct siomix_sun_hdl *)addr;
 
-	return pfd->revents | (hdl->events & POLLOUT);
+	return hdl->events & POLLOUT;
 }
 #endif
