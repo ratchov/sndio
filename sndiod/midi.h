@@ -88,8 +88,8 @@ struct port {
 #define PORT_DRAIN	2
 	unsigned int state;
 	unsigned int num;		/* port serial number */
-	char *path;			/* hold the port open ? */
-	int hold;
+	struct name *path_list;
+	int hold;			/* hold the port open ? */
 	struct midi *midi;
 };
 
@@ -121,5 +121,6 @@ int  port_init(struct port *);
 void port_done(struct port *);
 void port_drain(struct port *);
 int  port_close(struct port *);
+void port_reopen(struct port *);
 
 #endif /* !defined(MIDI_H) */
