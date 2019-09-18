@@ -1435,11 +1435,13 @@ dev_mmcloc(struct dev *d, unsigned int origin)
 void
 slot_initconv(struct slot *s)
 {
-	unsigned int dev_nch;
+	unsigned int dev_nch, max_nch;
 	struct dev *d = s->dev;
 
 	if (s->mode & MODE_PLAY) {
 		dev_nch = s->opt->pmax - s->opt->pmin + 1;
+		if (dev_nch > d->pchan)
+			dev_nch = d->pchan;
 		s->mix.decbuf = NULL;
 		s->mix.resampbuf = NULL;
 		s->mix.join = 1;
@@ -1465,7 +1467,10 @@ slot_initconv(struct slot *s)
 	}
 
 	if (s->mode & MODE_RECMASK) {
+		max_nch = (s->mode & MODE_MON) ? d->pchan : d->rchan;
 		dev_nch = s->opt->rmax - s->opt->rmin + 1;
+		if (dev_nch > max_nch)
+			dev_nch = max_nch;
 		s->sub.encbuf = NULL;
 		s->sub.resampbuf = NULL;
 		s->sub.join = 1;
@@ -1477,8 +1482,8 @@ slot_initconv(struct slot *s)
 				s->sub.expand = s->sub.nch / dev_nch;
 		}
 		cmap_init(&s->sub.cmap,
-		    0, ((s->mode & MODE_MON) ? d->pchan : d->rchan) - 1,
-		    s->opt->rmin, s->opt->rmax,
+		    0, max_nch - 1,
+		    s->opt->rmin, s->opt->rmin + dev_nch - 1,
 		    s->opt->rmin, s->opt->rmin + s->sub.nch - 1,
 		    s->opt->rmin, s->opt->rmin + s->sub.nch - 1);
 		if (s->rate != d->rate) {
