@@ -159,7 +159,7 @@ struct dev {
 #define DEV_INIT	1			/* stopped */
 #define DEV_RUN		2			/* playin & recording */
 	unsigned int pstate;			/* one of above */
-	struct name *path_list;
+	char *path;				/* sio path */
 
 	/*
 	 * actual parameters and runtime state (i.e. once opened)
@@ -201,7 +201,6 @@ extern struct dev *dev_list;
 
 void dev_log(struct dev *);
 void dev_close(struct dev *);
-void dev_reopen(struct dev *);
 struct dev *dev_new(char *, struct aparams *, unsigned int, unsigned int,
     unsigned int, unsigned int, unsigned int, unsigned int);
 struct dev *dev_bynum(int);

@@ -188,30 +188,3 @@ xstrdup(char *s)
 	memcpy(p, s, size);
 	return p;
 }
-
-/*
- * copy and append the given string to the name list
- */
-void
-namelist_add(struct name **list, char *str)
-{
-	struct name *n;
-	size_t size;
-
-	size = strlen(str) + 1;
-	n = xmalloc(sizeof(struct name) + size);
-	memcpy(n->str, str, size);
-	n->next = *list;
-	*list = n;
-}
-
-void
-namelist_clear(struct name **list)
-{
-	struct name *n;
-
-	while ((n = *list) != NULL) {
-		*list = n->next;
-		xfree(n);
-	}
-}

@@ -84,26 +84,6 @@ dev_sio_timeout(void *arg)
 }
 
 /*
- * open the device using one of the provided paths
- */
-static char *
-dev_sio_openlist(struct dev *d, unsigned int mode)
-{
-	struct name *n;
-
-	n = d->path_list;
-	while (1) {
-		if (n == NULL)
-			break;
-		d->sio.hdl = sio_open(n->str, mode, 1);
-		if (d->sio.hdl != NULL)
-			return n->str;
-		n = n->next;
-	}
-	return NULL;
-}
-
-/*
  * open the device.
  */
 int
@@ -111,18 +91,17 @@ dev_sio_open(struct dev *d)
 {
 	struct sio_par par;
 	unsigned int mode = d->mode & (MODE_PLAY | MODE_REC);
-	char *path;
 
-	path = dev_sio_openlist(d, mode);
-	if (path == NULL) {
+	d->sio.hdl = sio_open(d->path, mode, 1);
+	if (d->sio.hdl == NULL) {
 		if (mode != (SIO_PLAY | SIO_REC))
 			return 0;
-		path = dev_sio_openlist(d, SIO_PLAY);
-		if (path != NULL)
+		d->sio.hdl = sio_open(d->path, SIO_PLAY, 1);
+		if (d->sio.hdl != NULL)
 			mode = SIO_PLAY;
 		else {
-			path = dev_sio_openlist(d, SIO_REC);
-			if (path != NULL)
+			d->sio.hdl = sio_open(d->path, SIO_REC, 1);
+			if (d->sio.hdl != NULL)
 				mode = SIO_REC;
 			else
 				return 0;
@@ -232,14 +211,8 @@ dev_sio_open(struct dev *d)
 	if (!(mode & MODE_REC))
 		d->mode &= ~MODE_REC;
 	sio_onmove(d->sio.hdl, dev_sio_onmove, d);
-	d->sio.file = file_new(&dev_sio_ops, d, path, sio_nfds(d->sio.hdl));
+	d->sio.file = file_new(&dev_sio_ops, d, d->path, sio_nfds(d->sio.hdl));
 	timo_set(&d->sio.watchdog, dev_sio_timeout, d);
-	if (log_level >= 1) {
-		dev_log(d);
-		log_puts(": using ");
-		log_puts(path);
-		log_puts("\n");
-	}
 	return 1;
  bad_close:
 	sio_close(d->sio.hdl);
@@ -520,5 +493,5 @@ dev_sio_hup(void *arg)
 		log_puts(": disconnected\n");
 	}
 #endif
-	dev_reopen(d);
+	dev_close(d);
 }

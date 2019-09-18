@@ -29,12 +29,10 @@
 .Op Fl C Ar min : Ns Ar max
 .Op Fl c Ar min : Ns Ar max
 .Op Fl e Ar enc
-.Op Fl F Ar device
 .Op Fl f Ar device
 .Op Fl j Ar flag
 .Op Fl L Ar addr
 .Op Fl m Ar mode
-.Op Fl Q Ar port
 .Op Fl q Ar port
 .Op Fl r Ar rate
 .Op Fl s Ar name
@@ -184,18 +182,6 @@ or
 Only the signedness and the precision are mandatory.
 Examples:
 .Va u8 , s16le , s24le3 , s24le4lsb .
-.It Fl F Ar device
-Specify an alternate device to use.
-If doesn't work, the one given with the last
-.Fl f
-or
-.Fl F
-options will be used.
-For instance, specifying a USB device following a
-PCI device allows
-.Nm
-to use the USB one preferably when it's connected
-and to fall back to the PCI one when it's disconnected.
 .It Fl f Ar device
 Add this
 .Xr sndio 7
@@ -259,15 +245,6 @@ but the same sub-device cannot be used for both recording and monitoring.
 The default is
 .Ar play , Ns Ar rec
 (i.e. full-duplex).
-.It Fl Q Ar port
-Specify an alternate MIDI port to use.
-If doesn't work, the one given with the last
-.Fl Q
-or
-.Fl q
-options will be used.
-For instance, this allows to replace a USB MIDI controller without
-the need to restart programs using it.
 .It Fl q Ar port
 Expose the given MIDI port.
 This allows multiple programs to share the port.
@@ -399,15 +376,11 @@ is
 If
 .Nm
 is sent
+.Dv SIGHUP ,
 .Dv SIGINT
 or
 .Dv SIGTERM ,
 it terminates.
-If
-.Nm
-is sent
-.Dv SIGHUP ,
-it reopens all audio devices and MIDI ports.
 .Pp
 By default, when the program cannot accept
 recorded data fast enough or cannot provide data to play fast enough,
