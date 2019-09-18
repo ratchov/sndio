@@ -1428,7 +1428,6 @@ dev_mmcloc(struct dev *d, unsigned int origin)
 		dev_mmcstart(d);
 }
 
-
 /*
  * allocate buffers & conversion chain
  */
@@ -1442,8 +1441,6 @@ slot_initconv(struct slot *s)
 		dev_nch = s->opt->pmax - s->opt->pmin + 1;
 		if (dev_nch > d->pchan)
 			dev_nch = d->pchan;
-		s->mix.decbuf = NULL;
-		s->mix.resampbuf = NULL;
 		s->mix.join = 1;
 		s->mix.expand = 1;
 		if (s->opt->dup) {
@@ -1471,8 +1468,6 @@ slot_initconv(struct slot *s)
 		dev_nch = s->opt->rmax - s->opt->rmin + 1;
 		if (dev_nch > max_nch)
 			dev_nch = max_nch;
-		s->sub.encbuf = NULL;
-		s->sub.resampbuf = NULL;
 		s->sub.join = 1;
 		s->sub.expand = 1;
 		if (s->opt->dup) {
@@ -1525,6 +1520,8 @@ slot_allocbufs(struct slot *s)
 		s->mix.bpf = s->par.bps * s->mix.nch;
 		abuf_init(&s->mix.buf, s->appbufsz * s->mix.bpf);
 
+		s->mix.decbuf = NULL;
+		s->mix.resampbuf = NULL;
 		if (!aparams_native(&s->par)) {
 			s->mix.decbuf =
 			    xmalloc(s->round * s->mix.nch * sizeof(adata_t));
@@ -1539,6 +1536,8 @@ slot_allocbufs(struct slot *s)
 		s->sub.bpf = s->par.bps * s->sub.nch;
 		abuf_init(&s->sub.buf, s->appbufsz * s->sub.bpf);
 
+		s->sub.encbuf = NULL;
+		s->sub.resampbuf = NULL;
 		if (s->rate != d->rate) {
 			s->sub.resampbuf =
 			    xmalloc(d->round * s->sub.nch * sizeof(adata_t));
