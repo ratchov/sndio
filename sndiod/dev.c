@@ -1434,21 +1434,9 @@ dev_mmcloc(struct dev *d, unsigned int origin)
 void
 slot_initconv(struct slot *s)
 {
-	unsigned int dev_nch, max_nch;
 	struct dev *d = s->dev;
 
 	if (s->mode & MODE_PLAY) {
-		dev_nch = s->opt->pmax - s->opt->pmin + 1;
-		if (dev_nch > d->pchan)
-			dev_nch = d->pchan;
-		s->mix.join = 1;
-		s->mix.expand = 1;
-		if (s->opt->dup) {
-			if (dev_nch > s->mix.nch)
-				s->mix.expand = dev_nch / s->mix.nch;
-			else if (dev_nch < s->mix.nch)
-				s->mix.join = s->mix.nch / dev_nch;
-		}
 		cmap_init(&s->mix.cmap,
 		    s->opt->pmin, s->opt->pmin + s->mix.nch - 1,
 		    s->opt->pmin, s->opt->pmin + s->mix.nch - 1,
@@ -1461,24 +1449,20 @@ slot_initconv(struct slot *s)
 			resamp_init(&s->mix.resamp, s->round, d->round,
 			    s->mix.nch);
 		}
+		s->mix.join = 1;
+		s->mix.expand = 1;
+		if (s->opt->dup) {
+			if (s->mix.cmap.nch > s->mix.nch)
+				s->mix.expand = s->mix.cmap.nch / s->mix.nch;
+			else if (s->mix.cmap.nch > 0)
+				s->mix.join = s->mix.nch / s->mix.cmap.nch;
+		}
 	}
 
 	if (s->mode & MODE_RECMASK) {
-		max_nch = (s->mode & MODE_MON) ? d->pchan : d->rchan;
-		dev_nch = s->opt->rmax - s->opt->rmin + 1;
-		if (dev_nch > max_nch)
-			dev_nch = max_nch;
-		s->sub.join = 1;
-		s->sub.expand = 1;
-		if (s->opt->dup) {
-			if (dev_nch > s->sub.nch)
-				s->sub.join = dev_nch / s->sub.nch;
-			else if (dev_nch < s->sub.nch)
-				s->sub.expand = s->sub.nch / dev_nch;
-		}
 		cmap_init(&s->sub.cmap,
-		    0, max_nch - 1,
-		    s->opt->rmin, s->opt->rmin + dev_nch - 1,
+		    0, ((s->mode & MODE_MON) ? d->pchan : d->rchan) - 1,
+		    s->opt->rmin, s->opt->rmax,
 		    s->opt->rmin, s->opt->rmin + s->sub.nch - 1,
 		    s->opt->rmin, s->opt->rmin + s->sub.nch - 1);
 		if (s->rate != d->rate) {
@@ -1487,6 +1471,14 @@ slot_initconv(struct slot *s)
 		}
 		if (!aparams_native(&s->par)) {
 			enc_init(&s->sub.enc, &s->par, s->sub.nch);
+		}
+		s->sub.join = 1;
+		s->sub.expand = 1;
+		if (s->opt->dup) {
+			if (s->sub.cmap.nch > s->sub.nch)
+				s->sub.join = s->sub.cmap.nch / s->sub.nch;
+			else if (s->sub.cmap.nch > 0)
+				s->sub.expand = s->sub.nch / s->sub.cmap.nch;
 		}
 
 		/*
