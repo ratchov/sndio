@@ -68,7 +68,7 @@
  * block size if neither ``-z'' nor ``-b'' is used
  */
 #ifndef DEFAULT_ROUND
-#define DEFAULT_ROUND	960
+#define DEFAULT_ROUND	480
 #endif
 
 /*
