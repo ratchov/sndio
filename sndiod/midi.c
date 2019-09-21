@@ -596,25 +596,14 @@ port_done(struct port *c)
 		port_drain(c);
 }
 
-void
+int
 port_reopen(struct port *p)
 {
 	if (p->state == PORT_CFG)
-		return;
+		return 1;
 
-	if (log_level >= 1) {
-		port_log(p);
-		log_puts(": reopening port\n");
-	}
+	if (!port_mio_reopen(p))
+		return 0;
 
-	port_mio_close(p);
-
-	if (!port_mio_open(p)) {
-		if (log_level >= 1) {
-			port_log(p);
-			log_puts(": found no working alternate port\n");
-		}
-		p->state = PORT_CFG;
-		port_exitall(p);
-	}
+	return 1;
 }

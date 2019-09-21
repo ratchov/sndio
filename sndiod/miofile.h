@@ -25,6 +25,7 @@ struct port_mio {
 };
 
 int  port_mio_open(struct port *);
+int  port_mio_reopen(struct port *);
 void port_mio_close(struct port *);
 
 #endif /* !defined(MIOFILE_H) */

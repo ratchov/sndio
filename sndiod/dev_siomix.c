@@ -95,14 +95,13 @@ dev_siomix_onctl(void *arg, unsigned int addr, unsigned int val)
  * open the mixer device.
  */
 void
-dev_siomix_open(struct dev *d, char *path)
+dev_siomix_open(struct dev *d)
 {
-	d->siomix.hdl = siomix_open(path, SIOMIX_READ | SIOMIX_WRITE, 0);
 	if (d->siomix.hdl == NULL)
 		return;
 	siomix_ondesc(d->siomix.hdl, dev_siomix_ondesc, d);
 	siomix_onctl(d->siomix.hdl, dev_siomix_onctl, d);
-	d->siomix.file = file_new(&dev_siomix_ops, d, path,
+	d->siomix.file = file_new(&dev_siomix_ops, d, "mix",
 	    siomix_nfds(d->siomix.hdl));
 }
 
@@ -115,8 +114,6 @@ dev_siomix_close(struct dev *d)
 	if (d->siomix.hdl == NULL)
 		return;
 	file_del(d->siomix.file);
-	siomix_close(d->siomix.hdl);
-	d->siomix.hdl = NULL;
 }
 
 int
