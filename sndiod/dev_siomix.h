@@ -26,7 +26,7 @@ struct dev_siomix {
 	struct file *file;
 };
 
-void dev_siomix_open(struct dev *, char *);
+void dev_siomix_open(struct dev *);
 void dev_siomix_close(struct dev *);
 
 #endif /* !defined(DEV_SIOMIX_H) */

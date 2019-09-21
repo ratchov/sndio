@@ -87,18 +87,36 @@ dev_sio_timeout(void *arg)
 /*
  * open the device using one of the provided paths
  */
-static char *
-dev_sio_openlist(struct dev *d, unsigned int mode)
+static struct sio_hdl *
+dev_sio_openlist(struct dev *d, unsigned int mode, struct siomix_hdl **rmixhdl)
 {
 	struct name *n;
+	struct sio_hdl *hdl;
+	struct siomix_hdl *mixhdl;
 
 	n = d->path_list;
 	while (1) {
 		if (n == NULL)
 			break;
-		d->sio.hdl = sio_open(n->str, mode, 1);
-		if (d->sio.hdl != NULL)
-			return n->str;
+		hdl = sio_open(n->str, mode, 1);
+		if (hdl != NULL) {
+			if (log_level >= 2) {
+				dev_log(d);
+				log_puts(": using ");
+				log_puts(n->str);
+				log_puts("\n");
+			}
+			mixhdl = siomix_open(n->str,
+			    SIOMIX_READ | SIOMIX_WRITE, 0);
+			if (mixhdl == NULL) {
+				if (log_level >= 1) {
+					dev_log(d);
+					log_puts(": no mixer\n");
+				}
+			}
+			*rmixhdl = mixhdl;
+			return hdl;
+		}
 		n = n->next;
 	}
 	return NULL;
@@ -112,18 +130,18 @@ dev_sio_open(struct dev *d)
 {
 	struct sio_par par;
 	unsigned int mode = d->mode & (MODE_PLAY | MODE_REC);
-	char *path;
 
-	path = dev_sio_openlist(d, mode);
-	if (path == NULL) {
+	d->sio.hdl = dev_sio_openlist(d, mode, &d->siomix.hdl);
+	if (d->sio.hdl == NULL) {
 		if (mode != (SIO_PLAY | SIO_REC))
 			return 0;
-		path = dev_sio_openlist(d, SIO_PLAY);
-		if (path != NULL)
+		d->sio.hdl = dev_sio_openlist(d, SIO_PLAY, &d->siomix.hdl);
+		if (d->sio.hdl != NULL)
 			mode = SIO_PLAY;
 		else {
-			path = dev_sio_openlist(d, SIO_REC);
-			if (path != NULL)
+			d->sio.hdl = dev_sio_openlist(d,
+			    SIO_REC, &d->siomix.hdl);
+			if (d->sio.hdl != NULL)
 				mode = SIO_REC;
 			else
 				return 0;
@@ -233,18 +251,98 @@ dev_sio_open(struct dev *d)
 	if (!(mode & MODE_REC))
 		d->mode &= ~MODE_REC;
 	sio_onmove(d->sio.hdl, dev_sio_onmove, d);
-	d->sio.file = file_new(&dev_sio_ops, d, path, sio_nfds(d->sio.hdl));
+	d->sio.file = file_new(&dev_sio_ops, d, "dev", sio_nfds(d->sio.hdl));
 	timo_set(&d->sio.watchdog, dev_sio_timeout, d);
-	if (log_level >= 1) {
-		dev_log(d);
-		log_puts(": using ");
-		log_puts(path);
-		log_puts("\n");
-	}
-	dev_siomix_open(d, path);
+	dev_siomix_open(d);
 	return 1;
  bad_close:
 	sio_close(d->sio.hdl);
+	if (d->siomix.hdl) {
+		siomix_close(d->siomix.hdl);
+		d->siomix.hdl = NULL;
+	}
+	return 0;
+}
+
+/*
+ * Open an alternate device. Upon success and if the new device is
+ * compatible with the old one, close the old device and continue
+ * using the new one. The new device is not started.
+ */
+int
+dev_sio_reopen(struct dev *d)
+{
+	struct siomix_hdl *mixhdl;
+	struct sio_par par;
+	struct sio_hdl *hdl;
+
+	hdl = dev_sio_openlist(d, d->mode & (MODE_PLAY | MODE_REC), &mixhdl);
+	if (hdl == NULL) {
+		if (log_level >= 1) {
+			dev_log(d);
+			log_puts(": couldn't open an alternate device\n");
+		}
+		return 0;
+	}
+
+	sio_initpar(&par);
+	par.bits = d->par.bits;
+	par.bps = d->par.bps;
+	par.sig = d->par.sig;
+	par.le = d->par.le;
+	par.msb = d->par.msb;
+	if (d->mode & SIO_PLAY)
+		par.pchan = d->pchan;
+	if (d->mode & SIO_REC)
+		par.rchan = d->rchan;
+	par.appbufsz = d->bufsz;
+	par.round = d->round;
+	par.rate = d->rate;
+	if (!sio_setpar(hdl, &par))
+		goto bad_close;
+	if (!sio_getpar(hdl, &par))
+		goto bad_close;
+
+	/* check if new parameters are compatible with old ones */
+	if (par.round != d->round || par.bufsz != d->bufsz ||
+	    par.rate != d->rate) {
+		if (log_level >= 1) {
+			dev_log(d);
+			log_puts(": alternate device not compatible\n");
+		}
+		goto bad_close;
+	}
+
+	/* close unused device */
+	timo_del(&d->sio.watchdog);
+	file_del(d->sio.file);
+	sio_close(d->sio.hdl);
+	dev_siomix_close(d);
+	if (d->siomix.hdl) {
+		siomix_close(d->siomix.hdl);
+		d->siomix.hdl = NULL;
+	}
+
+	/* update parameters */
+	d->par.bits = par.bits;
+	d->par.bps = par.bps;
+	d->par.sig = par.sig;
+	d->par.le = par.le;
+	d->par.msb = par.msb;
+	if (d->mode & SIO_PLAY)
+		d->pchan = par.pchan;
+	if (d->mode & SIO_REC)
+		d->rchan = par.rchan;
+
+	d->sio.hdl = hdl;
+	d->siomix.hdl = mixhdl;
+	d->sio.file = file_new(&dev_sio_ops, d, "dev", sio_nfds(hdl));
+	sio_onmove(hdl, dev_sio_onmove, d);
+	return 1;
+bad_close:
+	sio_close(hdl);
+	if (mixhdl)
+		siomix_close(mixhdl);
 	return 0;
 }
 
@@ -261,6 +359,10 @@ dev_sio_close(struct dev *d)
 	timo_del(&d->sio.watchdog);
 	file_del(d->sio.file);
 	sio_close(d->sio.hdl);
+	if (d->siomix.hdl) {
+		siomix_close(d->siomix.hdl);
+		d->siomix.hdl = NULL;
+	}
 }
 
 void
@@ -523,5 +625,6 @@ dev_sio_hup(void *arg)
 		log_puts(": disconnected\n");
 	}
 #endif
-	dev_reopen(d);
+	if (!dev_reopen(d))
+		dev_close(d);
 }
