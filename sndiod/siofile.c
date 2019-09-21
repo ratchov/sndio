@@ -84,6 +84,34 @@ dev_sio_timeout(void *arg)
 }
 
 /*
+ * open the device using one of the provided paths
+ */
+static struct sio_hdl *
+dev_sio_openlist(struct dev *d, unsigned int mode)
+{
+	struct name *n;
+	struct sio_hdl *hdl;
+
+	n = d->path_list;
+	while (1) {
+		if (n == NULL)
+			break;
+		hdl = sio_open(n->str, mode, 1);
+		if (hdl != NULL) {
+			if (log_level >= 2) {
+				dev_log(d);
+				log_puts(": using ");
+				log_puts(n->str);
+				log_puts("\n");
+			}
+			return hdl;
+		}
+		n = n->next;
+	}
+	return NULL;
+}
+
+/*
  * open the device.
  */
 int
@@ -92,15 +120,15 @@ dev_sio_open(struct dev *d)
 	struct sio_par par;
 	unsigned int mode = d->mode & (MODE_PLAY | MODE_REC);
 
-	d->sio.hdl = sio_open(d->path, mode, 1);
+	d->sio.hdl = dev_sio_openlist(d, mode);
 	if (d->sio.hdl == NULL) {
 		if (mode != (SIO_PLAY | SIO_REC))
 			return 0;
-		d->sio.hdl = sio_open(d->path, SIO_PLAY, 1);
+		d->sio.hdl = dev_sio_openlist(d, SIO_PLAY);
 		if (d->sio.hdl != NULL)
 			mode = SIO_PLAY;
 		else {
-			d->sio.hdl = sio_open(d->path, SIO_REC, 1);
+			d->sio.hdl = dev_sio_openlist(d, SIO_REC);
 			if (d->sio.hdl != NULL)
 				mode = SIO_REC;
 			else
@@ -211,11 +239,84 @@ dev_sio_open(struct dev *d)
 	if (!(mode & MODE_REC))
 		d->mode &= ~MODE_REC;
 	sio_onmove(d->sio.hdl, dev_sio_onmove, d);
-	d->sio.file = file_new(&dev_sio_ops, d, d->path, sio_nfds(d->sio.hdl));
+	d->sio.file = file_new(&dev_sio_ops, d, "dev", sio_nfds(d->sio.hdl));
 	timo_set(&d->sio.watchdog, dev_sio_timeout, d);
 	return 1;
  bad_close:
 	sio_close(d->sio.hdl);
+	return 0;
+}
+
+/*
+ * Open an alternate device. Upon success and if the new device is
+ * compatible with the old one, close the old device and continue
+ * using the new one. The new device is not started.
+ */
+int
+dev_sio_reopen(struct dev *d)
+{
+	struct sio_par par;
+	struct sio_hdl *hdl;
+
+	hdl = dev_sio_openlist(d, d->mode & (MODE_PLAY | MODE_REC));
+	if (hdl == NULL) {
+		if (log_level >= 1) {
+			dev_log(d);
+			log_puts(": couldn't open an alternate device\n");
+		}
+		return 0;
+	}
+
+	sio_initpar(&par);
+	par.bits = d->par.bits;
+	par.bps = d->par.bps;
+	par.sig = d->par.sig;
+	par.le = d->par.le;
+	par.msb = d->par.msb;
+	if (d->mode & SIO_PLAY)
+		par.pchan = d->pchan;
+	if (d->mode & SIO_REC)
+		par.rchan = d->rchan;
+	par.appbufsz = d->bufsz;
+	par.round = d->round;
+	par.rate = d->rate;
+	if (!sio_setpar(hdl, &par))
+		goto bad_close;
+	if (!sio_getpar(hdl, &par))
+		goto bad_close;
+
+	/* check if new parameters are compatible with old ones */
+	if (par.round != d->round || par.bufsz != d->bufsz ||
+	    par.rate != d->rate) {
+		if (log_level >= 1) {
+			dev_log(d);
+			log_puts(": alternate device not compatible\n");
+		}
+		goto bad_close;
+	}
+
+	/* close unused device */
+	timo_del(&d->sio.watchdog);
+	file_del(d->sio.file);
+	sio_close(d->sio.hdl);
+
+	/* update parameters */
+	d->par.bits = par.bits;
+	d->par.bps = par.bps;
+	d->par.sig = par.sig;
+	d->par.le = par.le;
+	d->par.msb = par.msb;
+	if (d->mode & SIO_PLAY)
+		d->pchan = par.pchan;
+	if (d->mode & SIO_REC)
+		d->rchan = par.rchan;
+
+	d->sio.hdl = hdl;
+	d->sio.file = file_new(&dev_sio_ops, d, "dev", sio_nfds(hdl));
+	sio_onmove(hdl, dev_sio_onmove, d);
+	return 1;
+bad_close:
+	sio_close(hdl);
 	return 0;
 }
 
@@ -493,5 +594,6 @@ dev_sio_hup(void *arg)
 		log_puts(": disconnected\n");
 	}
 #endif
-	dev_close(d);
+	if (!dev_reopen(d))
+		dev_close(d);
 }
