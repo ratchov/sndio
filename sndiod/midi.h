@@ -68,6 +68,7 @@ struct midi {
 #define MIDI_MSGMAX	16		/* max size of MIDI msg */
 	unsigned char msg[MIDI_MSGMAX];	/* parsed input message */
 	unsigned int st;		/* input MIDI running status */
+	unsigned int last_st;		/* backup of st during sysex */
 	unsigned int used;		/* bytes used in ``msg'' */
 	unsigned int idx;		/* current ``msg'' size */
 	unsigned int len;		/* expected ``msg'' length */
