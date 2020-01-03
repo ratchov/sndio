@@ -20,7 +20,7 @@
 #include "abuf.h"
 #include "dsp.h"
 #include "siofile.h"
-#include "dev_siomix.h"
+#include "dev_sioctl.h"
 
 #define CTLADDR_SLOT_LEVEL(n)	(n)
 #define CTLADDR_MASTER		(DEV_NSLOT)
@@ -161,7 +161,7 @@ struct dev {
 	 * audio device (while opened)
 	 */
 	struct dev_sio sio;
-	struct dev_siomix siomix;
+	struct dev_sioctl sioctl;
 	struct aparams par;			/* encoding */
 	int pchan, rchan;			/* play & rec channels */
 	adata_t *rbuf;				/* rec buffer */

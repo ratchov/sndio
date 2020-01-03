@@ -26,7 +26,7 @@
 #include "abuf.h"
 #include "defs.h"
 #include "dev.h"
-#include "dev_siomix.h"
+#include "dev_sioctl.h"
 #include "dsp.h"
 #include "file.h"
 #include "siofile.h"
@@ -88,11 +88,11 @@ dev_sio_timeout(void *arg)
  * open the device using one of the provided paths
  */
 static struct sio_hdl *
-dev_sio_openlist(struct dev *d, unsigned int mode, struct siomix_hdl **rmixhdl)
+dev_sio_openlist(struct dev *d, unsigned int mode, struct sioctl_hdl **rctlhdl)
 {
 	struct name *n;
 	struct sio_hdl *hdl;
-	struct siomix_hdl *mixhdl;
+	struct sioctl_hdl *ctlhdl;
 
 	n = d->path_list;
 	while (1) {
@@ -106,15 +106,15 @@ dev_sio_openlist(struct dev *d, unsigned int mode, struct siomix_hdl **rmixhdl)
 				log_puts(n->str);
 				log_puts("\n");
 			}
-			mixhdl = siomix_open(n->str,
-			    SIOMIX_READ | SIOMIX_WRITE, 0);
-			if (mixhdl == NULL) {
+			ctlhdl = sioctl_open(n->str,
+			    SIOCTL_READ | SIOCTL_WRITE, 0);
+			if (ctlhdl == NULL) {
 				if (log_level >= 1) {
 					dev_log(d);
-					log_puts(": no mixer\n");
+					log_puts(": no control device\n");
 				}
 			}
-			*rmixhdl = mixhdl;
+			*rctlhdl = ctlhdl;
 			return hdl;
 		}
 		n = n->next;
@@ -131,16 +131,16 @@ dev_sio_open(struct dev *d)
 	struct sio_par par;
 	unsigned int mode = d->mode & (MODE_PLAY | MODE_REC);
 
-	d->sio.hdl = dev_sio_openlist(d, mode, &d->siomix.hdl);
+	d->sio.hdl = dev_sio_openlist(d, mode, &d->sioctl.hdl);
 	if (d->sio.hdl == NULL) {
 		if (mode != (SIO_PLAY | SIO_REC))
 			return 0;
-		d->sio.hdl = dev_sio_openlist(d, SIO_PLAY, &d->siomix.hdl);
+		d->sio.hdl = dev_sio_openlist(d, SIO_PLAY, &d->sioctl.hdl);
 		if (d->sio.hdl != NULL)
 			mode = SIO_PLAY;
 		else {
 			d->sio.hdl = dev_sio_openlist(d,
-			    SIO_REC, &d->siomix.hdl);
+			    SIO_REC, &d->sioctl.hdl);
 			if (d->sio.hdl != NULL)
 				mode = SIO_REC;
 			else
@@ -253,13 +253,13 @@ dev_sio_open(struct dev *d)
 	sio_onmove(d->sio.hdl, dev_sio_onmove, d);
 	d->sio.file = file_new(&dev_sio_ops, d, "dev", sio_nfds(d->sio.hdl));
 	timo_set(&d->sio.watchdog, dev_sio_timeout, d);
-	dev_siomix_open(d);
+	dev_sioctl_open(d);
 	return 1;
  bad_close:
 	sio_close(d->sio.hdl);
-	if (d->siomix.hdl) {
-		siomix_close(d->siomix.hdl);
-		d->siomix.hdl = NULL;
+	if (d->sioctl.hdl) {
+		sioctl_close(d->sioctl.hdl);
+		d->sioctl.hdl = NULL;
 	}
 	return 0;
 }
@@ -272,11 +272,11 @@ dev_sio_open(struct dev *d)
 int
 dev_sio_reopen(struct dev *d)
 {
-	struct siomix_hdl *mixhdl;
+	struct sioctl_hdl *ctlhdl;
 	struct sio_par par;
 	struct sio_hdl *hdl;
 
-	hdl = dev_sio_openlist(d, d->mode & (MODE_PLAY | MODE_REC), &mixhdl);
+	hdl = dev_sio_openlist(d, d->mode & (MODE_PLAY | MODE_REC), &ctlhdl);
 	if (hdl == NULL) {
 		if (log_level >= 1) {
 			dev_log(d);
@@ -317,10 +317,10 @@ dev_sio_reopen(struct dev *d)
 	timo_del(&d->sio.watchdog);
 	file_del(d->sio.file);
 	sio_close(d->sio.hdl);
-	dev_siomix_close(d);
-	if (d->siomix.hdl) {
-		siomix_close(d->siomix.hdl);
-		d->siomix.hdl = NULL;
+	dev_sioctl_close(d);
+	if (d->sioctl.hdl) {
+		sioctl_close(d->sioctl.hdl);
+		d->sioctl.hdl = NULL;
 	}
 
 	/* update parameters */
@@ -335,21 +335,21 @@ dev_sio_reopen(struct dev *d)
 		d->rchan = par.rchan;
 
 	d->sio.hdl = hdl;
-	d->siomix.hdl = mixhdl;
+	d->sioctl.hdl = ctlhdl;
 	d->sio.file = file_new(&dev_sio_ops, d, "dev", sio_nfds(hdl));
 	sio_onmove(hdl, dev_sio_onmove, d);
 	return 1;
 bad_close:
 	sio_close(hdl);
-	if (mixhdl)
-		siomix_close(mixhdl);
+	if (ctlhdl)
+		sioctl_close(ctlhdl);
 	return 0;
 }
 
 void
 dev_sio_close(struct dev *d)
 {
-	dev_siomix_close(d);
+	dev_sioctl_close(d);
 #ifdef DEBUG
 	if (log_level >= 3) {
 		dev_log(d);
@@ -359,9 +359,9 @@ dev_sio_close(struct dev *d)
 	timo_del(&d->sio.watchdog);
 	file_del(d->sio.file);
 	sio_close(d->sio.hdl);
-	if (d->siomix.hdl) {
-		siomix_close(d->siomix.hdl);
-		d->siomix.hdl = NULL;
+	if (d->sioctl.hdl) {
+		sioctl_close(d->sioctl.hdl);
+		d->sioctl.hdl = NULL;
 	}
 }
 

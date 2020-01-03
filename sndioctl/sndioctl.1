@@ -19,7 +19,7 @@
 .Os
 .Sh NAME
 .Nm sndioctl
-.Nd control audio mixer parameters
+.Nd control audio parameters
 .Sh SYNOPSIS
 .Nm
 .Bk -words
@@ -34,7 +34,7 @@
 .Sh DESCRIPTION
 The
 .Nm
-utility can display or change mixer parameters of
+utility can display or change parameters of
 .Xr sndio 7
 audio devices.
 The options are as follows:
@@ -42,14 +42,14 @@ The options are as follows:
 .It Fl d
 Dump the raw list of available parameters and exit.
 Useful to debug device drivers or programs using the
-.Xr siomix_open 3
+.Xr sioctl_open 3
 interface.
 .It Fl f Ar device
 Use this
 .Xr sndio 7
-mixer device.
+audio device.
 .It Fl m
-Monitor and display mixer changes.
+Monitor and display audio parameters changes.
 .It Fl i
 Display characteristics of requested parameters
 instead of their values.
@@ -68,7 +68,7 @@ Unless
 or
 .Fl i
 are used, displayed parameters are valid commands.
-The set of available controls depends on the mixer device.
+The set of available controls depends on the control device.
 .Pp
 Commands use the following two formats to display and set
 parameters respectively:
@@ -137,7 +137,7 @@ Numbers are specified as discussed above.
 Note that a vector of switches is equivalent to
 a list.
 .Sh SEE ALSO
-.Xr siomix_open 3
+.Xr sioctl_open 3
 .Sh EXAMPLES
 The following will set all
 .Ar level

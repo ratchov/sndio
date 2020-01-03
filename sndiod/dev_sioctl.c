@@ -27,29 +27,29 @@
 #include "dev.h"
 #include "dsp.h"
 #include "file.h"
-#include "dev_siomix.h"
+#include "dev_sioctl.h"
 #include "utils.h"
 #include "bsd-compat.h"
 
-void dev_siomix_ondesc(void *, struct siomix_desc *, int);
-void dev_siomix_onctl(void *, unsigned int, unsigned int);
-int dev_siomix_pollfd(void *, struct pollfd *);
-int dev_siomix_revents(void *, struct pollfd *);
-void dev_siomix_in(void *);
-void dev_siomix_out(void *);
-void dev_siomix_hup(void *);
+void dev_sioctl_ondesc(void *, struct sioctl_desc *, int);
+void dev_sioctl_onctl(void *, unsigned int, unsigned int);
+int dev_sioctl_pollfd(void *, struct pollfd *);
+int dev_sioctl_revents(void *, struct pollfd *);
+void dev_sioctl_in(void *);
+void dev_sioctl_out(void *);
+void dev_sioctl_hup(void *);
 
-struct fileops dev_siomix_ops = {
-	"siomix",
-	dev_siomix_pollfd,
-	dev_siomix_revents,
-	dev_siomix_in,
-	dev_siomix_out,
-	dev_siomix_hup
+struct fileops dev_sioctl_ops = {
+	"sioctl",
+	dev_sioctl_pollfd,
+	dev_sioctl_revents,
+	dev_sioctl_in,
+	dev_sioctl_out,
+	dev_sioctl_hup
 };
 
 void
-dev_siomix_ondesc(void *arg, struct siomix_desc *desc, int val)
+dev_sioctl_ondesc(void *arg, struct sioctl_desc *desc, int val)
 {
 	struct dev *d = arg;
 	int addr;
@@ -65,7 +65,7 @@ dev_siomix_ondesc(void *arg, struct siomix_desc *desc, int val)
 }
 
 void
-dev_siomix_onctl(void *arg, unsigned int addr, unsigned int val)
+dev_sioctl_onctl(void *arg, unsigned int addr, unsigned int val)
 {
 	struct dev *d = arg;
 	struct ctl *c;
@@ -92,32 +92,32 @@ dev_siomix_onctl(void *arg, unsigned int addr, unsigned int val)
 }
 
 /*
- * open the mixer device.
+ * open the control device.
  */
 void
-dev_siomix_open(struct dev *d)
+dev_sioctl_open(struct dev *d)
 {
-	if (d->siomix.hdl == NULL)
+	if (d->sioctl.hdl == NULL)
 		return;
-	siomix_ondesc(d->siomix.hdl, dev_siomix_ondesc, d);
-	siomix_onctl(d->siomix.hdl, dev_siomix_onctl, d);
-	d->siomix.file = file_new(&dev_siomix_ops, d, "mix",
-	    siomix_nfds(d->siomix.hdl));
+	sioctl_ondesc(d->sioctl.hdl, dev_sioctl_ondesc, d);
+	sioctl_onctl(d->sioctl.hdl, dev_sioctl_onctl, d);
+	d->sioctl.file = file_new(&dev_sioctl_ops, d, "mix",
+	    sioctl_nfds(d->sioctl.hdl));
 }
 
 /*
- * close the mixer device.
+ * close the control device.
  */
 void
-dev_siomix_close(struct dev *d)
+dev_sioctl_close(struct dev *d)
 {
-	if (d->siomix.hdl == NULL)
+	if (d->sioctl.hdl == NULL)
 		return;
-	file_del(d->siomix.file);
+	file_del(d->sioctl.file);
 }
 
 int
-dev_siomix_pollfd(void *arg, struct pollfd *pfd)
+dev_sioctl_pollfd(void *arg, struct pollfd *pfd)
 {
 	struct dev *d = arg;
 	struct ctl *c;
@@ -127,31 +127,31 @@ dev_siomix_pollfd(void *arg, struct pollfd *pfd)
 		if (c->dirty)
 			events |= POLLOUT;
 	}
-	return siomix_pollfd(d->siomix.hdl, pfd, events);
+	return sioctl_pollfd(d->sioctl.hdl, pfd, events);
 }
 
 int
-dev_siomix_revents(void *arg, struct pollfd *pfd)
+dev_sioctl_revents(void *arg, struct pollfd *pfd)
 {
 	struct dev *d = arg;
 
-	return siomix_revents(d->siomix.hdl, pfd);
+	return sioctl_revents(d->sioctl.hdl, pfd);
 }
 
 void
-dev_siomix_in(void *arg)
+dev_sioctl_in(void *arg)
 {
 }
 
 void
-dev_siomix_out(void *arg)
+dev_sioctl_out(void *arg)
 {
 	struct dev *d = arg;
 	struct ctl *c;
 	int cnt;
 
 	/*
-	 * for each dirty ctl, call siomix_setctl() and dev_unref(). As
+	 * for each dirty ctl, call sioctl_setctl() and dev_unref(). As
 	 * dev_unref() may destroy the ctl_list, we must call it after
 	 * we've finished iterating on it.
 	 */
@@ -159,7 +159,7 @@ dev_siomix_out(void *arg)
 	for (c = d->ctl_list; c != NULL; c = c->next) {
 		if (!c->dirty)
 			continue;
-		if (!siomix_setctl(d->siomix.hdl,
+		if (!sioctl_setctl(d->sioctl.hdl,
 			c->addr - CTLADDR_END, c->curval)) {
 			ctl_log(c);
 			log_puts(": set failed\n");
@@ -177,9 +177,9 @@ dev_siomix_out(void *arg)
 }
 
 void
-dev_siomix_hup(void *arg)
+dev_sioctl_hup(void *arg)
 {
 	struct dev *d = arg;
 
-	dev_siomix_close(d);
+	dev_sioctl_close(d);
 }

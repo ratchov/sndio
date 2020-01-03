@@ -14,19 +14,19 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#ifndef DEV_SIOMIX_H
-#define DEV_SIOMIX_H
+#ifndef DEV_SIOCTL_H
+#define DEV_SIOCTL_H
 
 #include "file.h"
 
 struct dev;
 
-struct dev_siomix {
-	struct siomix_hdl *hdl;
+struct dev_sioctl {
+	struct sioctl_hdl *hdl;
 	struct file *file;
 };
 
-void dev_siomix_open(struct dev *);
-void dev_siomix_close(struct dev *);
+void dev_sioctl_open(struct dev *);
+void dev_sioctl_close(struct dev *);
 
-#endif /* !defined(DEV_SIOMIX_H) */
+#endif /* !defined(DEV_SIOCTL_H) */

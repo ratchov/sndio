@@ -45,9 +45,7 @@
 /*
  * limits
  */
-#define AMSG_MIX_NAMEMAX	16	/* max name length */
-#define AMSG_MIX_INTMAX		127	/* max channel number */
-#define AMSG_MIX_HALF		64	/* also bool threshold */
+#define AMSG_CTL_NAMEMAX	16	/* max name length */
 
 /*
  * WARNING: since the protocol may be simultaneously used by static
@@ -71,9 +69,9 @@ struct amsg {
 #define AMSG_HELLO	10	/* say hello, check versions and so ... */
 #define AMSG_BYE	11	/* ask server to drop connection */
 #define AMSG_AUTH	12	/* send authentication cookie */
-#define AMSG_MIXSUB	13	/* ondesc/onctl subscription */
-#define AMSG_MIXSET	14	/* set mixer control value */
-#define AMSG_MIXSYNC	15	/* end of mixer description */
+#define AMSG_CTLSUB	13	/* ondesc/onctl subscription */
+#define AMSG_CTLSET	14	/* set control value */
+#define AMSG_CTLSYNC	15	/* end of controls descriptions */
 	uint32_t cmd;
 	uint32_t __pad;
 	union {
@@ -118,20 +116,20 @@ struct amsg {
 #define AMSG_COOKIELEN	16
 			uint8_t cookie[AMSG_COOKIELEN];
 		} auth;
-		struct amsg_mixsub {
+		struct amsg_ctlsub {
 			uint8_t desc, val;
-		} mixsub;
-		struct amsg_mixset {
+		} ctlsub;
+		struct amsg_ctlset {
 			uint16_t addr, val;
-		} mixset;
+		} ctlset;
 	} u;
 };
 
 /*
  * subset of channels of a stream
  */
-struct amsg_mix_chan {
-	char str[AMSG_MIX_NAMEMAX];	/* stream name */
+struct amsg_ctl_chan {
+	char str[AMSG_CTL_NAMEMAX];	/* stream name */
 	int16_t unit;			/* stream number */
 	uint8_t __pad[2];
 };
@@ -139,12 +137,12 @@ struct amsg_mix_chan {
 /*
  * description of a control (index, value) pair
  */
-struct amsg_mix_desc {
-	struct amsg_mix_chan group;	/* group of the control */
-	struct amsg_mix_chan chan0;	/* affected channels */
-	struct amsg_mix_chan chan1;	/* dito for AMSG_MIX_{SEL,VEC,LIST} */
-	char func[AMSG_MIX_NAMEMAX];	/* parameter function name */
-	uint8_t type;			/* see siomix_desc structure */
+struct amsg_ctl_desc {
+	struct amsg_ctl_chan group;	/* group of the control */
+	struct amsg_ctl_chan chan0;	/* affected channels */
+	struct amsg_ctl_chan chan1;	/* dito for AMSG_CTL_{SEL,VEC,LIST} */
+	char func[AMSG_CTL_NAMEMAX];	/* parameter function name */
+	uint8_t type;			/* see sioctl_desc structure */
 	uint8_t __pad1[1];
 	uint16_t addr;			/* control address */
 	uint16_t __pad2[1];

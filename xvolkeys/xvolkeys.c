@@ -43,8 +43,8 @@
 
 char *dev_name;
 struct pollfd pfds[16];
-struct siomix_hdl *hdl;
-unsigned int master_addr, master_val = SIOMIX_INTMAX;
+struct sioctl_hdl *hdl;
+unsigned int master_addr, master_val = SIOCTL_INTMAX;
 int master_found = 0;
 int verbose;
 
@@ -59,7 +59,7 @@ KeySym *inc_map, *dec_map;
  * new control
  */
 static void
-mixer_ondesc(void *unused, struct siomix_desc *desc, int val)
+dev_ondesc(void *unused, struct sioctl_desc *desc, int val)
 {
 	if (desc == NULL)
 		return;
@@ -80,7 +80,7 @@ mixer_ondesc(void *unused, struct siomix_desc *desc, int val)
  * control value changed
  */
 static void
-mixer_onctl(void *unused, unsigned int addr, unsigned int val)
+dev_onctl(void *unused, unsigned int addr, unsigned int val)
 {
 	if (addr == master_addr) {
 		if (verbose)
@@ -93,13 +93,13 @@ mixer_onctl(void *unused, unsigned int addr, unsigned int val)
  * if there's an error, close connection to sndiod
  */
 static void
-mixer_disconnect(void)
+dev_disconnect(void)
 {
-	if (!siomix_eof(hdl))
+	if (!sioctl_eof(hdl))
 		return;
 	if (verbose)
-		fprintf(stderr, "%s: mixer device disconnected\n", dev_name);
-	siomix_close(hdl);
+		fprintf(stderr, "%s: dev device disconnected\n", dev_name);
+	sioctl_close(hdl);
 	hdl = NULL;
 }
 
@@ -107,20 +107,20 @@ mixer_disconnect(void)
  * connect to sndiod
  */
 static int
-mixer_connect(void)
+dev_connect(void)
 {
 	if (hdl != NULL)
 		return 1;
-	hdl = siomix_open(dev_name, SIOMIX_READ | SIOMIX_WRITE, 0);
+	hdl = sioctl_open(dev_name, SIOCTL_READ | SIOCTL_WRITE, 0);
 	if (hdl == NULL) {
 		if (verbose)
-			fprintf(stderr, "%s: couldn't open mixer device\n",
+			fprintf(stderr, "%s: couldn't open dev device\n",
 			    dev_name);
 		return 0;
 	}
 	master_found = 0;
-	siomix_ondesc(hdl, mixer_ondesc, NULL);
-	siomix_onctl(hdl, mixer_onctl, NULL);
+	sioctl_ondesc(hdl, dev_ondesc, NULL);
+	sioctl_onctl(hdl, dev_onctl, NULL);
 	if (!master_found)
 		fprintf(stderr, "%s: warning, couldn't find master control\n",
 		    dev_name);
@@ -131,15 +131,15 @@ mixer_connect(void)
  * send master volume message and to the server
  */
 static void
-mixer_incrvol(int incr)
+dev_incrvol(int incr)
 {
 	int vol;
 
-	if (!mixer_connect())
+	if (!dev_connect())
 		return;
 	vol = master_val + incr;
-	if (vol > SIOMIX_INTMAX)
-		vol = SIOMIX_INTMAX;
+	if (vol > SIOCTL_INTMAX)
+		vol = SIOCTL_INTMAX;
 	if (vol < 0)
 		vol = 0;
 	if (master_val != (unsigned int)vol) {
@@ -149,8 +149,8 @@ mixer_incrvol(int incr)
 				fprintf(stderr, "%s: setting volume to %d\n",
 				    dev_name, vol);
 			}
-			siomix_setctl(hdl, master_addr, master_val);
-			mixer_disconnect();
+			sioctl_setctl(hdl, master_addr, master_val);
+			dev_disconnect();
 		}
 	}
 }
@@ -226,7 +226,7 @@ main(int argc, char **argv)
 	/*
 	 * parse command line options
 	 */
-	dev_name = SIOMIX_DEVANY;
+	dev_name = SIOCTL_DEVANY;
 	verbose = 0;
 	background = 0;
 	while ((c = getopt(argc, argv, "Df:q:v")) != -1) {
@@ -262,7 +262,7 @@ main(int argc, char **argv)
 	for (scr = 0; scr != ScreenCount(dpy); scr++)
 		XSelectInput(dpy, RootWindow(dpy, scr), KeyPress);
 
-	(void)mixer_connect();
+	(void)dev_connect();
 
 	grab_keys();
 
@@ -289,21 +289,21 @@ main(int argc, char **argv)
 				continue;
 			if (xev.xkey.keycode == inc_code &&
 			    inc_map[xev.xkey.state & ShiftMask] == KEY_INC) {
-				mixer_incrvol(VOL_INC);
+				dev_incrvol(VOL_INC);
 			} else if (xev.xkey.keycode == dec_code &&
 			    dec_map[xev.xkey.state & ShiftMask] == KEY_DEC) {
-				mixer_incrvol(-VOL_INC);
+				dev_incrvol(-VOL_INC);
 			}
 		}
-		nfds = (hdl != NULL) ? siomix_pollfd(hdl, pfds, 0) : 0;
+		nfds = (hdl != NULL) ? sioctl_pollfd(hdl, pfds, 0) : 0;
 		pfds[nfds].fd = ConnectionNumber(dpy);
 		pfds[nfds].events = POLLIN;
 		while (poll(pfds, nfds + 1, -1) < 0 && errno == EINTR)
 			; /* nothing */
 		if (hdl) {
-			revents = siomix_revents(hdl, pfds);
+			revents = sioctl_revents(hdl, pfds);
 			if (revents & POLLHUP)
-				mixer_disconnect();
+				dev_disconnect();
 			else if (revents & POLLIN) {
 				/* what */
 			}
@@ -313,6 +313,6 @@ main(int argc, char **argv)
 	XFree(dec_map);
 	XCloseDisplay(dpy);
 	if (hdl)
-		siomix_close(hdl);
+		sioctl_close(hdl);
 	return 0;
 }

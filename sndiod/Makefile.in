@@ -44,7 +44,7 @@ clean:
 # ---------------------------------------------------------- dependencies ---
 
 OBJS = \
-abuf.o utils.o dev.o dev_siomix.o dsp.o file.o listen.o midi.o miofile.o \
+abuf.o utils.o dev.o dev_sioctl.o dsp.o file.o listen.o midi.o miofile.o \
 opt.o siofile.o sndiod.o sock.o
 
 sndiod:		${OBJS}
@@ -56,7 +56,7 @@ sndiod:		${OBJS}
 abuf.o:		abuf.c abuf.h utils.h
 dev.o:		dev.c ../bsd-compat/bsd-compat.h abuf.h defs.h dev.h \
 		dsp.h siofile.h file.h midi.h miofile.h sysex.h utils.h
-dev_siomix.o:	dev_siomix.c abuf.h defs.h dev.h dsp.h siofile.h file.h \
+dev_sioctl.o:	dev_sioctl.c abuf.h defs.h dev.h dsp.h siofile.h file.h \
 		utils.h
 dsp.o:		dsp.c dsp.h defs.h utils.h
 file.o:		file.c file.h utils.h

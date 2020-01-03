@@ -823,9 +823,9 @@ sock_hello(struct sock *f)
 	case MODE_REC:
 	case MODE_PLAY:
 	case MODE_PLAY | MODE_REC:
-	case MODE_MIXREAD:
-	case MODE_MIXWRITE:
-	case MODE_MIXREAD | MODE_MIXWRITE:
+	case MODE_CTLREAD:
+	case MODE_CTLWRITE:
+	case MODE_CTLREAD | MODE_CTLWRITE:
 		break;
 	default:
 #ifdef DEBUG
@@ -863,7 +863,7 @@ sock_hello(struct sock *f)
 			return 0;
 		return 1;
 	}
-	if (mode & MODE_MIXMASK) {
+	if (mode & MODE_CTLMASK) {
 		d = dev_bynum(p->devnum);
 		if (d == NULL) {
 			if (log_level >= 2) {
@@ -883,7 +883,7 @@ sock_hello(struct sock *f)
 			return 0;
 		}
 		f->ctldesc = xmalloc(SOCK_CTLDESC_SIZE *
-		    sizeof(struct amsg_mix_desc));
+		    sizeof(struct amsg_ctl_desc));
 		f->ctlops = 0;
 		f->ctlsyncpending = 0;
 		return 1;
@@ -1208,14 +1208,14 @@ sock_execmsg(struct sock *f)
 		dev_onctl(s->dev,
 		    CTLADDR_SLOT_LEVEL(f->slot - s->dev->slot), ctl);
 		break;
-	case AMSG_MIXSUB:
+	case AMSG_CTLSUB:
 #ifdef DEBUG
 		if (log_level >= 3) {
 			sock_log(f);
-			log_puts(": MIXSUB message, desc = ");
-			log_putx(m->u.mixsub.desc);
+			log_puts(": CTLSUB message, desc = ");
+			log_putx(m->u.ctlsub.desc);
 			log_puts(", val = ");
-			log_putx(m->u.mixsub.val);
+			log_putx(m->u.ctlsub.val);
 			log_puts("\n");
 		}
 #endif
@@ -1223,13 +1223,13 @@ sock_execmsg(struct sock *f)
 #ifdef DEBUG
 			if (log_level >= 1) {
 				sock_log(f);
-				log_puts(": MIXSUB, wrong state\n");
+				log_puts(": CTLSUB, wrong state\n");
 			}
 #endif
 			sock_close(f);
 			return 0;
 		}
-		if (m->u.mixsub.desc) {
+		if (m->u.ctlsub.desc) {
 			if (!(f->ctlops & SOCK_CTLDESC)) {
 				ctl = f->ctlslot->mask;
 				c = f->ctlslot->dev->ctl_list;
@@ -1242,37 +1242,37 @@ sock_execmsg(struct sock *f)
 			f->ctlsyncpending = 1;
 		} else
 			f->ctlops &= ~SOCK_CTLDESC;
-		if (m->u.mixsub.val) {
+		if (m->u.ctlsub.val) {
 			f->ctlops |= SOCK_CTLVAL;
 		} else
 			f->ctlops &= ~SOCK_CTLVAL;
 		f->rstate = SOCK_RMSG;
 		f->rtodo = sizeof(struct amsg);
 		break;
-	case AMSG_MIXSET:
+	case AMSG_CTLSET:
 #ifdef DEBUG
 		if (log_level >= 3) {
 			sock_log(f);
-			log_puts(": MIXSET message\n");
+			log_puts(": CTLSET message\n");
 		}
 #endif
 		if (f->pstate < SOCK_INIT || f->ctlslot == NULL) {
 #ifdef DEBUG
 			if (log_level >= 1) {
 				sock_log(f);
-				log_puts(": MIXSET, wrong state\n");
+				log_puts(": CTLSET, wrong state\n");
 			}
 #endif
 			sock_close(f);
 			return 0;
 		}
 		if (!dev_setctl(f->ctlslot->dev,
-			ntohs(m->u.mixset.addr),
-			ntohs(m->u.mixset.val))) {
+			ntohs(m->u.ctlset.addr),
+			ntohs(m->u.ctlset.val))) {
 #ifdef DEBUG
 			if (log_level >= 1) {
 				sock_log(f);
-				log_puts(": MIXSET, wrong addr/val\n");
+				log_puts(": CTLSET, wrong addr/val\n");
 			}
 #endif
 			sock_close(f);
@@ -1369,7 +1369,7 @@ int
 sock_buildmsg(struct sock *f)
 {
 	unsigned int size, mask;
-	struct amsg_mix_desc *desc;
+	struct amsg_ctl_desc *desc;
 	struct ctl *c, **pc;
 
 	/*
@@ -1528,24 +1528,24 @@ sock_buildmsg(struct sock *f)
 				continue;
 			}
 			if (size == SOCK_CTLDESC_SIZE *
-				sizeof(struct amsg_mix_desc))
+				sizeof(struct amsg_ctl_desc))
 				break;
 			c->desc_mask &= ~mask;
 			c->val_mask &= ~mask;
 			strlcpy(desc->group.str, c->group.str,
-			    AMSG_MIX_NAMEMAX);
+			    AMSG_CTL_NAMEMAX);
 			desc->group.unit = ntohs(c->group.unit);
 			strlcpy(desc->chan0.str, c->chan0.str,
-			    AMSG_MIX_NAMEMAX);
+			    AMSG_CTL_NAMEMAX);
 			desc->chan0.unit = ntohs(c->chan0.unit);
 			strlcpy(desc->chan1.str, c->chan1.str,
-			    AMSG_MIX_NAMEMAX);
+			    AMSG_CTL_NAMEMAX);
 			desc->chan1.unit = ntohs(c->chan1.unit);
 			desc->type = c->type;
-			strlcpy(desc->func, c->func, AMSG_MIX_NAMEMAX);
+			strlcpy(desc->func, c->func, AMSG_CTL_NAMEMAX);
 			desc->addr = htons(c->addr);
 			desc->curval = htons(c->curval);
-			size += sizeof(struct amsg_mix_desc);
+			size += sizeof(struct amsg_ctl_desc);
 			desc++;
 
 			/* if this is a deleted entry unref it */
@@ -1569,7 +1569,7 @@ sock_buildmsg(struct sock *f)
 #ifdef DEBUG
 			if (log_level >= 3) {
 				sock_log(f);
-				log_puts(": building mixer DATA message\n");
+				log_puts(": building control DATA message\n");
 			}
 #endif
 			return 1;
@@ -1582,15 +1582,15 @@ sock_buildmsg(struct sock *f)
 				continue;
 			c->val_mask &= ~mask;
 			AMSG_INIT(&f->wmsg);
-			f->wmsg.cmd = htonl(AMSG_MIXSET);
-			f->wmsg.u.mixset.addr = htons(c->addr);
-			f->wmsg.u.mixset.val = htons(c->curval);
+			f->wmsg.cmd = htonl(AMSG_CTLSET);
+			f->wmsg.u.ctlset.addr = htons(c->addr);
+			f->wmsg.u.ctlset.val = htons(c->curval);
 			f->wtodo = sizeof(struct amsg);
 			f->wstate = SOCK_WMSG;
 #ifdef DEBUG
 			if (log_level >= 3) {
 				sock_log(f);
-				log_puts(": building mixer MIXSET message\n");
+				log_puts(": building CTLSET message\n");
 			}
 #endif
 			return 1;
@@ -1598,13 +1598,13 @@ sock_buildmsg(struct sock *f)
 	}
 	if (f->ctlslot && f->ctlsyncpending) {
 		f->ctlsyncpending = 0;
-		f->wmsg.cmd = htonl(AMSG_MIXSYNC);
+		f->wmsg.cmd = htonl(AMSG_CTLSYNC);
 		f->wtodo = sizeof(struct amsg);
 		f->wstate = SOCK_WMSG;
 #ifdef DEBUG
 		if (log_level >= 3) {
 			sock_log(f);
-			log_puts(": building mixer MIXSYNC message\n");
+			log_puts(": building CTLSYNC message\n");
 		}
 #endif
 		return 1;

@@ -1314,7 +1314,7 @@ dev_reopen(struct dev *d)
 	}
 
 	/* add new device controls */
-	dev_siomix_open(d);
+	dev_sioctl_open(d);
 
 	/* start the device if needed */
 	if (pstate == DEV_RUN)

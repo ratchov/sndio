@@ -28,7 +28,7 @@
 
 struct info {
 	struct info *next;
-	struct siomix_desc desc;
+	struct sioctl_desc desc;
 	unsigned ctladdr;
 #define MODE_IGNORE	0	/* ignore this value */
 #define MODE_PRINT	1	/* print-only, don't change value */
@@ -40,7 +40,7 @@ struct info {
 	int curval, newval;
 };
 
-int cmpdesc(struct siomix_desc *, struct siomix_desc *);
+int cmpdesc(struct sioctl_desc *, struct sioctl_desc *);
 int isdiag(struct info *);
 struct info *selpos(struct info *);
 struct info *vecent(struct info *, char *, int);
@@ -51,7 +51,7 @@ struct info *nextent(struct info *, int);
 int matchpar(struct info *, char *, int);
 int matchent(struct info *, char *, int);
 int ismono(struct info *);
-void print_chan(struct siomix_chan *, int);
+void print_chan(struct sioctl_chan *, int);
 void print_desc(struct info *, int);
 void print_val(struct info *, int);
 void print_par(struct info *, int, char *);
@@ -63,18 +63,18 @@ void dump(void);
 int cmd(char *);
 void commit(void);
 void list(void);
-void ondesc(void *, struct siomix_desc *, int);
+void ondesc(void *, struct sioctl_desc *, int);
 void onctl(void *, unsigned, unsigned);
 
-struct siomix_hdl *hdl;
+struct sioctl_hdl *hdl;
 struct info *infolist;
 int i_flag = 0, v_flag = 0, m_flag = 0;
 
 /*
- * compare two siomix_desc structures, used to sort infolist
+ * compare two sioctl_desc structures, used to sort infolist
  */
 int
-cmpdesc(struct siomix_desc *d1, struct siomix_desc *d2)
+cmpdesc(struct sioctl_desc *d1, struct sioctl_desc *d2)
 {
 	int res;
 
@@ -94,8 +94,8 @@ cmpdesc(struct siomix_desc *d1, struct siomix_desc *d2)
 	if (res != 0)
 		return res;
 	res = d1->chan0.unit - d2->chan0.unit;
-	if (d1->type == SIOMIX_VEC ||
-	    d1->type == SIOMIX_LIST) {
+	if (d1->type == SIOCTL_VEC ||
+	    d1->type == SIOCTL_LIST) {
 		if (res != 0)
 			return res;
 		res = strcmp(d1->chan1.str, d2->chan1.str);
@@ -128,7 +128,7 @@ selpos(struct info *i)
 			return i;
 		i = i->next;
 	}
-	fprintf(stderr, "selpos: not found, bogus mixer\n");
+	fprintf(stderr, "selpos: not found, bogus control\n");
 	abort();
 }
 
@@ -284,15 +284,15 @@ ismono(struct info *g)
 
 	p1 = g;
 	switch (g->desc.type) {
-	case SIOMIX_NUM:
-	case SIOMIX_SW:
+	case SIOCTL_NUM:
+	case SIOCTL_SW:
 		for (p2 = g; p2 != NULL; p2 = nextpar(p2)) {
 			if (p2->curval != p1->curval)
 				return 0;
 		}
 		break;
-	case SIOMIX_VEC:
-	case SIOMIX_LIST:
+	case SIOCTL_VEC:
+	case SIOCTL_LIST:
 		for (p2 = g; p2 != NULL; p2 = nextpar(p2)) {
 			for (e2 = p2; e2 != NULL; e2 = nextent(e2, 0)) {
 				if (!isdiag(e2)) {
@@ -318,7 +318,7 @@ ismono(struct info *g)
  * print a sub-stream, eg. "spkr[4-7]"
  */
 void
-print_chan(struct siomix_chan *c, int mono)
+print_chan(struct sioctl_chan *c, int mono)
 {
 	printf("%s", c->str);
 	if (!mono && c->unit >= 0) {
@@ -336,12 +336,12 @@ print_desc(struct info *p, int mono)
 	int more;
 
 	switch (p->desc.type) {
-	case SIOMIX_NUM:
-	case SIOMIX_SW:
+	case SIOCTL_NUM:
+	case SIOCTL_SW:
 		printf("*");
 		break;
-	case SIOMIX_VEC:
-	case SIOMIX_LIST:
+	case SIOCTL_VEC:
+	case SIOCTL_LIST:
 		more = 0;
 		for (e = p; e != NULL; e = nextent(e, mono)) {
 			if (mono) {
@@ -369,12 +369,12 @@ print_val(struct info *p, int mono)
 	int more;
 
 	switch (p->desc.type) {
-	case SIOMIX_NUM:
-	case SIOMIX_SW:
+	case SIOCTL_NUM:
+	case SIOCTL_SW:
 		printf("%u", p->curval);
 		break;
-	case SIOMIX_VEC:
-	case SIOMIX_LIST:
+	case SIOCTL_VEC:
+	case SIOCTL_LIST:
 		more = 0;
 		for (e = p; e != NULL; e = nextent(e, mono)) {
 			if (mono) {
@@ -429,8 +429,8 @@ parse_name(char **line, char *name)
 		return 0;
 	}
 	while (IS_IDENT(*p)) {
-		if (len >= SIOMIX_NAMEMAX - 1) {
-			name[SIOMIX_NAMEMAX - 1] = '\0';
+		if (len >= SIOCTL_NAMEMAX - 1) {
+			name[SIOCTL_NAMEMAX - 1] = '\0';
 			fprintf(stderr, "%s...: too long\n", name);
 			return 0;
 		}
@@ -448,8 +448,8 @@ parse_name(char **line, char *name)
 int
 parse_dec(char **line, int *num)
 {
-#define MAXQ 	(SIOMIX_INTMAX / 10)
-#define MAXR 	(SIOMIX_INTMAX % 10)
+#define MAXQ 	(SIOCTL_INTMAX / 10)
+#define MAXR 	(SIOCTL_INTMAX % 10)
 	char *p = *line;
 	unsigned int dig, val;
 
@@ -530,7 +530,7 @@ parse_modeval(char **line, int *rmode, int *rval)
 }
 
 /*
- * dump the whole mixer, useful for debugging
+ * dump the whole controls list, useful for debugging
  */
 void
 dump(void)
@@ -543,12 +543,12 @@ dump(void)
 		printf(".%s", i->desc.func);
 		printf("=");
 		switch (i->desc.type) {
-		case SIOMIX_NUM:
-		case SIOMIX_SW:
+		case SIOCTL_NUM:
+		case SIOCTL_SW:
 			printf("* (%u)", i->curval);
 			break;
-		case SIOMIX_VEC:
-		case SIOMIX_LIST:
+		case SIOCTL_VEC:
+		case SIOCTL_LIST:
 			print_chan(&i->desc.chan1, 0);
 			printf(":* (%u)", i->curval);
 		}
@@ -564,7 +564,7 @@ cmd(char *line)
 {
 	char *pos = line;
 	struct info *i, *e, *g;
-	char func[SIOMIX_NAMEMAX], astr[SIOMIX_NAMEMAX], vstr[SIOMIX_NAMEMAX];
+	char func[SIOCTL_NAMEMAX], astr[SIOCTL_NAMEMAX], vstr[SIOCTL_NAMEMAX];
 	int aunit, vunit;
 	unsigned npar = 0, nent = 0;
 	int val, comma, mode;
@@ -602,8 +602,8 @@ cmd(char *line)
 	}
 	npar = 0;
 	switch (g->desc.type) {
-	case SIOMIX_NUM:
-	case SIOMIX_SW:
+	case SIOCTL_NUM:
+	case SIOCTL_SW:
 		if (!parse_modeval(&pos, &mode, &val))
 			return 0;
 		for (i = g; i != NULL; i = nextpar(i)) {
@@ -614,8 +614,8 @@ cmd(char *line)
 			npar++;
 		}
 		break;
-	case SIOMIX_VEC:
-	case SIOMIX_LIST:
+	case SIOCTL_VEC:
+	case SIOCTL_LIST:
 		for (i = g; i != NULL; i = nextpar(i)) {
 			if (!matchpar(i, astr, aunit))
 				continue;
@@ -641,7 +641,7 @@ cmd(char *line)
 				if (!parse_modeval(&pos, &mode, &val))
 					return 0;
 			} else {
-				val = SIOMIX_INTMAX;
+				val = SIOCTL_INTMAX;
 				mode = MODE_SET;
 			}
 			nent = 0;
@@ -677,7 +677,7 @@ cmd(char *line)
 }
 
 /*
- * write on the mixer device entries with the ``set'' flag
+ * write the controls with the ``set'' flag on the device
  */
 void
 commit(void)
@@ -696,8 +696,8 @@ commit(void)
 			break;
 		case MODE_ADD:
 			val = i->curval + i->newval;
-			if (val > SIOMIX_INTMAX)
-				val = SIOMIX_INTMAX;
+			if (val > SIOCTL_INTMAX)
+				val = SIOCTL_INTMAX;
 			break;
 		case MODE_SUB:
 			val = i->curval - i->newval;
@@ -705,16 +705,16 @@ commit(void)
 				val = 0;
 			break;
 		case MODE_TOGGLE:
-			val = (i->curval >= SIOMIX_HALF) ? 0 : SIOMIX_INTMAX;
+			val = (i->curval >= SIOCTL_HALF) ? 0 : SIOCTL_INTMAX;
 		}
 		switch (i->desc.type) {
-		case SIOMIX_NUM:
-		case SIOMIX_SW:
-			siomix_setctl(hdl, i->ctladdr, val);
+		case SIOCTL_NUM:
+		case SIOCTL_SW:
+			sioctl_setctl(hdl, i->ctladdr, val);
 			break;
-		case SIOMIX_VEC:
-		case SIOMIX_LIST:
-			siomix_setctl(hdl, i->ctladdr, val);
+		case SIOCTL_VEC:
+		case SIOCTL_LIST:
+			sioctl_setctl(hdl, i->ctladdr, val);
 		}
 		i->curval = val;
 	}
@@ -753,7 +753,7 @@ list(void)
  * existing label widged rather than inserting a new one.
  */
 void
-ondesc(void *arg, struct siomix_desc *d, int curval)
+ondesc(void *arg, struct sioctl_desc *d, int curval)
 {
 	struct info *i, **pi;
 	int cmp;
@@ -774,7 +774,7 @@ ondesc(void *arg, struct siomix_desc *d, int curval)
 		}
 	}
 
-	if (d->type == SIOMIX_NONE)
+	if (d->type == SIOCTL_NONE)
 		return;
 
 	/*
@@ -783,7 +783,7 @@ ondesc(void *arg, struct siomix_desc *d, int curval)
 	for (pi = &infolist; (i = *pi) != NULL; pi = &i->next) {
 		cmp = cmpdesc(d, &i->desc);
 		if (cmp == 0) {
-			fprintf(stderr, "fatal: duplicate mixer knob:\n");
+			fprintf(stderr, "fatal: duplicate control:\n");
 			print_par(i, 0, "duplicate");
 			exit(1);
 		}
@@ -825,7 +825,7 @@ onctl(void *arg, unsigned addr, unsigned val)
 int
 main(int argc, char **argv)
 {
-	char *devname = SIOMIX_DEVANY;
+	char *devname = SIOCTL_DEVANY;
 	int i, c, d_flag = 0;
 	struct info *g;
 	struct pollfd *pfds;
@@ -857,16 +857,16 @@ main(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
-	hdl = siomix_open(devname, SIOMIX_READ | SIOMIX_WRITE, 0);
+	hdl = sioctl_open(devname, SIOCTL_READ | SIOCTL_WRITE, 0);
 	if (hdl == NULL) {
-		fprintf(stderr, "%s: can't open mixer device\n", devname);
+		fprintf(stderr, "%s: can't open control device\n", devname);
 		exit(1);
 	}
-	if (!siomix_ondesc(hdl, ondesc, NULL)) {
-		fprintf(stderr, "%s: can't get mixer description\n", devname);
+	if (!sioctl_ondesc(hdl, ondesc, NULL)) {
+		fprintf(stderr, "%s: can't get device description\n", devname);
 		exit(1);
 	}
-	siomix_onctl(hdl, onctl, NULL);
+	sioctl_onctl(hdl, onctl, NULL);
 
 	if (d_flag) {
 		if (argc > 0) {
@@ -889,13 +889,13 @@ main(int argc, char **argv)
 		list();
 	}
 	if (m_flag) {
-		pfds = malloc(sizeof(struct pollfd) * siomix_nfds(hdl));
+		pfds = malloc(sizeof(struct pollfd) * sioctl_nfds(hdl));
 		if (pfds == NULL) {
 			perror("malloc");
 			exit(1);
 		}
 		for (;;) {
-			nfds = siomix_pollfd(hdl, pfds, POLLIN);
+			nfds = sioctl_pollfd(hdl, pfds, POLLIN);
 			if (nfds == 0)
 				break;
 			while (poll(pfds, nfds, -1) < 0) {
@@ -904,7 +904,7 @@ main(int argc, char **argv)
 					exit(1);
 				}
 			}
-			revents = siomix_revents(hdl, pfds);
+			revents = sioctl_revents(hdl, pfds);
 			if (revents & POLLHUP) {
 				fprintf(stderr, "disconnected\n");
 				break;
@@ -912,6 +912,6 @@ main(int argc, char **argv)
 		}
 		free(pfds);
 	}
-	siomix_close(hdl);
+	sioctl_close(hdl);
 	return 0;
 }

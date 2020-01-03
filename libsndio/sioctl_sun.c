@@ -15,7 +15,7 @@
  */
 /*
  * the way the sun mixer is designed doesn't let us representing
- * it easily with the siomix api. For now expose only few
+ * it easily with the sioctl api. For now expose only few
  * white-listed controls the same way as we do in kernel
  * for the wskbd volume keys.
  */
@@ -34,7 +34,7 @@
 #include <unistd.h>
 
 #include "debug.h"
-#include "siomix_priv.h"
+#include "sioctl_priv.h"
 #include "bsd-compat.h"
 
 #define DEVPATH_PREFIX	"/dev/mixer"
@@ -42,8 +42,8 @@
 	sizeof(DEVPATH_PREFIX) - 1 +	\
 	sizeof(int) * 3)
 
-#define SUN_TO_SIOMIX(v) (((v) * 127 + 127) / 255)
-#define SIOMIX_TO_SUN(v) (((v) * 255 + 63) / 127)
+#define SUN_TO_SIOCTL(v) (((v) * 127 + 127) / 255)
+#define SIOCTL_TO_SUN(v) (((v) * 255 + 63) / 127)
 
 struct wskbd_vol
 {
@@ -56,35 +56,35 @@ struct wskbd_vol
 	char *name;
 };
 
-struct siomix_sun_hdl {
-	struct siomix_hdl siomix;
+struct sioctl_sun_hdl {
+	struct sioctl_hdl sioctl;
 	struct wskbd_vol spkr, mic;
 	int fd, events;
 };
 
-static void siomix_sun_close(struct siomix_hdl *);
-static int siomix_sun_nfds(struct siomix_hdl *);
-static int siomix_sun_pollfd(struct siomix_hdl *, struct pollfd *, int);
-static int siomix_sun_revents(struct siomix_hdl *, struct pollfd *);
-static int siomix_sun_setctl(struct siomix_hdl *, unsigned int, unsigned int);
-static int siomix_sun_onctl(struct siomix_hdl *);
-static int siomix_sun_ondesc(struct siomix_hdl *);
+static void sioctl_sun_close(struct sioctl_hdl *);
+static int sioctl_sun_nfds(struct sioctl_hdl *);
+static int sioctl_sun_pollfd(struct sioctl_hdl *, struct pollfd *, int);
+static int sioctl_sun_revents(struct sioctl_hdl *, struct pollfd *);
+static int sioctl_sun_setctl(struct sioctl_hdl *, unsigned int, unsigned int);
+static int sioctl_sun_onctl(struct sioctl_hdl *);
+static int sioctl_sun_ondesc(struct sioctl_hdl *);
 
 /*
  * operations every device should support
  */
-struct siomix_ops siomix_sun_ops = {
-	siomix_sun_close,
-	siomix_sun_nfds,
-	siomix_sun_pollfd,
-	siomix_sun_revents,
-	siomix_sun_setctl,
-	siomix_sun_onctl,
-	siomix_sun_ondesc
+struct sioctl_ops sioctl_sun_ops = {
+	sioctl_sun_close,
+	sioctl_sun_nfds,
+	sioctl_sun_pollfd,
+	sioctl_sun_revents,
+	sioctl_sun_setctl,
+	sioctl_sun_onctl,
+	sioctl_sun_ondesc
 };
 
 static int
-initmute(struct siomix_sun_hdl *hdl, struct mixer_devinfo *info)
+initmute(struct sioctl_sun_hdl *hdl, struct mixer_devinfo *info)
 {
 	struct mixer_devinfo mi;
 
@@ -99,7 +99,7 @@ initmute(struct siomix_sun_hdl *hdl, struct mixer_devinfo *info)
 }
 
 static int
-initvol(struct siomix_sun_hdl *hdl, struct wskbd_vol *vol, char *cn, char *dn)
+initvol(struct sioctl_sun_hdl *hdl, struct wskbd_vol *vol, char *cn, char *dn)
 {
 	struct mixer_devinfo dev, cls;
 
@@ -126,7 +126,7 @@ initvol(struct siomix_sun_hdl *hdl, struct wskbd_vol *vol, char *cn, char *dn)
 }
 
 static void
-init(struct siomix_sun_hdl *hdl)
+init(struct sioctl_sun_hdl *hdl)
 {
 	static struct {
 		char *cn, *dn;
@@ -163,7 +163,7 @@ init(struct siomix_sun_hdl *hdl)
 }
 
 static int
-setvol(struct siomix_sun_hdl *hdl, struct wskbd_vol *vol, int addr, int val)
+setvol(struct sioctl_sun_hdl *hdl, struct wskbd_vol *vol, int addr, int val)
 {
 	struct mixer_ctrl ctrl;
 	int i;
@@ -180,14 +180,14 @@ setvol(struct siomix_sun_hdl *hdl, struct wskbd_vol *vol, int addr, int val)
 		ctrl.un.value.num_channels = vol->nch;
 		for (i = 0; i < vol->nch; i++) {
 			ctrl.un.value.level[i] =
-			    SIOMIX_TO_SUN(vol->level_val[i]);
+			    SIOCTL_TO_SUN(vol->level_val[i]);
 		}
 		DPRINTF("vol %d setting to %d\n", addr, vol->level_val[addr]);
 		if (ioctl(hdl->fd, AUDIO_MIXER_WRITE, &ctrl) < 0) {
 			DPRINTF("level write failed\n");
 			return 0;
 		}
-		_siomix_onctl_cb(&hdl->siomix, vol->base_addr + addr, val);
+		_sioctl_onctl_cb(&hdl->sioctl, vol->base_addr + addr, val);
 		return 1;
 	}
 
@@ -208,7 +208,7 @@ setvol(struct siomix_sun_hdl *hdl, struct wskbd_vol *vol, int addr, int val)
 			return 0;
 		}
 		for (i = 0; i < vol->nch; i++) {
-			_siomix_onctl_cb(&hdl->siomix,
+			_sioctl_onctl_cb(&hdl->sioctl,
 			    vol->base_addr + 32 + i, val);
 		}
 		return 1;
@@ -217,13 +217,13 @@ setvol(struct siomix_sun_hdl *hdl, struct wskbd_vol *vol, int addr, int val)
 }
 
 static int
-scanvol(struct siomix_sun_hdl *hdl, struct wskbd_vol *vol)
+scanvol(struct sioctl_sun_hdl *hdl, struct wskbd_vol *vol)
 {
-	struct siomix_desc desc;
+	struct sioctl_desc desc;
 	struct mixer_ctrl ctrl;
 	int i, val;
 
-	memset(&desc, 0, sizeof(struct siomix_desc));
+	memset(&desc, 0, sizeof(struct sioctl_desc));
 	strlcpy(desc.group.str, "hw", sizeof(desc.group.str));
 	desc.group.unit = -1;
 	if (vol->level_idx >= 0) {
@@ -234,17 +234,17 @@ scanvol(struct siomix_sun_hdl *hdl, struct wskbd_vol *vol)
 			DPRINTF("level read failed\n");
 			return 0;
 		}
-		desc.type = SIOMIX_NUM;
+		desc.type = SIOCTL_NUM;
 		desc.chan1.str[0] = 0;
 		desc.chan1.unit = -1;
-		strlcpy(desc.func, "level", SIOMIX_NAMEMAX);
-		strlcpy(desc.chan0.str, vol->name, SIOMIX_NAMEMAX);
+		strlcpy(desc.func, "level", SIOCTL_NAMEMAX);
+		strlcpy(desc.chan0.str, vol->name, SIOCTL_NAMEMAX);
 		for (i = 0; i < vol->nch; i++) {
 			desc.chan0.unit = i;
 			desc.addr = vol->base_addr + i;
-			val = SUN_TO_SIOMIX(ctrl.un.value.level[i]);
+			val = SUN_TO_SIOCTL(ctrl.un.value.level[i]);
 			vol->level_val[i] = val;
-			_siomix_ondesc_cb(&hdl->siomix, &desc, val);
+			_sioctl_ondesc_cb(&hdl->sioctl, &desc, val);
 		}
 	}
 	if (vol->mute_idx >= 0) {
@@ -254,24 +254,24 @@ scanvol(struct siomix_sun_hdl *hdl, struct wskbd_vol *vol)
 			DPRINTF("mute read failed\n");
 			return 0;
 		}
-		desc.type = SIOMIX_SW;
+		desc.type = SIOCTL_SW;
 		desc.chan1.str[0] = 0;
 		desc.chan1.unit = -1;
-		strlcpy(desc.func, "mute", SIOMIX_NAMEMAX);
-		strlcpy(desc.chan0.str, vol->name, SIOMIX_NAMEMAX);
+		strlcpy(desc.func, "mute", SIOCTL_NAMEMAX);
+		strlcpy(desc.chan0.str, vol->name, SIOCTL_NAMEMAX);
 		val = ctrl.un.ord ? 1 : 0;
 		vol->mute_val = val;
 		for (i = 0; i < vol->nch; i++) {
 			desc.chan0.unit = i;
 			desc.addr = vol->base_addr + 32 + i;
-			_siomix_ondesc_cb(&hdl->siomix, &desc, val);
+			_sioctl_ondesc_cb(&hdl->sioctl, &desc, val);
 		}
 	}
 	return 1;
 }
 
 int
-siomix_sun_getfd(const char *str, unsigned int mode, int nbio)
+sioctl_sun_getfd(const char *str, unsigned int mode, int nbio)
 {
 	const char *p;
 	char path[DEVPATH_MAX];
@@ -283,7 +283,7 @@ siomix_sun_getfd(const char *str, unsigned int mode, int nbio)
 #endif
 	p = _sndio_parsetype(str, "rsnd");
 	if (p == NULL) {
-		DPRINTF("siomix_sun_getfd: %s: \"rsnd\" expected\n", str);
+		DPRINTF("sioctl_sun_getfd: %s: \"rsnd\" expected\n", str);
 		return -1;
 	}
 	switch (*p) {
@@ -291,19 +291,19 @@ siomix_sun_getfd(const char *str, unsigned int mode, int nbio)
 		p++;
 		break;
 	default:
-		DPRINTF("siomix_sun_getfd: %s: '/' expected\n", str);
+		DPRINTF("sioctl_sun_getfd: %s: '/' expected\n", str);
 		return -1;
 	}
 	p = _sndio_parsenum(p, &devnum, 255);
 	if (p == NULL || *p != '\0') {
-		DPRINTF("siomix_sun_getfd: %s: number expected after '/'\n", str);
+		DPRINTF("sioctl_sun_getfd: %s: number expected after '/'\n", str);
 		return -1;
 	}
 	snprintf(path, sizeof(path), DEVPATH_PREFIX "%u", devnum);
-	if (mode == (SIOMIX_READ | SIOMIX_WRITE))
+	if (mode == (SIOCTL_READ | SIOCTL_WRITE))
 		flags = O_RDWR;
 	else
-		flags = (mode & SIOMIX_WRITE) ? O_WRONLY : O_RDONLY;
+		flags = (mode & SIOCTL_WRITE) ? O_WRONLY : O_RDONLY;
 	while ((fd = open(path, flags | O_NONBLOCK | O_CLOEXEC)) < 0) {
 		if (errno == EINTR)
 			continue;
@@ -313,33 +313,33 @@ siomix_sun_getfd(const char *str, unsigned int mode, int nbio)
 	return fd;
 }
 
-struct siomix_hdl *
-siomix_sun_fdopen(int fd, unsigned int mode, int nbio)
+struct sioctl_hdl *
+sioctl_sun_fdopen(int fd, unsigned int mode, int nbio)
 {
-	struct siomix_sun_hdl *hdl;
+	struct sioctl_sun_hdl *hdl;
 
 #ifdef DEBUG
 	_sndio_debug_init();
 #endif
-	hdl = malloc(sizeof(struct siomix_sun_hdl));
+	hdl = malloc(sizeof(struct sioctl_sun_hdl));
 	if (hdl == NULL)
 		return NULL;
-	_siomix_create(&hdl->siomix, &siomix_sun_ops, mode, nbio);
+	_sioctl_create(&hdl->sioctl, &sioctl_sun_ops, mode, nbio);
 	hdl->fd = fd;
 	init(hdl);
-	return (struct siomix_hdl *)hdl;
+	return (struct sioctl_hdl *)hdl;
 }
 
-struct siomix_hdl *
-_siomix_sun_open(const char *str, unsigned int mode, int nbio)
+struct sioctl_hdl *
+_sioctl_sun_open(const char *str, unsigned int mode, int nbio)
 {
-	struct siomix_hdl *hdl;
+	struct sioctl_hdl *hdl;
 	int fd;
 
-	fd = siomix_sun_getfd(str, mode, nbio);
+	fd = sioctl_sun_getfd(str, mode, nbio);
 	if (fd < 0)
 		return NULL;
-	hdl = siomix_sun_fdopen(fd, mode, nbio);
+	hdl = sioctl_sun_fdopen(fd, mode, nbio);
 	if (hdl != NULL)
 		return hdl;
 	while (close(fd) < 0 && errno == EINTR)
@@ -348,66 +348,66 @@ _siomix_sun_open(const char *str, unsigned int mode, int nbio)
 }
 
 static void
-siomix_sun_close(struct siomix_hdl *addr)
+sioctl_sun_close(struct sioctl_hdl *addr)
 {
-	struct siomix_sun_hdl *hdl = (struct siomix_sun_hdl *)addr;
+	struct sioctl_sun_hdl *hdl = (struct sioctl_sun_hdl *)addr;
 
 	close(hdl->fd);
 	free(hdl);
 }
 
 static int
-siomix_sun_ondesc(struct siomix_hdl *addr)
+sioctl_sun_ondesc(struct sioctl_hdl *addr)
 {
-	struct siomix_sun_hdl *hdl = (struct siomix_sun_hdl *)addr;
+	struct sioctl_sun_hdl *hdl = (struct sioctl_sun_hdl *)addr;
 
 	if (!scanvol(hdl, &hdl->spkr) ||
 	    !scanvol(hdl, &hdl->mic)) {
-		hdl->siomix.eof = 1;
+		hdl->sioctl.eof = 1;
 		return 0;
 	}
-	_siomix_ondesc_cb(&hdl->siomix, NULL, 0);
+	_sioctl_ondesc_cb(&hdl->sioctl, NULL, 0);
 	return 1;
 }
 
 static int
-siomix_sun_onctl(struct siomix_hdl *addr)
+sioctl_sun_onctl(struct sioctl_hdl *addr)
 {
 	return 1;
 }
 
 static int
-siomix_sun_setctl(struct siomix_hdl *arg, unsigned int addr, unsigned int val)
+sioctl_sun_setctl(struct sioctl_hdl *arg, unsigned int addr, unsigned int val)
 {
-	struct siomix_sun_hdl *hdl = (struct siomix_sun_hdl *)arg;
+	struct sioctl_sun_hdl *hdl = (struct sioctl_sun_hdl *)arg;
 
 	if (!setvol(hdl, &hdl->spkr, addr, val) ||
 	    !setvol(hdl, &hdl->mic, addr, val)) {
-		hdl->siomix.eof = 1;
+		hdl->sioctl.eof = 1;
 		return 0;
 	}
 	return 1;
 }
 
 static int
-siomix_sun_nfds(struct siomix_hdl *addr)
+sioctl_sun_nfds(struct sioctl_hdl *addr)
 {
 	return 0;
 }
 
 static int
-siomix_sun_pollfd(struct siomix_hdl *addr, struct pollfd *pfd, int events)
+sioctl_sun_pollfd(struct sioctl_hdl *addr, struct pollfd *pfd, int events)
 {
-	struct siomix_sun_hdl *hdl = (struct siomix_sun_hdl *)addr;
+	struct sioctl_sun_hdl *hdl = (struct sioctl_sun_hdl *)addr;
 
 	hdl->events = events;
 	return 0;
 }
 
 static int
-siomix_sun_revents(struct siomix_hdl *addr, struct pollfd *pfd)
+sioctl_sun_revents(struct sioctl_hdl *addr, struct pollfd *pfd)
 {
-	struct siomix_sun_hdl *hdl = (struct siomix_sun_hdl *)addr;
+	struct sioctl_sun_hdl *hdl = (struct sioctl_sun_hdl *)addr;
 
 	return hdl->events & POLLOUT;
 }

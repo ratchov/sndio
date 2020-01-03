@@ -21,14 +21,14 @@
 #include <unistd.h>
 
 #include "debug.h"
-#include "siomix_priv.h"
+#include "sioctl_priv.h"
 #include "bsd-compat.h"
 
-struct siomix_hdl *
-siomix_open(const char *str, unsigned int mode, int nbio)
+struct sioctl_hdl *
+sioctl_open(const char *str, unsigned int mode, int nbio)
 {
-	static char devany[] = SIOMIX_DEVANY;
-	struct siomix_hdl *hdl;
+	static char devany[] = SIOCTL_DEVANY;
+	struct sioctl_hdl *hdl;
 
 #ifdef DEBUG
 	_sndio_debug_init();
@@ -41,33 +41,33 @@ siomix_open(const char *str, unsigned int mode, int nbio)
 			str = devany;
 	}
 	if (strcmp(str, devany) == 0) {
-		hdl = _siomix_aucat_open("snd/0", mode, nbio);
+		hdl = _sioctl_aucat_open("snd/0", mode, nbio);
 		if (hdl != NULL)
 			return hdl;
 #if defined(USE_SUN_MIXER)
-		return _siomix_sun_open("rsnd/0", mode, nbio);
+		return _sioctl_sun_open("rsnd/0", mode, nbio);
 #elif defined(USE_ALSA_MIXER)
-		return _siomix_alsa_open("rsnd/0", mode, nbio);
+		return _sioctl_alsa_open("rsnd/0", mode, nbio);
 #else
 		return NULL;
 #endif
 	}
 	if (_sndio_parsetype(str, "snd"))
-		return _siomix_aucat_open(str, mode, nbio);
+		return _sioctl_aucat_open(str, mode, nbio);
 	if (_sndio_parsetype(str, "rsnd"))
 #if defined(USE_SUN_MIXER)
-		return _siomix_sun_open(str, mode, nbio);
+		return _sioctl_sun_open(str, mode, nbio);
 #elif defined(USE_ALSA_MIXER)
-		return _siomix_alsa_open(str, mode, nbio);
+		return _sioctl_alsa_open(str, mode, nbio);
 #else
 		return NULL;
 #endif
-	DPRINTF("siomix_open: %s: unknown device type\n", str);
+	DPRINTF("sioctl_open: %s: unknown device type\n", str);
 	return NULL;
 }
 
 void
-_siomix_create(struct siomix_hdl *hdl, struct siomix_ops *ops,
+_sioctl_create(struct sioctl_hdl *hdl, struct sioctl_ops *ops,
     unsigned int mode, int nbio)
 {
 	hdl->ops = ops;
@@ -78,25 +78,25 @@ _siomix_create(struct siomix_hdl *hdl, struct siomix_ops *ops,
 }
 
 int
-_siomix_psleep(struct siomix_hdl *hdl, int event)
+_sioctl_psleep(struct sioctl_hdl *hdl, int event)
 {
-	struct pollfd pfds[SIOMIX_MAXNFDS];
+	struct pollfd pfds[SIOCTL_MAXNFDS];
 	int revents, nfds;
 
 	for (;;) {
-		nfds = siomix_pollfd(hdl, pfds, event);
+		nfds = sioctl_pollfd(hdl, pfds, event);
 		if (nfds == 0)
 			return 0;
 		while (poll(pfds, nfds, -1) < 0) {
 			if (errno == EINTR)
 				continue;
-			DPERROR("siomix_psleep: poll");
+			DPERROR("sioctl_psleep: poll");
 			hdl->eof = 1;
 			return 0;
 		}
-		revents = siomix_revents(hdl, pfds);
+		revents = sioctl_revents(hdl, pfds);
 		if (revents & POLLHUP) {
-			DPRINTF("siomix_psleep: hang-up\n");
+			DPRINTF("sioctl_psleep: hang-up\n");
 			return 0;
 		}
 		if (event == 0 || (revents & event))
@@ -106,19 +106,19 @@ _siomix_psleep(struct siomix_hdl *hdl, int event)
 }
 
 void
-siomix_close(struct siomix_hdl *hdl)
+sioctl_close(struct sioctl_hdl *hdl)
 {
 	hdl->ops->close(hdl);
 }
 
 int
-siomix_nfds(struct siomix_hdl *hdl)
+sioctl_nfds(struct sioctl_hdl *hdl)
 {
 	return hdl->ops->nfds(hdl);
 }
 
 int
-siomix_pollfd(struct siomix_hdl *hdl, struct pollfd *pfd, int events)
+sioctl_pollfd(struct sioctl_hdl *hdl, struct pollfd *pfd, int events)
 {
 	if (hdl->eof)
 		return 0;
@@ -126,7 +126,7 @@ siomix_pollfd(struct siomix_hdl *hdl, struct pollfd *pfd, int events)
 }
 
 int
-siomix_revents(struct siomix_hdl *hdl, struct pollfd *pfd)
+sioctl_revents(struct sioctl_hdl *hdl, struct pollfd *pfd)
 {
 	if (hdl->eof)
 		return POLLHUP;
@@ -134,14 +134,14 @@ siomix_revents(struct siomix_hdl *hdl, struct pollfd *pfd)
 }
 
 int
-siomix_eof(struct siomix_hdl *hdl)
+sioctl_eof(struct sioctl_hdl *hdl)
 {
 	return hdl->eof;
 }
 
 int
-siomix_ondesc(struct siomix_hdl *hdl,
-    void (*cb)(void *, struct siomix_desc *, int), void *arg)
+sioctl_ondesc(struct sioctl_hdl *hdl,
+    void (*cb)(void *, struct sioctl_desc *, int), void *arg)
 {
 	hdl->desc_cb = cb;
 	hdl->desc_arg = arg;
@@ -149,7 +149,7 @@ siomix_ondesc(struct siomix_hdl *hdl,
 }
 
 int
-siomix_onctl(struct siomix_hdl *hdl,
+sioctl_onctl(struct sioctl_hdl *hdl,
     void (*cb)(void *, unsigned int, unsigned int), void *arg)
 {
 	hdl->ctl_cb = cb;
@@ -158,11 +158,11 @@ siomix_onctl(struct siomix_hdl *hdl,
 }
 
 void
-_siomix_ondesc_cb(struct siomix_hdl *hdl,
-    struct siomix_desc *desc, unsigned int val)
+_sioctl_ondesc_cb(struct sioctl_hdl *hdl,
+    struct sioctl_desc *desc, unsigned int val)
 {
 	if (desc) {
-		DPRINTF("_siomix_ondesc_cb: %u -> %s[%d].%s=%s[%d]:%d\n",
+		DPRINTF("_sioctl_ondesc_cb: %u -> %s[%d].%s=%s[%d]:%d\n",
 		    desc->addr,
 		    desc->chan0.str, desc->chan0.unit,
 		    desc->func,
@@ -174,17 +174,17 @@ _siomix_ondesc_cb(struct siomix_hdl *hdl,
 }
 
 void
-_siomix_onctl_cb(struct siomix_hdl *hdl, unsigned int addr, unsigned int val)
+_sioctl_onctl_cb(struct sioctl_hdl *hdl, unsigned int addr, unsigned int val)
 {
-	DPRINTF("_siomix_onctl_cb: %u -> %u\n", addr, val);
+	DPRINTF("_sioctl_onctl_cb: %u -> %u\n", addr, val);
 	if (hdl->ctl_cb)
 		hdl->ctl_cb(hdl->ctl_arg, addr, val);
 }
 
 int
-siomix_setctl(struct siomix_hdl *hdl, unsigned int addr, unsigned int val)
+sioctl_setctl(struct sioctl_hdl *hdl, unsigned int addr, unsigned int val)
 {
-	if (!(hdl->mode & SIOMIX_WRITE))
+	if (!(hdl->mode & SIOCTL_WRITE))
 		return 0;
 	return hdl->ops->setctl(hdl, addr, val);
 }

@@ -24,21 +24,21 @@
  */
 #define SIO_DEVANY	"default"
 #define MIO_PORTANY	"default"
-#define SIOMIX_DEVANY	"default"
+#define SIOCTL_DEVANY	"default"
 
 /*
  * limits
  */
-#define SIOMIX_NAMEMAX		12	/* max name length */
-#define SIOMIX_INTMAX		127	/* max channel number */
-#define SIOMIX_HALF		64	/* also bool threshold */
+#define SIOCTL_NAMEMAX		12	/* max name length */
+#define SIOCTL_INTMAX		127	/* max channel number */
+#define SIOCTL_HALF		64	/* also bool threshold */
 
 /*
  * private ``handle'' structure
  */
 struct sio_hdl;
 struct mio_hdl;
-struct siomix_hdl;
+struct sioctl_hdl;
 
 /*
  * parameters of a full-duplex stream
@@ -96,26 +96,26 @@ struct sio_cap {
 /*
  * subset of channels of a stream
  */
-struct siomix_chan {
-	char str[SIOMIX_NAMEMAX];	/* stream name */
+struct sioctl_chan {
+	char str[SIOCTL_NAMEMAX];	/* stream name */
 	int unit;			/* optional stream number */
 };
 
 /*
  * description of a control (index, value) pair
  */
-struct siomix_desc {
+struct sioctl_desc {
 	unsigned int addr;		/* control address */
-#define SIOMIX_NONE		0	/* deleted */
-#define SIOMIX_NUM		2	/* integer in the 0..127 range */
-#define SIOMIX_SW		3	/* on/off switch (0 or 1) */
-#define SIOMIX_VEC		4	/* number, element of vector */
-#define SIOMIX_LIST		5	/* switch, element of a list */
+#define SIOCTL_NONE		0	/* deleted */
+#define SIOCTL_NUM		2	/* integer in the 0..127 range */
+#define SIOCTL_SW		3	/* on/off switch (0 or 1) */
+#define SIOCTL_VEC		4	/* number, element of vector */
+#define SIOCTL_LIST		5	/* switch, element of a list */
 	unsigned int type;		/* one of above */
-	char func[SIOMIX_NAMEMAX];	/* function name */
-	struct siomix_chan group;	/* group this control belongs to */
-	struct siomix_chan chan0;	/* affected channels */
-	struct siomix_chan chan1;	/* dito for SIOMIX_{VEC,LIST} */
+	char func[SIOCTL_NAMEMAX];	/* function name */
+	struct sioctl_chan group;	/* group this control belongs to */
+	struct sioctl_chan chan0;	/* affected channels */
+	struct sioctl_chan chan1;	/* dito for SIOCTL_{VEC,LIST} */
 };
 
 /*
@@ -125,8 +125,8 @@ struct siomix_desc {
 #define SIO_REC		2
 #define MIO_OUT		4
 #define MIO_IN		8
-#define SIOMIX_READ	0x100
-#define SIOMIX_WRITE	0x200
+#define SIOCTL_READ	0x100
+#define SIOCTL_WRITE	0x200
 
 /*
  * default bytes per sample for the given bits per sample
@@ -180,24 +180,24 @@ int mio_pollfd(struct mio_hdl *, struct pollfd *, int);
 int mio_revents(struct mio_hdl *, struct pollfd *);
 int mio_eof(struct mio_hdl *);
 
-struct siomix_hdl *siomix_open(const char *, unsigned int, int);
-void siomix_close(struct siomix_hdl *);
-int siomix_ondesc(struct siomix_hdl *,
-    void (*)(void *, struct siomix_desc *, int), void *);
-int siomix_onctl(struct siomix_hdl *,
+struct sioctl_hdl *sioctl_open(const char *, unsigned int, int);
+void sioctl_close(struct sioctl_hdl *);
+int sioctl_ondesc(struct sioctl_hdl *,
+    void (*)(void *, struct sioctl_desc *, int), void *);
+int sioctl_onctl(struct sioctl_hdl *,
     void (*)(void *, unsigned int, unsigned int), void *);
-int siomix_setctl(struct siomix_hdl *, unsigned int, unsigned int);
-int siomix_nfds(struct siomix_hdl *);
-int siomix_pollfd(struct siomix_hdl *, struct pollfd *, int);
-int siomix_revents(struct siomix_hdl *, struct pollfd *);
-int siomix_eof(struct siomix_hdl *);
+int sioctl_setctl(struct sioctl_hdl *, unsigned int, unsigned int);
+int sioctl_nfds(struct sioctl_hdl *);
+int sioctl_pollfd(struct sioctl_hdl *, struct pollfd *, int);
+int sioctl_revents(struct sioctl_hdl *, struct pollfd *);
+int sioctl_eof(struct sioctl_hdl *);
 
 int mio_rmidi_getfd(const char *, unsigned int, int);
 struct mio_hdl *mio_rmidi_fdopen(int, unsigned int, int);
 int sio_sun_getfd(const char *, unsigned int, int);
 struct sio_hdl *sio_sun_fdopen(int, unsigned int, int);
-int siomix_sun_getfd(const char *, unsigned int, int);
-struct siomix_hdl *siomix_sun_fdopen(int, unsigned int, int);
+int sioctl_sun_getfd(const char *, unsigned int, int);
+struct sioctl_hdl *sioctl_sun_fdopen(int, unsigned int, int);
 
 #ifdef __cplusplus
 }
