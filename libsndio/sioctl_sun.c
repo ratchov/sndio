@@ -294,10 +294,14 @@ sioctl_sun_getfd(const char *str, unsigned int mode, int nbio)
 		DPRINTF("sioctl_sun_getfd: %s: '/' expected\n", str);
 		return -1;
 	}
-	p = _sndio_parsenum(p, &devnum, 255);
-	if (p == NULL || *p != '\0') {
-		DPRINTF("sioctl_sun_getfd: %s: number expected after '/'\n", str);
-		return -1;
+	if (strcmp(p, "default") == 0) {
+		devnum = 0;
+	} else {
+		p = _sndio_parsenum(p, &devnum, 255);
+		if (p == NULL || *p != '\0') {
+			DPRINTF("sioctl_sun_getfd: %s: number expected after '/'\n", str);
+			return -1;
+		}
 	}
 	snprintf(path, sizeof(path), DEVPATH_PREFIX "%u", devnum);
 	if (mode == (SIOCTL_READ | SIOCTL_WRITE))
