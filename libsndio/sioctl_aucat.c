@@ -40,7 +40,7 @@ static int sioctl_aucat_nfds(struct sioctl_hdl *);
 static int sioctl_aucat_pollfd(struct sioctl_hdl *, struct pollfd *, int);
 static int sioctl_aucat_revents(struct sioctl_hdl *, struct pollfd *);
 static int sioctl_aucat_setctl(struct sioctl_hdl *, unsigned int, unsigned int);
-static int sioctl_aucat_onctl(struct sioctl_hdl *);
+static int sioctl_aucat_onval(struct sioctl_hdl *);
 static int sioctl_aucat_ondesc(struct sioctl_hdl *);
 
 /*
@@ -52,7 +52,7 @@ struct sioctl_ops sioctl_aucat_ops = {
 	sioctl_aucat_pollfd,
 	sioctl_aucat_revents,
 	sioctl_aucat_setctl,
-	sioctl_aucat_onctl,
+	sioctl_aucat_onval,
 	sioctl_aucat_ondesc
 };
 
@@ -117,7 +117,7 @@ sioctl_aucat_runmsg(struct sioctl_aucat_hdl *hdl)
 		break;
 	case AMSG_CTLSET:
 		DPRINTF("sioctl_aucat_runmsg: got CTLSET\n");
-		_sioctl_onctl_cb(&hdl->sioctl,
+		_sioctl_onval_cb(&hdl->sioctl,
 		    ntohs(hdl->aucat.rmsg.u.ctlset.addr),
 		    ntohs(hdl->aucat.rmsg.u.ctlset.val));
 		break;
@@ -191,7 +191,7 @@ sioctl_aucat_ondesc(struct sioctl_hdl *addr)
 }
 
 static int
-sioctl_aucat_onctl(struct sioctl_hdl *addr)
+sioctl_aucat_onval(struct sioctl_hdl *addr)
 {
 	struct sioctl_aucat_hdl *hdl = (struct sioctl_aucat_hdl *)addr;
 

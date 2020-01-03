@@ -184,9 +184,9 @@ struct sioctl_hdl *sioctl_open(const char *, unsigned int, int);
 void sioctl_close(struct sioctl_hdl *);
 int sioctl_ondesc(struct sioctl_hdl *,
     void (*)(void *, struct sioctl_desc *, int), void *);
-int sioctl_onctl(struct sioctl_hdl *,
+int sioctl_onval(struct sioctl_hdl *,
     void (*)(void *, unsigned int, unsigned int), void *);
-int sioctl_setctl(struct sioctl_hdl *, unsigned int, unsigned int);
+int sioctl_setval(struct sioctl_hdl *, unsigned int, unsigned int);
 int sioctl_nfds(struct sioctl_hdl *);
 int sioctl_pollfd(struct sioctl_hdl *, struct pollfd *, int);
 int sioctl_revents(struct sioctl_hdl *, struct pollfd *);

@@ -35,7 +35,7 @@ MAN3 = \
 	sio_nfds.3 sio_pollfd.3 sio_revents.3 sio_eof.3 \
 	sio_setvol.3 sio_onvol.3 sio_initpar.3 \
 	sioctl_open.3 \
-	sioctl_close.3 sioctl_setctl.3 sioctl_ondesc.3 sioctl_onctl.3 \
+	sioctl_close.3 sioctl_setval.3 sioctl_ondesc.3 sioctl_onval.3 \
 	sioctl_nfds.3 sioctl_pollfd.3 sioctl_revents.3 sioctl_eof.3 \
 	mio_open.3 \
 	mio_close.3 mio_read.3 mio_write.3 mio_nfds.3 mio_pollfd.3 \
@@ -79,9 +79,9 @@ install:
 		ln -sf sio_open.3 ${DESTDIR}${MAN3_DIR}/sio_initpar.3
 		cp sioctl_open.3 ${DESTDIR}${MAN3_DIR}
 		ln -sf sioctl_open.3 ${DESTDIR}${MAN3_DIR}/sioctl_close.3
-		ln -sf sioctl_open.3 ${DESTDIR}${MAN3_DIR}/sioctl_setctl.3
+		ln -sf sioctl_open.3 ${DESTDIR}${MAN3_DIR}/sioctl_setval.3
 		ln -sf sioctl_open.3 ${DESTDIR}${MAN3_DIR}/sioctl_ondesc.3
-		ln -sf sioctl_open.3 ${DESTDIR}${MAN3_DIR}/sioctl_onctl.3
+		ln -sf sioctl_open.3 ${DESTDIR}${MAN3_DIR}/sioctl_onval.3
 		ln -sf sioctl_open.3 ${DESTDIR}${MAN3_DIR}/sioctl_nfds.3
 		ln -sf sioctl_open.3 ${DESTDIR}${MAN3_DIR}/sioctl_pollfd.3
 		ln -sf sioctl_open.3 ${DESTDIR}${MAN3_DIR}/sioctl_revents.3

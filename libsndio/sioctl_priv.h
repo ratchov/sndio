@@ -61,7 +61,7 @@ void _sioctl_create(struct sioctl_hdl *,
     struct sioctl_ops *, unsigned int, int);
 void _sioctl_ondesc_cb(struct sioctl_hdl *,
     struct sioctl_desc *, unsigned int);
-void _sioctl_onctl_cb(struct sioctl_hdl *, unsigned int, unsigned int);
+void _sioctl_onval_cb(struct sioctl_hdl *, unsigned int, unsigned int);
 int _sioctl_psleep(struct sioctl_hdl *, int);
 
 #endif /* !defined(SIOCTL_PRIV_H) */

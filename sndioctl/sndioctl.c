@@ -710,11 +710,11 @@ commit(void)
 		switch (i->desc.type) {
 		case SIOCTL_NUM:
 		case SIOCTL_SW:
-			sioctl_setctl(hdl, i->ctladdr, val);
+			sioctl_setval(hdl, i->ctladdr, val);
 			break;
 		case SIOCTL_VEC:
 		case SIOCTL_LIST:
-			sioctl_setctl(hdl, i->ctladdr, val);
+			sioctl_setval(hdl, i->ctladdr, val);
 		}
 		i->curval = val;
 	}
@@ -866,7 +866,7 @@ main(int argc, char **argv)
 		fprintf(stderr, "%s: can't get device description\n", devname);
 		exit(1);
 	}
-	sioctl_onctl(hdl, onctl, NULL);
+	sioctl_onval(hdl, onctl, NULL);
 
 	if (d_flag) {
 		if (argc > 0) {

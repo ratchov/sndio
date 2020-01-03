@@ -67,7 +67,7 @@ static int sioctl_sun_nfds(struct sioctl_hdl *);
 static int sioctl_sun_pollfd(struct sioctl_hdl *, struct pollfd *, int);
 static int sioctl_sun_revents(struct sioctl_hdl *, struct pollfd *);
 static int sioctl_sun_setctl(struct sioctl_hdl *, unsigned int, unsigned int);
-static int sioctl_sun_onctl(struct sioctl_hdl *);
+static int sioctl_sun_onval(struct sioctl_hdl *);
 static int sioctl_sun_ondesc(struct sioctl_hdl *);
 
 /*
@@ -79,7 +79,7 @@ struct sioctl_ops sioctl_sun_ops = {
 	sioctl_sun_pollfd,
 	sioctl_sun_revents,
 	sioctl_sun_setctl,
-	sioctl_sun_onctl,
+	sioctl_sun_onval,
 	sioctl_sun_ondesc
 };
 
@@ -187,7 +187,7 @@ setvol(struct sioctl_sun_hdl *hdl, struct wskbd_vol *vol, int addr, int val)
 			DPRINTF("level write failed\n");
 			return 0;
 		}
-		_sioctl_onctl_cb(&hdl->sioctl, vol->base_addr + addr, val);
+		_sioctl_onval_cb(&hdl->sioctl, vol->base_addr + addr, val);
 		return 1;
 	}
 
@@ -208,7 +208,7 @@ setvol(struct sioctl_sun_hdl *hdl, struct wskbd_vol *vol, int addr, int val)
 			return 0;
 		}
 		for (i = 0; i < vol->nch; i++) {
-			_sioctl_onctl_cb(&hdl->sioctl,
+			_sioctl_onval_cb(&hdl->sioctl,
 			    vol->base_addr + 32 + i, val);
 		}
 		return 1;
@@ -371,7 +371,7 @@ sioctl_sun_ondesc(struct sioctl_hdl *addr)
 }
 
 static int
-sioctl_sun_onctl(struct sioctl_hdl *addr)
+sioctl_sun_onval(struct sioctl_hdl *addr)
 {
 	return 1;
 }

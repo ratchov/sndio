@@ -21,8 +21,8 @@
 .Nm sioctl_open ,
 .Nm sioctl_close ,
 .Nm sioctl_ondesc ,
-.Nm sioctl_onctl ,
-.Nm sioctl_setctl ,
+.Nm sioctl_onval ,
+.Nm sioctl_setval ,
 .Nm sioctl_nfds ,
 .Nm sioctl_pollfd ,
 .Nm sioctl_eof
@@ -36,9 +36,9 @@
 .Ft "int"
 .Fn "sioctl_ondesc" "struct sioctl_hdl *hdl" "void (*cb)(void *arg, struct sioctl_desc *desc, int val)" "void *arg"
 .Ft "void"
-.Fn "sioctl_onctl" "struct sioctl_hdl *hdl" "void (*cb)(void *arg, unsigned int addr, unsigned int val)" "void *arg"
+.Fn "sioctl_onval" "struct sioctl_hdl *hdl" "void (*cb)(void *arg, unsigned int addr, unsigned int val)" "void *arg"
 .Ft "int"
-.Fn "sioctl_setctl" "struct sioctl_hdl *hdl" "unsigned int addr" "unsigned int val"
+.Fn "sioctl_setval" "struct sioctl_hdl *hdl" "unsigned int addr" "unsigned int val"
 .Ft "int"
 .Fn "sioctl_nfds" "struct sioctl_hdl *hdl"
 .Ft "int"
@@ -86,7 +86,7 @@ modified respectively.
 If the
 .Ar nbio_flag
 argument is 1, then the
-.Fn sioctl_setctl
+.Fn sioctl_setval
 function (see below) may fail instead of blocking and
 the
 .Fn sioctl_ondesc
@@ -192,10 +192,10 @@ are strings usable as unique identifiers within the the given
 .Va namespace .
 .Sh Changing and reading control values
 Controls are changed with the
-.Fn sioctl_setctl
+.Fn sioctl_setval
 function, by giving the index of the control and the new value.
 The
-.Fn sioctl_onctl
+.Fn sioctl_onval
 function can be used to register a call-back which will be invoked whenever
 a control changes.
 Continuous values are in the 0..127 range.
@@ -231,7 +231,7 @@ structures.
 If
 .Va POLLOUT
 is set,
-.Fn sioctl_setctl
+.Fn sioctl_setval
 can be called without blocking.
 POLLHUP may be set if an error occurs, even if
 it is not selected with

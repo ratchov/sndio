@@ -80,7 +80,7 @@ dev_ondesc(void *unused, struct sioctl_desc *desc, int val)
  * control value changed
  */
 static void
-dev_onctl(void *unused, unsigned int addr, unsigned int val)
+dev_onval(void *unused, unsigned int addr, unsigned int val)
 {
 	if (addr == master_addr) {
 		if (verbose)
@@ -120,7 +120,7 @@ dev_connect(void)
 	}
 	master_found = 0;
 	sioctl_ondesc(hdl, dev_ondesc, NULL);
-	sioctl_onctl(hdl, dev_onctl, NULL);
+	sioctl_onval(hdl, dev_onval, NULL);
 	if (!master_found)
 		fprintf(stderr, "%s: warning, couldn't find master control\n",
 		    dev_name);
@@ -149,7 +149,7 @@ dev_incrvol(int incr)
 				fprintf(stderr, "%s: setting volume to %d\n",
 				    dev_name, vol);
 			}
-			sioctl_setctl(hdl, master_addr, master_val);
+			sioctl_setval(hdl, master_addr, master_val);
 			dev_disconnect();
 		}
 	}

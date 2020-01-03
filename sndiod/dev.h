@@ -302,7 +302,7 @@ void ctl_log(struct ctl *);
 struct ctlslot *ctlslot_new(struct dev *, struct ctlops *, void *);
 void ctlslot_del(struct ctlslot *);
 int dev_setctl(struct dev *, int, int);
-int dev_onctl(struct dev *, int, int);
+int dev_onval(struct dev *, int, int);
 int dev_nctl(struct dev *);
 void dev_label(struct dev *, int);
 struct ctl *dev_addctl(struct dev *, char *, int, int, int,

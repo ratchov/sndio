@@ -423,7 +423,7 @@ dev_midi_omsg(void *arg, unsigned char *msg, int len)
 		if (chan >= DEV_NSLOT)
 			return;
 		slot_setvol(d->slot + chan, msg[2]);
-		dev_onctl(d, CTLADDR_SLOT_LEVEL(chan), msg[2]);
+		dev_onval(d, CTLADDR_SLOT_LEVEL(chan), msg[2]);
 		return;
 	}
 	x = (struct sysex *)msg;
@@ -436,7 +436,7 @@ dev_midi_omsg(void *arg, unsigned char *msg, int len)
 		if (x->id0 == SYSEX_CONTROL && x->id1 == SYSEX_MASTER) {
 			if (len == SYSEX_SIZE(master)) {
 				dev_master(d, x->u.master.coarse);
-				dev_onctl(d, CTLADDR_MASTER,
+				dev_onval(d, CTLADDR_MASTER,
 				    x->u.master.coarse);
 			}
 			return;
@@ -2386,7 +2386,7 @@ dev_setctl(struct dev *d, int addr, int val)
 }
 
 int
-dev_onctl(struct dev *d, int addr, int val)
+dev_onval(struct dev *d, int addr, int val)
 {
 	struct ctl *c;
 

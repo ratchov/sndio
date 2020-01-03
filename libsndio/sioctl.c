@@ -149,7 +149,7 @@ sioctl_ondesc(struct sioctl_hdl *hdl,
 }
 
 int
-sioctl_onctl(struct sioctl_hdl *hdl,
+sioctl_onval(struct sioctl_hdl *hdl,
     void (*cb)(void *, unsigned int, unsigned int), void *arg)
 {
 	hdl->ctl_cb = cb;
@@ -174,15 +174,15 @@ _sioctl_ondesc_cb(struct sioctl_hdl *hdl,
 }
 
 void
-_sioctl_onctl_cb(struct sioctl_hdl *hdl, unsigned int addr, unsigned int val)
+_sioctl_onval_cb(struct sioctl_hdl *hdl, unsigned int addr, unsigned int val)
 {
-	DPRINTF("_sioctl_onctl_cb: %u -> %u\n", addr, val);
+	DPRINTF("_sioctl_onval_cb: %u -> %u\n", addr, val);
 	if (hdl->ctl_cb)
 		hdl->ctl_cb(hdl->ctl_arg, addr, val);
 }
 
 int
-sioctl_setctl(struct sioctl_hdl *hdl, unsigned int addr, unsigned int val)
+sioctl_setval(struct sioctl_hdl *hdl, unsigned int addr, unsigned int val)
 {
 	if (!(hdl->mode & SIOCTL_WRITE))
 		return 0;

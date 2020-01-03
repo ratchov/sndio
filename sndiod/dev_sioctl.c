@@ -32,7 +32,7 @@
 #include "bsd-compat.h"
 
 void dev_sioctl_ondesc(void *, struct sioctl_desc *, int);
-void dev_sioctl_onctl(void *, unsigned int, unsigned int);
+void dev_sioctl_onval(void *, unsigned int, unsigned int);
 int dev_sioctl_pollfd(void *, struct pollfd *);
 int dev_sioctl_revents(void *, struct pollfd *);
 void dev_sioctl_in(void *);
@@ -65,7 +65,7 @@ dev_sioctl_ondesc(void *arg, struct sioctl_desc *desc, int val)
 }
 
 void
-dev_sioctl_onctl(void *arg, unsigned int addr, unsigned int val)
+dev_sioctl_onval(void *arg, unsigned int addr, unsigned int val)
 {
 	struct dev *d = arg;
 	struct ctl *c;
@@ -100,7 +100,7 @@ dev_sioctl_open(struct dev *d)
 	if (d->sioctl.hdl == NULL)
 		return;
 	sioctl_ondesc(d->sioctl.hdl, dev_sioctl_ondesc, d);
-	sioctl_onctl(d->sioctl.hdl, dev_sioctl_onctl, d);
+	sioctl_onval(d->sioctl.hdl, dev_sioctl_onval, d);
 	d->sioctl.file = file_new(&dev_sioctl_ops, d, "mix",
 	    sioctl_nfds(d->sioctl.hdl));
 }
@@ -151,7 +151,7 @@ dev_sioctl_out(void *arg)
 	int cnt;
 
 	/*
-	 * for each dirty ctl, call sioctl_setctl() and dev_unref(). As
+	 * for each dirty ctl, call sioctl_setval() and dev_unref(). As
 	 * dev_unref() may destroy the ctl_list, we must call it after
 	 * we've finished iterating on it.
 	 */
@@ -159,7 +159,7 @@ dev_sioctl_out(void *arg)
 	for (c = d->ctl_list; c != NULL; c = c->next) {
 		if (!c->dirty)
 			continue;
-		if (!sioctl_setctl(d->sioctl.hdl,
+		if (!sioctl_setval(d->sioctl.hdl,
 			c->addr - CTLADDR_END, c->curval)) {
 			ctl_log(c);
 			log_puts(": set failed\n");
