@@ -321,9 +321,8 @@ void
 print_chan(struct sioctl_chan *c, int mono)
 {
 	printf("%s", c->str);
-	if (!mono && c->unit >= 0) {
-		printf("%d", c->unit);
-	}
+	if (!mono && c->unit >= 0)
+		printf("[%d]", c->unit);
 }
 
 /*
@@ -475,7 +474,7 @@ parse_dec(char **line, int *num)
 }
 
 /*
- * parse a sub-stream, eg. "spkr[4-7]"
+ * parse a sub-stream, eg. "spkr[7]"
  */
 int
 parse_chan(char **line, char *str, int *unit)
@@ -484,13 +483,19 @@ parse_chan(char **line, char *str, int *unit)
 
 	if (!parse_name(&p, str))
 		return 0;
-	if (*p < '0' || *p > '9') {
+	if (*p != '[') {
 		*unit = -1;
 		*line = p;
 		return 1;
 	}
+	p++;
 	if (!parse_dec(&p, unit))
 		return 0;
+	if (*p != ']') {
+		fprintf(stderr, "']' expected near '%s'\n", p);
+		return 0;
+	}
+	p++;
 	*line = p;
 	return 1;
 }
