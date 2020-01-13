@@ -44,8 +44,8 @@
 char *dev_name;
 struct pollfd pfds[16];
 struct sioctl_hdl *hdl;
-unsigned int master_addr, master_val = SIOCTL_INTMAX;
-int master_found = 0;
+unsigned int output_addr, output_val = SIOCTL_INTMAX;
+int output_found = 0;
 int verbose;
 
 /*
@@ -63,16 +63,17 @@ dev_ondesc(void *unused, struct sioctl_desc *desc, int val)
 {
 	if (desc == NULL)
 		return;
-	if (master_found)
+	if (output_found)
 		return;
-	if (strcmp(desc->chan0.str, "master") == 0 &&
+	if (desc->group[0] == 0 &&
+	    strcmp(desc->chan0.str, "output") == 0 &&
 	    strcmp(desc->func, "level") == 0) {
-		master_found = 1;
-		master_addr = desc->addr;
-		master_val = val;
+		output_found = 1;
+		output_addr = desc->addr;
+		output_val = val;
 		if (verbose)
-			fprintf(stderr, "%s: master at addr %u, value = %u\n",
-			    dev_name, master_addr, master_val);
+			fprintf(stderr, "%s: output at addr %u, value = %u\n",
+			    dev_name, output_addr, output_val);
 	}
 }
 
@@ -82,10 +83,10 @@ dev_ondesc(void *unused, struct sioctl_desc *desc, int val)
 static void
 dev_onval(void *unused, unsigned int addr, unsigned int val)
 {
-	if (addr == master_addr) {
+	if (addr == output_addr) {
 		if (verbose)
-			fprintf(stderr, "master changed %u -> %u\n", master_val, val);
-		master_val = val;
+			fprintf(stderr, "output changed %u -> %u\n", output_val, val);
+		output_val = val;
 	}
 }
 
@@ -118,17 +119,17 @@ dev_connect(void)
 			    dev_name);
 		return 0;
 	}
-	master_found = 0;
+	output_found = 0;
 	sioctl_ondesc(hdl, dev_ondesc, NULL);
 	sioctl_onval(hdl, dev_onval, NULL);
-	if (!master_found)
-		fprintf(stderr, "%s: warning, couldn't find master control\n",
+	if (!output_found)
+		fprintf(stderr, "%s: warning, couldn't find output control\n",
 		    dev_name);
 	return 1;
 }
 
 /*
- * send master volume message and to the server
+ * send output volume message and to the server
  */
 static void
 dev_incrvol(int incr)
@@ -137,19 +138,19 @@ dev_incrvol(int incr)
 
 	if (!dev_connect())
 		return;
-	vol = master_val + incr;
+	vol = output_val + incr;
 	if (vol > SIOCTL_INTMAX)
 		vol = SIOCTL_INTMAX;
 	if (vol < 0)
 		vol = 0;
-	if (master_val != (unsigned int)vol) {
-		master_val = vol;
-		if (hdl && master_found) {
+	if (output_val != (unsigned int)vol) {
+		output_val = vol;
+		if (hdl && output_found) {
 			if (verbose) {
 				fprintf(stderr, "%s: setting volume to %d\n",
 				    dev_name, vol);
 			}
-			sioctl_setval(hdl, master_addr, master_val);
+			sioctl_setval(hdl, output_addr, output_val);
 			dev_disconnect();
 		}
 	}
