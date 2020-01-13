@@ -1155,7 +1155,7 @@ dev_open(struct dev *d)
 	}
 
 	for (i = 0; i < DEV_NSLOT; i++) {
-		dev_addctl(d, "sndiod", gunit, CTL_NUM,
+		dev_addctl(d, "app", -1, CTL_NUM,
 		    CTLADDR_SLOT_LEVEL(i),
 		    d->slot[i].name, d->slot[i].unit, "level",
 		    NULL, -1, d->slot[i].vol);

@@ -217,14 +217,13 @@ setvol(struct sioctl_sun_hdl *hdl, struct wskbd_vol *vol, int addr, int val)
 }
 
 static int
-scanvol(struct sioctl_sun_hdl *hdl, struct wskbd_vol *vol, char *group)
+scanvol(struct sioctl_sun_hdl *hdl, struct wskbd_vol *vol)
 {
 	struct sioctl_desc desc;
 	struct mixer_ctrl ctrl;
 	int i, val;
 
 	memset(&desc, 0, sizeof(struct sioctl_desc));
-	strlcpy(desc.group.str, group, sizeof(desc.group.str));
 	desc.group.unit = -1;
 	if (vol->level_idx >= 0) {
 		ctrl.dev = vol->level_idx;
@@ -365,8 +364,8 @@ sioctl_sun_ondesc(struct sioctl_hdl *addr)
 {
 	struct sioctl_sun_hdl *hdl = (struct sioctl_sun_hdl *)addr;
 
-	if (!scanvol(hdl, &hdl->spkr, "outputs") ||
-	    !scanvol(hdl, &hdl->mic, "inputs")) {
+	if (!scanvol(hdl, &hdl->spkr) ||
+	    !scanvol(hdl, &hdl->mic)) {
 		hdl->sioctl.eof = 1;
 		return 0;
 	}
