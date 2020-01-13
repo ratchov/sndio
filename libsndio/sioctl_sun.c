@@ -58,7 +58,7 @@ struct wskbd_vol
 
 struct sioctl_sun_hdl {
 	struct sioctl_hdl sioctl;
-	struct wskbd_vol spkr, mic;
+	struct wskbd_vol output, input;
 	int fd, events;
 };
 
@@ -130,12 +130,12 @@ init(struct sioctl_sun_hdl *hdl)
 {
 	static struct {
 		char *cn, *dn;
-	} spkr_names[] = {
+	} output_names[] = {
 		{AudioCoutputs, AudioNmaster},
 		{AudioCinputs,  AudioNdac},
 		{AudioCoutputs, AudioNdac},
 		{AudioCoutputs, AudioNoutput}
-	}, mic_names[] = {
+	}, input_names[] = {
 		{AudioCrecord, AudioNrecord},
 		{AudioCrecord, AudioNvolume},
 		{AudioCinputs, AudioNrecord},
@@ -144,19 +144,19 @@ init(struct sioctl_sun_hdl *hdl)
 	};
 	int i;
 
-	for (i = 0; i < sizeof(spkr_names) / sizeof(spkr_names[0]); i++) {
-		if (initvol(hdl, &hdl->spkr,
-			spkr_names[i].cn, spkr_names[i].dn)) {
-			hdl->spkr.name = "spkr";
-			hdl->spkr.base_addr = 0;
+	for (i = 0; i < sizeof(output_names) / sizeof(output_names[0]); i++) {
+		if (initvol(hdl, &hdl->output,
+			output_names[i].cn, output_names[i].dn)) {
+			hdl->output.name = "output";
+			hdl->output.base_addr = 0;
 			break;
 		}
 	}
-	for (i = 0; i < sizeof(mic_names) / sizeof(mic_names[0]); i++) {
-		if (initvol(hdl, &hdl->mic,
-			mic_names[i].cn, mic_names[i].dn)) {
-			hdl->mic.name = "mic";
-			hdl->mic.base_addr = 64;
+	for (i = 0; i < sizeof(input_names) / sizeof(input_names[0]); i++) {
+		if (initvol(hdl, &hdl->input,
+			input_names[i].cn, input_names[i].dn)) {
+			hdl->input.name = "input";
+			hdl->input.base_addr = 64;
 			break;
 		}
 	}
@@ -364,8 +364,8 @@ sioctl_sun_ondesc(struct sioctl_hdl *addr)
 {
 	struct sioctl_sun_hdl *hdl = (struct sioctl_sun_hdl *)addr;
 
-	if (!scanvol(hdl, &hdl->spkr) ||
-	    !scanvol(hdl, &hdl->mic)) {
+	if (!scanvol(hdl, &hdl->output) ||
+	    !scanvol(hdl, &hdl->input)) {
 		hdl->sioctl.eof = 1;
 		return 0;
 	}
@@ -384,8 +384,8 @@ sioctl_sun_setctl(struct sioctl_hdl *arg, unsigned int addr, unsigned int val)
 {
 	struct sioctl_sun_hdl *hdl = (struct sioctl_sun_hdl *)arg;
 
-	if (!setvol(hdl, &hdl->spkr, addr, val) ||
-	    !setvol(hdl, &hdl->mic, addr, val)) {
+	if (!setvol(hdl, &hdl->output, addr, val) ||
+	    !setvol(hdl, &hdl->input, addr, val)) {
 		hdl->sioctl.eof = 1;
 		return 0;
 	}
