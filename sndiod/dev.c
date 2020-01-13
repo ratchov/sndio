@@ -1113,7 +1113,6 @@ int
 dev_open(struct dev *d)
 {
 	int i;
-	struct ctl *c;
 
 	d->mode = d->reqmode;
 	d->round = d->reqround;
