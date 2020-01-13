@@ -78,10 +78,7 @@ cmpdesc(struct sioctl_desc *d1, struct sioctl_desc *d2)
 {
 	int res;
 
-	res = strcmp(d1->group.str, d2->group.str);
-	if (res != 0)
-		return res;
-	res = d1->group.unit - d2->group.unit;
+	res = strcmp(d1->group, d2->group);
 	if (res != 0)
 		return res;
 	res = strcmp(d1->chan0.str, d2->chan0.str);
@@ -397,10 +394,8 @@ print_val(struct info *p, int mono)
 void
 print_par(struct info *p, int mono, char *comment)
 {
-	if (p->desc.group.str[0] != 0) {
-		printf("%s", p->desc.group.str);
-		if (p->desc.group.unit >= 0)
-			printf("%d", p->desc.group.unit);
+	if (p->desc.group[0] != 0) {
+		printf("%s", p->desc.group);
 		printf("/");
 	}
 	print_chan(&p->desc.chan0, mono);

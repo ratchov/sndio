@@ -1532,9 +1532,8 @@ sock_buildmsg(struct sock *f)
 				break;
 			c->desc_mask &= ~mask;
 			c->val_mask &= ~mask;
-			strlcpy(desc->group.str, c->group.str,
+			strlcpy(desc->group, c->group,
 			    AMSG_CTL_NAMEMAX);
-			desc->group.unit = ntohs(c->group.unit);
 			strlcpy(desc->chan0.str, c->chan0.str,
 			    AMSG_CTL_NAMEMAX);
 			desc->chan0.unit = ntohs(c->chan0.unit);

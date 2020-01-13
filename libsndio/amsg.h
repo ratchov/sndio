@@ -138,10 +138,10 @@ struct amsg_ctl_chan {
  * description of a control (index, value) pair
  */
 struct amsg_ctl_desc {
-	struct amsg_ctl_chan group;	/* group of the control */
 	struct amsg_ctl_chan chan0;	/* affected channels */
 	struct amsg_ctl_chan chan1;	/* dito for AMSG_CTL_{SEL,VEC,LIST} */
 	char func[AMSG_CTL_NAMEMAX];	/* parameter function name */
+	char group[AMSG_CTL_NAMEMAX];	/* group of the control */
 	uint8_t type;			/* see sioctl_desc structure */
 	uint8_t __pad1[1];
 	uint16_t addr;			/* control address */

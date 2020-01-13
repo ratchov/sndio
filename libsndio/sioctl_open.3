@@ -129,7 +129,7 @@ struct sioctl_desc {
 #define SIOCTL_LIST		5	/* switch, element of a list */
 	unsigned int type;		/* one of above */
 	char func[SIOCTL_NAMEMAX];	/* function name */
-	struct sioctl_chan group;	/* group this control belongs to */
+	char group[SIOCTL_NAMEMAX];	/* group this control belongs to */
 	struct sioctl_chan chan0;	/* affected channels */
 	struct sioctl_chan chan1;	/* dito for SIOCTL_{VEC,LIST} */
 };

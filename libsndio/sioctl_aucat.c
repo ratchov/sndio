@@ -82,8 +82,7 @@ sioctl_aucat_rdata(struct sioctl_aucat_hdl *hdl)
 		c = hdl->buf;
 		rpos = 0;
 		while (rpos < hdl->buf_wpos) {
-			strlcpy(desc.group.str, c->group.str, SIOCTL_NAMEMAX);
-			desc.group.unit = (int16_t)ntohs(c->group.unit);
+			strlcpy(desc.group, c->group, SIOCTL_NAMEMAX);
 			strlcpy(desc.chan0.str, c->chan0.str, SIOCTL_NAMEMAX);
 			desc.chan0.unit = (int16_t)ntohs(c->chan0.unit);
 			strlcpy(desc.chan1.str, c->chan1.str, SIOCTL_NAMEMAX);

@@ -51,15 +51,26 @@ struct fileops dev_sioctl_ops = {
 void
 dev_sioctl_ondesc(void *arg, struct sioctl_desc *desc, int val)
 {
+#define GROUP_PREFIX		"dev"
+#define GROUP_PREFIX_LEN	(sizeof(GROUP_PREFIX))
+	char group[CTL_NAMEMAX];
 	struct dev *d = arg;
+	size_t len;
 	int addr;
 
 	if (desc == NULL)
 		return;
 	addr = CTLADDR_END + desc->addr;
 	dev_rmctl(d, addr);
-	dev_addctl(d,
-	    desc->group.str, desc->group.unit, desc->type, addr,
+	if (desc->group[0] != 0) {
+		len = snprintf(group, CTL_NAMEMAX,
+		    GROUP_PREFIX ".%s", desc->group);
+		if (len >= CTL_NAMEMAX)
+			return;
+	} else
+		strlcpy(group, GROUP_PREFIX, CTL_NAMEMAX);
+
+	dev_addctl(d, group, desc->type, addr,
 	    desc->chan0.str, desc->chan0.unit, desc->func,
 	    desc->chan1.str, desc->chan1.unit, val);
 }
