@@ -134,6 +134,8 @@ struct ctl {
 		char str[CTL_NAMEMAX];	/* stream name */
 		int unit;
 	} chan0, chan1;			/* affected channels */
+#define CTL_DEVMASK		(1 << 31)
+#define CTL_SLOTMASK(i)		(1 << (i))
 	unsigned int val_mask;
 	unsigned int desc_mask;
 	unsigned int refs_mask;

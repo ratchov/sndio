@@ -1283,6 +1283,7 @@ dev_reopen(struct dev *d)
 	pc = &d->ctl_list;
 	while ((c = *pc) != NULL) {
 		if (c->addr >= CTLADDR_END) {
+			c->refs_mask &= ~CTL_DEVMASK;
 			if (c->refs_mask == 0) {
 				*pc = c->next;
 				xfree(c);
@@ -2274,6 +2275,7 @@ dev_addctl(struct dev *d, char *gstr, int type, int addr,
 	c->dirty = 0;
 	c->refs_mask = 0;
 	for (i = 0; i < DEV_NCTLSLOT; i++) {
+		c->refs_mask |= CTL_DEVMASK;
 		if (d->ctlslot[i].ops != NULL)
 			c->refs_mask |= 1 << i;
 	}
@@ -2317,6 +2319,7 @@ dev_rmctl(struct dev *d, int addr)
 		log_puts("\n");
 	}
 #endif
+	c->refs_mask &= ~CTL_DEVMASK;
 	if (c->refs_mask != 0)
 		return;
 	*pc = c->next;
