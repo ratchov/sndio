@@ -442,8 +442,8 @@ parse_name(char **line, char *name)
 int
 parse_dec(char **line, int *num)
 {
-#define MAXQ 	(SIOCTL_INTMAX / 10)
-#define MAXR 	(SIOCTL_INTMAX % 10)
+#define MAXQ 	(SIOCTL_VALMAX / 10)
+#define MAXR 	(SIOCTL_VALMAX % 10)
 	char *p = *line;
 	unsigned int dig, val;
 
@@ -641,7 +641,7 @@ cmd(char *line)
 				if (!parse_modeval(&pos, &mode, &val))
 					return 0;
 			} else {
-				val = SIOCTL_INTMAX;
+				val = SIOCTL_VALMAX;
 				mode = MODE_SET;
 			}
 			nent = 0;
@@ -696,8 +696,8 @@ commit(void)
 			break;
 		case MODE_ADD:
 			val = i->curval + i->newval;
-			if (val > SIOCTL_INTMAX)
-				val = SIOCTL_INTMAX;
+			if (val > SIOCTL_VALMAX)
+				val = SIOCTL_VALMAX;
 			break;
 		case MODE_SUB:
 			val = i->curval - i->newval;
@@ -705,7 +705,7 @@ commit(void)
 				val = 0;
 			break;
 		case MODE_TOGGLE:
-			val = (i->curval >= SIOCTL_HALF) ? 0 : SIOCTL_INTMAX;
+			val = (i->curval >= SIOCTL_HALF) ? 0 : SIOCTL_VALMAX;
 		}
 		switch (i->desc.type) {
 		case SIOCTL_NUM:

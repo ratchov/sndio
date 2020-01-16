@@ -44,7 +44,7 @@
 char *dev_name;
 struct pollfd pfds[16];
 struct sioctl_hdl *hdl;
-unsigned int output_addr, output_val = SIOCTL_INTMAX;
+unsigned int output_addr, output_val = SIOCTL_VALMAX;
 int output_found = 0;
 int verbose;
 
@@ -139,8 +139,8 @@ dev_incrvol(int incr)
 	if (!dev_connect())
 		return;
 	vol = output_val + incr;
-	if (vol > SIOCTL_INTMAX)
-		vol = SIOCTL_INTMAX;
+	if (vol > SIOCTL_VALMAX)
+		vol = SIOCTL_VALMAX;
 	if (vol < 0)
 		vol = 0;
 	if (output_val != (unsigned int)vol) {
