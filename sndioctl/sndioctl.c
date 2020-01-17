@@ -42,7 +42,6 @@ struct info {
 
 int cmpdesc(struct sioctl_desc *, struct sioctl_desc *);
 int isdiag(struct info *);
-struct info *selpos(struct info *);
 struct info *vecent(struct info *, char *, int);
 struct info *nextgrp(struct info *);
 struct info *nextpar(struct info *);
@@ -115,21 +114,6 @@ isdiag(struct info *e)
 }
 
 /*
- * find the value of the given selector parameter
- */
-struct info *
-selpos(struct info *i)
-{
-	while (i != NULL) {
-		if (i->curval)
-			return i;
-		i = i->next;
-	}
-	fprintf(stderr, "selpos: not found, bogus control\n");
-	abort();
-}
-
-/*
  * find the selector or vector entry with the given name and channels
  */
 struct info *
@@ -145,7 +129,7 @@ vecent(struct info *i, char *vstr, int vunit)
 }
 
 /*
- * find the next parameter group
+ * find the next parameter of the same stream
  */
 struct info *
 nextgrp(struct info *i)
