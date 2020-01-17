@@ -150,12 +150,14 @@ vecent(struct info *i, char *vstr, int vunit)
 struct info *
 nextgrp(struct info *i)
 {
-	char *str, *func;
+	char *str, *group, *func;
 
+	group = i->desc.group;
 	func = i->desc.func;
 	str = i->desc.chan0.str;
 	for (i = i->next; i != NULL; i = i->next) {
-		if (strcmp(i->desc.chan0.str, str) != 0 ||
+		if (strcmp(i->desc.group, group) != 0 ||
+		    strcmp(i->desc.chan0.str, str) != 0 ||
 		    strcmp(i->desc.func, func) != 0)
 			return i;
 	}
@@ -168,14 +170,16 @@ nextgrp(struct info *i)
 struct info *
 nextpar(struct info *i)
 {
-	char *str, *func;
+	char *str, *group, *func;
 	int unit;
 
+	group = i->desc.group;
 	func = i->desc.func;
 	str = i->desc.chan0.str;
 	unit = i->desc.chan0.unit;
 	for (i = i->next; i != NULL; i = i->next) {
-		if (strcmp(i->desc.chan0.str, str) != 0 ||
+		if (strcmp(i->desc.group, group) != 0 ||
+		    strcmp(i->desc.chan0.str, str) != 0 ||
 		    strcmp(i->desc.func, func) != 0)
 			break;
 		/* XXX: need to check for -1 ? */
@@ -191,13 +195,15 @@ nextpar(struct info *i)
 struct info *
 firstent(struct info *g, char *vstr)
 {
-	char *astr, *func;
+	char *astr, *group, *func;
 	struct info *i;
 
+	group = g->desc.group;
 	astr = g->desc.chan0.str;
 	func = g->desc.func;
 	for (i = g; i != NULL; i = i->next) {
-		if (strcmp(i->desc.chan0.str, astr) != 0 ||
+		if (strcmp(i->desc.group, group) != 0 ||
+		    strcmp(i->desc.chan0.str, astr) != 0 ||
 		    strcmp(i->desc.func, func) != 0)
 			break;
 		if (!isdiag(i))
@@ -216,14 +222,16 @@ firstent(struct info *g, char *vstr)
 struct info *
 nextent(struct info *i, int mono)
 {
-	char *str, *func;
+	char *str, *group, *func;
 	int unit;
 
+	group = i->desc.group;
 	func = i->desc.func;
 	str = i->desc.chan0.str;
 	unit = i->desc.chan0.unit;
 	for (i = i->next; i != NULL; i = i->next) {
-		if (strcmp(i->desc.chan0.str, str) != 0 ||
+		if (strcmp(i->desc.group, group) != 0 ||
+		    strcmp(i->desc.chan0.str, str) != 0 ||
 		    strcmp(i->desc.func, func) != 0)
 			return NULL;
 		if (mono)
@@ -564,11 +572,22 @@ cmd(char *line)
 {
 	char *pos = line;
 	struct info *i, *e, *g;
-	char func[SIOCTL_NAMEMAX], astr[SIOCTL_NAMEMAX], vstr[SIOCTL_NAMEMAX];
+	char group[SIOCTL_NAMEMAX];
+	char func[SIOCTL_NAMEMAX];
+	char astr[SIOCTL_NAMEMAX], vstr[SIOCTL_NAMEMAX];
 	int aunit, vunit;
 	unsigned npar = 0, nent = 0;
 	int val, comma, mode;
 
+	if (!parse_name(&pos, group))
+		return 0;
+	if (*pos == '/')
+		pos++;
+	else {
+		/* this was chan string, go backwards and assume no group */
+		pos = line;
+		group[0] = '\0';
+	}
 	if (!parse_chan(&pos, astr, &aunit))
 		return 0;
 	if (*pos != '.') {
@@ -583,7 +602,8 @@ cmd(char *line)
 			fprintf(stderr, "%s.%s: no such group\n", astr, func);
 			return 0;
 		}
-		if (strcmp(g->desc.func, func) == 0 &&
+		if (strcmp(g->desc.group, group) == 0 &&
+		    strcmp(g->desc.func, func) == 0 &&
 		    strcmp(g->desc.chan0.str, astr) == 0)
 			break;
 	}
