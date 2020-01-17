@@ -705,7 +705,8 @@ commit(void)
 				val = 0;
 			break;
 		case MODE_TOGGLE:
-			val = (i->curval >= SIOCTL_HALF) ? 0 : SIOCTL_VALMAX;
+			val = (i->curval >= SIOCTL_VALMAX / 2) ?
+			    0 : SIOCTL_VALMAX;
 		}
 		switch (i->desc.type) {
 		case SIOCTL_NUM:

@@ -31,7 +31,6 @@
  */
 #define SIOCTL_NAMEMAX		12	/* max name length */
 #define SIOCTL_VALMAX		127	/* max channel number */
-#define SIOCTL_HALF		64	/* also bool threshold */
 
 /*
  * private ``handle'' structure
