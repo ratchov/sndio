@@ -43,7 +43,7 @@ struct info {
 int cmpdesc(struct sioctl_desc *, struct sioctl_desc *);
 int isdiag(struct info *);
 struct info *vecent(struct info *, char *, int);
-struct info *nextgrp(struct info *);
+struct info *nextfunc(struct info *);
 struct info *nextpar(struct info *);
 struct info *firstent(struct info *, char *);
 struct info *nextent(struct info *, int);
@@ -103,7 +103,7 @@ cmpdesc(struct sioctl_desc *d1, struct sioctl_desc *d2)
 }
 
 /*
- * return true of the selector or vector entry is diagonal
+ * return true of the vector entry is diagonal
  */
 int
 isdiag(struct info *e)
@@ -129,10 +129,10 @@ vecent(struct info *i, char *vstr, int vunit)
 }
 
 /*
- * find the next parameter of the same stream
+ * skip all parameters with the same group, name, and func
  */
 struct info *
-nextgrp(struct info *i)
+nextfunc(struct info *i)
 {
 	char *str, *group, *func;
 
@@ -149,7 +149,7 @@ nextgrp(struct info *i)
 }
 
 /*
- * find the next parameter of the same group
+ * find the next parameter with the same group, name, func
  */
 struct info *
 nextpar(struct info *i)
@@ -174,7 +174,7 @@ nextpar(struct info *i)
 }
 
 /*
- * return the first structure having of a selector or vector group
+ * return the first vector entry with the given name
  */
 struct info *
 firstent(struct info *g, char *vstr)
@@ -199,7 +199,7 @@ firstent(struct info *g, char *vstr)
 }
 
 /*
- * find the next entry of the given selector or vector, if the mono flag
+ * find the next entry of the given vector, if the mono flag
  * is set then the whole group is searched and off-diagonal entries are
  * skipped
  */
@@ -227,7 +227,7 @@ nextent(struct info *i, int mono)
 }
 
 /*
- * return true if parameter matches the given name and channel range
+ * return true if parameter matches the given name and channel
  */
 int
 matchpar(struct info *i, char *astr, int aunit)
@@ -304,7 +304,7 @@ ismono(struct info *g)
 }
 
 /*
- * print a sub-stream, eg. "spkr[4-7]"
+ * print a sub-stream, eg. "spkr[4]"
  */
 void
 print_chan(struct sioctl_chan *c, int mono)
@@ -733,7 +733,7 @@ list(void)
 {
 	struct info *p, *g;
 
-	for (g = infolist; g != NULL; g = nextgrp(g)) {
+	for (g = infolist; g != NULL; g = nextfunc(g)) {
 		if (g->mode == MODE_IGNORE)
 			continue;
 		if (i_flag) {
@@ -882,7 +882,7 @@ main(int argc, char **argv)
 		dump();
 	} else {
 		if (argc == 0) {
-			for (g = infolist; g != NULL; g = nextgrp(g))
+			for (g = infolist; g != NULL; g = nextfunc(g))
 				g->mode = MODE_PRINT;
 		} else {
 			for (i = 0; i < argc; i++) {
