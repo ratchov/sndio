@@ -76,6 +76,7 @@ void dev_mmcstart(struct dev *);
 void dev_mmcstop(struct dev *);
 void dev_mmcloc(struct dev *, unsigned int);
 
+void slot_ctlname(struct slot *, char *, size_t);
 void slot_log(struct slot *);
 void slot_del(struct slot *);
 void slot_setvol(struct slot *, unsigned int);
@@ -133,15 +134,22 @@ dev_log(struct dev *d)
 }
 
 void
+slot_ctlname(struct slot *s, char *name, size_t size)
+{
+	snprintf(name, size, "%s%u", s->name, s->unit);
+}
+
+void
 slot_log(struct slot *s)
 {
+	char name[CTL_NAMEMAX];
 #ifdef DEBUG
 	static char *pstates[] = {
 		"ini", "sta", "rdy", "run", "stp", "mid"
 	};
 #endif
-	log_puts(s->name);
-	log_putu(s->unit);
+	slot_ctlname(s, name, CTL_NAMEMAX);
+	log_puts(name);
 #ifdef DEBUG
 	if (log_level >= 3) {
 		log_puts(" vol=");
@@ -369,10 +377,8 @@ dev_midi_slotdesc(struct dev *d, struct slot *s)
 	x.dev = SYSEX_DEV_ANY;
 	x.id0 = SYSEX_AUCAT;
 	x.id1 = SYSEX_AUCAT_SLOTDESC;
-	if (*s->name != '\0') {
-		snprintf((char *)x.u.slotdesc.name, SYSEX_NAMELEN,
-		    "%s%u", s->name, s->unit);
-	}
+	if (*s->name != '\0')
+		slot_ctlname(s, (char *)x.u.slotdesc.name, SYSEX_NAMELEN);
 	x.u.slotdesc.chan = s - d->slot;
 	x.u.slotdesc.end = SYSEX_END;
 	midi_send(d->midi, (unsigned char *)&x, SYSEX_SIZE(slotdesc));
@@ -1113,6 +1119,7 @@ int
 dev_open(struct dev *d)
 {
 	int i;
+	char name[CTL_NAMEMAX];
 
 	d->mode = d->reqmode;
 	d->round = d->reqround;
@@ -1136,9 +1143,10 @@ dev_open(struct dev *d)
 		return 0;
 
 	for (i = 0; i < DEV_NSLOT; i++) {
+		slot_ctlname(&d->slot[i], name, CTL_NAMEMAX);
 		dev_addctl(d, "app", CTL_NUM,
 		    CTLADDR_SLOT_LEVEL(i),
-		    d->slot[i].name, d->slot[i].unit, "level",
+		    name, -1, "level",
 		    NULL, -1, d->slot[i].vol);
 	}
 	dev_addctl(d, "", CTL_NUM,
@@ -2400,6 +2408,7 @@ void
 dev_label(struct dev *d, int i)
 {
 	struct ctl *c;
+	char name[CTL_NAMEMAX];
 
 	c = d->ctl_list;
 	for (;;) {
@@ -2409,9 +2418,10 @@ dev_label(struct dev *d, int i)
 			break;
 		c = c->next;
 	}
-	if (strcmp(c->chan0.str, d->slot[i].name) == 0 && c->chan0.unit == i)
+	slot_ctlname(&d->slot[i], name, CTL_NAMEMAX);
+	if (strcmp(c->chan0.str, name) == 0)
 		return;
-	strlcpy(c->chan0.str, d->slot[i].name, CTL_NAMEMAX);
+	strlcpy(c->chan0.str, name, CTL_NAMEMAX);
 	c->desc_mask = ~0;
 }
 
