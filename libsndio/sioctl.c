@@ -164,9 +164,9 @@ _sioctl_ondesc_cb(struct sioctl_hdl *hdl,
 	if (desc) {
 		DPRINTF("_sioctl_ondesc_cb: %u -> %s[%d].%s=%s[%d]:%d\n",
 		    desc->addr,
-		    desc->node0.str, desc->node0.unit,
+		    desc->node0.name, desc->node0.unit,
 		    desc->func,
-		    desc->node1.str, desc->node1.unit,
+		    desc->node1.name, desc->node1.unit,
 		    val);
 	}
 	if (hdl->desc_cb)
