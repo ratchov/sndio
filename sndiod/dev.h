@@ -131,7 +131,7 @@ struct ctl {
 	char func[CTL_NAMEMAX];		/* parameter function name */
 	char group[CTL_NAMEMAX];	/* group aka namespace */
 	struct ctl_node {
-		char str[CTL_NAMEMAX];	/* stream name */
+		char name[CTL_NAMEMAX];	/* stream name */
 		int unit;
 	} node0, node1;			/* affected channels */
 #define CTL_DEVMASK		(1 << 31)

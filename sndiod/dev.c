@@ -2224,7 +2224,7 @@ ctlslot_del(struct ctlslot *s)
 void
 ctl_node_log(struct ctl_node *c)
 {
-	log_puts(c->str);
+	log_puts(c->name);
 	if (c->unit >= 0)
 		log_putu(c->unit);
 }
@@ -2269,10 +2269,10 @@ dev_addctl(struct dev *d, char *gstr, int type, int addr,
 	c->type = type;
 	strlcpy(c->func, func, CTL_NAMEMAX);
 	strlcpy(c->group, gstr, CTL_NAMEMAX);
-	strlcpy(c->node0.str, str0, CTL_NAMEMAX);
+	strlcpy(c->node0.name, str0, CTL_NAMEMAX);
 	c->node0.unit = unit0;
 	if (c->type == CTL_VEC || c->type == CTL_LIST) {
-		strlcpy(c->node1.str, str1, CTL_NAMEMAX);
+		strlcpy(c->node1.name, str1, CTL_NAMEMAX);
 		c->node1.unit = unit1;
 	} else
 		memset(&c->node1, 0, sizeof(struct ctl_node));
@@ -2419,9 +2419,9 @@ dev_label(struct dev *d, int i)
 		c = c->next;
 	}
 	slot_ctlname(&d->slot[i], name, CTL_NAMEMAX);
-	if (strcmp(c->node0.str, name) == 0)
+	if (strcmp(c->node0.name, name) == 0)
 		return;
-	strlcpy(c->node0.str, name, CTL_NAMEMAX);
+	strlcpy(c->node0.name, name, CTL_NAMEMAX);
 	c->desc_mask = ~0;
 }
 

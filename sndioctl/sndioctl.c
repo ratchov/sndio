@@ -80,7 +80,7 @@ cmpdesc(struct sioctl_desc *d1, struct sioctl_desc *d2)
 	res = strcmp(d1->group, d2->group);
 	if (res != 0)
 		return res;
-	res = strcmp(d1->node0.str, d2->node0.str);
+	res = strcmp(d1->node0.name, d2->node0.name);
 	if (res != 0)
 		return res;
 	res = d1->type - d2->type;
@@ -94,7 +94,7 @@ cmpdesc(struct sioctl_desc *d1, struct sioctl_desc *d2)
 	    d1->type == SIOCTL_LIST) {
 		if (res != 0)
 			return res;
-		res = strcmp(d1->node1.str, d2->node1.str);
+		res = strcmp(d1->node1.name, d2->node1.name);
 		if (res != 0)
 			return res;
 		res = d1->node1.unit - d2->node1.unit;
@@ -120,7 +120,7 @@ struct info *
 vecent(struct info *i, char *vstr, int vunit)
 {
 	while (i != NULL) {
-		if ((strcmp(i->desc.node1.str, vstr) == 0) &&
+		if ((strcmp(i->desc.node1.name, vstr) == 0) &&
 		    (vunit < 0 || i->desc.node1.unit == vunit))
 			break;
 		i = i->next;
@@ -138,10 +138,10 @@ nextfunc(struct info *i)
 
 	group = i->desc.group;
 	func = i->desc.func;
-	str = i->desc.node0.str;
+	str = i->desc.node0.name;
 	for (i = i->next; i != NULL; i = i->next) {
 		if (strcmp(i->desc.group, group) != 0 ||
-		    strcmp(i->desc.node0.str, str) != 0 ||
+		    strcmp(i->desc.node0.name, str) != 0 ||
 		    strcmp(i->desc.func, func) != 0)
 			return i;
 	}
@@ -159,11 +159,11 @@ nextpar(struct info *i)
 
 	group = i->desc.group;
 	func = i->desc.func;
-	str = i->desc.node0.str;
+	str = i->desc.node0.name;
 	unit = i->desc.node0.unit;
 	for (i = i->next; i != NULL; i = i->next) {
 		if (strcmp(i->desc.group, group) != 0 ||
-		    strcmp(i->desc.node0.str, str) != 0 ||
+		    strcmp(i->desc.node0.name, str) != 0 ||
 		    strcmp(i->desc.func, func) != 0)
 			break;
 		/* XXX: need to check for -1 ? */
@@ -183,16 +183,16 @@ firstent(struct info *g, char *vstr)
 	struct info *i;
 
 	group = g->desc.group;
-	astr = g->desc.node0.str;
+	astr = g->desc.node0.name;
 	func = g->desc.func;
 	for (i = g; i != NULL; i = i->next) {
 		if (strcmp(i->desc.group, group) != 0 ||
-		    strcmp(i->desc.node0.str, astr) != 0 ||
+		    strcmp(i->desc.node0.name, astr) != 0 ||
 		    strcmp(i->desc.func, func) != 0)
 			break;
 		if (!isdiag(i))
 			continue;
-		if (strcmp(i->desc.node1.str, vstr) == 0)
+		if (strcmp(i->desc.node1.name, vstr) == 0)
 			return i;
 	}
 	return NULL;
@@ -211,11 +211,11 @@ nextent(struct info *i, int mono)
 
 	group = i->desc.group;
 	func = i->desc.func;
-	str = i->desc.node0.str;
+	str = i->desc.node0.name;
 	unit = i->desc.node0.unit;
 	for (i = i->next; i != NULL; i = i->next) {
 		if (strcmp(i->desc.group, group) != 0 ||
-		    strcmp(i->desc.node0.str, str) != 0 ||
+		    strcmp(i->desc.node0.name, str) != 0 ||
 		    strcmp(i->desc.func, func) != 0)
 			return NULL;
 		if (mono)
@@ -232,7 +232,7 @@ nextent(struct info *i, int mono)
 int
 matchpar(struct info *i, char *astr, int aunit)
 {
-	if (strcmp(i->desc.node0.str, astr) != 0)
+	if (strcmp(i->desc.node0.name, astr) != 0)
 		return 0;
 	if (aunit < 0)
 		return 1;
@@ -250,7 +250,7 @@ matchpar(struct info *i, char *astr, int aunit)
 int
 matchent(struct info *i, char *vstr, int vunit)
 {
-	if (strcmp(i->desc.node1.str, vstr) != 0)
+	if (strcmp(i->desc.node1.name, vstr) != 0)
 		return 0;
 	if (vunit < 0)
 		return 1;
@@ -289,7 +289,7 @@ ismono(struct info *g)
 						return 0;
 				} else {
 					e1 = vecent(p1,
-					    e2->desc.node1.str,
+					    e2->desc.node1.name,
 					    p1->desc.node0.unit);
 					if (e1 == NULL)
 						continue;
@@ -309,7 +309,7 @@ ismono(struct info *g)
 void
 print_node(struct sioctl_node *c, int mono)
 {
-	printf("%s", c->str);
+	printf("%s", c->name);
 	if (!mono && c->unit >= 0)
 		printf("[%d]", c->unit);
 }
@@ -335,7 +335,7 @@ print_desc(struct info *p, int mono)
 			if (mono) {
 				if (!isdiag(e))
 					continue;
-				if (e != firstent(p, e->desc.node1.str))
+				if (e != firstent(p, e->desc.node1.name))
 					continue;
 			}
 			if (more)
@@ -368,7 +368,7 @@ print_val(struct info *p, int mono)
 			if (mono) {
 				if (!isdiag(e))
 					continue;
-				if (e != firstent(p, e->desc.node1.str))
+				if (e != firstent(p, e->desc.node1.name))
 					continue;
 			}
 			if (more)
@@ -588,7 +588,7 @@ cmd(char *line)
 		}
 		if (strcmp(g->desc.group, group) == 0 &&
 		    strcmp(g->desc.func, func) == 0 &&
-		    strcmp(g->desc.node0.str, astr) == 0)
+		    strcmp(g->desc.node0.name, astr) == 0)
 			break;
 	}
 	g->mode = MODE_PRINT;

@@ -66,7 +66,7 @@ dev_ondesc(void *unused, struct sioctl_desc *desc, int val)
 	if (output_found)
 		return;
 	if (desc->group[0] == 0 &&
-	    strcmp(desc->node0.str, "output") == 0 &&
+	    strcmp(desc->node0.name, "output") == 0 &&
 	    strcmp(desc->func, "level") == 0) {
 		output_found = 1;
 		output_addr = desc->addr;

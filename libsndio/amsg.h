@@ -126,16 +126,16 @@ struct amsg {
 };
 
 /*
- * subset of channels of a stream
+ * network representation of sioctl_node structure
  */
 struct amsg_ctl_node {
-	char str[AMSG_CTL_NAMEMAX];	/* stream name */
-	int16_t unit;			/* stream number */
+	char name[AMSG_CTL_NAMEMAX];
+	int16_t unit;
 	uint8_t __pad[2];
 };
 
 /*
- * description of a control (index, value) pair
+ * network representation of sioctl_desc structure
  */
 struct amsg_ctl_desc {
 	struct amsg_ctl_node node0;	/* affected channels */

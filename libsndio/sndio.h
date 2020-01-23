@@ -96,7 +96,7 @@ struct sio_cap {
  * controlled component of the device
  */
 struct sioctl_node {
-	char str[SIOCTL_NAMEMAX];	/* name, ex "spkr" */
+	char name[SIOCTL_NAMEMAX];	/* ex. "spkr" */
 	int unit;			/* optional number or -1 */
 };
 
