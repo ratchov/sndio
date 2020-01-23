@@ -91,7 +91,9 @@ dev_sio_openlist(struct dev *d, unsigned int mode)
 {
 	struct name *n;
 	struct sio_hdl *hdl;
+	int idx;
 
+	idx = 0;
 	n = d->path_list;
 	while (1) {
 		if (n == NULL)
@@ -107,6 +109,7 @@ dev_sio_openlist(struct dev *d, unsigned int mode)
 			return hdl;
 		}
 		n = n->next;
+		idx++;
 	}
 	return NULL;
 }

@@ -215,3 +215,20 @@ namelist_clear(struct name **list)
 		xfree(n);
 	}
 }
+
+char *
+namelist_byindex(struct name **list, unsigned int idx)
+{
+	struct name *n;
+
+	n = *list;
+	while (1) {
+		if (n == NULL)
+			return NULL;
+		if (idx == 0)
+			break;
+		n = n->next;
+		idx--;
+	}
+	return n->str;
+}
