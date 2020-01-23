@@ -1496,7 +1496,6 @@ dev_sync_attach(struct dev *d)
 		if (!s->ops || !s->opt->mmc)
 			continue;
 		slot_attach(s);
-		s->pstate = SLOT_RUN;
 	}
 	d->tstate = MMC_RUN;
 	dev_midi_full(d);
@@ -1942,6 +1941,7 @@ slot_attach(struct slot *s)
 	s->delta = startpos + pos / (int)d->round;
 	s->delta_rem = pos % d->round;
 
+	s->pstate = SLOT_RUN;
 #ifdef DEBUG
 	if (log_level >= 2) {
 		slot_log(s);
@@ -1986,10 +1986,9 @@ slot_ready(struct slot *s)
 	 */
 	if (s->dev->pstate == DEV_CFG)
 		return;
-	if (!s->opt->mmc) {
+	if (!s->opt->mmc)
 		slot_attach(s);
-		s->pstate = SLOT_RUN;
-	} else
+	else
 		dev_sync_attach(s->dev);
 }
 
