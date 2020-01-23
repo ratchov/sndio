@@ -234,12 +234,12 @@ scanvol(struct sioctl_sun_hdl *hdl, struct wskbd_vol *vol)
 			return 0;
 		}
 		desc.type = SIOCTL_NUM;
-		desc.chan1.str[0] = 0;
-		desc.chan1.unit = -1;
+		desc.node1.str[0] = 0;
+		desc.node1.unit = -1;
 		strlcpy(desc.func, "level", SIOCTL_NAMEMAX);
-		strlcpy(desc.chan0.str, vol->name, SIOCTL_NAMEMAX);
+		strlcpy(desc.node0.str, vol->name, SIOCTL_NAMEMAX);
 		for (i = 0; i < vol->nch; i++) {
-			desc.chan0.unit = i;
+			desc.node0.unit = i;
 			desc.addr = vol->base_addr + i;
 			val = SUN_TO_SIOCTL(ctrl.un.value.level[i]);
 			vol->level_val[i] = val;
@@ -254,14 +254,14 @@ scanvol(struct sioctl_sun_hdl *hdl, struct wskbd_vol *vol)
 			return 0;
 		}
 		desc.type = SIOCTL_SW;
-		desc.chan1.str[0] = 0;
-		desc.chan1.unit = -1;
+		desc.node1.str[0] = 0;
+		desc.node1.unit = -1;
 		strlcpy(desc.func, "mute", SIOCTL_NAMEMAX);
-		strlcpy(desc.chan0.str, vol->name, SIOCTL_NAMEMAX);
+		strlcpy(desc.node0.str, vol->name, SIOCTL_NAMEMAX);
 		val = ctrl.un.ord ? 1 : 0;
 		vol->mute_val = val;
 		for (i = 0; i < vol->nch; i++) {
-			desc.chan0.unit = i;
+			desc.node0.unit = i;
 			desc.addr = vol->base_addr + 32 + i;
 			_sioctl_ondesc_cb(&hdl->sioctl, &desc, val);
 		}

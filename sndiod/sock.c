@@ -1534,12 +1534,12 @@ sock_buildmsg(struct sock *f)
 			c->val_mask &= ~mask;
 			strlcpy(desc->group, c->group,
 			    AMSG_CTL_NAMEMAX);
-			strlcpy(desc->chan0.str, c->chan0.str,
+			strlcpy(desc->node0.str, c->node0.str,
 			    AMSG_CTL_NAMEMAX);
-			desc->chan0.unit = ntohs(c->chan0.unit);
-			strlcpy(desc->chan1.str, c->chan1.str,
+			desc->node0.unit = ntohs(c->node0.unit);
+			strlcpy(desc->node1.str, c->node1.str,
 			    AMSG_CTL_NAMEMAX);
-			desc->chan1.unit = ntohs(c->chan1.unit);
+			desc->node1.unit = ntohs(c->node1.unit);
 			desc->type = c->type;
 			strlcpy(desc->func, c->func, AMSG_CTL_NAMEMAX);
 			desc->addr = htons(c->addr);

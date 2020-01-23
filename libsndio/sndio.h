@@ -30,7 +30,7 @@
  * limits
  */
 #define SIOCTL_NAMEMAX		12	/* max name length */
-#define SIOCTL_VALMAX		127	/* max channel number */
+#define SIOCTL_VALMAX		127	/* max control value */
 
 /*
  * private ``handle'' structure
@@ -93,11 +93,11 @@ struct sio_cap {
 #define SIO_XSTRINGS { "ignore", "sync", "error" }
 
 /*
- * subset of channels of a stream
+ * controlled component of the device
  */
-struct sioctl_chan {
-	char str[SIOCTL_NAMEMAX];	/* stream name */
-	int unit;			/* optional stream number */
+struct sioctl_node {
+	char str[SIOCTL_NAMEMAX];	/* name, ex "spkr" */
+	int unit;			/* optional number or -1 */
 };
 
 /*
@@ -111,10 +111,10 @@ struct sioctl_desc {
 #define SIOCTL_VEC		4	/* number, element of vector */
 #define SIOCTL_LIST		5	/* switch, element of a list */
 	unsigned int type;		/* one of above */
-	char func[SIOCTL_NAMEMAX];	/* function name */
+	char func[SIOCTL_NAMEMAX];	/* function name, ex. "level" */
 	char group[SIOCTL_NAMEMAX];	/* group this control belongs to */
-	struct sioctl_chan chan0;	/* affected channels */
-	struct sioctl_chan chan1;	/* dito for SIOCTL_{VEC,LIST} */
+	struct sioctl_node node0;	/* affected node */
+	struct sioctl_node node1;	/* dito for SIOCTL_{VEC,LIST} */
 };
 
 /*

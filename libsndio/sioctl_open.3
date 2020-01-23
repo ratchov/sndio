@@ -115,23 +115,23 @@ Controls are described by the
 .Va sioctl_ondesc
 stucture as follows:
 .Bd -literal
-struct sioctl_chan {
-	char str[SIOCTL_NAMEMAX];	/* stream name */
-	int unit;			/* optional number */
+struct sioctl_node {
+	char str[SIOCTL_NAMEMAX];	/* name, ex "spkr" */
+	int unit;			/* optional number or -1 */
 };
 
 struct sioctl_desc {
 	unsigned int addr;		/* control address */
-#define SIOCTL_NONE		0	/* control deleted */
+#define SIOCTL_NONE		0	/* deleted */
 #define SIOCTL_NUM		2	/* integer in the 0..127 range */
 #define SIOCTL_SW		3	/* on/off switch (0 or 1) */
 #define SIOCTL_VEC		4	/* number, element of vector */
 #define SIOCTL_LIST		5	/* switch, element of a list */
 	unsigned int type;		/* one of above */
-	char func[SIOCTL_NAMEMAX];	/* function name */
+	char func[SIOCTL_NAMEMAX];	/* function name, ex. "level" */
 	char group[SIOCTL_NAMEMAX];	/* group this control belongs to */
-	struct sioctl_chan chan0;	/* affected channels */
-	struct sioctl_chan chan1;	/* dito for SIOCTL_{VEC,LIST} */
+	struct sioctl_node node0;	/* affected node */
+	struct sioctl_node node1;	/* dito for SIOCTL_{VEC,LIST} */
 };
 .Ed
 .Pp
@@ -149,7 +149,7 @@ Possible types are:
 .It SIOCTL_NONE
 A previously valid control was deleted.
 .It SIOCTL_NUM
-A continuous control in the 0..SIOCTL_INTMAX range.
+A continuous control in the 0..SIOCTL_VALMAX range.
 For instance the volume of the speaker.
 .It SIOCTL_SW
 A on/off switch control.
@@ -170,26 +170,26 @@ attribute is the name of the parameter being controlled.
 There may be no parameters of different types with the same name.
 .Pp
 The
-.Va chan0
+.Va node0
 and
-.Va chan1
-attributes indicate the names of the affected streams, and
-an optional channel sub-set.
-.Va chan1
+.Va node1
+attributes indicate the names of the controlled nodes, typically
+channels of audio streams.
+.Va node1
 is meaningful for
 .Va SIOCTL_VEC
 and
 .Va SIOCTL_LIST
 only.
 .Pp
-Stream names in the
-.Va chan0
+Names in the
+.Va node0
 and
-.Va chan1
+.Va node1
 attributes and
 .Va func
 are strings usable as unique identifiers within the the given
-.Va namespace .
+.Va group .
 .Sh Changing and reading control values
 Controls are changed with the
 .Fn sioctl_setval

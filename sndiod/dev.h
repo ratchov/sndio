@@ -130,10 +130,10 @@ struct ctl {
 #define CTL_NAMEMAX	16		/* max name lenght */
 	char func[CTL_NAMEMAX];		/* parameter function name */
 	char group[CTL_NAMEMAX];	/* group aka namespace */
-	struct ctl_chan {
+	struct ctl_node {
 		char str[CTL_NAMEMAX];	/* stream name */
 		int unit;
-	} chan0, chan1;			/* affected channels */
+	} node0, node1;			/* affected channels */
 #define CTL_DEVMASK		(1 << 31)
 #define CTL_SLOTMASK(i)		(1 << (i))
 	unsigned int val_mask;

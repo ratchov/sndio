@@ -128,7 +128,7 @@ struct amsg {
 /*
  * subset of channels of a stream
  */
-struct amsg_ctl_chan {
+struct amsg_ctl_node {
 	char str[AMSG_CTL_NAMEMAX];	/* stream name */
 	int16_t unit;			/* stream number */
 	uint8_t __pad[2];
@@ -138,8 +138,8 @@ struct amsg_ctl_chan {
  * description of a control (index, value) pair
  */
 struct amsg_ctl_desc {
-	struct amsg_ctl_chan chan0;	/* affected channels */
-	struct amsg_ctl_chan chan1;	/* dito for AMSG_CTL_{SEL,VEC,LIST} */
+	struct amsg_ctl_node node0;	/* affected channels */
+	struct amsg_ctl_node node1;	/* dito for AMSG_CTL_{SEL,VEC,LIST} */
 	char func[AMSG_CTL_NAMEMAX];	/* parameter function name */
 	char group[AMSG_CTL_NAMEMAX];	/* group of the control */
 	uint8_t type;			/* see sioctl_desc structure */

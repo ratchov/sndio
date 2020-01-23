@@ -50,13 +50,13 @@ struct info *nextent(struct info *, int);
 int matchpar(struct info *, char *, int);
 int matchent(struct info *, char *, int);
 int ismono(struct info *);
-void print_chan(struct sioctl_chan *, int);
+void print_node(struct sioctl_node *, int);
 void print_desc(struct info *, int);
 void print_val(struct info *, int);
 void print_par(struct info *, int, char *);
 int parse_name(char **, char *);
 int parse_dec(char **, int *);
-int parse_chan(char **, char *, int *);
+int parse_node(char **, char *, int *);
 int parse_modeval(char **, int *, int *);
 void dump(void);
 int cmd(char *);
@@ -80,7 +80,7 @@ cmpdesc(struct sioctl_desc *d1, struct sioctl_desc *d2)
 	res = strcmp(d1->group, d2->group);
 	if (res != 0)
 		return res;
-	res = strcmp(d1->chan0.str, d2->chan0.str);
+	res = strcmp(d1->node0.str, d2->node0.str);
 	if (res != 0)
 		return res;
 	res = d1->type - d2->type;
@@ -89,15 +89,15 @@ cmpdesc(struct sioctl_desc *d1, struct sioctl_desc *d2)
 	res = strcmp(d1->func, d2->func);
 	if (res != 0)
 		return res;
-	res = d1->chan0.unit - d2->chan0.unit;
+	res = d1->node0.unit - d2->node0.unit;
 	if (d1->type == SIOCTL_VEC ||
 	    d1->type == SIOCTL_LIST) {
 		if (res != 0)
 			return res;
-		res = strcmp(d1->chan1.str, d2->chan1.str);
+		res = strcmp(d1->node1.str, d2->node1.str);
 		if (res != 0)
 			return res;
-		res = d1->chan1.unit - d2->chan1.unit;
+		res = d1->node1.unit - d2->node1.unit;
 	}
 	return res;
 }
@@ -108,9 +108,9 @@ cmpdesc(struct sioctl_desc *d1, struct sioctl_desc *d2)
 int
 isdiag(struct info *e)
 {
-	if (e->desc.chan0.unit < 0 || e->desc.chan1.unit < 0)
+	if (e->desc.node0.unit < 0 || e->desc.node1.unit < 0)
 		return 1;
-	return e->desc.chan1.unit == e->desc.chan0.unit;
+	return e->desc.node1.unit == e->desc.node0.unit;
 }
 
 /*
@@ -120,8 +120,8 @@ struct info *
 vecent(struct info *i, char *vstr, int vunit)
 {
 	while (i != NULL) {
-		if ((strcmp(i->desc.chan1.str, vstr) == 0) &&
-		    (vunit < 0 || i->desc.chan1.unit == vunit))
+		if ((strcmp(i->desc.node1.str, vstr) == 0) &&
+		    (vunit < 0 || i->desc.node1.unit == vunit))
 			break;
 		i = i->next;
 	}
@@ -138,10 +138,10 @@ nextfunc(struct info *i)
 
 	group = i->desc.group;
 	func = i->desc.func;
-	str = i->desc.chan0.str;
+	str = i->desc.node0.str;
 	for (i = i->next; i != NULL; i = i->next) {
 		if (strcmp(i->desc.group, group) != 0 ||
-		    strcmp(i->desc.chan0.str, str) != 0 ||
+		    strcmp(i->desc.node0.str, str) != 0 ||
 		    strcmp(i->desc.func, func) != 0)
 			return i;
 	}
@@ -159,15 +159,15 @@ nextpar(struct info *i)
 
 	group = i->desc.group;
 	func = i->desc.func;
-	str = i->desc.chan0.str;
-	unit = i->desc.chan0.unit;
+	str = i->desc.node0.str;
+	unit = i->desc.node0.unit;
 	for (i = i->next; i != NULL; i = i->next) {
 		if (strcmp(i->desc.group, group) != 0 ||
-		    strcmp(i->desc.chan0.str, str) != 0 ||
+		    strcmp(i->desc.node0.str, str) != 0 ||
 		    strcmp(i->desc.func, func) != 0)
 			break;
 		/* XXX: need to check for -1 ? */
-		if (i->desc.chan0.unit != unit)
+		if (i->desc.node0.unit != unit)
 			return i;
 	}
 	return NULL;
@@ -183,16 +183,16 @@ firstent(struct info *g, char *vstr)
 	struct info *i;
 
 	group = g->desc.group;
-	astr = g->desc.chan0.str;
+	astr = g->desc.node0.str;
 	func = g->desc.func;
 	for (i = g; i != NULL; i = i->next) {
 		if (strcmp(i->desc.group, group) != 0 ||
-		    strcmp(i->desc.chan0.str, astr) != 0 ||
+		    strcmp(i->desc.node0.str, astr) != 0 ||
 		    strcmp(i->desc.func, func) != 0)
 			break;
 		if (!isdiag(i))
 			continue;
-		if (strcmp(i->desc.chan1.str, vstr) == 0)
+		if (strcmp(i->desc.node1.str, vstr) == 0)
 			return i;
 	}
 	return NULL;
@@ -211,16 +211,16 @@ nextent(struct info *i, int mono)
 
 	group = i->desc.group;
 	func = i->desc.func;
-	str = i->desc.chan0.str;
-	unit = i->desc.chan0.unit;
+	str = i->desc.node0.str;
+	unit = i->desc.node0.unit;
 	for (i = i->next; i != NULL; i = i->next) {
 		if (strcmp(i->desc.group, group) != 0 ||
-		    strcmp(i->desc.chan0.str, str) != 0 ||
+		    strcmp(i->desc.node0.str, str) != 0 ||
 		    strcmp(i->desc.func, func) != 0)
 			return NULL;
 		if (mono)
 			return i;
-		if (i->desc.chan0.unit == unit)
+		if (i->desc.node0.unit == unit)
 			return i;
 	}
 	return NULL;
@@ -232,15 +232,15 @@ nextent(struct info *i, int mono)
 int
 matchpar(struct info *i, char *astr, int aunit)
 {
-	if (strcmp(i->desc.chan0.str, astr) != 0)
+	if (strcmp(i->desc.node0.str, astr) != 0)
 		return 0;
 	if (aunit < 0)
 		return 1;
-	else if (i->desc.chan0.unit < 0) {
+	else if (i->desc.node0.unit < 0) {
 		fprintf(stderr, "unit used for parameter with no unit\n");
 		exit(1);
 	}
-	return i->desc.chan0.unit == aunit;
+	return i->desc.node0.unit == aunit;
 }
 
 /*
@@ -250,15 +250,15 @@ matchpar(struct info *i, char *astr, int aunit)
 int
 matchent(struct info *i, char *vstr, int vunit)
 {
-	if (strcmp(i->desc.chan1.str, vstr) != 0)
+	if (strcmp(i->desc.node1.str, vstr) != 0)
 		return 0;
 	if (vunit < 0)
 		return 1;
-	else if (i->desc.chan1.unit < 0) {
+	else if (i->desc.node1.unit < 0) {
 		fprintf(stderr, "unit used for parameter with no unit\n");
 		exit(1);
 	}
-	return i->desc.chan1.unit == vunit;
+	return i->desc.node1.unit == vunit;
 }
 
 /*
@@ -289,8 +289,8 @@ ismono(struct info *g)
 						return 0;
 				} else {
 					e1 = vecent(p1,
-					    e2->desc.chan1.str,
-					    p1->desc.chan0.unit);
+					    e2->desc.node1.str,
+					    p1->desc.node0.unit);
 					if (e1 == NULL)
 						continue;
 					if (e1->curval != e2->curval)
@@ -307,7 +307,7 @@ ismono(struct info *g)
  * print a sub-stream, eg. "spkr[4]"
  */
 void
-print_chan(struct sioctl_chan *c, int mono)
+print_node(struct sioctl_node *c, int mono)
 {
 	printf("%s", c->str);
 	if (!mono && c->unit >= 0)
@@ -335,12 +335,12 @@ print_desc(struct info *p, int mono)
 			if (mono) {
 				if (!isdiag(e))
 					continue;
-				if (e != firstent(p, e->desc.chan1.str))
+				if (e != firstent(p, e->desc.node1.str))
 					continue;
 			}
 			if (more)
 				printf(",");
-			print_chan(&e->desc.chan1, mono);
+			print_node(&e->desc.node1, mono);
 			printf(":*");
 			more = 1;
 		}
@@ -368,12 +368,12 @@ print_val(struct info *p, int mono)
 			if (mono) {
 				if (!isdiag(e))
 					continue;
-				if (e != firstent(p, e->desc.chan1.str))
+				if (e != firstent(p, e->desc.node1.str))
 					continue;
 			}
 			if (more)
 				printf(",");
-			print_chan(&e->desc.chan1, mono);
+			print_node(&e->desc.node1, mono);
 			printf(":%u", e->curval);
 			more = 1;
 		}
@@ -390,7 +390,7 @@ print_par(struct info *p, int mono, char *comment)
 		printf("%s", p->desc.group);
 		printf("/");
 	}
-	print_chan(&p->desc.chan0, mono);
+	print_node(&p->desc.node0, mono);
 	printf(".%s=", p->desc.func);
 	if (i_flag)
 		print_desc(p, mono);
@@ -464,7 +464,7 @@ parse_dec(char **line, int *num)
  * parse a sub-stream, eg. "spkr[7]"
  */
 int
-parse_chan(char **line, char *str, int *unit)
+parse_node(char **line, char *str, int *unit)
 {
 	char *p = *line;
 
@@ -531,7 +531,7 @@ dump(void)
 
 	for (i = infolist; i != NULL; i = i->next) {
 		printf("%03u:", i->ctladdr);
-		print_chan(&i->desc.chan0, 0);
+		print_node(&i->desc.node0, 0);
 		printf(".%s", i->desc.func);
 		printf("=");
 		switch (i->desc.type) {
@@ -541,7 +541,7 @@ dump(void)
 			break;
 		case SIOCTL_VEC:
 		case SIOCTL_LIST:
-			print_chan(&i->desc.chan1, 0);
+			print_node(&i->desc.node1, 0);
 			printf(":* (%u)", i->curval);
 		}
 		printf("\n");
@@ -568,11 +568,11 @@ cmd(char *line)
 	if (*pos == '/')
 		pos++;
 	else {
-		/* this was chan string, go backwards and assume no group */
+		/* this was node string, go backwards and assume no group */
 		pos = line;
 		group[0] = '\0';
 	}
-	if (!parse_chan(&pos, astr, &aunit))
+	if (!parse_node(&pos, astr, &aunit))
 		return 0;
 	if (*pos != '.') {
 		fprintf(stderr, "'.' expected near '%s'\n", pos);
@@ -588,7 +588,7 @@ cmd(char *line)
 		}
 		if (strcmp(g->desc.group, group) == 0 &&
 		    strcmp(g->desc.func, func) == 0 &&
-		    strcmp(g->desc.chan0.str, astr) == 0)
+		    strcmp(g->desc.node0.str, astr) == 0)
 			break;
 	}
 	g->mode = MODE_PRINT;
@@ -638,7 +638,7 @@ cmd(char *line)
 					break;
 				pos++;
 			}
-			if (!parse_chan(&pos, vstr, &vunit))
+			if (!parse_node(&pos, vstr, &vunit))
 				return 0;
 			if (*pos == ':') {
 				pos++;
@@ -661,7 +661,7 @@ cmd(char *line)
 				}
 			}
 			if (nent == 0) {
-				/* XXX: use print_chan()-like routine */
+				/* XXX: use print_node()-like routine */
 				fprintf(stderr, "%s[%d]: invalid value\n", vstr, vunit);
 				print_par(g, 0, NULL);
 				exit(1);

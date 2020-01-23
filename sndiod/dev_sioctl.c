@@ -80,8 +80,8 @@ dev_sioctl_ondesc(void *arg, struct sioctl_desc *desc, int val)
 		group = desc->group;
 
 	dev_addctl(d, group, desc->type, addr,
-	    desc->chan0.str, desc->chan0.unit, desc->func,
-	    desc->chan1.str, desc->chan1.unit, val);
+	    desc->node0.str, desc->node0.unit, desc->func,
+	    desc->node1.str, desc->node1.unit, val);
 }
 
 void

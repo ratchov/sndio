@@ -93,7 +93,7 @@ void slot_write(struct slot *);
 void slot_read(struct slot *);
 int slot_skip(struct slot *);
 
-void ctl_chan_log(struct ctl_chan *);
+void ctl_node_log(struct ctl_node *);
 void ctl_log(struct ctl *);
 
 struct midiops dev_midiops = {
@@ -2222,7 +2222,7 @@ ctlslot_del(struct ctlslot *s)
 }
 
 void
-ctl_chan_log(struct ctl_chan *c)
+ctl_node_log(struct ctl_node *c)
 {
 	log_puts(c->str);
 	if (c->unit >= 0)
@@ -2236,7 +2236,7 @@ ctl_log(struct ctl *c)
 		log_puts(c->group);
 		log_puts("/");
 	}
-	ctl_chan_log(&c->chan0);
+	ctl_node_log(&c->node0);
 	log_puts(".");
 	log_puts(c->func);
 	log_puts("=");
@@ -2247,7 +2247,7 @@ ctl_log(struct ctl *c)
 		break;
 	case CTL_VEC:
 	case CTL_LIST:
-		ctl_chan_log(&c->chan1);
+		ctl_node_log(&c->node1);
 		log_puts(":");
 		log_putu(c->curval);
 	}
@@ -2269,13 +2269,13 @@ dev_addctl(struct dev *d, char *gstr, int type, int addr,
 	c->type = type;
 	strlcpy(c->func, func, CTL_NAMEMAX);
 	strlcpy(c->group, gstr, CTL_NAMEMAX);
-	strlcpy(c->chan0.str, str0, CTL_NAMEMAX);
-	c->chan0.unit = unit0;
+	strlcpy(c->node0.str, str0, CTL_NAMEMAX);
+	c->node0.unit = unit0;
 	if (c->type == CTL_VEC || c->type == CTL_LIST) {
-		strlcpy(c->chan1.str, str1, CTL_NAMEMAX);
-		c->chan1.unit = unit1;
+		strlcpy(c->node1.str, str1, CTL_NAMEMAX);
+		c->node1.unit = unit1;
 	} else
-		memset(&c->chan1, 0, sizeof(struct ctl_chan));
+		memset(&c->node1, 0, sizeof(struct ctl_node));
 	c->addr = addr;
 	c->val_mask = ~0;
 	c->desc_mask = ~0;
@@ -2419,9 +2419,9 @@ dev_label(struct dev *d, int i)
 		c = c->next;
 	}
 	slot_ctlname(&d->slot[i], name, CTL_NAMEMAX);
-	if (strcmp(c->chan0.str, name) == 0)
+	if (strcmp(c->node0.str, name) == 0)
 		return;
-	strlcpy(c->chan0.str, name, CTL_NAMEMAX);
+	strlcpy(c->node0.str, name, CTL_NAMEMAX);
 	c->desc_mask = ~0;
 }
 
