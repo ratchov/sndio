@@ -52,7 +52,9 @@ port_mio_openlist(struct port *c, unsigned int mode)
 {
 	struct mio_hdl *hdl;
 	struct name *n;
+	int idx;
 
+	idx = 0;
 	n = c->path_list;
 	while (1) {
 		if (n == NULL)
@@ -68,6 +70,7 @@ port_mio_openlist(struct port *c, unsigned int mode)
 			return hdl;
 		}
 		n = n->next;
+		idx++;
 	}
 	return NULL;
 }

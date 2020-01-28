@@ -38,6 +38,7 @@ void xfree(void *);
 
 void namelist_add(struct name **, char *);
 void namelist_clear(struct name **);
+char *namelist_byindex(struct name **, unsigned int);
 
 /*
  * Log levels:
