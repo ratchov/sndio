@@ -46,8 +46,6 @@ sioctl_open(const char *str, unsigned int mode, int nbio)
 			return hdl;
 #if defined(USE_SUN_MIXER)
 		return _sioctl_sun_open("rsnd/default", mode, nbio);
-#elif defined(USE_ALSA_MIXER)
-		return _sioctl_alsa_open("rsnd/default", mode, nbio);
 #else
 		return NULL;
 #endif
@@ -57,8 +55,6 @@ sioctl_open(const char *str, unsigned int mode, int nbio)
 	if (_sndio_parsetype(str, "rsnd"))
 #if defined(USE_SUN_MIXER)
 		return _sioctl_sun_open(str, mode, nbio);
-#elif defined(USE_ALSA_MIXER)
-		return _sioctl_alsa_open(str, mode, nbio);
 #else
 		return NULL;
 #endif
