@@ -37,7 +37,7 @@
 #include "sioctl_priv.h"
 #include "bsd-compat.h"
 
-#define DEVPATH_PREFIX	"/dev/mixer"
+#define DEVPATH_PREFIX	"/dev/audioctl"
 #define DEVPATH_MAX 	(1 +		\
 	sizeof(DEVPATH_PREFIX) - 1 +	\
 	sizeof(int) * 3)
@@ -269,6 +269,42 @@ scanvol(struct sioctl_sun_hdl *hdl, struct wskbd_vol *vol)
 	return 1;
 }
 
+static int
+updatevol(struct sioctl_sun_hdl *hdl, struct wskbd_vol *vol, int idx)
+{
+	struct mixer_ctrl ctrl;
+	int val, i;
+
+	if (idx == vol->mute_idx)
+		ctrl.type = AUDIO_MIXER_ENUM;
+	else {
+		ctrl.type = AUDIO_MIXER_VALUE;
+		ctrl.un.value.num_channels = vol->nch;
+	}
+	ctrl.dev = idx;
+	if (ioctl(hdl->fd, AUDIO_MIXER_READ, &ctrl) == -1) {
+		DPERROR("sioctl_sun_revents: ioctl\n");
+		hdl->sioctl.eof = 1;
+		return 0;
+	}
+	if (idx == vol->mute_idx) {
+		val = ctrl.un.ord ? 1 : 0;
+		vol->mute_val = val;
+		for (i = 0; i < vol->nch; i++) {
+			_sioctl_onval_cb(&hdl->sioctl,
+			    vol->base_addr + 32 + i, val);
+		}
+	} else {
+		for (i = 0; i < vol->nch; i++) {
+			val = SUN_TO_SIOCTL(ctrl.un.value.level[i]);
+			vol->level_val[i] = val;
+			_sioctl_onval_cb(&hdl->sioctl,
+			    vol->base_addr + i, val);
+		}
+	}
+	return 1;
+}
+
 int
 sioctl_sun_getfd(const char *str, unsigned int mode, int nbio)
 {
@@ -395,7 +431,7 @@ sioctl_sun_setctl(struct sioctl_hdl *arg, unsigned int addr, unsigned int val)
 static int
 sioctl_sun_nfds(struct sioctl_hdl *addr)
 {
-	return 0;
+	return 1;
 }
 
 static int
@@ -403,15 +439,48 @@ sioctl_sun_pollfd(struct sioctl_hdl *addr, struct pollfd *pfd, int events)
 {
 	struct sioctl_sun_hdl *hdl = (struct sioctl_sun_hdl *)addr;
 
+	pfd->fd = hdl->fd;
+	pfd->events = POLLIN;
 	hdl->events = events;
-	return 0;
+	return 1;
 }
 
 static int
-sioctl_sun_revents(struct sioctl_hdl *addr, struct pollfd *pfd)
+sioctl_sun_revents(struct sioctl_hdl *arg, struct pollfd *pfd)
 {
-	struct sioctl_sun_hdl *hdl = (struct sioctl_sun_hdl *)addr;
+	struct sioctl_sun_hdl *hdl = (struct sioctl_sun_hdl *)arg;
+	struct wskbd_vol *vol;
+	int idx, n;
 
+	if (pfd->revents & POLLIN) {
+		while (1) {
+			n = read(hdl->fd, &idx, sizeof(int));
+			if (n == -1) {
+				if (errno == EINTR || errno == EAGAIN)
+					break;
+				DPERROR("read");
+				hdl->sioctl.eof = 1;
+				return POLLHUP;
+			}
+			if (n < sizeof(int)) {
+				DPRINTF("sioctl_sun_revents: short read\n");
+				hdl->sioctl.eof = 1;
+				return POLLHUP;
+			}
+
+			if (idx == hdl->output.level_idx ||
+			    idx == hdl->output.mute_idx) {
+				vol = &hdl->output;
+			} else if (idx == hdl->input.level_idx ||
+			    idx == hdl->input.mute_idx) {
+				vol = &hdl->input;
+			} else
+				continue;
+
+			if (!updatevol(hdl, vol, idx))
+				return POLLHUP;
+		}
+	}
 	return hdl->events & POLLOUT;
 }
 #endif
