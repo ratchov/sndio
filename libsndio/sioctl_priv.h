@@ -54,9 +54,6 @@ struct sioctl_hdl *_sioctl_fake_open(const char *, unsigned int, int);
 #ifdef USE_SUN_MIXER
 struct sioctl_hdl *_sioctl_sun_open(const char *, unsigned int, int);
 #endif
-#ifdef USE_ALSA_MIXER
-struct sioctl_hdl *_sioctl_alsa_open(const char *, unsigned int, int);
-#endif
 void _sioctl_create(struct sioctl_hdl *,
     struct sioctl_ops *, unsigned int, int);
 void _sioctl_ondesc_cb(struct sioctl_hdl *,
