@@ -144,13 +144,16 @@ _sioctl_aucat_open(const char *str, unsigned int mode, int nbio)
 	hdl = malloc(sizeof(struct sioctl_aucat_hdl));
 	if (hdl == NULL)
 		return NULL;
-	if (!_aucat_open(&hdl->aucat, str, mode)) {
-		free(hdl);
-		return NULL;
-	}
+	if (!_aucat_open(&hdl->aucat, str, mode))
+		goto bad;
 	_sioctl_create(&hdl->sioctl, &sioctl_aucat_ops, mode, nbio);
+	if (!_aucat_setfl(&hdl->aucat, 1, &hdl->sioctl.eof))
+		goto bad;
 	hdl->dump_wait = 0;
 	return (struct sioctl_hdl *)hdl;
+bad:
+	free(hdl);
+	return NULL;
 }
 
 static void
@@ -158,6 +161,8 @@ sioctl_aucat_close(struct sioctl_hdl *addr)
 {
 	struct sioctl_aucat_hdl *hdl = (struct sioctl_aucat_hdl *)addr;
 
+	if (!hdl->sioctl.eof)
+		_aucat_setfl(&hdl->aucat, 0, &hdl->sioctl.eof);
 	_aucat_close(&hdl->aucat, hdl->sioctl.eof);
 	free(hdl);
 }
@@ -218,7 +223,13 @@ sioctl_aucat_setctl(struct sioctl_hdl *addr, unsigned int a, unsigned int v)
 	hdl->aucat.wmsg.cmd = htonl(AMSG_CTLSET);
 	hdl->aucat.wmsg.u.ctlset.addr = htons(a);
 	hdl->aucat.wmsg.u.ctlset.val = htons(v);
-	return _aucat_wmsg(&hdl->aucat, &hdl->sioctl.eof);
+	while (hdl->aucat.wstate != WSTATE_IDLE) {
+		if (_aucat_wmsg(&hdl->aucat, &hdl->sioctl.eof))
+			break;
+		if (hdl->sioctl.nbio || !_sioctl_psleep(&hdl->sioctl, POLLOUT))
+			return 0;
+	}
+	return 1;
 }
 
 static int
@@ -243,7 +254,7 @@ sioctl_aucat_revents(struct sioctl_hdl *addr, struct pollfd *pfd)
 
 	revents = _aucat_revents(&hdl->aucat, pfd);
 	if (revents & POLLIN) {
-		do {
+		while (1) {
 			if (hdl->aucat.rstate == RSTATE_MSG) {
 				if (!sioctl_aucat_runmsg(hdl))
 					break;
@@ -252,7 +263,7 @@ sioctl_aucat_revents(struct sioctl_hdl *addr, struct pollfd *pfd)
 				if (!sioctl_aucat_rdata(hdl))
 					break;
 			}
-		} while (0);
+		}
 		revents &= ~POLLIN;
 	}
 	if (hdl->sioctl.eof)
