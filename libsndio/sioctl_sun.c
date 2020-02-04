@@ -289,6 +289,8 @@ updatevol(struct sioctl_sun_hdl *hdl, struct wskbd_vol *vol, int idx)
 	}
 	if (idx == vol->mute_idx) {
 		val = ctrl.un.ord ? 1 : 0;
+		if (vol->mute_val == val)
+			return 1;
 		vol->mute_val = val;
 		for (i = 0; i < vol->nch; i++) {
 			_sioctl_onval_cb(&hdl->sioctl,
@@ -297,6 +299,8 @@ updatevol(struct sioctl_sun_hdl *hdl, struct wskbd_vol *vol, int idx)
 	} else {
 		for (i = 0; i < vol->nch; i++) {
 			val = SUN_TO_SIOCTL(ctrl.un.value.level[i]);
+			if (vol->level_val[i] == val)
+				continue;
 			vol->level_val[i] = val;
 			_sioctl_onval_cb(&hdl->sioctl,
 			    vol->base_addr + i, val);

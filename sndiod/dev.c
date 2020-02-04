@@ -2363,6 +2363,13 @@ dev_setctl(struct dev *d, int addr, int val)
 			break;
 		c = c->next;
 	}
+	if (c->curval == val) {
+		if (log_level >= 3) {
+			ctl_log(c);
+			log_puts(": already set\n");
+		}
+		return 1;
+	}
 	if (addr >= CTLADDR_END) {
 		if (log_level >= 3) {
 			ctl_log(c);
