@@ -45,7 +45,7 @@
 #define SUN_TO_SIOCTL(v) (((v) * 127 + 127) / 255)
 #define SIOCTL_TO_SUN(v) (((v) * 255 + 63) / 127)
 
-struct wskbd_vol
+struct volume
 {
 	int nch;			/* channels in the level control */
 	int level_idx;			/* index of the level control */
@@ -58,7 +58,7 @@ struct wskbd_vol
 
 struct sioctl_sun_hdl {
 	struct sioctl_hdl sioctl;
-	struct wskbd_vol output, input;
+	struct volume output, input;
 	int fd, events;
 };
 
@@ -99,7 +99,7 @@ initmute(struct sioctl_sun_hdl *hdl, struct mixer_devinfo *info)
 }
 
 static int
-initvol(struct sioctl_sun_hdl *hdl, struct wskbd_vol *vol, char *cn, char *dn)
+initvol(struct sioctl_sun_hdl *hdl, struct volume *vol, char *cn, char *dn)
 {
 	struct mixer_devinfo dev, cls;
 
@@ -163,7 +163,7 @@ init(struct sioctl_sun_hdl *hdl)
 }
 
 static int
-setvol(struct sioctl_sun_hdl *hdl, struct wskbd_vol *vol, int addr, int val)
+setvol(struct sioctl_sun_hdl *hdl, struct volume *vol, int addr, int val)
 {
 	struct mixer_ctrl ctrl;
 	int i;
@@ -217,7 +217,7 @@ setvol(struct sioctl_sun_hdl *hdl, struct wskbd_vol *vol, int addr, int val)
 }
 
 static int
-scanvol(struct sioctl_sun_hdl *hdl, struct wskbd_vol *vol)
+scanvol(struct sioctl_sun_hdl *hdl, struct volume *vol)
 {
 	struct sioctl_desc desc;
 	struct mixer_ctrl ctrl;
@@ -270,7 +270,7 @@ scanvol(struct sioctl_sun_hdl *hdl, struct wskbd_vol *vol)
 }
 
 static int
-updatevol(struct sioctl_sun_hdl *hdl, struct wskbd_vol *vol, int idx)
+updatevol(struct sioctl_sun_hdl *hdl, struct volume *vol, int idx)
 {
 	struct mixer_ctrl ctrl;
 	int val, i;
@@ -453,7 +453,7 @@ static int
 sioctl_sun_revents(struct sioctl_hdl *arg, struct pollfd *pfd)
 {
 	struct sioctl_sun_hdl *hdl = (struct sioctl_sun_hdl *)arg;
-	struct wskbd_vol *vol;
+	struct volume *vol;
 	int idx, n;
 
 	if (pfd->revents & POLLIN) {
