@@ -22,10 +22,6 @@
 #include <unistd.h>
 #include <sndio.h>
 
-#define IS_IDENT(c) (((c) >= 'a' && (c) <= 'z') || \
-	    ((c) >= 'A' && (c) <= 'Z') ||	   \
-	    ((c) == '_'))
-
 struct info {
 	struct info *next;
 	struct sioctl_desc desc;
@@ -68,6 +64,18 @@ void onctl(void *, unsigned, unsigned);
 struct sioctl_hdl *hdl;
 struct info *infolist;
 int i_flag = 0, v_flag = 0, m_flag = 0;
+
+static inline int
+isname_first(int c)
+{
+	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
+}
+
+static inline int
+isname_next(int c)
+{
+	return isname_first(c) || (c >= '0' && c <= '9') || (c == '_');
+}
 
 /*
  * compare two sioctl_desc structures, used to sort infolist
@@ -410,11 +418,11 @@ parse_name(char **line, char *name)
 	char *p = *line;
 	unsigned len = 0;
 
-	if (!IS_IDENT(*p)) {
+	if (!isname_first(*p)) {
 		fprintf(stderr, "letter expected near '%s'\n", p);
 		return 0;
 	}
-	while (IS_IDENT(*p)) {
+	while (isname_next(*p)) {
 		if (len >= SIOCTL_NAMEMAX - 1) {
 			name[SIOCTL_NAMEMAX - 1] = '\0';
 			fprintf(stderr, "%s...: too long\n", name);
