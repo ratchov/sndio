@@ -224,7 +224,6 @@ scanvol(struct sioctl_sun_hdl *hdl, struct volume *vol)
 	int i, val;
 
 	memset(&desc, 0, sizeof(struct sioctl_desc));
-	strlcpy(desc.group, "hw", SIOCTL_NAMEMAX);
 	if (vol->level_idx >= 0) {
 		ctrl.dev = vol->level_idx;
 		ctrl.type = AUDIO_MIXER_VALUE;

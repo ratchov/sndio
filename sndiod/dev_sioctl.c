@@ -51,8 +51,7 @@ struct fileops dev_sioctl_ops = {
 void
 dev_sioctl_ondesc(void *arg, struct sioctl_desc *desc, int val)
 {
-#define GROUP_PREFIX		"dev"
-#define GROUP_PREFIX_LEN	(sizeof(GROUP_PREFIX))
+#define GROUP_PREFIX		"hw"
 	char group_buf[CTL_NAMEMAX], *group;
 	struct dev *d = arg;
 	size_t len;
@@ -64,13 +63,14 @@ dev_sioctl_ondesc(void *arg, struct sioctl_desc *desc, int val)
 	dev_rmctl(d, addr);
 
 	/*
-	 * prefix group names we use (top-level and "app") with "dev."
+	 * prefix group names we use (top-level and "app") with "hw."
 	 * to ensure that all controls have unique names when multiple
 	 * sndiod's are chained
 	 */
 	if (desc->group[0] == 0)
 		group = GROUP_PREFIX;
-	else if (strcmp(desc->group, "app") == 0) {
+	else if (strcmp(desc->group, GROUP_PREFIX) == 0 ||
+	    strcmp(desc->group, "app") == 0) {
 		group = group_buf;
 		len = snprintf(group_buf, CTL_NAMEMAX,
 		    GROUP_PREFIX ".%s", desc->group);
