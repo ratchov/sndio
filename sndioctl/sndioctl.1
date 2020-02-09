@@ -41,9 +41,7 @@ The options are as follows:
 .Bl -tag -width Ds
 .It Fl d
 Dump the raw list of available parameters and exit.
-Useful to debug device drivers or programs using the
-.Xr sioctl_open 3
-interface.
+Useful as a debug tool.
 .It Fl f Ar device
 Use this
 .Xr sndio 7
@@ -73,16 +71,15 @@ The set of available controls depends on the control device.
 Commands use the following two formats to display and set
 parameters respectively:
 .Pp
-.Dl <substream>.<parameter>
-.Dl <substream>.<parameter>=<value>
+.Dl group/stream[channel].function
+.Dl group/stream[channel].function=value
 .Pp
-On the left-hand side, the affected substream is specified
-by the stream name followed by an optional
-channel.
+On the left-hand side are specified the optional parameter group,
+the affected stream name, and the optional channel number.
 Examples of left-hand side terms:
 .Pp
-.Dl spkr.level
-.Dl spkr6.level
+.Dl output.level
+.Dl hw/spkr[6].mute
 .Pp
 There are 4 parameter types: switches, numbers, selectors, and vectors.
 .Pp
@@ -104,23 +101,21 @@ If
 is used instead of a number, then the switch is toggled.
 Examples:
 .Pp
-.Dl spkr.level=85
-.Dl spkr.level=+10
-.Dl spkr.mute=0
-.Dl spkr.mute=!
+.Dl hw/spkr.level=85
+.Dl hw/spkr.level=+10
+.Dl hw/spkr.mute=0
+.Dl hw/spkr.mute=!
 .Pp
-.Pp Selectors
 Selector values are substreams; they are specified
 as the stream name followed by an optional channel
-range.
-If no channel range is specified, the same
-range as the stream specified on the left-hand side is used.
+numer.
+If no channel number is specified, the same
+number as the stream specified on the left-hand side is used.
 For instance the following are equivalent:
 .Pp
-.Dl record1.source=mic
-.Dl record1.source=mic1
+.Dl hw/record[1].source=mic
+.Dl hw/record[1].source=mic1
 .Pp
-.Pp Vectors
 Vectors are arrays of numbers.
 Values are specified as comma-separated components.
 Each component is a substream, followed by
@@ -130,14 +125,12 @@ assumed.
 If a component is missing, then 0 is assumed.
 Example:
 .Pp
-.Dl monitor.mix=play:120,linein:85
-.Dl record.source=mic,linein
+.Dl hw/monitor.mix=play:120,linein:85
+.Dl hw/record.source=mic,linein
 .Pp
 Numbers are specified as discussed above.
 Note that a vector of switches is equivalent to
 a list.
-.Sh SEE ALSO
-.Xr sioctl_open 3
 .Sh EXAMPLES
 The following will set all
 .Ar level
@@ -145,9 +138,11 @@ parameters that control the
 .Ar spkr
 stream to zero.
 .Pp
-.Dl $ sndioctl spkr.level=0
+.Dl $ sndioctl hw/spkr.level=0
 .Pp
 The following commands are equivalent:
 .Pp
-.Dl $ sndioctl record0.source=mic0 record1.source=mic1
-.Dl $ sndioctl record.source=mic
+.Dl $ sndioctl hw/record[0].source=mic0 hw/record[1].source=mic1
+.Dl $ sndioctl hw/record.source=mic
+.Sh SEE ALSO
+.Xr sioctl_open 3
