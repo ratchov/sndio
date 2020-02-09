@@ -28,9 +28,7 @@
 .Op Ar command ...
 .Ek
 .Nm
-.Bk -words
 .Fl d
-.Ek
 .Sh DESCRIPTION
 The
 .Nm
@@ -41,16 +39,16 @@ The options are as follows:
 .Bl -tag -width Ds
 .It Fl d
 Dump the raw list of available parameters and exit.
-Useful as a debug tool.
+Useful as a debugging tool.
 .It Fl f Ar device
 Use this
 .Xr sndio 7
 audio device.
-.It Fl m
-Monitor and display audio parameters changes.
 .It Fl i
 Display characteristics of requested parameters
 instead of their values.
+.It Fl m
+Monitor and display audio parameter changes.
 .It Fl v
 Enable verbose mode, a.k.a. multi-channel mode.
 By default parameters affecting different channels
@@ -108,7 +106,7 @@ Examples:
 .Pp
 Selector values are substreams; they are specified
 as the stream name followed by an optional channel
-numer.
+number.
 If no channel number is specified, the same
 number as the stream specified on the left-hand side is used.
 For instance the following are equivalent:
