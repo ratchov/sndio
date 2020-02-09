@@ -14,8 +14,8 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#ifndef WAV_H
-#define WAV_H
+#ifndef AFILE_H
+#define AFILE_H
 
 #include <sys/types.h>
 #include "dsp.h"
@@ -52,4 +52,4 @@ size_t afile_write(struct afile *, void *, size_t);
 int afile_seek(struct afile *, off_t);
 void afile_close(struct afile *);
 
-#endif /* !defined(WAV_H) */
+#endif /* !defined(AFILE_H) */
