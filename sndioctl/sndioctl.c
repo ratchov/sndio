@@ -591,7 +591,7 @@ cmd(char *line)
 		return 0;
 	for (g = infolist;; g = g->next) {
 		if (g == NULL) {
-			fprintf(stderr, "%s.%s: no such group\n", astr, func);
+			fprintf(stderr, "%s.%s: no such control\n", astr, func);
 			return 0;
 		}
 		if (strcmp(g->desc.group, group) == 0 &&
