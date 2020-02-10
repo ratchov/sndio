@@ -69,15 +69,13 @@ dev_sioctl_ondesc(void *arg, struct sioctl_desc *desc, int val)
 	 */
 	if (desc->group[0] == 0)
 		group = GROUP_PREFIX;
-	else if (strcmp(desc->group, GROUP_PREFIX) == 0 ||
-	    strcmp(desc->group, "app") == 0) {
+	else {
 		group = group_buf;
 		len = snprintf(group_buf, CTL_NAMEMAX,
-		    GROUP_PREFIX ".%s", desc->group);
+		    GROUP_PREFIX "/%s", desc->group);
 		if (len >= CTL_NAMEMAX)
 			return;
-	} else
-		group = desc->group;
+	}
 
 	dev_addctl(d, group, desc->type, addr,
 	    desc->node0.name, desc->node0.unit, desc->func,
