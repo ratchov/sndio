@@ -562,23 +562,22 @@ dump(void)
 int
 cmd(char *line)
 {
-	char *pos = line;
+	char *pos, *group;
 	struct info *i, *e, *g;
-	char group[SIOCTL_NAMEMAX];
 	char func[SIOCTL_NAMEMAX];
 	char astr[SIOCTL_NAMEMAX], vstr[SIOCTL_NAMEMAX];
 	int aunit, vunit;
 	unsigned npar = 0, nent = 0;
 	int val, comma, mode;
 
-	if (!parse_name(&pos, group))
-		return 0;
-	if (*pos == '/')
+	pos = strrchr(line, '/');
+	if (pos != NULL) {
+		group = line;
+		pos[0] = 0;
 		pos++;
-	else {
-		/* this was node string, go backwards and assume no group */
+	} else {
+		group = "";
 		pos = line;
-		group[0] = '\0';
 	}
 	if (!parse_node(&pos, astr, &aunit))
 		return 0;
