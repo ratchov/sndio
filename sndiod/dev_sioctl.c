@@ -54,7 +54,6 @@ dev_sioctl_ondesc(void *arg, struct sioctl_desc *desc, int val)
 #define GROUP_PREFIX		"hw"
 	char group_buf[CTL_NAMEMAX], *group;
 	struct dev *d = arg;
-	size_t len;
 	int addr;
 
 	if (desc == NULL)
@@ -71,9 +70,8 @@ dev_sioctl_ondesc(void *arg, struct sioctl_desc *desc, int val)
 		group = GROUP_PREFIX;
 	else {
 		group = group_buf;
-		len = snprintf(group_buf, CTL_NAMEMAX,
-		    GROUP_PREFIX "/%s", desc->group);
-		if (len >= CTL_NAMEMAX)
+		if (snprintf(group_buf, CTL_NAMEMAX, GROUP_PREFIX "/%s",
+		    desc->group) >= CTL_NAMEMAX)
 			return;
 	}
 
