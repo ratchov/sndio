@@ -453,7 +453,9 @@ parse_dec(char **line, int *num)
 		if (dig >= 10)
 			break;
 		if (val > MAXQ || (val == MAXQ && dig > MAXR)) {
-			fprintf(stderr, "integer overflow\n");
+			fprintf(stderr,
+			    "%s: expected integer in the 0..%d range\n",
+			    *line, SIOCTL_VALMAX);
 			return 0;
 		}
 		val = val * 10 + dig;
