@@ -51,7 +51,7 @@ void print_desc(struct info *, int);
 void print_val(struct info *, int);
 void print_par(struct info *, int, char *);
 int parse_name(char **, char *);
-int parse_dec(char **, int *);
+int parse_dec(char **, unsigned int, unsigned int *);
 int parse_node(char **, char *, int *);
 int parse_modeval(char **, int *, int *);
 void dump(void);
@@ -440,22 +440,15 @@ parse_name(char **line, char *name)
  * parse a decimal number
  */
 int
-parse_dec(char **line, int *num)
+parse_dec(char **line, unsigned int max, unsigned int *num)
 {
-#define MAXQ 	(SIOCTL_VALMAX / 10)
-#define MAXR 	(SIOCTL_VALMAX % 10)
 	char *p = *line;
-	unsigned int dig, val;
+	unsigned int maxq = max / 10, maxr = max % 10;
+	unsigned int dig, val = 0;
 
-	val = 0;
-	for (;;) {
-		dig = *p - '0';
-		if (dig >= 10)
-			break;
-		if (val > MAXQ || (val == MAXQ && dig > MAXR)) {
-			fprintf(stderr,
-			    "%s: expected integer in the 0..%d range\n",
-			    *line, SIOCTL_VALMAX);
+	while ((dig = *p - '0') < 10) {
+		if (val > maxq || (val == maxq && dig > maxr)) {
+			fprintf(stderr, "%s: too large\n", *line);
 			return 0;
 		}
 		val = val * 10 + dig;
@@ -486,7 +479,7 @@ parse_node(char **line, char *str, int *unit)
 		return 1;
 	}
 	p++;
-	if (!parse_dec(&p, unit))
+	if (!parse_dec(&p, 255, unit))
 		return 0;
 	if (*p != ']') {
 		fprintf(stderr, "']' expected near '%s'\n", p);
@@ -523,7 +516,7 @@ parse_modeval(char **line, int *rmode, int *rval)
 		mode = MODE_SET;
 	}
 	if (mode != MODE_TOGGLE) {
-		if (!parse_dec(&p, rval))
+		if (!parse_dec(&p, SIOCTL_VALMAX, rval))
 			return 0;
 	}
 	*line = p;
