@@ -437,7 +437,7 @@ parse_name(char **line, char *name)
 }
 
 /*
- * parse a decimal number
+ * parse a decimal integer
  */
 int
 parse_dec(char **line, unsigned int max, unsigned int *num)
