@@ -847,7 +847,7 @@ onctl(void *arg, unsigned addr, unsigned val)
 int
 main(int argc, char **argv)
 {
-	char *devname = SIOCTL_DEVANY;
+	char *devname = SIO_DEVANY;
 	int i, c, d_flag = 0;
 	struct info *g;
 	struct pollfd *pfds;

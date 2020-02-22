@@ -27,7 +27,7 @@
 struct sioctl_hdl *
 sioctl_open(const char *str, unsigned int mode, int nbio)
 {
-	static char devany[] = SIOCTL_DEVANY;
+	static char devany[] = SIO_DEVANY;
 	struct sioctl_hdl *hdl;
 
 #ifdef DEBUG

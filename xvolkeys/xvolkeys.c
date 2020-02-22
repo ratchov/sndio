@@ -229,7 +229,7 @@ main(int argc, char **argv)
 	/*
 	 * parse command line options
 	 */
-	dev_name = SIOCTL_DEVANY;
+	dev_name = SIO_DEVANY;
 	verbose = 0;
 	background = 0;
 	while ((c = getopt(argc, argv, "Df:q:v")) != -1) {

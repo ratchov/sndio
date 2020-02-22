@@ -24,7 +24,6 @@
  */
 #define SIO_DEVANY	"default"
 #define MIO_PORTANY	"default"
-#define SIOCTL_DEVANY	"default"
 
 /*
  * limits
