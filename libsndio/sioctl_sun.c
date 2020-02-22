@@ -257,7 +257,7 @@ scanvol(struct sioctl_sun_hdl *hdl, struct volume *vol)
 		desc.node1.unit = -1;
 		strlcpy(desc.func, "mute", SIOCTL_NAMEMAX);
 		strlcpy(desc.node0.name, vol->name, SIOCTL_NAMEMAX);
-		val = ctrl.un.ord ? 1 : 0;
+		val = ctrl.un.ord ? SIOCTL_VALMAX : 0;
 		vol->mute_val = val;
 		for (i = 0; i < vol->nch; i++) {
 			desc.node0.unit = i;
@@ -287,7 +287,7 @@ updatevol(struct sioctl_sun_hdl *hdl, struct volume *vol, int idx)
 		return 0;
 	}
 	if (idx == vol->mute_idx) {
-		val = ctrl.un.ord ? 1 : 0;
+		val = ctrl.un.ord ? SIOCTL_VALMAX : 0;
 		if (vol->mute_val == val)
 			return 1;
 		vol->mute_val = val;

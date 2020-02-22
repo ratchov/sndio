@@ -81,9 +81,7 @@ Examples of left-hand side terms:
 .Pp
 There are 4 parameter types: switches, numbers, selectors, and vectors.
 .Pp
-Numbers are specified in decimal and follow the same semantics
-as MIDI controllers.
-Values are in the 0..127 range and 64 is the neutral state (if applicable).
+Values are in the [0:1] range.
 Two-state controls (switches) take either 0 or 1 as value,
 typically corresponding to the
 .Em off
@@ -99,8 +97,8 @@ If
 is used instead of a number, then the switch is toggled.
 Examples:
 .Pp
-.Dl hw/spkr.level=85
-.Dl hw/spkr.level=+10
+.Dl hw/spkr.level=0.85
+.Dl hw/spkr.level=+0.1
 .Dl hw/spkr.mute=0
 .Dl hw/spkr.mute=!
 .Pp
@@ -123,7 +121,7 @@ assumed.
 If a component is missing, then 0 is assumed.
 Example:
 .Pp
-.Dl hw/monitor.mix=play:120,linein:85
+.Dl hw/monitor.mix=play:0.75,linein:0.85
 .Dl hw/record.source=mic,linein
 .Pp
 Numbers are specified as discussed above.

@@ -51,7 +51,8 @@ void print_desc(struct info *, int);
 void print_val(struct info *, int);
 void print_par(struct info *, int, char *);
 int parse_name(char **, char *);
-int parse_dec(char **, unsigned int, unsigned int *);
+int parse_unit(char **, unsigned int *);
+int parse_val(char **, unsigned int *);
 int parse_node(char **, char *, int *);
 int parse_modeval(char **, int *, int *);
 void dump(void);
@@ -367,7 +368,7 @@ print_val(struct info *p, int mono)
 	switch (p->desc.type) {
 	case SIOCTL_NUM:
 	case SIOCTL_SW:
-		printf("%u", p->curval);
+		printf("%.2g", p->curval / (float)SIOCTL_VALMAX);
 		break;
 	case SIOCTL_VEC:
 	case SIOCTL_LIST:
@@ -382,7 +383,7 @@ print_val(struct info *p, int mono)
 			if (more)
 				printf(",");
 			print_node(&e->desc.node1, mono);
-			printf(":%u", e->curval);
+			printf(":%.2g", e->curval / (float)SIOCTL_VALMAX);
 			more = 1;
 		}
 	}
@@ -440,26 +441,46 @@ parse_name(char **line, char *name)
  * parse a decimal integer
  */
 int
-parse_dec(char **line, unsigned int max, unsigned int *num)
+parse_unit(char **line, unsigned int *num)
 {
 	char *p = *line;
-	unsigned int maxq = max / 10, maxr = max % 10;
-	unsigned int dig, val = 0;
+	unsigned int val;
+	int n;
 
-	while ((dig = *p - '0') < 10) {
-		if (val > maxq || (val == maxq && dig > maxr)) {
-			fprintf(stderr, "%s: too large\n", *line);
-			return 0;
-		}
-		val = val * 10 + dig;
-		p++;
-	}
-	if (p == *line) {
+	if (sscanf(p, "%u%n", &val, &n) != 1) {
 		fprintf(stderr, "number expected near '%s'\n", p);
 		return 0;
 	}
+	if (val >= 255) {
+		fprintf(stderr, "%d: too large\n", val);
+		return 0;
+	}
 	*num = val;
-	*line = p;
+	*line = p + n;
+	return 1;
+}
+
+int
+parse_val(char **line, unsigned int *num)
+{
+	char *p = *line;
+	unsigned int ival;
+	float fval;
+	int n;
+
+	if (sscanf(p, "%g%n", &fval, &n) != 1) {
+		fprintf(stderr, "number expected near '%s'\n", p);
+		return 0;
+	}
+	if (fval < 0 || fval > 1) {
+		fprintf(stderr, "%g: expected number between 0 and 1\n", fval);
+		return 0;
+	}
+	ival = fval * (SIOCTL_VALMAX + 1);
+	if (ival > SIOCTL_VALMAX)
+		ival = SIOCTL_VALMAX;
+	*num = ival;
+	*line = p + n;
 	return 1;
 }
 
@@ -479,7 +500,7 @@ parse_node(char **line, char *str, int *unit)
 		return 1;
 	}
 	p++;
-	if (!parse_dec(&p, 255, unit))
+	if (!parse_unit(&p, unit))
 		return 0;
 	if (*p != ']') {
 		fprintf(stderr, "']' expected near '%s'\n", p);
@@ -516,7 +537,7 @@ parse_modeval(char **line, int *rmode, int *rval)
 		mode = MODE_SET;
 	}
 	if (mode != MODE_TOGGLE) {
-		if (!parse_dec(&p, SIOCTL_VALMAX, rval))
+		if (!parse_val(&p, rval))
 			return 0;
 	}
 	*line = p;
@@ -714,15 +735,9 @@ commit(void)
 			val = (i->curval >= SIOCTL_VALMAX / 2) ?
 			    0 : SIOCTL_VALMAX;
 		}
-		switch (i->desc.type) {
-		case SIOCTL_NUM:
-		case SIOCTL_SW:
-			sioctl_setval(hdl, i->ctladdr, val);
-			break;
-		case SIOCTL_VEC:
-		case SIOCTL_LIST:
-			sioctl_setval(hdl, i->ctladdr, val);
-		}
+		if (i->desc.type == SIOCTL_SW || i->desc.type == SIOCTL_LIST)
+			val = val ? SIOCTL_VALMAX : 0;
+		sioctl_setval(hdl, i->ctladdr, val);
 		i->curval = val;
 	}
 }
