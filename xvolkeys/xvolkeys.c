@@ -44,7 +44,8 @@
 char *dev_name;
 struct pollfd pfds[16];
 struct sioctl_hdl *hdl;
-unsigned int output_addr, output_val = SIOCTL_VALMAX;
+unsigned int output_addr;
+int output_val, output_maxval;
 int output_found = 0;
 int verbose;
 
@@ -70,6 +71,7 @@ dev_ondesc(void *unused, struct sioctl_desc *desc, int val)
 	    strcmp(desc->func, "level") == 0) {
 		output_found = 1;
 		output_addr = desc->addr;
+		output_maxval = desc->maxval;
 		output_val = val;
 		if (verbose)
 			fprintf(stderr, "%s: output at addr %u, value = %u\n",
@@ -139,8 +141,8 @@ dev_incrvol(int incr)
 	if (!dev_connect())
 		return;
 	vol = output_val + incr;
-	if (vol > SIOCTL_VALMAX)
-		vol = SIOCTL_VALMAX;
+	if (vol > output_maxval)
+		vol = output_maxval;
 	if (vol < 0)
 		vol = 0;
 	if (output_val != (unsigned int)vol) {

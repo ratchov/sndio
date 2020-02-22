@@ -30,7 +30,6 @@
  * limits
  */
 #define SIOCTL_NAMEMAX		12	/* max name length */
-#define SIOCTL_VALMAX		127	/* max control value */
 
 /*
  * private ``handle'' structure
@@ -115,6 +114,8 @@ struct sioctl_desc {
 	char group[SIOCTL_NAMEMAX];	/* group this control belongs to */
 	struct sioctl_node node0;	/* affected node */
 	struct sioctl_node node1;	/* dito for SIOCTL_{VEC,LIST} */
+	unsigned int maxval;		/* max value for SIOCTL_{NUM,VEC} */
+	int __pad[3];
 };
 
 /*

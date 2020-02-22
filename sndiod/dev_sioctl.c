@@ -77,7 +77,7 @@ dev_sioctl_ondesc(void *arg, struct sioctl_desc *desc, int val)
 
 	dev_addctl(d, group, desc->type, addr,
 	    desc->node0.name, desc->node0.unit, desc->func,
-	    desc->node1.name, desc->node1.unit, val);
+	    desc->node1.name, desc->node1.unit, desc->maxval, val);
 }
 
 void

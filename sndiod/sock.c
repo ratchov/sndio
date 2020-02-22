@@ -1543,6 +1543,7 @@ sock_buildmsg(struct sock *f)
 			desc->type = c->type;
 			strlcpy(desc->func, c->func, AMSG_CTL_NAMEMAX);
 			desc->addr = htons(c->addr);
+			desc->maxval = htons(c->maxval);
 			desc->curval = htons(c->curval);
 			size += sizeof(struct amsg_ctl_desc);
 			desc++;

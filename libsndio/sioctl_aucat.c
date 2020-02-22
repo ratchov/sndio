@@ -90,6 +90,7 @@ sioctl_aucat_rdata(struct sioctl_aucat_hdl *hdl)
 			strlcpy(desc.func, c->func, SIOCTL_NAMEMAX);
 			desc.type = c->type;
 			desc.addr = ntohs(c->addr);
+			desc.maxval = ntohs(c->maxval);
 			_sioctl_ondesc_cb(&hdl->sioctl,
 			    &desc, ntohs(c->curval));
 			rpos += sizeof(struct amsg_ctl_desc);

@@ -16,11 +16,11 @@
  */
 #include <errno.h>
 #include <poll.h>
+#include <sndio.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
-#include <sndio.h>
 
 struct info {
 	struct info *next;
@@ -52,9 +52,9 @@ void print_val(struct info *, int);
 void print_par(struct info *, int, char *);
 int parse_name(char **, char *);
 int parse_unit(char **, unsigned int *);
-int parse_val(char **, unsigned int *);
+int parse_val(char **, float *);
 int parse_node(char **, char *, int *);
-int parse_modeval(char **, int *, int *);
+int parse_modeval(char **, int *, float *);
 void dump(void);
 int cmd(char *);
 void commit(void);
@@ -76,6 +76,12 @@ static inline int
 isname_next(int c)
 {
 	return isname_first(c) || (c >= '0' && c <= '9') || (c == '_');
+}
+
+static int
+ftoi(float f)
+{
+	return f + 0.5;
 }
 
 /*
@@ -368,7 +374,7 @@ print_val(struct info *p, int mono)
 	switch (p->desc.type) {
 	case SIOCTL_NUM:
 	case SIOCTL_SW:
-		printf("%.2g", p->curval / (float)SIOCTL_VALMAX);
+		printf("%.2g", p->curval / (float)p->desc.maxval);
 		break;
 	case SIOCTL_VEC:
 	case SIOCTL_LIST:
@@ -383,7 +389,7 @@ print_val(struct info *p, int mono)
 			if (more)
 				printf(",");
 			print_node(&e->desc.node1, mono);
-			printf(":%.2g", e->curval / (float)SIOCTL_VALMAX);
+			printf(":%.2g", e->curval / (float)e->desc.maxval);
 			more = 1;
 		}
 	}
@@ -461,25 +467,21 @@ parse_unit(char **line, unsigned int *num)
 }
 
 int
-parse_val(char **line, unsigned int *num)
+parse_val(char **line, float *num)
 {
 	char *p = *line;
-	unsigned int ival;
-	float fval;
+	float val;
 	int n;
 
-	if (sscanf(p, "%g%n", &fval, &n) != 1) {
+	if (sscanf(p, "%g%n", &val, &n) != 1) {
 		fprintf(stderr, "number expected near '%s'\n", p);
 		return 0;
 	}
-	if (fval < 0 || fval > 1) {
-		fprintf(stderr, "%g: expected number between 0 and 1\n", fval);
+	if (val < 0 || val > 1) {
+		fprintf(stderr, "%g: expected number between 0 and 1\n", val);
 		return 0;
 	}
-	ival = fval * (SIOCTL_VALMAX + 1);
-	if (ival > SIOCTL_VALMAX)
-		ival = SIOCTL_VALMAX;
-	*num = ival;
+	*num = val;
 	*line = p + n;
 	return 1;
 }
@@ -515,7 +517,7 @@ parse_node(char **line, char *str, int *unit)
  * parse a decimal prefixed by the optional mode
  */
 int
-parse_modeval(char **line, int *rmode, int *rval)
+parse_modeval(char **line, int *rmode, float *rval)
 {
 	char *p = *line;
 	unsigned mode;
@@ -561,12 +563,12 @@ dump(void)
 		switch (i->desc.type) {
 		case SIOCTL_NUM:
 		case SIOCTL_SW:
-			printf("* (%u)", i->curval);
+			printf("0..%d (%u)", i->desc.maxval, i->curval);
 			break;
 		case SIOCTL_VEC:
 		case SIOCTL_LIST:
 			print_node(&i->desc.node1, 0);
-			printf(":* (%u)", i->curval);
+			printf(":0..%d (%u)", i->desc.maxval, i->curval);
 		}
 		printf("\n");
 	}
@@ -584,7 +586,8 @@ cmd(char *line)
 	char astr[SIOCTL_NAMEMAX], vstr[SIOCTL_NAMEMAX];
 	int aunit, vunit;
 	unsigned npar = 0, nent = 0;
-	int val, comma, mode;
+	int comma, mode;
+	float val;
 
 	pos = strrchr(line, '/');
 	if (pos != NULL) {
@@ -637,7 +640,7 @@ cmd(char *line)
 			if (!matchpar(i, astr, aunit))
 				continue;
 			i->mode = mode;
-			i->newval = val;
+			i->newval = ftoi(val * i->desc.maxval);
 			npar++;
 		}
 		break;
@@ -668,7 +671,7 @@ cmd(char *line)
 				if (!parse_modeval(&pos, &mode, &val))
 					return 0;
 			} else {
-				val = SIOCTL_VALMAX;
+				val = 1.;
 				mode = MODE_SET;
 			}
 			nent = 0;
@@ -677,7 +680,7 @@ cmd(char *line)
 					continue;
 				for (e = i; e != NULL; e = nextent(e, 0)) {
 					if (matchent(e, vstr, vunit)) {
-						e->newval = val;
+						e->newval = ftoi(val * e->desc.maxval);
 						e->mode = mode;
 						nent++;
 					}
@@ -723,8 +726,8 @@ commit(void)
 			break;
 		case MODE_ADD:
 			val = i->curval + i->newval;
-			if (val > SIOCTL_VALMAX)
-				val = SIOCTL_VALMAX;
+			if (val > i->desc.maxval)
+				val = i->desc.maxval;
 			break;
 		case MODE_SUB:
 			val = i->curval - i->newval;
@@ -732,11 +735,8 @@ commit(void)
 				val = 0;
 			break;
 		case MODE_TOGGLE:
-			val = (i->curval >= SIOCTL_VALMAX / 2) ?
-			    0 : SIOCTL_VALMAX;
+			val = i->curval ? 0 : i->desc.maxval;
 		}
-		if (i->desc.type == SIOCTL_SW || i->desc.type == SIOCTL_LIST)
-			val = val ? SIOCTL_VALMAX : 0;
 		sioctl_setval(hdl, i->ctladdr, val);
 		i->curval = val;
 	}

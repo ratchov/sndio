@@ -139,6 +139,7 @@ struct ctl {
 	unsigned int val_mask;
 	unsigned int desc_mask;
 	unsigned int refs_mask;
+	unsigned int maxval;
 	unsigned int curval;
 	int dirty;
 };
@@ -309,7 +310,7 @@ int dev_onval(struct dev *, int, int);
 int dev_nctl(struct dev *);
 void dev_label(struct dev *, int);
 struct ctl *dev_addctl(struct dev *, char *, int, int,
-    char *, int, char *, char *, int, int);
+    char *, int, char *, char *, int, int, int);
 void dev_rmctl(struct dev *, int);
 int dev_makeunit(struct dev *, char *);
 

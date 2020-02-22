@@ -1147,10 +1147,10 @@ dev_open(struct dev *d)
 		dev_addctl(d, "app", CTL_NUM,
 		    CTLADDR_SLOT_LEVEL(i),
 		    name, -1, "level",
-		    NULL, -1, d->slot[i].vol);
+		    NULL, -1, 127, d->slot[i].vol);
 	}
 	dev_addctl(d, "", CTL_NUM,
-	    CTLADDR_MASTER, "output", -1, "level", NULL, -1, d->master);
+	    CTLADDR_MASTER, "output", -1, "level", NULL, -1, 127, d->master);
 
 	d->pstate = DEV_INIT;
 	return 1;
@@ -2259,7 +2259,7 @@ ctl_log(struct ctl *c)
  */
 struct ctl *
 dev_addctl(struct dev *d, char *gstr, int type, int addr,
-    char *str0, int unit0, char *func, char *str1, int unit1, int val)
+    char *str0, int unit0, char *func, char *str1, int unit1, int maxval, int val)
 {
 	struct ctl *c, **pc;
 	int i;
@@ -2276,6 +2276,7 @@ dev_addctl(struct dev *d, char *gstr, int type, int addr,
 	} else
 		memset(&c->node1, 0, sizeof(struct ctl_node));
 	c->addr = addr;
+	c->maxval = maxval;
 	c->val_mask = ~0;
 	c->desc_mask = ~0;
 	c->curval = val;

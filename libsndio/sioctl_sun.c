@@ -42,9 +42,6 @@
 	sizeof(DEVPATH_PREFIX) - 1 +	\
 	sizeof(int) * 3)
 
-#define SUN_TO_SIOCTL(v) (((v) * 127 + 127) / 255)
-#define SIOCTL_TO_SUN(v) (((v) * 255 + 63) / 127)
-
 struct volume
 {
 	int nch;			/* channels in the level control */
@@ -178,10 +175,8 @@ setvol(struct sioctl_sun_hdl *hdl, struct volume *vol, int addr, int val)
 		ctrl.dev = vol->level_idx;
 		ctrl.type = AUDIO_MIXER_VALUE;
 		ctrl.un.value.num_channels = vol->nch;
-		for (i = 0; i < vol->nch; i++) {
-			ctrl.un.value.level[i] =
-			    SIOCTL_TO_SUN(vol->level_val[i]);
-		}
+		for (i = 0; i < vol->nch; i++)
+			ctrl.un.value.level[i] = vol->level_val[i];
 		DPRINTF("vol %d setting to %d\n", addr, vol->level_val[addr]);
 		if (ioctl(hdl->fd, AUDIO_MIXER_WRITE, &ctrl) < 0) {
 			DPRINTF("level write failed\n");
@@ -233,6 +228,7 @@ scanvol(struct sioctl_sun_hdl *hdl, struct volume *vol)
 			return 0;
 		}
 		desc.type = SIOCTL_NUM;
+		desc.maxval = AUDIO_MAX_GAIN;
 		desc.node1.name[0] = 0;
 		desc.node1.unit = -1;
 		strlcpy(desc.func, "level", SIOCTL_NAMEMAX);
@@ -240,7 +236,7 @@ scanvol(struct sioctl_sun_hdl *hdl, struct volume *vol)
 		for (i = 0; i < vol->nch; i++) {
 			desc.node0.unit = i;
 			desc.addr = vol->base_addr + i;
-			val = SUN_TO_SIOCTL(ctrl.un.value.level[i]);
+			val = ctrl.un.value.level[i];
 			vol->level_val[i] = val;
 			_sioctl_ondesc_cb(&hdl->sioctl, &desc, val);
 		}
@@ -253,11 +249,12 @@ scanvol(struct sioctl_sun_hdl *hdl, struct volume *vol)
 			return 0;
 		}
 		desc.type = SIOCTL_SW;
+		desc.maxval = 1;
 		desc.node1.name[0] = 0;
 		desc.node1.unit = -1;
 		strlcpy(desc.func, "mute", SIOCTL_NAMEMAX);
 		strlcpy(desc.node0.name, vol->name, SIOCTL_NAMEMAX);
-		val = ctrl.un.ord ? SIOCTL_VALMAX : 0;
+		val = ctrl.un.ord ? 1 : 0;
 		vol->mute_val = val;
 		for (i = 0; i < vol->nch; i++) {
 			desc.node0.unit = i;
@@ -287,7 +284,7 @@ updatevol(struct sioctl_sun_hdl *hdl, struct volume *vol, int idx)
 		return 0;
 	}
 	if (idx == vol->mute_idx) {
-		val = ctrl.un.ord ? SIOCTL_VALMAX : 0;
+		val = ctrl.un.ord ? 1 : 0;
 		if (vol->mute_val == val)
 			return 1;
 		vol->mute_val = val;
@@ -297,7 +294,7 @@ updatevol(struct sioctl_sun_hdl *hdl, struct volume *vol, int idx)
 		}
 	} else {
 		for (i = 0; i < vol->nch; i++) {
-			val = SUN_TO_SIOCTL(ctrl.un.value.level[i]);
+			val = ctrl.un.value.level[i];
 			if (vol->level_val[i] == val)
 				continue;
 			vol->level_val[i] = val;
