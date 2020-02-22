@@ -2340,15 +2340,6 @@ dev_setctl(struct dev *d, int addr, int val)
 	struct ctl *c;
 	int num;
 
-	if (val < 0 || val > MIDI_MAXCTL) {
-		if (log_level >= 3) {
-			dev_log(d);
-			log_puts(": ");
-			log_putu(val);
-			log_puts(": ctl val out of bounds\n");
-		}
-		return 0;
-	}
 	c = d->ctl_list;
 	for (;;) {
 		if (c == NULL) {
@@ -2370,6 +2361,15 @@ dev_setctl(struct dev *d, int addr, int val)
 			log_puts(": already set\n");
 		}
 		return 1;
+	}
+	if (val < 0 || val > c->maxval) {
+		if (log_level >= 3) {
+			dev_log(d);
+			log_puts(": ");
+			log_putu(val);
+			log_puts(": ctl val out of bounds\n");
+		}
+		return 0;
 	}
 	if (addr >= CTLADDR_END) {
 		if (log_level >= 3) {
