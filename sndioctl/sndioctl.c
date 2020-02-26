@@ -872,7 +872,7 @@ main(int argc, char **argv)
 			break;
 		default:
 			fprintf(stderr, "usage: sndioctl "
-			    "[-dimnv] [-f device] [command ...]\n");
+			    "[-dimv] [-f device] [command ...]\n");
 			exit(1);
 		}
 	}
