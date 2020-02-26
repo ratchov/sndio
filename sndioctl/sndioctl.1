@@ -79,7 +79,7 @@ Examples of left-hand side terms:
 .Pp
 There are 4 parameter types: switches, numbers, selectors, and vectors.
 .Pp
-Values are in the [0:1] range.
+Values are numbers between 0 and 1.
 Two-state controls (switches) take either 0 or 1 as value,
 typically corresponding to the
 .Em off
@@ -114,12 +114,11 @@ Vectors are arrays of numbers.
 Values are specified as comma-separated components.
 Each component is a substream, followed by
 a colon, followed by a number.
-If the colon and the number are omitted, then 127 is
-assumed.
+If the colon and the number are omitted, then 1 is assumed.
 If a component is missing, then 0 is assumed.
 Example:
 .Pp
-.Dl hw/monitor.mix=play:0.75,linein:0.85
+.Dl hw/monitor.mix=play:0.12,linein:0.85
 .Dl hw/record.source=mic,linein
 .Pp
 Numbers are specified as discussed above.
@@ -130,7 +129,7 @@ The following will set all
 .Ar level
 parameters that control the
 .Ar spkr
-stream to zero.
+stream to zero:
 .Pp
 .Dl $ sndioctl hw/spkr.level=0
 .Pp
