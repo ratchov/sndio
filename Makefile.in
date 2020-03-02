@@ -1,12 +1,9 @@
-XVOLKEYS = @xvolkeys@
-
 all:
 	cd libsndio && ${MAKE}
 	cd sndiod && ${MAKE}
 	cd sndioctl && ${MAKE}
 	cd aucat && ${MAKE}
 	cd midicat && ${MAKE}
-	if [ ${XVOLKEYS} = yes ]; then cd xvolkeys && ${MAKE}; fi
 
 install:
 	cd libsndio && ${MAKE} install
@@ -14,10 +11,8 @@ install:
 	cd sndioctl && ${MAKE} install
 	cd aucat && ${MAKE} install
 	cd midicat && ${MAKE} install
-	if [ ${XVOLKEYS} = yes ]; then cd xvolkeys && ${MAKE} install; fi
 
 uninstall:
-	cd xvolkeys && ${MAKE} uninstall
 	cd midicat && ${MAKE} uninstall	
 	cd aucat && ${MAKE} uninstall	
 	cd sndioctl && ${MAKE} uninstall
@@ -31,14 +26,12 @@ clean:
 	cd sndiod && ${MAKE} clean
 	cd libsndio && ${MAKE} clean
 	cd examples && ${MAKE} clean
-	cd xvolkeys && ${MAKE} clean
 
 distclean:	clean
 	rm -f \
 		Makefile aucat/Makefile midicat/Makefile sndiod/Makefile \
 		libsndio/Makefile \
 		sndioctl/Makefile \
-		xvolkeys/Makefile \
 		examples/Makefile \
 		contrib/init.d.sndiod \
 		contrib/sndiod.service
