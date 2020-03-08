@@ -22,8 +22,6 @@ Usage: configure [options]
 --disable-rmidi			disable character device midi backend
 --enable-umidi			enable usb-midi backend [$umidi]
 --disable-umidi			disable usb-midi backend
---enable-xvolkeys		build xvolkeys utility (requires X) [$xvolkeys]
---disable-xvolkeys		don't build xvolkeys
 --with-libbsd			use the libbsd rather than bsd-compat/*
 --without-libbsd		don't use libbsd
 END
@@ -41,7 +39,6 @@ rmidi=no				# do we want support for raw char dev ?
 umidi=no				# do we want support for umidi ?
 precision=16				# aucat/sndiod arithmetic precision
 user=_sndio				# non-privileged user for sndio daemon
-xvolkeys=yes				# build xvolkeys ?
 libbsd=no				# use libbsd?
 so_ldflags=				# extra linker flags for shared libs
 unset vars				# variables passed as arguments
@@ -160,12 +157,6 @@ for i; do
 	--privsep-user=*)
 		user="${i#--privsep-user=}"
 		shift;;
-	--enable-xvolkeys)
-		xvolkeys=yes
-		shift;;
-	--disable-xvolkeys)
-		xvolkeys=no
-		shift;;
 	--precision=*)
 		precision="${i#--precision=}"
 		if [ "$precision" != 16 -a "$precision" != 24 ]; then
@@ -253,7 +244,6 @@ fi
 for f in Makefile aucat/Makefile midicat/Makefile sndiod/Makefile \
 libsndio/Makefile \
 sndioctl/Makefile \
-xvolkeys/Makefile \
 examples/Makefile \
 contrib/init.d.sndiod \
 contrib/sndiod.service
@@ -272,7 +262,6 @@ do
 	-e "s:@vars@:${vars}:" \
 	-e "s:@precision@:$precision:" \
 	-e "s:@user@:$user:" \
-	-e "s:@xvolkeys@:$xvolkeys:" \
 	< $f.in > $f
 done
 
@@ -293,7 +282,6 @@ oss...................... $oss
 sun...................... $sun
 rmidi.................... $rmidi
 umidi.................... $umidi
-xvolkeys................. $xvolkeys
 
 Do "make && make install" to compile and install sndio
 
