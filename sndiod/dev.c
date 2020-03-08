@@ -2334,6 +2334,18 @@ dev_rmctl(struct dev *d, int addr)
 	xfree(c);
 }
 
+void
+dev_ctlsync(struct dev *d)
+{
+	struct ctlslot *s;
+	int i;
+
+	for (s = d->ctlslot, i = DEV_NCTLSLOT; i > 0; i--, s++) {
+		if (s->ops)
+			s->ops->sync(s->arg);
+	}
+}
+
 int
 dev_setctl(struct dev *d, int addr, int val)
 {

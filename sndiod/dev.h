@@ -43,6 +43,7 @@ struct slotops
 struct ctlops
 {
 	void (*exit)(void *);			/* delete client */
+	void (*sync)(void *);			/* description ready */
 };
 
 struct slot {
@@ -313,5 +314,6 @@ struct ctl *dev_addctl(struct dev *, char *, int, int,
     char *, int, char *, char *, int, int, int);
 void dev_rmctl(struct dev *, int);
 int dev_makeunit(struct dev *, char *);
+void dev_ctlsync(struct dev *);
 
 #endif /* !defined(DEV_H) */

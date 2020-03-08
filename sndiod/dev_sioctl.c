@@ -56,8 +56,11 @@ dev_sioctl_ondesc(void *arg, struct sioctl_desc *desc, int val)
 	struct dev *d = arg;
 	int addr;
 
-	if (desc == NULL)
+	if (desc == NULL) {
+		dev_ctlsync(d);
 		return;
+	}
+
 	addr = CTLADDR_END + desc->addr;
 	dev_rmctl(d, addr);
 
