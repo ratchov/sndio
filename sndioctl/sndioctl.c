@@ -51,7 +51,7 @@ void print_desc(struct info *, int);
 void print_val(struct info *, int);
 void print_par(struct info *, int, char *);
 int parse_name(char **, char *);
-int parse_unit(char **, unsigned int *);
+int parse_unit(char **, int *);
 int parse_val(char **, float *);
 int parse_node(char **, char *, int *);
 int parse_modeval(char **, int *, float *);
@@ -447,7 +447,7 @@ parse_name(char **line, char *name)
  * parse a decimal integer
  */
 int
-parse_unit(char **line, unsigned int *num)
+parse_unit(char **line, int *num)
 {
 	char *p = *line;
 	unsigned int val;
