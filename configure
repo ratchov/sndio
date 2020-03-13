@@ -237,7 +237,7 @@ fi
 #
 if [ $libbsd = yes ]; then
 	# no arc4random as libbsd has a questionable implementation
-	defs="$defs -DHAVE_STRLCPY -DHAVE_STRLCAT -DHAVE_STRTONUM"
+	defs="$defs -DUSE_LIBBSD -DHAVE_STRLCPY -DHAVE_STRLCAT -DHAVE_STRTONUM"
 	ldadd="$ldadd -lbsd"
 fi
 

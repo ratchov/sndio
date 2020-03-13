@@ -1,6 +1,10 @@
 #ifndef BSD_COMPAT_H
 #define BSD_COMPAT_H
 
+#ifdef USE_LIBBSD
+#include <bsd/bsd.h>
+#endif
+
 #ifndef HAVE_ISSETUGID
 #define issetugid _sndio_issetugid
 int issetugid(void);
