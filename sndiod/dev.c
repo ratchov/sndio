@@ -2399,9 +2399,9 @@ dev_setctl(struct dev *d, int addr, int val)
 			slot_setvol(d->slot + num, val);
 			dev_midi_vol(d, d->slot + num);
 		}
+		c->val_mask = ~0U;
 	}
 	c->curval = val;
-	c->val_mask = ~0U;
 	return 1;
 }
 
