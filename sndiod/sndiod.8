@@ -271,6 +271,14 @@ the need to restart programs using it.
 .It Fl q Ar port
 Expose the given MIDI port.
 This allows multiple programs to share the port.
+If no
+.Fl q
+option is used,
+.Nm
+will use
+.Pa rmidi/0 , rmidi/1 ,
+.No ... ,
+.Pa rmidi/7 .
 .It Fl r Ar rate
 Attempt to force the device to use this sample rate in Hertz.
 The default is 48000.

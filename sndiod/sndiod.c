@@ -112,6 +112,15 @@ char usagestr[] = "usage: sndiod [-d] [-a flag] [-b nframes] "
     "[-v volume] [-w flag] [-z nframes]\n";
 
 /*
+ * default MIDI ports
+ */
+static char *default_ports[] = {
+	"rmidi/0", "rmidi/1", "rmidi/2", "rmidi/3",
+	"rmidi/4", "rmidi/5", "rmidi/6", "rmidi/7",
+	NULL
+};
+
+/*
  * SIGINT handler, it raises the quit flag. If the flag is already set,
  * that means that the last SIGINT was not handled, because the process
  * is blocked somewhere, so exit.
@@ -352,7 +361,7 @@ mkopt(char *path, struct dev *d,
 int
 main(int argc, char **argv)
 {
-	int c, background, unit;
+	int c, i, background, unit;
 	int pmin, pmax, rmin, rmax;
 	char base[SOCKPATH_MAX], path[SOCKPATH_MAX];
 	unsigned int mode, dup, mmc, vol;
@@ -489,6 +498,10 @@ main(int argc, char **argv)
 	if (argc > 0) {
 		fputs(usagestr, stderr);
 		return 1;
+	}
+	if (port_list == NULL) {
+		for (i = 0; default_ports[i] != NULL; i++)
+			mkport(default_ports[i], 0);
 	}
 	if (dev_list == NULL)
 		mkdev(DEFAULT_DEV, &par, 0, bufsz, round, rate, hold, autovol);
