@@ -116,8 +116,16 @@ dev_sioctl_onval(void *arg, unsigned int addr, unsigned int val)
 void
 dev_sioctl_open(struct dev *d)
 {
-	if (d->sioctl.hdl == NULL)
+	if (d->sioctl.hdl == NULL) {
+		/*
+		 * At this point there are clients, for instance if we're
+		 * called by dev_reopen() but the control device couldn't
+		 * be opened. In this case controls have changed (thoseof
+		 * old device are just removed) so we need to notify clients.
+		 */
+		dev_ctlsync(d);
 		return;
+	}
 	sioctl_ondesc(d->sioctl.hdl, dev_sioctl_ondesc, d);
 	sioctl_onval(d->sioctl.hdl, dev_sioctl_onval, d);
 	d->sioctl.file = file_new(&dev_sioctl_ops, d, "mix",
