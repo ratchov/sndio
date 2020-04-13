@@ -244,7 +244,9 @@ struct dev {
 #define MMC_START	2			/* attempting to start */
 #define MMC_RUN		3			/* started */
 	unsigned int tstate;			/* one of above */
-	unsigned int master;			/* master volume controller */
+
+	unsigned int master;			/* software vol. knob */
+	unsigned int master_enabled;		/* 1 if h/w has no vo. knob */
 
 	/*
 	 * control
