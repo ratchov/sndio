@@ -1049,7 +1049,7 @@ dev_new(char *path, struct aparams *par,
 		d->slot[i].ops = NULL;
 		d->slot[i].vol = MIDI_MAXCTL;
 		d->slot[i].serial = d->serial++;
-		strlcpy(d->slot[i].name, "prog", SLOT_NAMEMAX);
+		memset(d->slot[i].name, 0, SLOT_NAMEMAX);
 	}
 	for (i = 0; i < DEV_NCTLSLOT; i++) {
 		d->ctlslot[i].ops = NULL;
@@ -1180,6 +1180,8 @@ dev_open(struct dev *d)
 		return 0;
 
 	for (i = 0; i < DEV_NSLOT; i++) {
+		if (d->slot[i].name[0] == 0)
+			continue;
 		slot_ctlname(&d->slot[i], name, CTL_NAMEMAX);
 		dev_addctl(d, "app", CTL_NUM,
 		    CTLADDR_SLOT_LEVEL(i),
@@ -2494,15 +2496,21 @@ dev_label(struct dev *d, int i)
 	struct ctl *c;
 	char name[CTL_NAMEMAX];
 
+	slot_ctlname(&d->slot[i], name, CTL_NAMEMAX);
+
 	c = d->ctl_list;
 	for (;;) {
-		if (c == NULL)
+		if (c == NULL) {
+			dev_addctl(d, "app", CTL_NUM,
+			    CTLADDR_SLOT_LEVEL(i),
+			    name, -1, "level",
+			    NULL, -1, 127, d->slot[i].vol);
 			return;
+		}
 		if (c->addr == CTLADDR_SLOT_LEVEL(i))
 			break;
 		c = c->next;
 	}
-	slot_ctlname(&d->slot[i], name, CTL_NAMEMAX);
 	if (strcmp(c->node0.name, name) == 0)
 		return;
 	strlcpy(c->node0.name, name, CTL_NAMEMAX);
