@@ -2277,6 +2277,9 @@ ctl_log(struct ctl *c)
 	log_puts(c->func);
 	log_puts("=");
 	switch (c->type) {
+	case CTL_NONE:
+		log_puts("none");
+		break;
 	case CTL_NUM:
 	case CTL_SW:
 		log_putu(c->curval);
