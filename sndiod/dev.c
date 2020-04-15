@@ -2365,10 +2365,12 @@ dev_rmctl(struct dev *d, int addr)
 	}
 #endif
 	c->refs_mask &= ~CTL_DEVMASK;
-	if (c->refs_mask != 0)
+	if (c->refs_mask == 0) {
+		*pc = c->next;
+		xfree(c);
 		return;
-	*pc = c->next;
-	xfree(c);
+	}
+	c->desc_mask = ~0;
 }
 
 void
