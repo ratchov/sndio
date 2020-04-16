@@ -23,7 +23,7 @@
 .Sh SYNOPSIS
 .Nm
 .Bk -words
-.Op Fl dimv
+.Op Fl dimnv
 .Op Fl f Ar device
 .Op Ar command ...
 .Ek
@@ -47,6 +47,8 @@ Display characteristics of requested parameters
 instead of their values.
 .It Fl m
 Monitor and display audio parameter changes.
+.It Fl n
+Suppress printing of the variable name.
 .It Fl v
 Enable verbose mode, a.k.a. multi-channel mode.
 By default parameters affecting different channels
@@ -59,6 +61,7 @@ If no commands are specified all valid parameters are displayed on
 Unless
 .Fl d ,
 .Fl m ,
+.Fl n ,
 or
 .Fl i
 are used, displayed parameters are valid commands.
