@@ -19,7 +19,7 @@
 .Os
 .Sh NAME
 .Nm sndioctl
-.Nd control audio parameters
+.Nd manipulate audio device controls
 .Sh SYNOPSIS
 .Nm
 .Bk -words
@@ -30,35 +30,35 @@
 .Sh DESCRIPTION
 The
 .Nm
-utility can display or change parameters of
+utility can display or manipulate controls of
 .Xr sndio 7
-audio devices.
+audio devices, like the output level.
 The options are as follows:
 .Bl -tag -width Ds
 .It Fl d
-Dump the raw list of available parameters and exit.
+Dump the raw list of available controls and exit.
 Useful as a debugging tool.
 .It Fl f Ar device
 Use this
 .Xr sndio 7
 audio device.
 .It Fl i
-Display characteristics of requested parameters
+Display characteristics of requested controls
 instead of their values.
 .It Fl m
-Monitor and display audio parameter changes.
+Monitor and display audio controls changes.
 .It Fl n
 Suppress printing of the variable name.
 .It Fl q
 Suppress all printing when setting a variable.
 .It Fl v
 Enable verbose mode, a.k.a. multi-channel mode.
-By default parameters affecting different channels
+By default controls affecting different channels
 of the same stream are disguised as a single mono
-parameter to hide details that are not essential.
+control to hide details that are not essential.
 .El
 .Pp
-If no commands are specified all valid parameters are displayed on
+If no commands are specified all valid controls are displayed on
 .Em stdout .
 Unless
 .Fl d ,
@@ -66,23 +66,24 @@ Unless
 .Fl n ,
 or
 .Fl i
-are used, displayed parameters are valid commands.
-The set of available controls depends on the control device.
+are used, displayed lines are valid commands.
+The set of available controls depends on the audio device.
 .Pp
-Commands use the following two formats to display and set
-parameters respectively:
+Commands use the following two formats to display and change
+controls respectively:
 .Pp
 .Dl group/stream[channel].function
 .Dl group/stream[channel].function=value
 .Pp
-On the left-hand side are specified the optional parameter group,
+On the left-hand side are specified the control group (if any),
 the affected stream name, and the optional channel number.
 Examples of left-hand side terms:
 .Pp
 .Dl output.level
-.Dl hw/spkr[6].mute
+.Dl output[0].level
 .Pp
-There are 4 parameter types: switches, numbers, selectors, and vectors.
+If the channel number (including the brackets) is omitted,
+the command is applied to all channels.
 .Pp
 Values are numbers between 0 and 1.
 Two-state controls (switches) take either 0 or 1 as value,
@@ -98,49 +99,21 @@ current value of the control.
 If
 .Qq \&!
 is used instead of a number, then the switch is toggled.
-Examples:
-.Pp
-.Dl hw/spkr.level=0.85
-.Dl hw/spkr.level=+0.1
-.Dl hw/spkr.mute=0
-.Dl hw/spkr.mute=!
-.Pp
-Selector values are substreams; they are specified
-as the stream name followed by an optional channel
-number.
-If no channel number is specified, the same
-number as the stream specified on the left-hand side is used.
-For instance the following are equivalent:
-.Pp
-.Dl hw/record[1].source=mic
-.Dl hw/record[1].source=mic1
-.Pp
-Vectors are arrays of numbers.
-Values are specified as comma-separated components.
-Each component is a substream, followed by
-a colon, followed by a number.
-If the colon and the number are omitted, then 1 is assumed.
-If a component is missing, then 0 is assumed.
-Example:
-.Pp
-.Dl hw/monitor.mix=play:0.12,linein:0.85
-.Dl hw/record.source=mic,linein
-.Pp
-Numbers are specified as discussed above.
-Note that a vector of switches is equivalent to
-a list.
 .Sh EXAMPLES
 The following will set all
+.Ar output
+channels
 .Ar level
-parameters that control the
-.Ar spkr
-stream to zero:
+control to zero:
 .Pp
-.Dl $ sndioctl hw/spkr.level=0
+.Dl $ sndioctl output.level=0
 .Pp
-The following commands are equivalent:
+The following set all
+.Ar output
+channels
+.Ar mute
+control:
 .Pp
-.Dl $ sndioctl hw/record[0].source=mic0 hw/record[1].source=mic1
-.Dl $ sndioctl hw/record.source=mic
+.Dl $ sndioctl output.mute=0
 .Sh SEE ALSO
 .Xr sioctl_open 3
