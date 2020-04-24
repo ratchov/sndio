@@ -1270,7 +1270,6 @@ int
 dev_reopen(struct dev *d)
 {
 	struct slot *s;
-	struct ctl *c, **pc;
 	long long pos;
 	unsigned int pstate;
 	int delta;
@@ -1324,23 +1323,8 @@ dev_reopen(struct dev *d)
 		}
 	}
 
-	/* remove controls of old device */
-	pc = &d->ctl_list;
-	while ((c = *pc) != NULL) {
-		if (c->addr >= CTLADDR_END) {
-			c->refs_mask &= ~CTL_DEVMASK;
-			if (c->refs_mask == 0) {
-				*pc = c->next;
-				xfree(c);
-				continue;
-			}
-			c->type = CTL_NONE;
-			c->desc_mask = ~0;
-		}
-		pc = &c->next;
-	}
-
-	/* add new device controls */
+	/* remove old controls and add new ones */
+	dev_sioctl_close(d);
 	dev_sioctl_open(d);
 
 	/* start the device if needed */
