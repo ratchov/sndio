@@ -191,6 +191,25 @@ midi_tag(struct midi *ep, unsigned int tag)
 }
 
 /*
+ * return the list of tags
+ */
+unsigned int
+midi_tags(struct midi *ep)
+{
+	int i;
+	struct midithru *t;
+	unsigned int tags;
+
+	tags = 0;
+	for (i = 0; i < MIDITHRU_NMAX; i++) {
+		t = midithru + i;
+		if ((t->txmask | t->rxmask) & ep->self)
+			tags |= 1 << i;
+	}
+	return tags;
+}
+
+/*
  * broadcast the given message to other endpoints
  */
 void

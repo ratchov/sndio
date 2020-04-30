@@ -130,7 +130,9 @@ sock_log(struct sock *f)
 void
 sock_close(struct sock *f)
 {
+	struct dev *d;
 	struct sock **pf;
+	unsigned int tags, i;
 
 	for (pf = &sock_list; *pf != f; pf = &(*pf)->next) {
 #ifdef DEBUG
@@ -155,6 +157,11 @@ sock_close(struct sock *f)
 		f->slot = NULL;
 	}
 	if (f->midi) {
+		tags = midi_tags(f->midi);
+		for (i = 0; i < DEV_NMAX; i++) {
+			if ((tags & (1 << i)) && (d = dev_bynum(i)) != NULL)
+				dev_unref(d);
+		}
 		midi_del(f->midi);
 		f->midi = NULL;
 	}
@@ -860,6 +867,8 @@ sock_hello(struct sock *f)
 		if (p->devnum < 16) {
 			d = dev_bynum(p->devnum);
 			if (d == NULL)
+				return 0;
+			if (!dev_ref(d))
 				return 0;
 			midi_tag(f->midi, p->devnum);
 		} else if (p->devnum < 32) {

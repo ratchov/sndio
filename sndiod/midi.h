@@ -110,6 +110,7 @@ void midi_out(struct midi *, unsigned char *, int);
 void midi_send(struct midi *, unsigned char *, int);
 void midi_fill(struct midi *);
 void midi_tag(struct midi *, unsigned int);
+unsigned int midi_tags(struct midi *);
 void midi_link(struct midi *, struct midi *);
 
 void port_log(struct port *);
