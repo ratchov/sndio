@@ -151,7 +151,7 @@ sock_close(struct sock *f)
 	}
 #endif
 	if (f->pstate > SOCK_AUTH)
-		sock_sesrefs--;
+		sock_sesrefs -= f->sesrefs;
 	if (f->slot) {
 		slot_del(f->slot);
 		f->slot = NULL;
@@ -792,11 +792,12 @@ sock_auth(struct sock *f)
 	if (sock_sesrefs == 0) {
 		/* start a new session */
 		memcpy(sock_sescookie, p->cookie, AMSG_COOKIELEN);
+		f->sesrefs = 1;
 	} else if (memcmp(sock_sescookie, p->cookie, AMSG_COOKIELEN) != 0) {
 		/* another session is active, drop connection */
 		return 0;
 	}
-	sock_sesrefs++;
+	sock_sesrefs += f->sesrefs;
 	f->pstate = SOCK_HELLO;
 	return 1;
 }
