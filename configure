@@ -247,7 +247,7 @@ if [ $libbsd = yes ]; then
 fi
 
 if [ -n "$dev" ]; then
-	defs="$defs -DDEFAULT_DEV=\\\"$dev\\\""
+	defs="$defs -DDEFAULT_DEV='\"$dev\"'"
 fi
 
 
