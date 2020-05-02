@@ -45,7 +45,7 @@ sioctl_open(const char *str, unsigned int mode, int nbio)
 		if (hdl != NULL)
 			return hdl;
 #if defined(USE_SUN_MIXER)
-		return _sioctl_sun_open("rsnd/default", mode, nbio);
+		return _sioctl_sun_open("rsnd/0", mode, nbio);
 #else
 		return NULL;
 #endif

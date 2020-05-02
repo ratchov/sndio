@@ -78,13 +78,6 @@
 #define DEFAULT_BUFSZ	7680
 #endif
 
-/*
- * default device in server mode
- */
-#ifndef DEFAULT_DEV
-#define DEFAULT_DEV "rsnd/default"
-#endif
-
 void sigint(int);
 void sighup(int);
 void opt_ch(int *, int *);
@@ -110,6 +103,18 @@ char usagestr[] = "usage: sndiod [-d] [-a flag] [-b nframes] "
     "[-e enc] [-F device] [-f device] [-j flag] [-L addr] [-m mode]\n\t"
     "[-Q port] [-q port] [-r rate] [-s name] [-t mode] [-U unit]\n\t"
     "[-v volume] [-w flag] [-z nframes]\n";
+
+/*
+ * default audio devices
+ */
+static char *default_devs[] = {
+#ifdef DEFAULT_DEV
+	DEFAULT_DEV,
+#else
+	"rsnd/0", "rsnd/1", "rsnd/2", "rsnd/3",
+#endif
+	NULL
+};
 
 /*
  * default MIDI ports
@@ -361,7 +366,7 @@ mkopt(char *path, struct dev *d,
 int
 main(int argc, char **argv)
 {
-	int c, i, background, unit;
+	int c, i, background, unit, devindex;
 	int pmin, pmax, rmin, rmax;
 	char base[SOCKPATH_MAX], path[SOCKPATH_MAX];
 	unsigned int mode, dup, mmc, vol;
@@ -399,6 +404,7 @@ main(int argc, char **argv)
 	aparams_init(&par);
 	mode = MODE_PLAY | MODE_REC;
 	tcpaddr_list = NULL;
+	devindex = 0;
 
 	while ((c = getopt(argc, argv,
 	    "a:b:c:C:de:F:f:j:L:m:Q:q:r:s:t:U:v:w:x:z:")) != -1) {
@@ -448,8 +454,8 @@ main(int argc, char **argv)
 			break;
 		case 's':
 			if ((d = dev_list) == NULL) {
-				d = mkdev(DEFAULT_DEV, &par, 0, bufsz, round,
-				    rate, hold, autovol);
+				d = mkdev(default_devs[devindex++], &par, 0,
+				    bufsz, round, rate, hold, autovol);
 			}
 			if (mkopt(optarg, d, pmin, pmax, rmin, rmax,
 				mode, vol, mmc, dup) == NULL)
@@ -482,6 +488,7 @@ main(int argc, char **argv)
 		case 'f':
 			mkdev(optarg, &par, 0, bufsz, round,
 			    rate, hold, autovol);
+			devindex = -1;
 			break;
 		case 'F':
 			if (dev_list == NULL)
@@ -503,8 +510,12 @@ main(int argc, char **argv)
 		for (i = 0; default_ports[i] != NULL; i++)
 			mkport(default_ports[i], 0);
 	}
-	if (dev_list == NULL)
-		mkdev(DEFAULT_DEV, &par, 0, bufsz, round, rate, hold, autovol);
+	if (devindex != -1) {
+		for (i = devindex; default_devs[i] != NULL; i++) {
+			mkdev(default_devs[i], &par, 0,
+			    bufsz, round, rate, 0, autovol);
+		}
+	}
 	for (d = dev_list; d != NULL; d = d->next) {
 		if (opt_byname(d, "default"))
 			continue;

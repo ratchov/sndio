@@ -100,20 +100,22 @@ If
 .Qq \&!
 is used instead of a number, then the switch is toggled.
 .Sh EXAMPLES
-The following will set all
-.Ar output
-channels
-.Ar level
-control to zero:
+Increase the
+.Cm level
+control affecting all
+.Cm output
+channels by 10% of the maximum:
 .Pp
-.Dl $ sndioctl output.level=0
+.Dl $ sndioctl output.level=+0.1
 .Pp
-The following set all
-.Ar output
-channels
-.Ar mute
+Mute all output channels:
+.Pp
+.Dl $ sndioctl output.mute=1
+.Pp
+Toggle the above
+.Cm mute
 control:
 .Pp
-.Dl $ sndioctl output.mute=0
+.Dl $ sndioctl output.mute=!
 .Sh SEE ALSO
 .Xr sioctl_open 3

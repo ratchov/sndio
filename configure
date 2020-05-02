@@ -24,6 +24,7 @@ Usage: configure [options]
 --disable-umidi			disable usb-midi backend
 --with-libbsd			use the libbsd rather than bsd-compat/*
 --without-libbsd		don't use libbsd
+--default-dev=DEV		set default device [$dev]
 END
 }
 
@@ -49,6 +50,7 @@ unset includedir			# path where to install header file
 unset libdir				# path where to install library
 unset defs				# no extra #defines
 unset ldadd				# no extra libraries (-l options)
+unset dev
 
 #
 # guess OS-specific parameters
@@ -170,6 +172,9 @@ for i; do
 	--without-libbsd)
 		libbsd=no
 		shift;;
+	--default-dev=*)
+		dev="${i#--default-dev=}"
+		shift;;
 	CC=*|CFLAGS=*|LDFLAGS=*)
 		vars="$vars$i$nl"
 		shift;;
@@ -241,6 +246,11 @@ if [ $libbsd = yes ]; then
 	ldadd="$ldadd -lbsd"
 fi
 
+if [ -n "$dev" ]; then
+	defs="$defs -DDEFAULT_DEV='\"$dev\"'"
+fi
+
+
 for f in Makefile aucat/Makefile midicat/Makefile sndiod/Makefile \
 libsndio/Makefile \
 sndioctl/Makefile \
@@ -262,6 +272,7 @@ do
 	-e "s:@vars@:${vars}:" \
 	-e "s:@precision@:$precision:" \
 	-e "s:@user@:$user:" \
+	-e "s:@devs@:$devs:" \
 	< $f.in > $f
 done
 

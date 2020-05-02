@@ -64,6 +64,7 @@ struct sock {
 #define SOCK_CTLVAL	2		/* send value changes */
 	unsigned int ctlops;		/* bitmap of above */
 	int ctlsyncpending;		/* CTLSYNC waiting to be transmitted */
+	unsigned int sesrefs;		/* 1 if socket belongs to a session */
 };
 
 struct sock *sock_new(int fd);
