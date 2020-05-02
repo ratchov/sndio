@@ -76,7 +76,7 @@ case `uname` in
 	OpenBSD)
 		sun=yes
 		rmidi=yes
-		user=_sndio
+		user=_sndiop
 		defs='-DHAVE_ARC4RANDOM -DHAVE_ISSETUGID \\\
 		-DHAVE_STRLCAT -DHAVE_STRLCPY -DHAVE_STRTONUM \\\
 		-DHAVE_SOCK_CLOEXEC -DHAVE_CLOCK_GETTIME'
