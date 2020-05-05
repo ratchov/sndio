@@ -885,9 +885,11 @@ onctl(void *arg, unsigned addr, unsigned val)
 	for (i = infolist; i != NULL; i = i->next) {
 		if (i->ctladdr != addr)
 			continue;
-		i->curval = val;
-		if (m_flag)
-			print_ent(i, "changed");
+		if (i->curval != val) {
+			i->curval = val;
+			if (m_flag)
+				print_ent(i, "changed");
+		}
 	}
 }
 
