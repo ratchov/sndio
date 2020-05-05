@@ -432,12 +432,21 @@ print_val(struct info *p, int mono)
 				if (e != firstent(p, e->desc.node1.name))
 					continue;
 			}
-			if (more)
-				printf(",");
-			print_node(&e->desc.node1, mono);
-			printf(":");
-			print_num(e);
-			more = 1;
+			if (e->desc.maxval == 1) {
+				if (e->curval) {
+					if (more)
+						printf(",");
+					print_node(&e->desc.node1, mono);
+					more = 1;
+				}
+			} else {
+				if (more)
+					printf(",");
+				print_node(&e->desc.node1, mono);
+				printf(":");
+				print_num(e);
+				more = 1;
+			}
 		}
 	}
 }
