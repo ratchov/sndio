@@ -821,9 +821,9 @@ sio_alsa_setpar(struct sio_hdl *sh, struct sio_par *par)
 		return 0;
 	hdl->par.msb = 1;
 	hdl->par.bps = SIO_BPS(hdl->par.bits);
-	hdl->par.rate = irate;
-	hdl->par.round = iround;
-	hdl->par.bufsz = iround * iperiods;
+	hdl->par.rate = orate;
+	hdl->par.round = oround;
+	hdl->par.bufsz = oround * operiods;
 	hdl->par.appbufsz = hdl->par.bufsz;
 
 	/* software params */
