@@ -564,7 +564,7 @@ port_open(struct port *c)
 }
 
 void
-port_exitall(struct port *c)
+port_abort(struct port *c)
 {
 	int i;
 	struct midi *ep;
@@ -575,6 +575,9 @@ port_exitall(struct port *c)
 		    (c->midi->txmask & ep->self))
 			ep->ops->exit(ep->arg);
 	}
+
+	if (c->state != PORT_CFG)
+		port_close(c);
 }
 
 int
@@ -589,8 +592,6 @@ port_close(struct port *c)
 #endif
 	c->state = PORT_CFG;
 	port_mio_close(c);
-
-	port_exitall(c);
 	return 1;
 }
 

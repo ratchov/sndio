@@ -260,7 +260,7 @@ struct dev {
 extern struct dev *dev_list;
 
 void dev_log(struct dev *);
-void dev_close(struct dev *);
+void dev_abort(struct dev *);
 int dev_reopen(struct dev *);
 struct dev *dev_new(char *, struct aparams *, unsigned int, unsigned int,
     unsigned int, unsigned int, unsigned int, unsigned int);

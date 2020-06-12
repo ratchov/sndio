@@ -187,5 +187,5 @@ port_mio_hup(void *arg)
 	struct port *p = arg;
 
 	if (!port_reopen(p))
-		port_close(p);
+		port_abort(p);
 }

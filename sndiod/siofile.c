@@ -83,7 +83,7 @@ dev_sio_timeout(void *arg)
 
 	dev_log(d);
 	log_puts(": watchdog timeout\n");
-	dev_close(d);
+	dev_abort(d);
 }
 
 /*
@@ -640,5 +640,5 @@ dev_sio_hup(void *arg)
 	}
 #endif
 	if (!dev_reopen(d))
-		dev_close(d);
+		dev_abort(d);
 }
