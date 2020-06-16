@@ -315,8 +315,8 @@ mkdev(char *path, struct aparams *par,
 	struct dev *d;
 
 	for (d = dev_list; d != NULL; d = d->next) {
-		if (d->path_list->next == NULL &&
-		    strcmp(d->path_list->str, path) == 0)
+		if (d->alt_list->next == NULL &&
+		    strcmp(d->alt_list->name, path) == 0)
 			return d;
 	}
 	if (!bufsz && !round) {
@@ -491,9 +491,10 @@ main(int argc, char **argv)
 			devindex = -1;
 			break;
 		case 'F':
-			if (dev_list == NULL)
+			if ((d = dev_list) == NULL)
 				errx(1, "-F %s: no devices defined", optarg);
-			namelist_add(&dev_list->path_list, optarg);
+			if (!dev_addname(d, optarg))
+				exit(1);
 			break;
 		default:
 			fputs(usagestr, stderr);

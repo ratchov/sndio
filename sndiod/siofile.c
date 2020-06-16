@@ -92,25 +92,23 @@ dev_sio_timeout(void *arg)
 static struct sio_hdl *
 dev_sio_openlist(struct dev *d, unsigned int mode, struct sioctl_hdl **rctlhdl)
 {
-	struct name *n;
+	struct dev_alt *n;
 	struct sio_hdl *hdl;
 	struct sioctl_hdl *ctlhdl;
 	int idx;
 
-	idx = 0;
-	n = d->path_list;
-	while (1) {
-		if (n == NULL)
-			break;
-		hdl = sio_open(n->str, mode, 1);
+	for (n = d->alt_list; n != NULL; n = n->next) {
+		if (d->alt_num == n->idx)
+			continue;
+		hdl = sio_open(n->name, mode, 1);
 		if (hdl != NULL) {
 			if (log_level >= 2) {
 				dev_log(d);
 				log_puts(": using ");
-				log_puts(n->str);
+				log_puts(n->name);
 				log_puts("\n");
 			}
-			ctlhdl = sioctl_open(n->str,
+			ctlhdl = sioctl_open(n->name,
 			    SIOCTL_READ | SIOCTL_WRITE, 0);
 			if (ctlhdl == NULL) {
 				if (log_level >= 1) {
@@ -118,11 +116,10 @@ dev_sio_openlist(struct dev *d, unsigned int mode, struct sioctl_hdl **rctlhdl)
 					log_puts(": no control device\n");
 				}
 			}
+			d->alt_num = n->idx;
 			*rctlhdl = ctlhdl;
 			return hdl;
 		}
-		n = n->next;
-		idx++;
 	}
 	return NULL;
 }
@@ -377,6 +374,7 @@ dev_sio_close(struct dev *d)
 		sioctl_close(d->sioctl.hdl);
 		d->sioctl.hdl = NULL;
 	}
+	d->alt_num = -1;
 }
 
 void
