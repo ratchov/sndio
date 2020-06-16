@@ -108,6 +108,7 @@ struct sioctl_desc {
 #define SIOCTL_SW		3	/* on/off switch (0 or 1) */
 #define SIOCTL_VEC		4	/* number, element of vector */
 #define SIOCTL_LIST		5	/* switch, element of a list */
+#define SIOCTL_SEL		6	/* element of a selector */
 	unsigned int type;		/* one of above */
 	char func[SIOCTL_NAMEMAX];	/* function name, ex. "level" */
 	char group[SIOCTL_NAMEMAX];	/* group this control belongs to */

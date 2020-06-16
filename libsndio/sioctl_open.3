@@ -127,6 +127,7 @@ struct sioctl_desc {
 #define SIOCTL_SW		3	/* on/off switch (0 or 1) */
 #define SIOCTL_VEC		4	/* number, element of vector */
 #define SIOCTL_LIST		5	/* switch, element of a list */
+#define SIOCTL_SEL		6	/* element of a selector */
 	unsigned int type;		/* one of above */
 	char func[SIOCTL_NAMEMAX];	/* function name, ex. "level" */
 	char group[SIOCTL_NAMEMAX];	/* group this control belongs to */
@@ -167,6 +168,10 @@ from the line input to the speaker.
 An element of an array of on/off switches.
 For instance the line-in position of the
 speaker source selector.
+.It SIOCTL_SEL
+Same as
+.Va SIOCTL_LIST
+but exactly one element is selected at a time.
 .El
 .Pp
 The
@@ -182,9 +187,10 @@ attributes indicate the names of the controlled nodes, typically
 channels of audio streams.
 .Va node1
 is meaningful for
-.Va SIOCTL_VEC
+.Va SIOCTL_VEC ,
+.Va SIOCTL_LIST ,
 and
-.Va SIOCTL_LIST
+.Va SIOCTL_SEL
 only.
 .Pp
 Names in the
