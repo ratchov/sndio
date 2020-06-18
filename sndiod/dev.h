@@ -24,7 +24,8 @@
 
 #define CTLADDR_SLOT_LEVEL(n)	(n)
 #define CTLADDR_MASTER		(DEV_NSLOT)
-#define CTLADDR_END		(DEV_NSLOT + 1)
+#define CTLADDR_ALT_SEL		(CTLADDR_MASTER + 1)
+#define CTLADDR_END		(CTLADDR_ALT_SEL + DEV_NMAX)
 
 /*
  * audio stream state structure

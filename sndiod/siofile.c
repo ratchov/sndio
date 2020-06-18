@@ -95,7 +95,8 @@ dev_sio_openlist(struct dev *d, unsigned int mode, struct sioctl_hdl **rctlhdl)
 	struct dev_alt *n;
 	struct sio_hdl *hdl;
 	struct sioctl_hdl *ctlhdl;
-	int idx;
+	struct ctl *c;
+	int val;
 
 	for (n = d->alt_list; n != NULL; n = n->next) {
 		if (d->alt_num == n->idx)
@@ -117,6 +118,17 @@ dev_sio_openlist(struct dev *d, unsigned int mode, struct sioctl_hdl **rctlhdl)
 				}
 			}
 			d->alt_num = n->idx;
+			for (c = d->ctl_list; c != NULL; c = c->next) {
+				if (c->addr < CTLADDR_ALT_SEL ||
+				    c->addr >= CTLADDR_ALT_SEL + DEV_NMAX)
+					continue;
+				val = (c->addr - CTLADDR_ALT_SEL) == n->idx;
+				if (c->curval == val)
+					continue;
+				c->curval = val;
+				if (val)
+					c->val_mask = ~0U;
+			}
 			*rctlhdl = ctlhdl;
 			return hdl;
 		}
