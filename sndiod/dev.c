@@ -1238,9 +1238,9 @@ dev_open(struct dev *d)
 
 	for (a = d->alt_list; a != NULL; a = a->next) {
 		snprintf(name, sizeof(name), "%d", a->idx);
-		dev_addctl(d, "server", CTL_SEL,
+		dev_addctl(d, "", CTL_SEL,
 		    CTLADDR_ALT_SEL + a->idx,
-		    "device", -1, "select",
+		    "server", -1, "device",
 		    name, -1, 1, a->idx == d->alt_num);
 	}
 

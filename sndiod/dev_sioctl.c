@@ -65,12 +65,12 @@ dev_sioctl_ondesc(void *arg, struct sioctl_desc *desc, int val)
 	dev_rmctl(d, addr);
 
 	/*
-	 * prefix group names we use (currently "app" and "server") with "hw/"
-	 * to ensure that all controls have unique names when multiple
+	 * prefix with "hw/" group names of controls we expose, to
+	 * ensure that all controls have unique names when multiple
 	 * sndiod's are chained
 	 */
-	if (strcmp(desc->group, "app") == 0 ||
-	    strcmp(desc->group, "server") == 0) {
+	if (strcmp(desc->group, "app") == 0 || (desc->group[0] == 0 &&
+	    strcmp(desc->node0.name, "server") == 0)) {
 		group = group_buf;
 		if (snprintf(group_buf, CTL_NAMEMAX, GROUP_PREFIX "/%s",
 		    desc->group) >= CTL_NAMEMAX)
