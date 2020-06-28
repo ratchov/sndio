@@ -113,7 +113,7 @@ struct sioctl_desc {
 	char func[SIOCTL_NAMEMAX];	/* function name, ex. "level" */
 	char group[SIOCTL_NAMEMAX];	/* group this control belongs to */
 	struct sioctl_node node0;	/* affected node */
-	struct sioctl_node node1;	/* dito for SIOCTL_{VEC,LIST} */
+	struct sioctl_node node1;	/* dito for SIOCTL_{VEC,LIST,SEL} */
 	unsigned int maxval;		/* max value */
 	int __pad[3];
 };
