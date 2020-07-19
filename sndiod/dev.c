@@ -1023,7 +1023,7 @@ dev_new(char *path, struct aparams *par,
 	dev_addname(d,path);
 	d->num = dev_sndnum++;
 	d->opt_list = NULL;
-	d->alt_num = 1;
+	d->alt_num = -1;
 
 	/*
 	 * XXX: below, we allocate a midi input buffer, since we don't
