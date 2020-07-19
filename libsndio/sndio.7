@@ -157,12 +157,6 @@ If it is not set, the program first tries to connect to
 .Li snd/0 .
 If that fails, it then tries to use
 .Li rsnd/0 .
-This allows the
-.Xr sndiod 8
-audio server to be used by default and the raw hardware as fallback;
-programs don't have to be reconfigured when
-.Xr sndiod 8
-is started or stopped.
 .Pp
 Similarly, if no MIDI descriptor is provided to a program
 or when the reserved word
