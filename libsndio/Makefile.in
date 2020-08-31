@@ -49,8 +49,9 @@ MAJ = 7
 MIN = 1
 SO = @so@
 SO_LINK = @so_link@
+SO_LINK_MAJ = @so_link_maj@
 
-all:		${SO} ${SO_LINK}
+all:		${SO} ${SO_LINK} ${SO_LINK_MAJ}
 
 
 install:
@@ -59,7 +60,7 @@ install:
 		mkdir -p ${DESTDIR}${MAN3_DIR}
 		mkdir -p ${DESTDIR}${MAN7_DIR}
 		cp sndio.h ${DESTDIR}${INCLUDE_DIR}
-		cp -R ${SO} ${SO_LINK} ${DESTDIR}${LIB_DIR}
+		cp -R ${SO} ${SO_LINK} ${SO_LINK_MAJ} ${DESTDIR}${LIB_DIR}
 		cp sio_open.3 ${DESTDIR}${MAN3_DIR}
 		ln -sf sio_open.3 ${DESTDIR}${MAN3_DIR}/sio_close.3
 		ln -sf sio_open.3 ${DESTDIR}${MAN3_DIR}/sio_setpar.3
@@ -125,6 +126,9 @@ ${SO}:		${OBJS}
 
 ${SO_LINK}:
 		ln -sf ${SO} ${SO_LINK}
+
+${SO_LINK_MAJ}:
+		ln -sf ${SO} ${SO_LINK_MAJ}
 
 issetugid.o:	../bsd-compat/issetugid.c
 		${CC} ${CFLAGS} ${SO_CFLAGS} ${INCLUDE} ${DEFS} -c -o issetugid.o ../bsd-compat/issetugid.c

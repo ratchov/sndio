@@ -60,8 +60,9 @@ case `uname` in
 		alsa=yes
 		ldadd="-lrt"
 		user=sndiod
-		so_ldflags="-Wl,-soname=libsndio.so.\${MAJ}.\${MIN}"
 		so_link="libsndio.so"
+		so_link_maj="libsndio.so.\${MAJ}"
+		so_ldflags="-Wl,-soname=libsndio.so.\${MAJ}"
 		defs='-D_GNU_SOURCE -DHAVE_SOCK_CLOEXEC -DHAVE_CLOCK_GETTIME'
 		;;
 	NetBSD)
@@ -268,6 +269,7 @@ do
 	-e "s:@ldadd@:$ldadd:" \
 	-e "s:@so@:$so:" \
 	-e "s:@so_link@:$so_link:" \
+	-e "s:@so_link_maj@:$so_link_maj:" \
 	-e "s:@so_ldflags@:$so_ldflags:" \
 	-e "s:@vars@:${vars}:" \
 	-e "s:@precision@:$precision:" \
