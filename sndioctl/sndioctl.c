@@ -1015,6 +1015,7 @@ main(int argc, char **argv)
 			exit(1);
 		}
 		for (;;) {
+                       fflush(stdout);
 			nfds = sioctl_pollfd(hdl, pfds, POLLIN);
 			if (nfds == 0)
 				break;
