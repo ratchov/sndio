@@ -53,7 +53,12 @@ sio_open(const char *str, unsigned int mode, int nbio)
 	if (str == NULL) /* backward compat */
 		str = devany;
 	if (strcmp(str, devany) == 0 && !issetugid()) {
-		str = getenv("AUDIODEVICE");
+		if ((mode & SIO_PLAY) == 0)
+			str = getenv("AUDIORECDEVICE");
+		if ((mode & SIO_REC) == 0)
+			str = getenv("AUDIOPLAYDEVICE");
+		if (mode == (SIO_PLAY | SIO_REC) || str == NULL)
+			str = getenv("AUDIODEVICE");
 		if (str == NULL)
 			str = devany;
 	}

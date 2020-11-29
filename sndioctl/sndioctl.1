@@ -72,8 +72,8 @@ The set of available controls depends on the audio device.
 Commands use the following two formats to display and change
 controls respectively:
 .Pp
-.Dl group/stream[channel].function
-.Dl group/stream[channel].function=value
+.Dl [group/]stream[channel].function
+.Dl [group/]stream[channel].function=value
 .Pp
 On the left-hand side are specified the control group (if any),
 the affected stream name, and the optional channel number.
@@ -119,5 +119,13 @@ Toggle the above
 control:
 .Pp
 .Dl $ sndioctl output.mute=!
+.Pp
+Allow audio recording and set all
+.Cm input
+channels to 50%:
+.Bd -literal -offset indent
+# sysctl kern.audio.record=1
+$ sndioctl input.mute=0 input.level=0.5
+.Ed
 .Sh SEE ALSO
 .Xr sioctl_open 3

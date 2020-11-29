@@ -34,7 +34,8 @@
 .Nm sio_eof ,
 .Nm sio_setvol ,
 .Nm sio_onvol ,
-.Nm sio_initpar
+.Nm sio_initpar ,
+.Nm SIO_BPS
 .Nd sndio interface to audio devices
 .Sh SYNOPSIS
 .In sndio.h
@@ -80,8 +81,8 @@
 .Fc
 .Ft "void"
 .Fn sio_initpar "struct sio_par *par"
-.\"Fd #define SIO_BPS(bits)
-.\"Fd #define SIO_LE_NATIVE
+.Ft unsigned int
+.Fn SIO_BPS "unsigned int bits"
 .Sh DESCRIPTION
 The
 .Nm sndio
@@ -270,7 +271,7 @@ To ease filling the
 structure, the
 following macros can be used:
 .Bl -tag -width "SIO_BPS(bits)"
-.It Dv SIO_BPS Ns Pq Fa bits
+.It Fn SIO_BPS bits
 Return the smallest value for
 .Fa bps
 that is a power of two and that is large enough to
@@ -280,6 +281,7 @@ hold
 Can be used to set the
 .Fa le
 parameter when native byte order is required.
+It is 1 if the native byte order is little endian or 0 otherwise.
 .El
 .Ss Getting device capabilities
 There's no way to get an exhaustive list of all parameter
@@ -385,17 +387,17 @@ bitmasks should always be used.
 .Ss Starting and stopping the device
 The
 .Fn sio_start
-function puts the device in a waiting state:
-the device will wait for playback data to be provided
-(using the
-.Fn sio_write
-function).
-Once enough data is queued to ensure that play buffers
-will not underrun, actual playback is started automatically.
-If record mode only is selected, then recording starts
-immediately.
+function prepares the device to start.
+Once the play buffer is full, i.e.\&
+.Fa sio_par.bufsz
+samples are queued with
+.Fn sio_write ,
+playback starts automatically.
+If record-only mode is selected, then
+.Fn sio_start
+starts recording immediately.
 In full-duplex mode, playback and recording will start
-synchronously as soon as enough data to play is available.
+synchronously as soon as the play buffer is full.
 .Pp
 The
 .Fn sio_stop
@@ -579,7 +581,7 @@ parameter of the
 structure, the audio subsystem will behave as follows:
 .Bl -tag -width "SIO_IGNORE"
 .It Dv SIO_IGNORE
-The devices pauses during overruns and underruns,
+The device pauses during overruns and underruns,
 thus the current position (obtained through
 .Fn sio_onmove )
 stops being incremented.
@@ -735,10 +737,17 @@ The debug level:
 may be a value between 0 and 2.
 .El
 .Sh SEE ALSO
+.Xr mio_open 3 ,
+.Xr sioctl_open 3 ,
 .Xr audio 4 ,
 .Xr sndio 7 ,
 .Xr sndiod 8 ,
 .Xr audio 9
+.Sh HISTORY
+These functions first appeared in
+.Ox 4.5 .
+.Sh AUTHORS
+.An Alexandre Ratchov Aq Mt ratchov@openbsd.org
 .Sh BUGS
 The
 .Xr audio 4
