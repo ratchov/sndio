@@ -337,7 +337,7 @@ dev_midi_vol(struct dev *d, struct slot *s)
 {
 	unsigned char msg[3];
 
-	msg[0] = MIDI_CTL | (s - d->slot);
+	msg[0] = MIDI_CTL | s->index;
 	msg[1] = MIDI_CTL_VOL;
 	msg[2] = s->vol;
 	midi_send(d->midi, msg, 3);
@@ -397,7 +397,7 @@ dev_midi_slotdesc(struct dev *d, struct slot *s)
 	x.id1 = SYSEX_AUCAT_SLOTDESC;
 	if (*s->name != '\0')
 		slot_ctlname(s, (char *)x.u.slotdesc.name, SYSEX_NAMELEN);
-	x.u.slotdesc.chan = s - d->slot;
+	x.u.slotdesc.chan = s->index;
 	x.u.slotdesc.end = SYSEX_END;
 	midi_send(d->midi, (unsigned char *)&x, SYSEX_SIZE(slotdesc));
 }
@@ -1049,6 +1049,8 @@ dev_new(char *path, struct aparams *par,
 		d->slot[i].unit = i;
 		d->slot[i].ops = NULL;
 		d->slot[i].vol = MIDI_MAXCTL;
+		d->slot[i].index = i;
+		d->slot[i].dev = d;
 		d->slot[i].serial = d->serial++;
 		memset(d->slot[i].name, 0, SLOT_NAMEMAX);
 	}
@@ -1915,7 +1917,7 @@ found:
 	}
 	if (!dev_ref(d))
 		return NULL;
-	dev_label(d, s - d->slot);
+	dev_label(d, s->index);
 	if ((mode & d->mode) != mode) {
 		if (log_level >= 1) {
 			slot_log(s);

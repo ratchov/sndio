@@ -102,6 +102,7 @@ struct slot {
 	unsigned int serial;			/* global unique number */
 	unsigned int vol;			/* current (midi) volume */
 	unsigned int id;			/* process id */
+	unsigned int index;			/* used as MIDI chan */
 };
 
 struct opt {
