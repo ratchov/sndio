@@ -110,6 +110,24 @@ struct slotops zomb_slotops = {
 struct dev *dev_list = NULL;
 unsigned int dev_sndnum = 0;
 
+struct slot slot_array[DEV_NSLOT];
+unsigned int slot_serial;		/* for slot allocation */
+
+void
+slot_array_init(void)
+{
+	unsigned int i;
+
+	for (i = 0; i < DEV_NSLOT; i++) {
+		slot_array[i].unit = i;
+		slot_array[i].ops = NULL;
+		slot_array[i].vol = MIDI_MAXCTL;
+		slot_array[i].dev = NULL;
+		slot_array[i].serial = slot_serial++;
+		memset(slot_array[i].name, 0, SLOT_NAMEMAX);
+	}
+}
+
 void
 dev_log(struct dev *d)
 {
@@ -332,7 +350,7 @@ dev_midi_vol(struct dev *d, struct slot *s)
 {
 	unsigned char msg[3];
 
-	msg[0] = MIDI_CTL | (s - d->slot);
+	msg[0] = MIDI_CTL | (s - slot_array);
 	msg[1] = MIDI_CTL_VOL;
 	msg[2] = s->vol;
 	midi_send(d->midi, msg, 3);
@@ -392,7 +410,7 @@ dev_midi_slotdesc(struct dev *d, struct slot *s)
 	x.id1 = SYSEX_AUCAT_SLOTDESC;
 	if (*s->name != '\0')
 		slot_ctlname(s, (char *)x.u.slotdesc.name, SYSEX_NAMELEN);
-	x.u.slotdesc.chan = s - d->slot;
+	x.u.slotdesc.chan = (s - slot_array);
 	x.u.slotdesc.end = SYSEX_END;
 	midi_send(d->midi, (unsigned char *)&x, SYSEX_SIZE(slotdesc));
 }
@@ -405,7 +423,9 @@ dev_midi_dump(struct dev *d)
 	int i;
 
 	dev_midi_master(d);
-	for (i = 0, s = d->slot; i < DEV_NSLOT; i++, s++) {
+	for (i = 0, s = slot_array; i < DEV_NSLOT; i++, s++) {
+		if (s->dev != d)
+			continue;
 		dev_midi_slotdesc(d, s);
 		dev_midi_vol(d, s);
 	}
@@ -441,7 +461,9 @@ dev_midi_omsg(void *arg, unsigned char *msg, int len)
 		chan = msg[0] & MIDI_CHANMASK;
 		if (chan >= DEV_NSLOT)
 			return;
-		slot_setvol(d->slot + chan, msg[2]);
+		if (slot_array[chan].dev != d)
+			return;
+		slot_setvol(slot_array + chan, msg[2]);
 		dev_onval(d, CTLADDR_SLOT_LEVEL(chan), msg[2]);
 		return;
 	}
@@ -1045,14 +1067,6 @@ dev_new(char *path, struct aparams *par,
 	d->autovol = autovol;
 	d->refcnt = 0;
 	d->pstate = DEV_CFG;
-	d->serial = 0;
-	for (i = 0; i < DEV_NSLOT; i++) {
-		d->slot[i].unit = i;
-		d->slot[i].ops = NULL;
-		d->slot[i].vol = MIDI_MAXCTL;
-		d->slot[i].serial = d->serial++;
-		memset(d->slot[i].name, 0, SLOT_NAMEMAX);
-	}
 	for (i = 0; i < DEV_NCTLSLOT; i++) {
 		d->ctlslot[i].ops = NULL;
 		d->ctlslot[i].dev = d;
@@ -1204,6 +1218,7 @@ dev_open(struct dev *d)
 	int i;
 	char name[CTL_NAMEMAX];
 	struct dev_alt *a;
+	struct slot *s;
 
 	d->master_enabled = 0;
 	d->mode = d->reqmode;
@@ -1227,14 +1242,14 @@ dev_open(struct dev *d)
 	if (!dev_allocbufs(d))
 		return 0;
 
-	for (i = 0; i < DEV_NSLOT; i++) {
-		if (d->slot[i].name[0] == 0)
+	for (i = 0, s = slot_array; i < DEV_NSLOT; i++, s++) {
+		if (s->dev != d || s->name[0] == 0)
 			continue;
-		slot_ctlname(&d->slot[i], name, CTL_NAMEMAX);
+		slot_ctlname(s, name, CTL_NAMEMAX);
 		dev_addctl(d, "app", CTL_NUM,
 		    CTLADDR_SLOT_LEVEL(i),
 		    name, -1, "level",
-		    NULL, -1, 127, d->slot[i].vol);
+		    NULL, -1, 127, s->vol);
 	}
 
 	/* if there are multiple alt devs, add server.device knob */
@@ -1262,7 +1277,9 @@ dev_abort(struct dev *d)
 	struct slot *s;
 	struct ctlslot *c;
 
-	for (s = d->slot, i = DEV_NSLOT; i > 0; i--, s++) {
+	for (i = 0, s = slot_array; i < DEV_NSLOT; i++, s++) {
+		if (s->dev != d)
+			continue;
 		if (s->ops)
 			s->ops->exit(s->arg);
 		s->ops = NULL;
@@ -1563,9 +1580,9 @@ dev_sync_attach(struct dev *d)
 		}
 		return;
 	}
-	for (i = 0; i < DEV_NSLOT; i++) {
-		s = d->slot + i;
-		if (!s->ops || !s->opt->mmc)
+
+	for (i = 0, s = slot_array; i < DEV_NSLOT; i++, s++) {
+		if (s->dev != d || !s->ops || !s->opt->mmc)
 			continue;
 		if (s->pstate != SLOT_READY) {
 #ifdef DEBUG
@@ -1579,9 +1596,9 @@ dev_sync_attach(struct dev *d)
 	}
 	if (!dev_ref(d))
 		return;
-	for (i = 0; i < DEV_NSLOT; i++) {
-		s = d->slot + i;
-		if (!s->ops || !s->opt->mmc)
+
+	for (i = 0, s = slot_array; i < DEV_NSLOT; i++, s++) {
+		if (s->dev != d || !s->ops || !s->opt->mmc)
 			continue;
 		slot_attach(s);
 		s->pstate = SLOT_RUN;
@@ -1846,8 +1863,7 @@ slot_new(struct dev *d, struct opt *opt, unsigned int id, char *who,
 	 */
 	for (i = 0; i < DEV_NSLOT; i++)
 		unit[i] = NULL;
-	for (i = 0; i < DEV_NSLOT; i++) {
-		s = d->slot + i;
+	for (i = 0, s = slot_array; i < DEV_NSLOT; i++, s++) {
 		if (strcmp(s->name, name) == 0)
 			unit[s->unit] = s;
 	}
@@ -1878,20 +1894,20 @@ slot_new(struct dev *d, struct opt *opt, unsigned int id, char *who,
 	 */
 	bestser = 0;
 	bestidx = DEV_NSLOT;
-	for (i = 0, s = d->slot; i < DEV_NSLOT; i++, s++) {
+	for (i = 0, s = slot_array; i < DEV_NSLOT; i++, s++) {
 		if (s->ops != NULL)
 			continue;
-		ser = d->serial - s->serial;
+		ser = slot_serial - s->serial;
 		if (ser > bestser) {
 			bestser = ser;
 			bestidx = i;
 		}
 	}
 	if (bestidx != DEV_NSLOT) {
-		s = d->slot + bestidx;
+		s = slot_array + bestidx;
 		s->vol = MIDI_MAXCTL;
 		strlcpy(s->name, name, SLOT_NAMEMAX);
-		s->serial = d->serial++;
+		s->serial = slot_serial++;
 		for (i = 0; unit[i] != NULL; i++)
 			; /* nothing */
 		s->unit = i;
@@ -1919,7 +1935,7 @@ found:
 	}
 	if (!dev_ref(d))
 		return NULL;
-	dev_label(d, s - d->slot);
+	dev_label(d, s - slot_array);
 	if ((mode & d->mode) != mode) {
 		if (log_level >= 1) {
 			slot_log(s);
@@ -2506,6 +2522,7 @@ int
 dev_setctl(struct dev *d, int addr, int val)
 {
 	struct ctl *c;
+	struct slot *s;
 	int num;
 
 	c = d->ctl_list;
@@ -2560,8 +2577,11 @@ dev_setctl(struct dev *d, int addr, int val)
 			}
 		} else {
 			num = addr - CTLADDR_SLOT_LEVEL(0);
-			slot_setvol(d->slot + num, val);
-			dev_midi_vol(d, d->slot + num);
+			s = slot_array + num;
+			if (s->dev != d)
+				return 1;
+			slot_setvol(s, val);
+			dev_midi_vol(d, s);
 		}
 		c->val_mask = ~0U;
 	}
@@ -2593,7 +2613,7 @@ dev_label(struct dev *d, int i)
 	struct ctl *c;
 	char name[CTL_NAMEMAX];
 
-	slot_ctlname(&d->slot[i], name, CTL_NAMEMAX);
+	slot_ctlname(&slot_array[i], name, CTL_NAMEMAX);
 
 	c = d->ctl_list;
 	for (;;) {
@@ -2601,7 +2621,7 @@ dev_label(struct dev *d, int i)
 			dev_addctl(d, "app", CTL_NUM,
 			    CTLADDR_SLOT_LEVEL(i),
 			    name, -1, "level",
-			    NULL, -1, 127, d->slot[i].vol);
+			    NULL, -1, 127, slot_array[i].vol);
 			return;
 		}
 		if (c->addr == CTLADDR_SLOT_LEVEL(i))

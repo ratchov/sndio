@@ -1227,7 +1227,7 @@ sock_execmsg(struct sock *f)
 		slot_setvol(s, ctl);
 		dev_midi_vol(s->dev, s);
 		dev_onval(s->dev,
-		    CTLADDR_SLOT_LEVEL(f->slot - s->dev->slot), ctl);
+		    CTLADDR_SLOT_LEVEL(f->slot - slot_array), ctl);
 		break;
 	case AMSG_CTLSUB:
 #ifdef DEBUG

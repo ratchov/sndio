@@ -28,6 +28,11 @@
 #define CTLADDR_END		(CTLADDR_ALT_SEL + DEV_NMAX)
 
 /*
+ * preallocated audio clients
+ */
+#define DEV_NSLOT	8
+
+/*
  * audio stream state structure
  */
 
@@ -182,13 +187,6 @@ struct dev {
 	unsigned char *decbuf;			/* buffer for decoding */
 
 	/*
-	 * preallocated audio sub-devices
-	 */
-#define DEV_NSLOT	8
-	struct slot slot[DEV_NSLOT];
-	unsigned int serial;			/* for slot allocation */
-
-	/*
 	 * current position, relative to the current cycle
 	 */
 	int delta;
@@ -265,6 +263,9 @@ struct dev {
 };
 
 extern struct dev *dev_list;
+extern struct slot slot_array[DEV_NSLOT];
+
+void slot_array_init(void);
 
 void dev_log(struct dev *);
 void dev_abort(struct dev *);
