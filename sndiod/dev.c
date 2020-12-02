@@ -116,6 +116,7 @@ struct ctl *ctl_list = NULL;
 struct dev *dev_list = NULL;
 unsigned int dev_sndnum = 0;
 
+struct ctlslot ctlslot_array[DEV_NCTLSLOT];
 struct slot slot_array[DEV_NSLOT];
 unsigned int slot_serial;		/* for slot allocation */
 
@@ -1039,7 +1040,6 @@ dev_new(char *path, struct aparams *par,
     unsigned int rate, unsigned int hold, unsigned int autovol)
 {
 	struct dev *d;
-	unsigned int i;
 
 	if (dev_sndnum == DEV_NMAX) {
 		if (log_level >= 1)
@@ -1072,12 +1072,6 @@ dev_new(char *path, struct aparams *par,
 	d->autovol = autovol;
 	d->refcnt = 0;
 	d->pstate = DEV_CFG;
-	for (i = 0; i < DEV_NCTLSLOT; i++) {
-		d->ctlslot[i].ops = NULL;
-		d->ctlslot[i].dev = d;
-		d->ctlslot[i].mask = 0;
-		d->ctlslot[i].mode = 0;
-	}
 	d->slot_list = NULL;
 	d->master = MIDI_MAXCTL;
 	d->mtc.origin = 0;
@@ -1291,7 +1285,9 @@ dev_abort(struct dev *d)
 	}
 	d->slot_list = NULL;
 
-	for (c = d->ctlslot, i = DEV_NCTLSLOT; i > 0; i--, c++) {
+	for (c = ctlslot_array, i = DEV_NCTLSLOT; i > 0; i--, c++) {
+		if (c->dev != d)
+			continue;
 		if (c->ops)
 			c->ops->exit(c->arg);
 		c->ops = NULL;
@@ -2295,7 +2291,7 @@ ctlslot_new(struct dev *d, struct ctlops *ops, void *arg)
 	for (;;) {
 		if (i == DEV_NCTLSLOT)
 			return NULL;
-		s = d->ctlslot + i;
+		s = ctlslot_array + i;
 		if (s->ops == NULL)
 			break;
 		i++;
@@ -2404,7 +2400,7 @@ dev_addctl(struct dev *d, char *gstr, int type, int addr,
 	c->refs_mask = 0;
 	for (i = 0; i < DEV_NCTLSLOT; i++) {
 		c->refs_mask |= CTL_DEVMASK;
-		if (d->ctlslot[i].ops != NULL)
+		if (ctlslot_array[i].ops != NULL)
 			c->refs_mask |= 1 << i;
 	}
 	for (pc = &ctl_list; *pc != NULL; pc = &(*pc)->next)
@@ -2492,8 +2488,8 @@ dev_ctlsync(struct dev *d)
 		    "output", -1, "level", NULL, -1, 127, d->master);
 	}
 
-	for (s = d->ctlslot, i = DEV_NCTLSLOT; i > 0; i--, s++) {
-		if (s->ops)
+	for (s = ctlslot_array, i = DEV_NCTLSLOT; i > 0; i--, s++) {
+		if (s->dev == d && s->ops)
 			s->ops->sync(s->arg);
 	}
 }

@@ -114,7 +114,7 @@ sock_log(struct sock *f)
 		midi_log(f->midi);
 	else if (f->ctlslot) {
 		log_puts("ctlslot");
-		log_putu(f->ctlslot - f->ctlslot->dev->ctlslot);
+		log_putu(f->ctlslot - ctlslot_array);
 	} else
 		log_puts("sock");
 #ifdef DEBUG
