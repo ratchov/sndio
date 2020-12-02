@@ -33,6 +33,11 @@
 #define DEV_NSLOT	8
 
 /*
+ * preallocated control clients
+ */
+#define DEV_NCTLSLOT 8
+
+/*
  * audio stream state structure
  */
 
@@ -258,12 +263,11 @@ struct dev {
 	 */
 
 	struct ctl *ctl_list;
-#define DEV_NCTLSLOT 8
-	struct ctlslot ctlslot[DEV_NCTLSLOT];
 };
 
 extern struct dev *dev_list;
 extern struct slot slot_array[DEV_NSLOT];
+extern struct ctlslot ctlslot_array[DEV_NCTLSLOT];
 
 void slot_array_init(void);
 
