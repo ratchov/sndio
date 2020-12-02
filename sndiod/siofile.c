@@ -118,7 +118,9 @@ dev_sio_openlist(struct dev *d, unsigned int mode, struct sioctl_hdl **rctlhdl)
 				}
 			}
 			d->alt_num = n->idx;
-			for (c = d->ctl_list; c != NULL; c = c->next) {
+			for (c = ctl_list; c != NULL; c = c->next) {
+				if (c->dev != d)
+					continue;
 				if (c->addr < CTLADDR_ALT_SEL ||
 				    c->addr >= CTLADDR_ALT_SEL + DEV_NMAX)
 					continue;

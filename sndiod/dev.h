@@ -128,6 +128,7 @@ struct opt {
 
 struct ctl {
 	struct ctl *next;
+	struct dev *dev;
 #define CTL_NONE	0		/* deleted */
 #define CTL_NUM		2		/* number (aka integer value) */
 #define CTL_SW		3		/* on/off switch, only bit 7 counts */
@@ -258,13 +259,13 @@ struct dev {
 	 * control
 	 */
 
-	struct ctl *ctl_list;
 #define DEV_NCTLSLOT 8
 	struct ctlslot ctlslot[DEV_NCTLSLOT];
 };
 
 extern struct dev *dev_list;
 extern struct slot slot_array[DEV_NSLOT];
+extern struct ctl *ctl_list;
 
 void slot_array_init(void);
 

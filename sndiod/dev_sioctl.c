@@ -98,8 +98,8 @@ dev_sioctl_onval(void *arg, unsigned int addr, unsigned int val)
 	log_putu(val);
 	log_puts("\n");
 
-	for (c = d->ctl_list; c != NULL; c = c->next) {
-		if (c->addr != addr)
+	for (c = ctl_list; c != NULL; c = c->next) {
+		if (c->dev != d || c->addr != addr)
 			continue;
 		ctl_log(c);
 		log_puts(": new value -> ");
@@ -139,9 +139,9 @@ dev_sioctl_close(struct dev *d)
 	struct ctl *c, **pc;
 
 	/* remove controls */
-	pc = &d->ctl_list;
+	pc = &ctl_list;
 	while ((c = *pc) != NULL) {
-		if (c->addr >= CTLADDR_END) {
+		if (c->dev == d && c->addr >= CTLADDR_END) {
 			c->refs_mask &= ~CTL_DEVMASK;
 			if (c->refs_mask == 0) {
 				*pc = c->next;
@@ -163,8 +163,8 @@ dev_sioctl_pollfd(void *arg, struct pollfd *pfd)
 	struct ctl *c;
 	int events = 0;
 
-	for (c = d->ctl_list; c != NULL; c = c->next) {
-		if (c->dirty)
+	for (c = ctl_list; c != NULL; c = c->next) {
+		if (c->dev == d && c->dirty)
 			events |= POLLOUT;
 	}
 	return sioctl_pollfd(d->sioctl.hdl, pfd, events);
@@ -196,8 +196,8 @@ dev_sioctl_out(void *arg)
 	 * we've finished iterating on it.
 	 */
 	cnt = 0;
-	for (c = d->ctl_list; c != NULL; c = c->next) {
-		if (!c->dirty)
+	for (c = ctl_list; c != NULL; c = c->next) {
+		if (c->dev != d || !c->dirty)
 			continue;
 		if (!sioctl_setval(d->sioctl.hdl,
 			c->addr - CTLADDR_END, c->curval)) {

@@ -112,6 +112,7 @@ struct slotops zomb_slotops = {
 	zomb_exit
 };
 
+struct ctl *ctl_list = NULL;
 struct dev *dev_list = NULL;
 unsigned int dev_sndnum = 0;
 
@@ -376,7 +377,9 @@ dev_midi_master(struct dev *d)
 		master = d->master;
 	else {
 		master = 0;
-		for (c = d->ctl_list; c != NULL; c = c->next) {
+		for (c = ctl_list; c != NULL; c = c->next) {
+			if (c->dev != d)
+				continue;
 			if (c->type != CTL_NUM ||
 			    strcmp(c->group, "") != 0 ||
 			    strcmp(c->node0.name, "output") != 0 ||
@@ -1004,7 +1007,9 @@ dev_master(struct dev *d, unsigned int master)
 		if (d->mode & MODE_PLAY)
 			dev_mix_adjvol(d);
 	} else {
-		for (c = d->ctl_list; c != NULL; c = c->next) {
+		for (c = ctl_list; c != NULL; c = c->next) {
+			if (c->dev != d)
+				continue;
 			if (c->type != CTL_NUM ||
 			    strcmp(c->group, "") != 0 ||
 			    strcmp(c->node0.name, "output") != 0 ||
@@ -1077,7 +1082,6 @@ dev_new(char *path, struct aparams *par,
 	d->master = MIDI_MAXCTL;
 	d->mtc.origin = 0;
 	d->tstate = MMC_STOP;
-	d->ctl_list = NULL;
 	d->next = dev_list;
 	dev_list = d;
 	return d;
@@ -1328,16 +1332,20 @@ dev_freebufs(struct dev *d)
 void
 dev_close(struct dev *d)
 {
-	struct ctl *c;
+	struct ctl *c, **pc;
 
 	d->pstate = DEV_CFG;
 	dev_sio_close(d);
 	dev_freebufs(d);
 
 	/* there are no clients, just free remaining local controls */
-	while ((c = d->ctl_list) != NULL) {
-		d->ctl_list = c->next;
-		xfree(c);
+	pc = &ctl_list;
+	while ((c = *pc) != NULL) {
+		if (c->dev == d) {
+			*pc = c->next;
+			xfree(c);
+		} else
+			pc = &c->next;
 	}
 }
 
@@ -2298,8 +2306,11 @@ ctlslot_new(struct dev *d, struct ctlops *ops, void *arg)
 		return NULL;
 	s->ops = ops;
 	s->arg = arg;
-	for (c = d->ctl_list; c != NULL; c = c->next)
+	for (c = ctl_list; c != NULL; c = c->next) {
+		if (c->dev != d)
+			continue;
 		c->refs_mask |= s->mask;
+	}
 	return s;
 }
 
@@ -2311,7 +2322,7 @@ ctlslot_del(struct ctlslot *s)
 {
 	struct ctl *c, **pc;
 
-	pc = &s->dev->ctl_list;
+	pc = &ctl_list;
 	while ((c = *pc) != NULL) {
 		c->refs_mask &= ~s->mask;
 		if (c->refs_mask == 0) {
@@ -2373,6 +2384,7 @@ dev_addctl(struct dev *d, char *gstr, int type, int addr,
 	int i;
 
 	c = xmalloc(sizeof(struct ctl));
+	c->dev = d;
 	c->type = type;
 	strlcpy(c->func, func, CTL_NAMEMAX);
 	strlcpy(c->group, gstr, CTL_NAMEMAX);
@@ -2395,7 +2407,7 @@ dev_addctl(struct dev *d, char *gstr, int type, int addr,
 		if (d->ctlslot[i].ops != NULL)
 			c->refs_mask |= 1 << i;
 	}
-	for (pc = &d->ctl_list; *pc != NULL; pc = &(*pc)->next)
+	for (pc = &ctl_list; *pc != NULL; pc = &(*pc)->next)
 		; /* nothing */
 	c->next = NULL;
 	*pc = c;
@@ -2415,12 +2427,12 @@ dev_rmctl(struct dev *d, int addr)
 {
 	struct ctl *c, **pc;
 
-	pc = &d->ctl_list;
+	pc = &ctl_list;
 	for (;;) {
 		c = *pc;
 		if (c == NULL)
 			return;
-		if (c->type != CTL_NONE && c->addr == addr)
+		if (c->dev == d && c->type != CTL_NONE && c->addr == addr)
 			break;
 		pc = &c->next;
 	}
@@ -2452,7 +2464,9 @@ dev_ctlsync(struct dev *d)
 	int found, i;
 
 	found = 0;
-	for (c = d->ctl_list; c != NULL; c = c->next) {
+	for (c = ctl_list; c != NULL; c = c->next) {
+		if (c->dev != d)
+			continue;
 		if (c->addr != CTLADDR_MASTER &&
 		    c->type == CTL_NUM &&
 		    strcmp(c->group, "") == 0 &&
@@ -2491,7 +2505,7 @@ dev_setctl(struct dev *d, int addr, int val)
 	struct slot *s;
 	int num;
 
-	c = d->ctl_list;
+	c = ctl_list;
 	for (;;) {
 		if (c == NULL) {
 			if (log_level >= 3) {
@@ -2502,7 +2516,7 @@ dev_setctl(struct dev *d, int addr, int val)
 			}
 			return 0;
 		}
-		if (c->type != CTL_NONE && c->addr == addr)
+		if (c->dev == d && c->type != CTL_NONE && c->addr == addr)
 			break;
 		c = c->next;
 	}
@@ -2560,11 +2574,11 @@ dev_onval(struct dev *d, int addr, int val)
 {
 	struct ctl *c;
 
-	c = d->ctl_list;
+	c = ctl_list;
 	for (;;) {
 		if (c == NULL)
 			return 0;
-		if (c->type != CTL_NONE && c->addr == addr)
+		if (c->dev == d && c->type != CTL_NONE && c->addr == addr)
 			break;
 		c = c->next;
 	}
@@ -2581,7 +2595,7 @@ dev_label(struct dev *d, int i)
 
 	slot_ctlname(&slot_array[i], name, CTL_NAMEMAX);
 
-	c = d->ctl_list;
+	c = ctl_list;
 	for (;;) {
 		if (c == NULL) {
 			dev_addctl(d, "app", CTL_NUM,
@@ -2590,7 +2604,7 @@ dev_label(struct dev *d, int i)
 			    NULL, -1, 127, slot_array[i].vol);
 			return;
 		}
-		if (c->addr == CTLADDR_SLOT_LEVEL(i))
+		if (c->dev == d && c->addr == CTLADDR_SLOT_LEVEL(i))
 			break;
 		c = c->next;
 	}
@@ -2607,7 +2621,9 @@ dev_nctl(struct dev *d)
 	int n;
 
 	n = 0;
-	for (c = d->ctl_list; c != NULL; c = c->next)
-		n++;
+	for (c = ctl_list; c != NULL; c = c->next) {
+		if (c->dev == d)
+			n++;
+	}
 	return n;
 }

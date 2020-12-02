@@ -1253,9 +1253,10 @@ sock_execmsg(struct sock *f)
 		if (m->u.ctlsub.desc) {
 			if (!(f->ctlops & SOCK_CTLDESC)) {
 				ctl = f->ctlslot->mask;
-				c = f->ctlslot->dev->ctl_list;
+				c = ctl_list;
 				while (c != NULL) {
-					c->desc_mask |= ctl;
+					if (c->dev == f->ctlslot->dev)
+						c->desc_mask |= ctl;
 					c = c->next;
 				}
 				f->ctlops |= SOCK_CTLDESC;
@@ -1541,9 +1542,10 @@ sock_buildmsg(struct sock *f)
 		desc = f->ctldesc;
 		mask = f->ctlslot->mask;
 		size = 0;
-		pc = &f->ctlslot->dev->ctl_list;
+		pc = &ctl_list;
 		while ((c = *pc) != NULL) {
-			if ((c->desc_mask & mask) == 0 ||
+			if ((c->dev != f->ctlslot->dev) ||
+			    (c->desc_mask & mask) == 0 ||
 			    (c->refs_mask & mask) == 0) {
 				pc = &c->next;
 				continue;
@@ -1598,7 +1600,9 @@ sock_buildmsg(struct sock *f)
 	}
 	if (f->ctlslot && (f->ctlops & SOCK_CTLVAL)) {
 		mask = f->ctlslot->mask;
-		for (c = f->ctlslot->dev->ctl_list; c != NULL; c = c->next) {
+		for (c = ctl_list; c != NULL; c = c->next) {
+			if (c->dev != f->ctlslot->dev)
+				continue;
 			if ((c->val_mask & mask) == 0)
 				continue;
 			c->val_mask &= ~mask;
