@@ -885,15 +885,19 @@ sock_hello(struct sock *f)
 		return 1;
 	}
 	if (mode & MODE_CTLMASK) {
-		d = dev_bynum(p->devnum);
-		if (d == NULL) {
-			if (log_level >= 2) {
-				sock_log(f);
-				log_puts(": ");
-				log_putu(p->devnum);
-				log_puts(": no such device\n");
+		if (p->devnum == 15)
+			d = NULL;
+		else {
+			d = dev_bynum(p->devnum);
+			if (d == NULL) {
+				if (log_level >= 2) {
+					sock_log(f);
+					log_puts(": ");
+					log_putu(p->devnum);
+					log_puts(": no such device\n");
+				}
+				return 0;
 			}
-			return 0;
 		}
 		f->ctlslot = ctlslot_new(d, &sock_ctlops, f);
 		if (f->ctlslot == NULL) {
@@ -1255,7 +1259,7 @@ sock_execmsg(struct sock *f)
 				ctl = f->ctlslot->self;
 				c = ctl_list;
 				while (c != NULL) {
-					if (c->dev == f->ctlslot->dev)
+					if (f->ctlslot->dev_mask & (1 << c->dev->num))
 						c->desc_mask |= ctl;
 					c = c->next;
 				}
@@ -1288,7 +1292,7 @@ sock_execmsg(struct sock *f)
 			sock_close(f);
 			return 0;
 		}
-		if (!dev_setctl(f->ctlslot->dev,
+		if (!dev_setctl(f->ctlslot->dev_mask,
 			ntohs(m->u.ctlset.addr),
 			ntohs(m->u.ctlset.val))) {
 #ifdef DEBUG
@@ -1544,7 +1548,7 @@ sock_buildmsg(struct sock *f)
 		size = 0;
 		pc = &ctl_list;
 		while ((c = *pc) != NULL) {
-			if ((c->dev != f->ctlslot->dev) ||
+			if (!(f->ctlslot->dev_mask & (1 << c->dev->num)) ||
 			    (c->desc_mask & mask) == 0 ||
 			    (c->refs_mask & mask) == 0) {
 				pc = &c->next;
@@ -1601,7 +1605,7 @@ sock_buildmsg(struct sock *f)
 	if (f->ctlslot && (f->ctlops & SOCK_CTLVAL)) {
 		mask = f->ctlslot->self;
 		for (c = ctl_list; c != NULL; c = c->next) {
-			if (c->dev != f->ctlslot->dev)
+			if (!(f->ctlslot->dev_mask & (1 << c->dev->num)))
 				continue;
 			if ((c->val_mask & mask) == 0)
 				continue;

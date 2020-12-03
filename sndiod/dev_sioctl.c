@@ -51,8 +51,7 @@ struct fileops dev_sioctl_ops = {
 void
 dev_sioctl_ondesc(void *arg, struct sioctl_desc *desc, int val)
 {
-#define GROUP_PREFIX		"hw"
-	char group_buf[CTL_NAMEMAX], *group;
+	char group[CTL_NAMEMAX];
 	struct dev *d = arg;
 	int addr;
 
@@ -64,19 +63,7 @@ dev_sioctl_ondesc(void *arg, struct sioctl_desc *desc, int val)
 	addr = CTLADDR_END + desc->addr;
 	dev_rmctl(d, addr);
 
-	/*
-	 * prefix with "hw/" group names of controls we expose, to
-	 * ensure that all controls have unique names when multiple
-	 * sndiod's are chained
-	 */
-	if (strcmp(desc->group, "app") == 0 || (desc->group[0] == 0 &&
-	    strcmp(desc->node0.name, "server") == 0)) {
-		group = group_buf;
-		if (snprintf(group_buf, CTL_NAMEMAX, GROUP_PREFIX "/%s",
-		    desc->group) >= CTL_NAMEMAX)
-			return;
-	} else
-		group = desc->group;
+	snprintf(group, sizeof(group), "%u", d->num);
 
 	dev_addctl(d, group, desc->type, addr,
 	    desc->node0.name, desc->node0.unit, desc->func,

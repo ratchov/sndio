@@ -163,7 +163,7 @@ struct ctl {
 struct ctlslot {
 	struct ctlops *ops;
 	void *arg;
-	struct dev *dev;
+	unsigned int dev_mask;		/* devices visible by this client */
 	unsigned int self;		/* equal to (1 << index) */
 	unsigned int mode;
 };
@@ -320,7 +320,7 @@ void slot_write(struct slot *);
 void ctl_log(struct ctl *);
 struct ctlslot *ctlslot_new(struct dev *, struct ctlops *, void *);
 void ctlslot_del(struct ctlslot *);
-int dev_setctl(struct dev *, int, int);
+int dev_setctl(unsigned int, int, int);
 int dev_onval(struct dev *, int, int);
 int dev_nctl(struct dev *);
 void dev_label(struct dev *, int);

@@ -994,6 +994,7 @@ dev_onmove(struct dev *d, int delta)
 void
 dev_master(struct dev *d, unsigned int master)
 {
+	char group[CTL_NAMEMAX];
 	struct ctl *c;
 	unsigned int v;
 
@@ -1008,16 +1009,18 @@ dev_master(struct dev *d, unsigned int master)
 		if (d->mode & MODE_PLAY)
 			dev_mix_adjvol(d);
 	} else {
+		snprintf(group, sizeof(group), "%u", d->num);
+
 		for (c = ctl_list; c != NULL; c = c->next) {
 			if (c->dev != d)
 				continue;
 			if (c->type != CTL_NUM ||
-			    strcmp(c->group, "") != 0 ||
+			    strcmp(c->group, group) != 0 ||
 			    strcmp(c->node0.name, "output") != 0 ||
 			    strcmp(c->func, "level") != 0)
 				continue;
 			v = (master * c->maxval + 64) / 127;
-			dev_setctl(d, c->slot_addr, v);
+			dev_setctl(1 << d->num, c->slot_addr, v);
 		}
 	}
 }
@@ -1286,7 +1289,11 @@ dev_abort(struct dev *d)
 	d->slot_list = NULL;
 
 	for (c = ctlslot_array, i = DEV_NCTLSLOT; i > 0; i--, c++) {
-		if (c->dev != d)
+		/*
+		 * XXX remove from dev_mask and call exit() only
+		 * if dev_mask reached 0
+		 */
+		if (!(c->dev_mask & (1 << d->num)))
 			continue;
 		if (c->ops)
 			c->ops->exit(c->arg);
@@ -2296,14 +2303,23 @@ ctlslot_new(struct dev *d, struct ctlops *ops, void *arg)
 			break;
 		i++;
 	}
-	s->dev = d;
+	s->dev_mask = 0;
 	s->self = 1 << i;
-	if (!dev_ref(d))
+	if (d == NULL) {
+		for (d = dev_list; d != NULL; d = d->next) {
+			if (dev_ref(d))
+				s->dev_mask |= 1 << d->num;
+		}
+	} else {
+		if (dev_ref(d))
+			s->dev_mask |= 1 << d->num;
+	}
+	if (s->dev_mask == 0)
 		return NULL;
 	s->ops = ops;
 	s->arg = arg;
 	for (c = ctl_list; c != NULL; c = c->next) {
-		if (c->dev != d)
+		if (!(s->dev_mask & (1 << c->dev->num)))
 			continue;
 		c->refs_mask |= s->self;
 	}
@@ -2317,6 +2333,7 @@ void
 ctlslot_del(struct ctlslot *s)
 {
 	struct ctl *c, **pc;
+	struct dev *d;
 
 	pc = &ctl_list;
 	while ((c = *pc) != NULL) {
@@ -2328,7 +2345,11 @@ ctlslot_del(struct ctlslot *s)
 			pc = &c->next;
 	}
 	s->ops = NULL;
-	dev_unref(s->dev);
+	for (d = dev_list; d != NULL; d = d->next) {
+		if (s->dev_mask & (1 << d->num))
+			dev_unref(d);
+	}
+	s->dev_mask = 0;
 }
 
 void
@@ -2473,9 +2494,12 @@ dev_rmctl(struct dev *d, int dev_addr)
 void
 dev_ctlsync(struct dev *d)
 {
+	char group[CTL_NAMEMAX];
 	struct ctl *c;
 	struct ctlslot *s;
 	int found, i;
+
+	snprintf(group, sizeof(group), "%u", d->num);
 
 	found = 0;
 	for (c = ctl_list; c != NULL; c = c->next) {
@@ -2483,7 +2507,7 @@ dev_ctlsync(struct dev *d)
 			continue;
 		if (c->dev_addr != CTLADDR_MASTER &&
 		    c->type == CTL_NUM &&
-		    strcmp(c->group, "") == 0 &&
+		    strcmp(c->group, group) == 0 &&
 		    strcmp(c->node0.name, "output") == 0 &&
 		    strcmp(c->func, "level") == 0)
 			found = 1;
@@ -2502,18 +2526,18 @@ dev_ctlsync(struct dev *d)
 			log_puts(": software master level control enabled\n");
 		}
 		d->master_enabled = 1;
-		dev_addctl(d, "", CTL_NUM, CTLADDR_MASTER,
+		dev_addctl(d, group, CTL_NUM, CTLADDR_MASTER,
 		    "output", -1, "level", NULL, -1, 127, d->master);
 	}
 
 	for (s = ctlslot_array, i = DEV_NCTLSLOT; i > 0; i--, s++) {
-		if (s->dev == d && s->ops)
+		if ((s->dev_mask & (1 << d->num)) && s->ops)
 			s->ops->sync(s->arg);
 	}
 }
 
 int
-dev_setctl(struct dev *d, int slot_addr, int val)
+dev_setctl(unsigned int dev_mask, int slot_addr, int val)
 {
 	struct ctl *c;
 	struct slot *s;
@@ -2523,18 +2547,18 @@ dev_setctl(struct dev *d, int slot_addr, int val)
 	for (;;) {
 		if (c == NULL) {
 			if (log_level >= 3) {
-				dev_log(d);
-				log_puts(": ");
 				log_putu(slot_addr);
 				log_puts(": no such ctl address\n");
 			}
 			return 0;
 		}
-		if (c->dev == d &&
-		    c->type != CTL_NONE &&
-		    c->slot_addr == slot_addr)
+		if (c->type != CTL_NONE && c->slot_addr == slot_addr)
 			break;
 		c = c->next;
+	}
+	if (!(dev_mask & c->dev->num)) {
+		ctl_log(c);
+		log_puts(": not autorized\n");
 	}
 	if (c->curval == val) {
 		if (log_level >= 3) {
@@ -2545,8 +2569,6 @@ dev_setctl(struct dev *d, int slot_addr, int val)
 	}
 	if (val < 0 || val > c->maxval) {
 		if (log_level >= 3) {
-			dev_log(d);
-			log_puts(": ");
 			log_putu(val);
 			log_puts(": ctl val out of bounds\n");
 		}
@@ -2558,26 +2580,26 @@ dev_setctl(struct dev *d, int slot_addr, int val)
 			log_puts(": marked as dirty\n");
 		}
 		c->dirty = 1;
-		dev_ref(d);
+		dev_ref(c->dev);
 	} else {
 		if (c->dev_addr >= CTLADDR_ALT_SEL) {
 			if (val) {
 				num = c->dev_addr - CTLADDR_ALT_SEL;
-				dev_setalt(d, num);
+				dev_setalt(c->dev, num);
 			}
 			return 1;
 		} else if (c->dev_addr == CTLADDR_MASTER) {
-			if (d->master_enabled) {
-				dev_master(d, val);
-				dev_midi_master(d);
+			if (c->dev->master_enabled) {
+				dev_master(c->dev, val);
+				dev_midi_master(c->dev);
 			}
 		} else {
 			num = c->dev_addr - CTLADDR_SLOT_LEVEL(0);
 			s = slot_array + num;
-			if (s->dev != d)
+			if (s->dev != c->dev)
 				return 1;
 			slot_setvol(s, val);
-			dev_midi_vol(d, s);
+			dev_midi_vol(c->dev, s);
 		}
 		c->val_mask = ~0U;
 	}
