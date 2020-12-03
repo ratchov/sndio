@@ -178,6 +178,11 @@ struct dev {
 	struct midi *midi;
 
 	/*
+	 * name used for various controls
+	 */
+	char ctl_name[CTL_NAMEMAX];
+
+	/*
 	 * audio device (while opened)
 	 */
 	struct dev_sio sio;

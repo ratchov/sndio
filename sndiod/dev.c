@@ -994,7 +994,6 @@ dev_onmove(struct dev *d, int delta)
 void
 dev_master(struct dev *d, unsigned int master)
 {
-	char group[CTL_NAMEMAX];
 	struct ctl *c;
 	unsigned int v;
 
@@ -1009,13 +1008,11 @@ dev_master(struct dev *d, unsigned int master)
 		if (d->mode & MODE_PLAY)
 			dev_mix_adjvol(d);
 	} else {
-		snprintf(group, sizeof(group), "%u", d->num);
-
 		for (c = ctl_list; c != NULL; c = c->next) {
 			if (c->dev != d)
 				continue;
 			if (c->type != CTL_NUM ||
-			    strcmp(c->group, group) != 0 ||
+			    strcmp(c->group, d->ctl_name) != 0 ||
 			    strcmp(c->node0.name, "output") != 0 ||
 			    strcmp(c->func, "level") != 0)
 				continue;
@@ -1051,7 +1048,7 @@ dev_new(char *path, struct aparams *par,
 	}
 	d = xmalloc(sizeof(struct dev));
 	d->alt_list = NULL;
-	dev_addname(d,path);
+	dev_addname(d, path);
 	d->num = dev_sndnum++;
 	d->opt_list = NULL;
 	d->alt_num = -1;
@@ -1079,6 +1076,7 @@ dev_new(char *path, struct aparams *par,
 	d->master = MIDI_MAXCTL;
 	d->mtc.origin = 0;
 	d->tstate = MMC_STOP;
+	snprintf(d->ctl_name, CTL_NAMEMAX, "%u", d->num);
 	d->next = dev_list;
 	dev_list = d;
 	return d;
@@ -2559,12 +2557,9 @@ dev_rmctl(struct dev *d, int dev_addr)
 void
 dev_ctlsync(struct dev *d)
 {
-	char group[CTL_NAMEMAX];
 	struct ctl *c;
 	struct ctlslot *s;
 	int found, i;
-
-	snprintf(group, sizeof(group), "%u", d->num);
 
 	found = 0;
 	for (c = ctl_list; c != NULL; c = c->next) {
@@ -2572,7 +2567,7 @@ dev_ctlsync(struct dev *d)
 			continue;
 		if (c->dev_addr != CTLADDR_MASTER &&
 		    c->type == CTL_NUM &&
-		    strcmp(c->group, group) == 0 &&
+		    strcmp(c->group, d->ctl_name) == 0 &&
 		    strcmp(c->node0.name, "output") == 0 &&
 		    strcmp(c->func, "level") == 0)
 			found = 1;
@@ -2591,7 +2586,7 @@ dev_ctlsync(struct dev *d)
 			log_puts(": software master level control enabled\n");
 		}
 		d->master_enabled = 1;
-		dev_addctl(d, group, CTL_NUM, CTLADDR_MASTER,
+		dev_addctl(d, d->ctl_name, CTL_NUM, CTLADDR_MASTER,
 		    "output", -1, "level", NULL, -1, 127, d->master);
 	}
 
