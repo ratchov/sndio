@@ -2320,13 +2320,13 @@ ctlslot_new(struct dev *d, struct ctlops *ops, void *arg)
 		i++;
 	}
 	s->dev = d;
-	s->mask = 1 << i;
+	s->self = 1 << i;
 	if (!dev_ref(d))
 		return NULL;
 	s->ops = ops;
 	s->arg = arg;
 	for (c = d->ctl_list; c != NULL; c = c->next)
-		c->refs_mask |= s->mask;
+		c->refs_mask |= s->self;
 	return s;
 }
 
@@ -2340,7 +2340,7 @@ ctlslot_del(struct ctlslot *s)
 
 	pc = &s->dev->ctl_list;
 	while ((c = *pc) != NULL) {
-		c->refs_mask &= ~s->mask;
+		c->refs_mask &= ~s->self;
 		if (c->refs_mask == 0) {
 			*pc = c->next;
 			xfree(c);

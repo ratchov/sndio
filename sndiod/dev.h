@@ -149,7 +149,7 @@ struct ctlslot {
 	struct ctlops *ops;
 	void *arg;
 	struct dev *dev;
-	unsigned int mask;
+	unsigned int self;		/* equal to (1 << index) */
 	unsigned int mode;
 };
 
