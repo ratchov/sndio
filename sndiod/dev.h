@@ -317,10 +317,13 @@ void slot_write(struct slot *);
 /*
  * control related functions
  */
+
 void ctl_log(struct ctl *);
+struct ctl *ctl_lookup(int slot_addr);
+int ctl_setval(struct ctl *c, int val);
+
 struct ctlslot *ctlslot_new(struct dev *, struct ctlops *, void *);
 void ctlslot_del(struct ctlslot *);
-int dev_setctl(unsigned int, int, int);
 int dev_onval(struct dev *, int, int);
 int dev_nctl(struct dev *);
 void dev_label(struct dev *, int);

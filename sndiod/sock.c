@@ -1292,13 +1292,33 @@ sock_execmsg(struct sock *f)
 			sock_close(f);
 			return 0;
 		}
-		if (!dev_setctl(f->ctlslot->dev_mask,
-			ntohs(m->u.ctlset.addr),
-			ntohs(m->u.ctlset.val))) {
+
+		c = ctl_lookup(ntohs(m->u.ctlset.addr));
+		if (c == NULL) {
 #ifdef DEBUG
 			if (log_level >= 1) {
 				sock_log(f);
-				log_puts(": CTLSET, wrong addr/val\n");
+				log_puts(": CTLSET, wrong addr\n");
+			}
+#endif
+			sock_close(f);
+			return 0;
+		}
+		if (c->dev != NULL && !(f->ctlslot->dev_mask & c->dev->num)) {
+#ifdef DEBUG
+			if (log_level >= 1) {
+				sock_log(f);
+				log_puts(": CTLSET, unauthorized\n");
+			}
+#endif
+			sock_close(f);
+			return 0;
+		}
+		if (!ctl_setval(c, ntohs(m->u.ctlset.val))) {
+#ifdef DEBUG
+			if (log_level >= 1) {
+				sock_log(f);
+				log_puts(": CTLSET, bad value\n");
 			}
 #endif
 			sock_close(f);

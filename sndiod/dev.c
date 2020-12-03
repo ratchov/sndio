@@ -1020,7 +1020,7 @@ dev_master(struct dev *d, unsigned int master)
 			    strcmp(c->func, "level") != 0)
 				continue;
 			v = (master * c->maxval + 64) / 127;
-			dev_setctl(1 << d->num, c->slot_addr, v);
+			ctl_setval(c, v);
 		}
 	}
 }
@@ -2393,6 +2393,71 @@ ctl_log(struct ctl *c)
 	log_puts(")");
 }
 
+struct ctl *
+ctl_lookup(int slot_addr)
+{
+	struct ctl *c;
+
+	for (c = ctl_list; c != NULL; c = c->next) {
+		if (c->type != CTL_NONE && c->slot_addr == slot_addr)
+			break;
+	}
+	return c;
+}
+
+int
+ctl_setval(struct ctl *c, int val)
+{
+	struct slot *s;
+	int num;
+
+	if (c->curval == val) {
+		if (log_level >= 3) {
+			ctl_log(c);
+			log_puts(": already set\n");
+		}
+		return 1;
+	}
+	if (val < 0 || val > c->maxval) {
+		if (log_level >= 3) {
+			log_putu(val);
+			log_puts(": ctl val out of bounds\n");
+		}
+		return 0;
+	}
+	if (c->dev_addr >= CTLADDR_END) {
+		if (log_level >= 3) {
+			ctl_log(c);
+			log_puts(": marked as dirty\n");
+		}
+		c->dirty = 1;
+		dev_ref(c->dev);
+	} else {
+		if (c->dev_addr >= CTLADDR_ALT_SEL) {
+			if (val) {
+				num = c->dev_addr - CTLADDR_ALT_SEL;
+				dev_setalt(c->dev, num);
+			}
+			return 1;
+		} else if (c->dev_addr == CTLADDR_MASTER) {
+			if (c->dev->master_enabled) {
+				dev_master(c->dev, val);
+				dev_midi_master(c->dev);
+			}
+		} else {
+			num = c->dev_addr - CTLADDR_SLOT_LEVEL(0);
+			s = slot_array + num;
+			if (s->dev != c->dev)
+				return 1;
+			slot_setvol(s, val);
+			dev_midi_vol(c->dev, s);
+		}
+		c->val_mask = ~0U;
+	}
+	c->curval = val;
+	return 1;
+}
+
 /*
  * add a ctl
  */
@@ -2534,77 +2599,6 @@ dev_ctlsync(struct dev *d)
 		if ((s->dev_mask & (1 << d->num)) && s->ops)
 			s->ops->sync(s->arg);
 	}
-}
-
-int
-dev_setctl(unsigned int dev_mask, int slot_addr, int val)
-{
-	struct ctl *c;
-	struct slot *s;
-	int num;
-
-	c = ctl_list;
-	for (;;) {
-		if (c == NULL) {
-			if (log_level >= 3) {
-				log_putu(slot_addr);
-				log_puts(": no such ctl address\n");
-			}
-			return 0;
-		}
-		if (c->type != CTL_NONE && c->slot_addr == slot_addr)
-			break;
-		c = c->next;
-	}
-	if (!(dev_mask & c->dev->num)) {
-		ctl_log(c);
-		log_puts(": not autorized\n");
-	}
-	if (c->curval == val) {
-		if (log_level >= 3) {
-			ctl_log(c);
-			log_puts(": already set\n");
-		}
-		return 1;
-	}
-	if (val < 0 || val > c->maxval) {
-		if (log_level >= 3) {
-			log_putu(val);
-			log_puts(": ctl val out of bounds\n");
-		}
-		return 0;
-	}
-	if (c->dev_addr >= CTLADDR_END) {
-		if (log_level >= 3) {
-			ctl_log(c);
-			log_puts(": marked as dirty\n");
-		}
-		c->dirty = 1;
-		dev_ref(c->dev);
-	} else {
-		if (c->dev_addr >= CTLADDR_ALT_SEL) {
-			if (val) {
-				num = c->dev_addr - CTLADDR_ALT_SEL;
-				dev_setalt(c->dev, num);
-			}
-			return 1;
-		} else if (c->dev_addr == CTLADDR_MASTER) {
-			if (c->dev->master_enabled) {
-				dev_master(c->dev, val);
-				dev_midi_master(c->dev);
-			}
-		} else {
-			num = c->dev_addr - CTLADDR_SLOT_LEVEL(0);
-			s = slot_array + num;
-			if (s->dev != c->dev)
-				return 1;
-			slot_setvol(s, val);
-			dev_midi_vol(c->dev, s);
-		}
-		c->val_mask = ~0U;
-	}
-	c->curval = val;
-	return 1;
 }
 
 int
