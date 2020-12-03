@@ -141,7 +141,8 @@ struct ctl {
 #define CTL_LIST	5		/* switch, element of a list */
 #define CTL_SEL		6		/* element of a selector */
 	unsigned int type;		/* one of above */
-	unsigned int addr;		/* control address */
+	unsigned int dev_addr;		/* device side control address */
+	unsigned int slot_addr;		/* slot side control address */
 #define CTL_NAMEMAX	16		/* max name lenght */
 	char func[CTL_NAMEMAX];		/* parameter function name */
 	char group[CTL_NAMEMAX];	/* group aka namespace */

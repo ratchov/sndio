@@ -1017,7 +1017,7 @@ dev_master(struct dev *d, unsigned int master)
 			    strcmp(c->func, "level") != 0)
 				continue;
 			v = (master * c->maxval + 64) / 127;
-			dev_setctl(d, c->addr, v);
+			dev_setctl(d, c->slot_addr, v);
 		}
 	}
 }
@@ -2366,18 +2366,35 @@ ctl_log(struct ctl *c)
 		log_putu(c->curval);
 	}
 	log_puts(" at ");
-	log_putu(c->addr);
+	log_putu(c->slot_addr);
+	log_puts("(");
+	log_putu(c->dev_addr);
+	log_puts(")");
 }
 
 /*
  * add a ctl
  */
 struct ctl *
-dev_addctl(struct dev *d, char *gstr, int type, int addr,
+dev_addctl(struct dev *d, char *gstr, int type, int dev_addr,
     char *str0, int unit0, char *func, char *str1, int unit1, int maxval, int val)
 {
 	struct ctl *c, **pc;
+	int slot_addr;
 	int i;
+
+	/*
+	 * find the first unused slot_addr number and
+	 * the proper position in the slot_addr-ordered list
+	 */
+	slot_addr = 0;
+	pc = &ctl_list;
+	while ((c = *pc) != NULL) {
+		if (c->slot_addr > slot_addr)
+			break;
+		slot_addr = c->slot_addr + 1;
+		pc = &c->next;
+	}
 
 	c = xmalloc(sizeof(struct ctl));
 	c->dev = d;
@@ -2391,7 +2408,8 @@ dev_addctl(struct dev *d, char *gstr, int type, int addr,
 		c->node1.unit = unit1;
 	} else
 		memset(&c->node1, 0, sizeof(struct ctl_node));
-	c->addr = addr;
+	c->dev_addr = dev_addr;
+	c->slot_addr = slot_addr;
 	c->maxval = maxval;
 	c->val_mask = ~0;
 	c->desc_mask = ~0;
@@ -2403,9 +2421,7 @@ dev_addctl(struct dev *d, char *gstr, int type, int addr,
 		if (ctlslot_array[i].ops != NULL)
 			c->refs_mask |= 1 << i;
 	}
-	for (pc = &ctl_list; *pc != NULL; pc = &(*pc)->next)
-		; /* nothing */
-	c->next = NULL;
+	c->next = *pc;
 	*pc = c;
 #ifdef DEBUG
 	if (log_level >= 3) {
@@ -2419,7 +2435,7 @@ dev_addctl(struct dev *d, char *gstr, int type, int addr,
 }
 
 void
-dev_rmctl(struct dev *d, int addr)
+dev_rmctl(struct dev *d, int dev_addr)
 {
 	struct ctl *c, **pc;
 
@@ -2428,7 +2444,9 @@ dev_rmctl(struct dev *d, int addr)
 		c = *pc;
 		if (c == NULL)
 			return;
-		if (c->dev == d && c->type != CTL_NONE && c->addr == addr)
+		if (c->dev == d &&
+		    c->type != CTL_NONE &&
+		    c->dev_addr == dev_addr)
 			break;
 		pc = &c->next;
 	}
@@ -2463,7 +2481,7 @@ dev_ctlsync(struct dev *d)
 	for (c = ctl_list; c != NULL; c = c->next) {
 		if (c->dev != d)
 			continue;
-		if (c->addr != CTLADDR_MASTER &&
+		if (c->dev_addr != CTLADDR_MASTER &&
 		    c->type == CTL_NUM &&
 		    strcmp(c->group, "") == 0 &&
 		    strcmp(c->node0.name, "output") == 0 &&
@@ -2495,7 +2513,7 @@ dev_ctlsync(struct dev *d)
 }
 
 int
-dev_setctl(struct dev *d, int addr, int val)
+dev_setctl(struct dev *d, int slot_addr, int val)
 {
 	struct ctl *c;
 	struct slot *s;
@@ -2507,12 +2525,14 @@ dev_setctl(struct dev *d, int addr, int val)
 			if (log_level >= 3) {
 				dev_log(d);
 				log_puts(": ");
-				log_putu(addr);
+				log_putu(slot_addr);
 				log_puts(": no such ctl address\n");
 			}
 			return 0;
 		}
-		if (c->dev == d && c->type != CTL_NONE && c->addr == addr)
+		if (c->dev == d &&
+		    c->type != CTL_NONE &&
+		    c->slot_addr == slot_addr)
 			break;
 		c = c->next;
 	}
@@ -2532,7 +2552,7 @@ dev_setctl(struct dev *d, int addr, int val)
 		}
 		return 0;
 	}
-	if (addr >= CTLADDR_END) {
+	if (c->dev_addr >= CTLADDR_END) {
 		if (log_level >= 3) {
 			ctl_log(c);
 			log_puts(": marked as dirty\n");
@@ -2540,19 +2560,19 @@ dev_setctl(struct dev *d, int addr, int val)
 		c->dirty = 1;
 		dev_ref(d);
 	} else {
-		if (addr >= CTLADDR_ALT_SEL) {
+		if (c->dev_addr >= CTLADDR_ALT_SEL) {
 			if (val) {
-				num = addr - CTLADDR_ALT_SEL;
+				num = c->dev_addr - CTLADDR_ALT_SEL;
 				dev_setalt(d, num);
 			}
 			return 1;
-		} else if (addr == CTLADDR_MASTER) {
+		} else if (c->dev_addr == CTLADDR_MASTER) {
 			if (d->master_enabled) {
 				dev_master(d, val);
 				dev_midi_master(d);
 			}
 		} else {
-			num = addr - CTLADDR_SLOT_LEVEL(0);
+			num = c->dev_addr - CTLADDR_SLOT_LEVEL(0);
 			s = slot_array + num;
 			if (s->dev != d)
 				return 1;
@@ -2566,7 +2586,7 @@ dev_setctl(struct dev *d, int addr, int val)
 }
 
 int
-dev_onval(struct dev *d, int addr, int val)
+dev_onval(struct dev *d, int dev_addr, int val)
 {
 	struct ctl *c;
 
@@ -2574,7 +2594,9 @@ dev_onval(struct dev *d, int addr, int val)
 	for (;;) {
 		if (c == NULL)
 			return 0;
-		if (c->dev == d && c->type != CTL_NONE && c->addr == addr)
+		if (c->dev == d &&
+		    c->type != CTL_NONE &&
+		    c->dev_addr == dev_addr)
 			break;
 		c = c->next;
 	}
@@ -2600,7 +2622,7 @@ dev_label(struct dev *d, int i)
 			    NULL, -1, 127, slot_array[i].vol);
 			return;
 		}
-		if (c->dev == d && c->addr == CTLADDR_SLOT_LEVEL(i))
+		if (c->dev == d && c->dev_addr == CTLADDR_SLOT_LEVEL(i))
 			break;
 		c = c->next;
 	}

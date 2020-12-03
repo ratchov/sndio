@@ -121,10 +121,10 @@ dev_sio_openlist(struct dev *d, unsigned int mode, struct sioctl_hdl **rctlhdl)
 			for (c = ctl_list; c != NULL; c = c->next) {
 				if (c->dev != d)
 					continue;
-				if (c->addr < CTLADDR_ALT_SEL ||
-				    c->addr >= CTLADDR_ALT_SEL + DEV_NMAX)
+				if (c->dev_addr < CTLADDR_ALT_SEL ||
+				    c->dev_addr >= CTLADDR_ALT_SEL + DEV_NMAX)
 					continue;
-				val = (c->addr - CTLADDR_ALT_SEL) == n->idx;
+				val = (c->dev_addr - CTLADDR_ALT_SEL) == n->idx;
 				if (c->curval == val)
 					continue;
 				c->curval = val;

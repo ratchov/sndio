@@ -99,7 +99,7 @@ dev_sioctl_onval(void *arg, unsigned int addr, unsigned int val)
 	log_puts("\n");
 
 	for (c = ctl_list; c != NULL; c = c->next) {
-		if (c->dev != d || c->addr != addr)
+		if (c->dev != d || c->dev_addr != addr)
 			continue;
 		ctl_log(c);
 		log_puts(": new value -> ");
@@ -141,7 +141,7 @@ dev_sioctl_close(struct dev *d)
 	/* remove controls */
 	pc = &ctl_list;
 	while ((c = *pc) != NULL) {
-		if (c->dev == d && c->addr >= CTLADDR_END) {
+		if (c->dev == d && c->dev_addr >= CTLADDR_END) {
 			c->refs_mask &= ~CTL_DEVMASK;
 			if (c->refs_mask == 0) {
 				*pc = c->next;
@@ -200,7 +200,7 @@ dev_sioctl_out(void *arg)
 		if (c->dev != d || !c->dirty)
 			continue;
 		if (!sioctl_setval(d->sioctl.hdl,
-			c->addr - CTLADDR_END, c->curval)) {
+			c->dev_addr - CTLADDR_END, c->curval)) {
 			ctl_log(c);
 			log_puts(": set failed\n");
 			break;
