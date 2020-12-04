@@ -1045,7 +1045,6 @@ dev_new(char *path, struct aparams *par,
 	d->alt_list = NULL;
 	dev_addname(d,path);
 	d->num = dev_sndnum++;
-	d->opt_list = NULL;
 	d->alt_num = -1;
 
 	/*
@@ -1502,8 +1501,6 @@ dev_del(struct dev *d)
 		log_puts(": deleting\n");
 	}
 #endif
-	while (d->opt_list != NULL)
-		opt_del(d, d->opt_list);
 	if (d->pstate != DEV_CFG)
 		dev_close(d);
 	for (p = &dev_list; *p != d; p = &(*p)->next) {
