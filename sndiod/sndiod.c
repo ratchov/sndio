@@ -595,6 +595,8 @@ main(int argc, char **argv)
 		; /* nothing */
 	midi_done();
 
+	while (opt_list)
+		opt_del(opt_list);
 	while (dev_list)
 		dev_del(dev_list);
 	while (port_list)
