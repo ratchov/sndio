@@ -2432,13 +2432,19 @@ ctl_setval(struct ctl *c, int val)
 				dev_master(c->dev, val);
 				dev_midi_master(c->dev);
 			}
-		} else {
+		} else if (c->dev_addr >= CTLADDR_SLOT_LEVEL(0)) {
 			num = c->dev_addr - CTLADDR_SLOT_LEVEL(0);
 			s = slot_array + num;
 			if (s->dev != c->dev)
 				return 1;
 			slot_setvol(s, val);
 			dev_midi_vol(c->dev, s);
+		} else {
+			if (log_level >= 2) {
+				ctl_log(c);
+				log_puts(": not writable\n");
+			}
+			return 1;
 		}
 		c->val_mask = ~0U;
 	}
