@@ -1073,6 +1073,7 @@ dev_new(char *path, struct aparams *par,
 	d->pstate = DEV_CFG;
 	d->slot_list = NULL;
 	d->master = MIDI_MAXCTL;
+	d->master_enabled = 0;
 	d->mtc.origin = 0;
 	d->tstate = MMC_STOP;
 	snprintf(d->ctl_name, CTL_NAMEMAX, "%u", d->num);
@@ -1213,12 +1214,6 @@ dev_allocbufs(struct dev *d)
 int
 dev_open(struct dev *d)
 {
-	int i;
-	char name[CTL_NAMEMAX];
-	struct dev_alt *a;
-	struct slot *s;
-
-	d->master_enabled = 0;
 	d->mode = d->reqmode;
 	d->round = d->reqround;
 	d->bufsz = d->reqbufsz;
@@ -1239,28 +1234,6 @@ dev_open(struct dev *d)
 	}
 	if (!dev_allocbufs(d))
 		return 0;
-
-	for (i = 0; i < DEV_NSLOT; i++) {
-		s = slot_array + i;
-		if (s->dev != d || s->name[0] == 0)
-			continue;
-		slot_ctlname(s, name, CTL_NAMEMAX);
-		dev_addctl(d, "app", CTL_NUM,
-		    CTLADDR_SLOT_LEVEL(i),
-		    name, -1, "level",
-		    NULL, -1, 127, s->vol);
-	}
-
-	/* if there are multiple alt devs, add server.device knob */
-	if (d->alt_list->next != NULL) {
-		for (a = d->alt_list; a != NULL; a = a->next) {
-			snprintf(name, sizeof(name), "%d", a->idx);
-			dev_addctl(d, "", CTL_SEL,
-			    CTLADDR_ALT_SEL + a->idx,
-			    "server", -1, "device",
-			    name, -1, 1, a->idx == d->alt_num);
-		}
-	}
 
 	d->pstate = DEV_INIT;
 	return 1;
@@ -1332,21 +1305,9 @@ dev_freebufs(struct dev *d)
 void
 dev_close(struct dev *d)
 {
-	struct ctl *c, **pc;
-
 	d->pstate = DEV_CFG;
 	dev_sio_close(d);
 	dev_freebufs(d);
-
-	/* there are no clients, just free remaining local controls */
-	pc = &ctl_list;
-	while ((c = *pc) != NULL) {
-		if (c->dev == d) {
-			*pc = c->next;
-			xfree(c);
-		} else
-			pc = &c->next;
-	}
 }
 
 /*
@@ -1456,6 +1417,9 @@ dev_unref(struct dev *d)
 int
 dev_init(struct dev *d)
 {
+	char name[CTL_NAMEMAX];
+	struct dev_alt *a;
+
 	if ((d->reqmode & MODE_AUDIOMASK) == 0) {
 #ifdef DEBUG
 		    dev_log(d);
@@ -1463,6 +1427,18 @@ dev_init(struct dev *d)
 #endif
 		    return 0;
 	}
+
+	/* if there are multiple alt devs, add server.device knob */
+	if (d->alt_list->next != NULL) {
+		for (a = d->alt_list; a != NULL; a = a->next) {
+			snprintf(name, sizeof(name), "%d", a->idx);
+			dev_addctl(d, "", CTL_SEL,
+			    CTLADDR_ALT_SEL + a->idx,
+			    "server", -1, "device",
+			    name, -1, 1, a->idx == d->alt_num);
+		}
+	}
+
 	if (d->hold && !dev_ref(d))
 		return 0;
 	return 1;
@@ -1506,6 +1482,7 @@ dev_del(struct dev *d)
 {
 	struct dev **p;
 	struct dev_alt *a;
+	struct ctl *c, **pc;
 
 #ifdef DEBUG
 	if (log_level >= 3) {
@@ -1515,6 +1492,17 @@ dev_del(struct dev *d)
 #endif
 	if (d->pstate != DEV_CFG)
 		dev_close(d);
+
+	/* there are no clients, just free remaining local controls */
+	pc = &ctl_list;
+	while ((c = *pc) != NULL) {
+		if (c->dev == d) {
+			*pc = c->next;
+			xfree(c);
+		} else
+			pc = &c->next;
+	}
+
 	for (p = &dev_list; *p != d; p = &(*p)->next) {
 #ifdef DEBUG
 		if (*p == NULL) {
