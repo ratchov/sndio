@@ -1990,7 +1990,6 @@ slot_del(struct slot *s)
 		break;
 	}
 	dev_unref(s->dev);
-	s->dev = NULL;
 }
 
 /*
