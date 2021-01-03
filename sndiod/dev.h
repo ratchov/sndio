@@ -316,6 +316,7 @@ int ctl_setval(struct ctl *c, int val);
 
 struct ctlslot *ctlslot_new(struct dev *, struct ctlops *, void *);
 void ctlslot_del(struct ctlslot *);
+int ctlslot_visible(struct ctlslot *, struct ctl *);
 int dev_onval(struct dev *, int, int);
 int dev_nctl(struct dev *);
 void dev_label(struct dev *, int);

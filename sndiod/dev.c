@@ -2347,6 +2347,12 @@ ctlslot_del(struct ctlslot *s)
 	s->dev_mask = 0;
 }
 
+int
+ctlslot_visible(struct ctlslot *s, struct ctl *c)
+{
+	return c->dev == NULL || (s->dev_mask & (1 << c->dev->num));
+}
+
 void
 ctl_node_log(struct ctl_node *c)
 {

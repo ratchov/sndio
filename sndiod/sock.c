@@ -1259,7 +1259,7 @@ sock_execmsg(struct sock *f)
 				ctl = f->ctlslot->self;
 				c = ctl_list;
 				while (c != NULL) {
-					if (f->ctlslot->dev_mask & (1 << c->dev->num))
+					if (ctlslot_visible(f->ctlslot, c))
 						c->desc_mask |= ctl;
 					c = c->next;
 				}
@@ -1304,7 +1304,7 @@ sock_execmsg(struct sock *f)
 			sock_close(f);
 			return 0;
 		}
-		if (c->dev != NULL && !(f->ctlslot->dev_mask & c->dev->num)) {
+		if (!ctlslot_visible(f->ctlslot, c)) {
 #ifdef DEBUG
 			if (log_level >= 1) {
 				sock_log(f);
@@ -1568,7 +1568,7 @@ sock_buildmsg(struct sock *f)
 		size = 0;
 		pc = &ctl_list;
 		while ((c = *pc) != NULL) {
-			if (!(f->ctlslot->dev_mask & (1 << c->dev->num)) ||
+			if (!ctlslot_visible(f->ctlslot, c) ||
 			    (c->desc_mask & mask) == 0 ||
 			    (c->refs_mask & mask) == 0) {
 				pc = &c->next;
@@ -1625,7 +1625,7 @@ sock_buildmsg(struct sock *f)
 	if (f->ctlslot && (f->ctlops & SOCK_CTLVAL)) {
 		mask = f->ctlslot->self;
 		for (c = ctl_list; c != NULL; c = c->next) {
-			if (!(f->ctlslot->dev_mask & (1 << c->dev->num)))
+			if (!ctlslot_visible(f->ctlslot, c))
 				continue;
 			if ((c->val_mask & mask) == 0)
 				continue;
