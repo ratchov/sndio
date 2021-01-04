@@ -1831,6 +1831,7 @@ slot_new(struct dev *d, struct opt *opt, unsigned int id, char *who,
 {
 	char *p;
 	char name[SLOT_NAMEMAX];
+	char ctl_name[CTL_NAMEMAX];
 	unsigned int i, ser, bestser, bestidx;
 	struct slot *unit[DEV_NSLOT];
 	struct slot *s;
@@ -1898,6 +1899,7 @@ slot_new(struct dev *d, struct opt *opt, unsigned int id, char *who,
 	}
 	if (bestidx != DEV_NSLOT) {
 		s = slot_array + bestidx;
+		dev_rmctl(s->dev, CTLADDR_SLOT_LEVEL(bestidx));
 		s->vol = MIDI_MAXCTL;
 		strlcpy(s->name, name, SLOT_NAMEMAX);
 		s->serial = slot_serial++;
@@ -1905,6 +1907,11 @@ slot_new(struct dev *d, struct opt *opt, unsigned int id, char *who,
 			; /* nothing */
 		s->unit = i;
 		s->id = id;
+		slot_ctlname(s, ctl_name, CTL_NAMEMAX);
+		dev_addctl(d, "app", CTL_NUM,
+		    CTLADDR_SLOT_LEVEL(s->index),
+		    ctl_name, -1, "level",
+		    NULL, -1, 127, s->vol);
 		goto found;
 	}
 
@@ -1928,7 +1935,6 @@ found:
 	}
 	if (!dev_ref(d))
 		return NULL;
-	dev_label(d, s->index);
 	if ((mode & d->mode) != mode) {
 		if (log_level >= 1) {
 			slot_log(s);
@@ -2610,33 +2616,6 @@ dev_onval(struct dev *d, int dev_addr, int val)
 	c->curval = val;
 	c->val_mask = ~0U;
 	return 1;
-}
-
-void
-dev_label(struct dev *d, int i)
-{
-	struct ctl *c;
-	char name[CTL_NAMEMAX];
-
-	slot_ctlname(&slot_array[i], name, CTL_NAMEMAX);
-
-	c = ctl_list;
-	for (;;) {
-		if (c == NULL) {
-			dev_addctl(d, "app", CTL_NUM,
-			    CTLADDR_SLOT_LEVEL(i),
-			    name, -1, "level",
-			    NULL, -1, 127, slot_array[i].vol);
-			return;
-		}
-		if (c->dev == d && c->dev_addr == CTLADDR_SLOT_LEVEL(i))
-			break;
-		c = c->next;
-	}
-	if (strcmp(c->node0.name, name) == 0)
-		return;
-	strlcpy(c->node0.name, name, CTL_NAMEMAX);
-	c->desc_mask = ~0;
 }
 
 int
