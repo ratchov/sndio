@@ -1897,31 +1897,34 @@ slot_new(struct dev *d, struct opt *opt, unsigned int id, char *who,
 			bestidx = i;
 		}
 	}
-	if (bestidx != DEV_NSLOT) {
-		s = slot_array + bestidx;
-		dev_rmctl(s->dev, CTLADDR_SLOT_LEVEL(bestidx));
-		s->vol = MIDI_MAXCTL;
-		strlcpy(s->name, name, SLOT_NAMEMAX);
-		s->serial = slot_serial++;
-		for (i = 0; unit[i] != NULL; i++)
-			; /* nothing */
-		s->unit = i;
-		s->id = id;
+
+	if (bestidx == DEV_NSLOT) {
+		if (log_level >= 1) {
+			log_puts(name);
+			log_puts(": out of sub-device slots\n");
+		}
+		return NULL;
+	}
+
+	s = slot_array + bestidx;
+	s->dev = NULL;
+	s->vol = MIDI_MAXCTL;
+	strlcpy(s->name, name, SLOT_NAMEMAX);
+	s->serial = slot_serial++;
+	for (i = 0; unit[i] != NULL; i++)
+		; /* nothing */
+	s->unit = i;
+	s->id = id;
+
+found:
+	if (s->dev != d) {
 		slot_ctlname(s, ctl_name, CTL_NAMEMAX);
+		dev_rmctl(s->dev, CTLADDR_SLOT_LEVEL(bestidx));
 		dev_addctl(d, "app", CTL_NUM,
 		    CTLADDR_SLOT_LEVEL(s->index),
 		    ctl_name, -1, "level",
 		    NULL, -1, 127, s->vol);
-		goto found;
 	}
-
-	if (log_level >= 1) {
-		log_puts(name);
-		log_puts(": out of sub-device slots\n");
-	}
-	return NULL;
-
-found:
 	if ((mode & MODE_REC) && (opt->mode & MODE_MON)) {
 		mode |= MODE_MON;
 		mode &= ~MODE_REC;
