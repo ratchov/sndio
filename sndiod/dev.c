@@ -2466,6 +2466,7 @@ dev_addctl(struct dev *d, char *gstr, int type, int dev_addr,
     char *str0, int unit0, char *func, char *str1, int unit1, int maxval, int val)
 {
 	struct ctl *c, **pc;
+	struct ctlslot *s;
 	int slot_addr;
 	int i;
 
@@ -2501,10 +2502,10 @@ dev_addctl(struct dev *d, char *gstr, int type, int dev_addr,
 	c->desc_mask = ~0;
 	c->curval = val;
 	c->dirty = 0;
-	c->refs_mask = 0;
+	c->refs_mask = CTL_DEVMASK;
 	for (i = 0; i < DEV_NCTLSLOT; i++) {
-		c->refs_mask |= CTL_DEVMASK;
-		if (ctlslot_array[i].ops != NULL)
+		s = ctlslot_array + i;
+		if (s->ops != NULL && ctlslot_visible(s, c))
 			c->refs_mask |= 1 << i;
 	}
 	c->next = *pc;
