@@ -2348,7 +2348,7 @@ ctlslot_del(struct ctlslot *s)
 int
 ctlslot_visible(struct ctlslot *s, struct ctl *c)
 {
-	return (c->dev != NULL) && (s->dev_mask & (1 << c->dev->num));
+	return s->dev_mask & (1 << c->dev->num);
 }
 
 void
