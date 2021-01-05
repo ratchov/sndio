@@ -1919,8 +1919,8 @@ slot_new(struct dev *d, struct opt *opt, unsigned int id, char *who,
 found:
 	if (s->dev != d) {
 		slot_ctlname(s, ctl_name, CTL_NAMEMAX);
-		dev_rmctl(s->dev, CTLADDR_SLOT_LEVEL(bestidx));
-		dev_addctl(d, "app", CTL_NUM,
+		dev_rmctl(NULL, CTLADDR_SLOT_LEVEL(bestidx));
+		dev_addctl(NULL, "app", CTL_NUM,
 		    CTLADDR_SLOT_LEVEL(s->index),
 		    ctl_name, -1, "level",
 		    NULL, -1, 127, s->vol);
