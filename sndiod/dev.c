@@ -1432,10 +1432,9 @@ dev_init(struct dev *d)
 	if (d->alt_list->next != NULL) {
 		for (a = d->alt_list; a != NULL; a = a->next) {
 			snprintf(name, sizeof(name), "%d", a->idx);
-			ctl_new(d, "", CTL_SEL,
-			    CTLADDR_ALT_SEL + a->idx,
-			    "server", -1, "device",
-			    name, -1, 1, a->idx == d->alt_num);
+			ctl_new(d, CTLADDR_ALT_SEL + a->idx, CTL_SEL,
+			    "", "server", -1, "device", name, -1,
+			    1, a->idx == d->alt_num);
 		}
 	}
 
@@ -1920,10 +1919,9 @@ found:
 	if (s->dev != d) {
 		slot_ctlname(s, ctl_name, CTL_NAMEMAX);
 		ctl_del(NULL, CTLADDR_SLOT_LEVEL(bestidx));
-		ctl_new(NULL, "app", CTL_NUM,
-		    CTLADDR_SLOT_LEVEL(s->index),
-		    ctl_name, -1, "level",
-		    NULL, -1, 127, s->vol);
+		ctl_new(NULL, CTLADDR_SLOT_LEVEL(s->index), CTL_NUM,
+		    "app", ctl_name, -1, "level", NULL, -1,
+		    127, s->vol);
 	}
 	if ((mode & MODE_REC) && (opt->mode & MODE_MON)) {
 		mode |= MODE_MON;
@@ -2465,8 +2463,9 @@ ctl_setval(struct ctl *c, int val)
  * add a ctl
  */
 struct ctl *
-ctl_new(struct dev *d, char *gstr, int type, int dev_addr,
-    char *str0, int unit0, char *func, char *str1, int unit1, int maxval, int val)
+ctl_new(struct dev *d, int dev_addr, int type, char *gstr,
+    char *str0, int unit0, char *func,
+    char *str1, int unit1, int maxval, int val)
 {
 	struct ctl *c, **pc;
 	struct ctlslot *s;
@@ -2588,8 +2587,9 @@ dev_ctlsync(struct dev *d)
 			log_puts(": software master level control enabled\n");
 		}
 		d->master_enabled = 1;
-		ctl_new(d, d->ctl_name, CTL_NUM, CTLADDR_MASTER,
-		    "output", -1, "level", NULL, -1, 127, d->master);
+		ctl_new(d, CTLADDR_MASTER, CTL_NUM,
+		    d->ctl_name, "output", -1, "level", NULL, -1,
+		    127, d->master);
 	}
 
 	for (s = ctlslot_array, i = DEV_NCTLSLOT; i > 0; i--, s++) {
