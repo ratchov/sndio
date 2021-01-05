@@ -119,6 +119,7 @@ unsigned int dev_sndnum = 0;
 struct ctlslot ctlslot_array[DEV_NCTLSLOT];
 struct slot slot_array[DEV_NSLOT];
 unsigned int slot_serial;		/* for slot allocation */
+unsigned int ctl_serial;		/* for ctl->slot_addr */
 
 void
 slot_array_init(void)
@@ -2469,21 +2470,7 @@ ctl_new(struct dev *d, int dev_addr, int type, char *gstr,
 {
 	struct ctl *c, **pc;
 	struct ctlslot *s;
-	int slot_addr;
 	int i;
-
-	/*
-	 * find the first unused slot_addr number and
-	 * the proper position in the slot_addr-ordered list
-	 */
-	slot_addr = 0;
-	pc = &ctl_list;
-	while ((c = *pc) != NULL) {
-		if (c->slot_addr > slot_addr)
-			break;
-		slot_addr = c->slot_addr + 1;
-		pc = &c->next;
-	}
 
 	c = xmalloc(sizeof(struct ctl));
 	c->dev = d;
@@ -2498,7 +2485,7 @@ ctl_new(struct dev *d, int dev_addr, int type, char *gstr,
 	} else
 		memset(&c->node1, 0, sizeof(struct ctl_node));
 	c->dev_addr = dev_addr;
-	c->slot_addr = slot_addr;
+	c->slot_addr = ctl_serial++;
 	c->maxval = maxval;
 	c->val_mask = ~0;
 	c->desc_mask = ~0;
@@ -2510,7 +2497,9 @@ ctl_new(struct dev *d, int dev_addr, int type, char *gstr,
 		if (s->ops != NULL && ctlslot_visible(s, c))
 			c->refs_mask |= 1 << i;
 	}
-	c->next = *pc;
+	for (pc = &ctl_list; *pc != NULL; pc = &(*pc)->next)
+		; /* nothing */
+	c->next = NULL;
 	*pc = c;
 #ifdef DEBUG
 	if (log_level >= 3) {
