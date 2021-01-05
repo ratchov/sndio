@@ -2532,7 +2532,6 @@ ctl_del(struct dev *d, int dev_addr)
 		if ((d == NULL || c->dev == d) &&
 		    c->type != CTL_NONE &&
 		    c->dev_addr == dev_addr) {
-			c->type = CTL_NONE;
 #ifdef DEBUG
 			if (log_level >= 3) {
 				ctl_log(c);
@@ -2547,6 +2546,7 @@ ctl_del(struct dev *d, int dev_addr)
 				xfree(c);
 				continue;
 			}
+			c->type = CTL_NONE;
 			c->desc_mask = ~0;
 		}
 		pc = &c->next;
