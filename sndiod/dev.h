@@ -323,6 +323,7 @@ void dev_label(struct dev *, int);
 struct ctl *ctl_new(struct dev *, int, int,
     char *, char *, int, char *, char *, int, int, int);
 void ctl_del(struct dev *, int);
+void ctl_move(struct dev *, int, struct dev *);
 int dev_makeunit(struct dev *, char *);
 void dev_ctlsync(struct dev *);
 

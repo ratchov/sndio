@@ -1906,7 +1906,8 @@ slot_new(struct dev *d, struct opt *opt, unsigned int id, char *who,
 	}
 
 	s = slot_array + bestidx;
-	s->dev = NULL;
+	if (s->dev != NULL)
+		ctl_del(s->dev, CTLADDR_SLOT_LEVEL(s->index));
 	s->vol = MIDI_MAXCTL;
 	strlcpy(s->name, name, SLOT_NAMEMAX);
 	s->serial = slot_serial++;
@@ -1914,15 +1915,19 @@ slot_new(struct dev *d, struct opt *opt, unsigned int id, char *who,
 		; /* nothing */
 	s->unit = i;
 	s->id = id;
+	s->dev = d;
+	slot_ctlname(s, ctl_name, CTL_NAMEMAX);
+	ctl_new(s->dev, CTLADDR_SLOT_LEVEL(s->index), CTL_NUM,
+	    "app", ctl_name, -1, "level", NULL, -1,
+	    127, s->vol);
 
 found:
+	/* move control to new device */
 	if (s->dev != d) {
-		slot_ctlname(s, ctl_name, CTL_NAMEMAX);
-		ctl_del(NULL, CTLADDR_SLOT_LEVEL(s->index));
-		ctl_new(d, CTLADDR_SLOT_LEVEL(s->index), CTL_NUM,
-		    "app", ctl_name, -1, "level", NULL, -1,
-		    127, s->vol);
+		ctl_move(s->dev, CTLADDR_SLOT_LEVEL(s->index), d);
+		s->dev = d;
 	}
+
 	if ((mode & MODE_REC) && (opt->mode & MODE_MON)) {
 		mode |= MODE_MON;
 		mode &= ~MODE_REC;
@@ -1944,7 +1949,6 @@ found:
 		dev_unref(d);
 		return NULL;
 	}
-	s->dev = d;
 	s->opt = opt;
 	s->ops = ops;
 	s->arg = arg;
@@ -2520,6 +2524,42 @@ ctl_new(struct dev *d, int dev_addr, int type, char *gstr,
 }
 
 void
+ctl_move(struct dev *d, int dev_addr, struct dev *n)
+{
+	struct ctl *c;
+	struct ctlslot *s;
+	int i;
+
+	for (c = ctl_list; c != NULL; c = c->next) {
+		if (c->dev == d &&
+		    c->type != CTL_NONE &&
+		    c->dev_addr == dev_addr) {
+#ifdef DEBUG
+			if (log_level >= 3) {
+				ctl_log(c);
+				log_puts(": moved, refs_mask = 0x");
+				log_putx(c->refs_mask);
+				log_puts("\n");
+			}
+#endif
+			for (i = 0; i < DEV_NCTLSLOT; i++) {
+				s = ctlslot_array + i;
+				/* nothing to do if no visibility change */
+				if (!!(s->dev_mask & (1 << d->num)) ==
+				    !!(s->dev_mask & (1 << n->num)))
+					continue;
+				/* if control becomes visble */
+				if (s->dev_mask & (1 << n->num))
+					c->refs_mask |= s->self;
+				/* if control is hidden */
+				c->desc_mask |= s->self;
+			}
+			c->dev = n;
+		}
+	}
+}
+
+void
 ctl_del(struct dev *d, int dev_addr)
 {
 	struct ctl *c, **pc;
@@ -2529,7 +2569,7 @@ ctl_del(struct dev *d, int dev_addr)
 		c = *pc;
 		if (c == NULL)
 			return;
-		if ((d == NULL || c->dev == d) &&
+		if (c->dev == d &&
 		    c->type != CTL_NONE &&
 		    c->dev_addr == dev_addr) {
 #ifdef DEBUG
