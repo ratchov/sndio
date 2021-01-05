@@ -2576,15 +2576,3 @@ dev_label(struct dev *d, int i)
 	strlcpy(c->node0.name, name, CTL_NAMEMAX);
 	c->desc_mask = ~0;
 }
-
-int
-dev_nctl(struct dev *d)
-{
-	struct ctl *c;
-	int n;
-
-	n = 0;
-	for (c = d->ctl_list; c != NULL; c = c->next)
-		n++;
-	return n;
-}
