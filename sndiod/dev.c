@@ -2534,14 +2534,6 @@ ctl_move(struct dev *d, int dev_addr, struct dev *n)
 		if (c->dev == d &&
 		    c->type != CTL_NONE &&
 		    c->dev_addr == dev_addr) {
-#ifdef DEBUG
-			if (log_level >= 3) {
-				ctl_log(c);
-				log_puts(": moved, refs_mask = 0x");
-				log_putx(c->refs_mask);
-				log_puts("\n");
-			}
-#endif
 			for (i = 0; i < DEV_NCTLSLOT; i++) {
 				s = ctlslot_array + i;
 				/* nothing to do if no visibility change */
@@ -2555,6 +2547,16 @@ ctl_move(struct dev *d, int dev_addr, struct dev *n)
 				c->desc_mask |= s->self;
 			}
 			c->dev = n;
+#ifdef DEBUG
+			if (log_level >= 3) {
+				ctl_log(c);
+				log_puts(": moved ");
+				log_puts(d->ctl_name);
+				log_puts(" -> ");
+				log_puts(n->ctl_name);
+				log_puts("\n");
+			}
+#endif
 		}
 	}
 }
