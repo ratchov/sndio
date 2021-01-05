@@ -1414,7 +1414,7 @@ sock_execmsg(struct sock *f)
 int
 sock_buildmsg(struct sock *f)
 {
-	unsigned int size, mask;
+	unsigned int size, type, mask;
 	struct amsg_ctl_desc *desc;
 	struct ctl *c, **pc;
 
@@ -1578,6 +1578,8 @@ sock_buildmsg(struct sock *f)
 				break;
 			c->desc_mask &= ~mask;
 			c->val_mask &= ~mask;
+			type = ctlslot_visible(f->ctlslot, c) ?
+			    c->type : CTL_NONE;
 			strlcpy(desc->group, c->group,
 			    AMSG_CTL_NAMEMAX);
 			strlcpy(desc->node0.name, c->node0.name,
@@ -1586,8 +1588,7 @@ sock_buildmsg(struct sock *f)
 			strlcpy(desc->node1.name, c->node1.name,
 			    AMSG_CTL_NAMEMAX);
 			desc->node1.unit = ntohs(c->node1.unit);
-			desc->type = ctlslot_visible(f->ctlslot, c) ?
-			    c->type : CTL_NONE;
+			desc->type = type;
 			strlcpy(desc->func, c->func, AMSG_CTL_NAMEMAX);
 			desc->addr = htons(c->slot_addr);
 			desc->maxval = htons(c->maxval);
@@ -1596,7 +1597,7 @@ sock_buildmsg(struct sock *f)
 			desc++;
 
 			/* if this is a deleted entry unref it */
-			if (c->type == CTL_NONE) {
+			if (type == CTL_NONE) {
 				c->refs_mask &= ~mask;
 				if (c->refs_mask == 0) {
 					*pc = c->next;
