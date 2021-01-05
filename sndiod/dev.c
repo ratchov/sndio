@@ -2310,7 +2310,7 @@ ctlslot_new(struct dev *d, struct ctlops *ops, void *arg)
 	s->ops = ops;
 	s->arg = arg;
 	for (c = ctl_list; c != NULL; c = c->next) {
-		if (!(s->dev_mask & (1 << c->dev->num)))
+		if (!ctlslot_visible(s, c))
 			continue;
 		c->refs_mask |= s->self;
 	}
