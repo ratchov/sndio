@@ -60,9 +60,9 @@ dev_sioctl_ondesc(void *arg, struct sioctl_desc *desc, int val)
 	}
 
 	addr = CTLADDR_END + desc->addr;
-	dev_rmctl(d, addr);
+	ctl_del(d, addr);
 
-	dev_addctl(d, d->ctl_name, desc->type, addr,
+	ctl_new(d, d->ctl_name, desc->type, addr,
 	    desc->node0.name, desc->node0.unit, desc->func,
 	    desc->node1.name, desc->node1.unit, desc->maxval, val);
 }

@@ -1432,7 +1432,7 @@ dev_init(struct dev *d)
 	if (d->alt_list->next != NULL) {
 		for (a = d->alt_list; a != NULL; a = a->next) {
 			snprintf(name, sizeof(name), "%d", a->idx);
-			dev_addctl(d, "", CTL_SEL,
+			ctl_new(d, "", CTL_SEL,
 			    CTLADDR_ALT_SEL + a->idx,
 			    "server", -1, "device",
 			    name, -1, 1, a->idx == d->alt_num);
@@ -1919,8 +1919,8 @@ slot_new(struct dev *d, struct opt *opt, unsigned int id, char *who,
 found:
 	if (s->dev != d) {
 		slot_ctlname(s, ctl_name, CTL_NAMEMAX);
-		dev_rmctl(NULL, CTLADDR_SLOT_LEVEL(bestidx));
-		dev_addctl(NULL, "app", CTL_NUM,
+		ctl_del(NULL, CTLADDR_SLOT_LEVEL(bestidx));
+		ctl_new(NULL, "app", CTL_NUM,
 		    CTLADDR_SLOT_LEVEL(s->index),
 		    ctl_name, -1, "level",
 		    NULL, -1, 127, s->vol);
@@ -2465,7 +2465,7 @@ ctl_setval(struct ctl *c, int val)
  * add a ctl
  */
 struct ctl *
-dev_addctl(struct dev *d, char *gstr, int type, int dev_addr,
+ctl_new(struct dev *d, char *gstr, int type, int dev_addr,
     char *str0, int unit0, char *func, char *str1, int unit1, int maxval, int val)
 {
 	struct ctl *c, **pc;
@@ -2523,7 +2523,7 @@ dev_addctl(struct dev *d, char *gstr, int type, int dev_addr,
 }
 
 void
-dev_rmctl(struct dev *d, int dev_addr)
+ctl_del(struct dev *d, int dev_addr)
 {
 	struct ctl *c, **pc;
 
@@ -2581,14 +2581,14 @@ dev_ctlsync(struct dev *d)
 			log_puts(": software master level control disabled\n");
 		}
 		d->master_enabled = 0;
-		dev_rmctl(d, CTLADDR_MASTER);
+		ctl_del(d, CTLADDR_MASTER);
 	} else if (!d->master_enabled && !found) {
 		if (log_level >= 2) {
 			dev_log(d);
 			log_puts(": software master level control enabled\n");
 		}
 		d->master_enabled = 1;
-		dev_addctl(d, d->ctl_name, CTL_NUM, CTLADDR_MASTER,
+		ctl_new(d, d->ctl_name, CTL_NUM, CTLADDR_MASTER,
 		    "output", -1, "level", NULL, -1, 127, d->master);
 	}
 
