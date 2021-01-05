@@ -2351,6 +2351,13 @@ ctlslot_visible(struct ctlslot *s, struct ctl *c)
 	return s->dev_mask & (1 << c->dev->num);
 }
 
+int
+ctlslot_unique(struct ctlslot *s, struct ctl *c)
+{
+	return (c->dev_addr >= CTLADDR_MASTER) &&
+	    (s->dev_mask & (s->dev_mask - 1)) == 0;
+}
+
 void
 ctl_node_log(struct ctl_node *c)
 {
