@@ -1568,8 +1568,7 @@ sock_buildmsg(struct sock *f)
 		size = 0;
 		pc = &ctl_list;
 		while ((c = *pc) != NULL) {
-			if (!ctlslot_visible(f->ctlslot, c) ||
-			    (c->desc_mask & mask) == 0 ||
+			if ((c->desc_mask & mask) == 0 ||
 			    (c->refs_mask & mask) == 0) {
 				pc = &c->next;
 				continue;
@@ -1587,7 +1586,8 @@ sock_buildmsg(struct sock *f)
 			strlcpy(desc->node1.name, c->node1.name,
 			    AMSG_CTL_NAMEMAX);
 			desc->node1.unit = ntohs(c->node1.unit);
-			desc->type = c->type;
+			desc->type = ctlslot_visible(f->ctlslot, c) ?
+			    c->type : CTL_NONE;
 			strlcpy(desc->func, c->func, AMSG_CTL_NAMEMAX);
 			desc->addr = htons(c->slot_addr);
 			desc->maxval = htons(c->maxval);

@@ -1919,7 +1919,7 @@ found:
 	if (s->dev != d) {
 		slot_ctlname(s, ctl_name, CTL_NAMEMAX);
 		ctl_del(NULL, CTLADDR_SLOT_LEVEL(s->index));
-		ctl_new(NULL, CTLADDR_SLOT_LEVEL(s->index), CTL_NUM,
+		ctl_new(d, CTLADDR_SLOT_LEVEL(s->index), CTL_NUM,
 		    "app", ctl_name, -1, "level", NULL, -1,
 		    127, s->vol);
 	}
@@ -2344,7 +2344,7 @@ ctlslot_del(struct ctlslot *s)
 int
 ctlslot_visible(struct ctlslot *s, struct ctl *c)
 {
-	return c->dev == NULL || (s->dev_mask & (1 << c->dev->num));
+	return (c->dev != NULL) && (s->dev_mask & (1 << c->dev->num));
 }
 
 void
@@ -2529,7 +2529,7 @@ ctl_del(struct dev *d, int dev_addr)
 		c = *pc;
 		if (c == NULL)
 			return;
-		if (c->dev == d &&
+		if ((d == NULL || c->dev == d) &&
 		    c->type != CTL_NONE &&
 		    c->dev_addr == dev_addr) {
 			c->type = CTL_NONE;
