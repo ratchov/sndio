@@ -2515,10 +2515,8 @@ dev_addctl(struct dev *d, char *gstr, int type, int dev_addr,
 	*pc = c;
 #ifdef DEBUG
 	if (log_level >= 3) {
-		dev_log(d);
-		log_puts(": adding ");
 		ctl_log(c);
-		log_puts("\n");
+		log_puts(": added\n");
 	}
 #endif
 	return c;
@@ -2536,28 +2534,26 @@ dev_rmctl(struct dev *d, int dev_addr)
 			return;
 		if (c->dev == d &&
 		    c->type != CTL_NONE &&
-		    c->dev_addr == dev_addr)
-			break;
+		    c->dev_addr == dev_addr) {
+			c->type = CTL_NONE;
+#ifdef DEBUG
+			if (log_level >= 3) {
+				ctl_log(c);
+				log_puts(": removed, refs_mask = 0x");
+				log_putx(c->refs_mask);
+				log_puts("\n");
+			}
+#endif
+			c->refs_mask &= ~CTL_DEVMASK;
+			if (c->refs_mask == 0) {
+				*pc = c->next;
+				xfree(c);
+				continue;
+			}
+			c->desc_mask = ~0;
+		}
 		pc = &c->next;
 	}
-	c->type = CTL_NONE;
-#ifdef DEBUG
-	if (log_level >= 3) {
-		dev_log(d);
-		log_puts(": removing ");
-		ctl_log(c);
-		log_puts(", refs_mask = 0x");
-		log_putx(c->refs_mask);
-		log_puts("\n");
-	}
-#endif
-	c->refs_mask &= ~CTL_DEVMASK;
-	if (c->refs_mask == 0) {
-		*pc = c->next;
-		xfree(c);
-		return;
-	}
-	c->desc_mask = ~0;
 }
 
 void
