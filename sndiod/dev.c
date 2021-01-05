@@ -1918,7 +1918,7 @@ slot_new(struct dev *d, struct opt *opt, unsigned int id, char *who,
 found:
 	if (s->dev != d) {
 		slot_ctlname(s, ctl_name, CTL_NAMEMAX);
-		ctl_del(NULL, CTLADDR_SLOT_LEVEL(bestidx));
+		ctl_del(NULL, CTLADDR_SLOT_LEVEL(s->index));
 		ctl_new(NULL, CTLADDR_SLOT_LEVEL(s->index), CTL_NUM,
 		    "app", ctl_name, -1, "level", NULL, -1,
 		    127, s->vol);
