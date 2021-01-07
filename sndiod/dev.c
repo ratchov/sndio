@@ -2434,7 +2434,7 @@ int
 ctl_setval(struct ctl *c, int val)
 {
 	struct slot *s;
-	int num;
+	int addr, num;
 
 	if (c->curval == val) {
 		if (log_level >= 3) {
@@ -2450,43 +2450,49 @@ ctl_setval(struct ctl *c, int val)
 		}
 		return 0;
 	}
+
 	if (c->dev_addr >= CTLADDR_END) {
 		if (log_level >= 3) {
 			ctl_log(c);
 			log_puts(": marked as dirty\n");
 		}
+		c->curval = val;
 		c->dirty = 1;
-		dev_ref(c->dev);
-	} else {
-		if (c->dev_addr >= CTLADDR_ALT_SEL) {
-			if (val) {
-				num = c->dev_addr - CTLADDR_ALT_SEL;
-				dev_setalt(c->dev, num);
-			}
-			return 1;
-		} else if (c->dev_addr == CTLADDR_MASTER) {
-			if (c->dev->master_enabled) {
-				dev_master(c->dev, val);
-				dev_midi_master(c->dev);
-			}
-		} else if (c->dev_addr >= CTLADDR_SLOT_LEVEL(0)) {
-			num = c->dev_addr - CTLADDR_SLOT_LEVEL(0);
-			s = slot_array + num;
-			if (s->dev != c->dev)
-				return 1;
-			slot_setvol(s, val);
-			dev_midi_vol(c->dev, s);
-		} else {
-			if (log_level >= 2) {
-				ctl_log(c);
-				log_puts(": not writable\n");
-			}
-			return 1;
+		return dev_ref(c->dev);
+	} else if (c->dev_addr >= CTLADDR_ALT_SEL) {
+		if (val) {
+			num = c->dev_addr - CTLADDR_ALT_SEL;
+			dev_setalt(c->dev, num);
 		}
+		return 1;
+	} else if (c->dev_addr == CTLADDR_MASTER) {
+		if (!c->dev->master_enabled)
+			return 1;
+		dev_master(c->dev, val);
+		dev_midi_master(c->dev);
 		c->val_mask = ~0U;
+		c->curval = val;
+		return 1;
 	}
-	c->curval = val;
-	return 1;
+
+	s = slot_array + c->dev_addr / CTLADDR_SLOT_NCTL;
+	addr = c->dev_addr % CTLADDR_SLOT_NCTL;
+
+	if (addr >= CTLADDR_SLOT_LEVEL(0)) {
+		if (s->dev != c->dev)
+			return 1;
+		slot_setvol(s, val);
+		dev_midi_vol(c->dev, s);
+		c->val_mask = ~0U;
+		c->curval = val;
+		return 1;
+	} else {
+		if (log_level >= 2) {
+			ctl_log(c);
+			log_puts(": not writable\n");
+		}
+		return 1;
+	}
 }
 
 /*
