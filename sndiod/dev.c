@@ -2298,6 +2298,7 @@ ctlslot_new(struct dev *d, struct ctlops *ops, void *arg)
 	}
 	s->dev_mask = 0;
 	s->self = 1 << i;
+	s->dev = d;
 	if (d == NULL) {
 		for (d = dev_list; d != NULL; d = d->next) {
 			if (dev_ref(d))
@@ -2348,14 +2349,13 @@ ctlslot_del(struct ctlslot *s)
 int
 ctlslot_visible(struct ctlslot *s, struct ctl *c)
 {
-	return s->dev_mask & (1 << c->dev->num);
+	return (s->dev == NULL) || (s->dev == c->dev);
 }
 
 int
 ctlslot_unique(struct ctlslot *s, struct ctl *c)
 {
-	return (c->dev_addr >= CTLADDR_MASTER) &&
-	    (s->dev_mask & (s->dev_mask - 1)) == 0;
+	return (c->dev_addr >= CTLADDR_MASTER) && (s->dev != NULL);
 }
 
 void

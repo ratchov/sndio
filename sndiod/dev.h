@@ -151,6 +151,7 @@ struct ctl {
 struct ctlslot {
 	struct ctlops *ops;
 	void *arg;
+	struct dev *dev;		/* or NULL if not bound to a devices */
 	unsigned int dev_mask;		/* devices visible by this client */
 	unsigned int self;		/* equal to (1 << index) */
 	unsigned int mode;
