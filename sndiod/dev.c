@@ -1832,6 +1832,8 @@ slot_new(struct dev *d, struct opt *opt, unsigned int id, char *who,
 	char name[SLOT_NAMEMAX];
 	char ctl_name[CTL_NAMEMAX];
 	unsigned int i, ser, bestser, bestidx;
+	struct dev *dsel;
+	struct ctl *c;
 	struct slot *unit[DEV_NSLOT];
 	struct slot *s;
 
@@ -1906,8 +1908,12 @@ slot_new(struct dev *d, struct opt *opt, unsigned int id, char *who,
 	}
 
 	s = slot_array + bestidx;
-	if (s->dev != NULL)
+	if (s->dev != NULL) {
+		/* slot recycled, delete old controls */
 		ctl_del(s->dev, CTLADDR_SLOT_LEVEL(s->index));
+		for (dsel = dev_list; dsel != NULL; dsel = dsel->next)
+			ctl_del(NULL, CTLADDR_SLOT_DEV(s->index, dsel->num));
+	}
 	s->vol = MIDI_MAXCTL;
 	strlcpy(s->name, name, SLOT_NAMEMAX);
 	s->serial = slot_serial++;
@@ -1920,11 +1926,24 @@ slot_new(struct dev *d, struct opt *opt, unsigned int id, char *who,
 	ctl_new(s->dev, CTLADDR_SLOT_LEVEL(s->index), CTL_NUM,
 	    "app", ctl_name, -1, "level", NULL, -1,
 	    127, s->vol);
+	for (dsel = dev_list; dsel != NULL; dsel = dsel->next) {
+		ctl_new(NULL, CTLADDR_SLOT_DEV(s->index, dsel->num), CTL_SEL,
+		    "app", ctl_name, -1, "device", dsel->ctl_name, -1,
+		    1, dsel == s->dev);
+	}
 
 found:
-	/* move control to new device */
+	/* move controls to new device */
 	if (s->dev != d) {
 		ctl_move(s->dev, CTLADDR_SLOT_LEVEL(s->index), d);
+		for (c = ctl_list; c != NULL; c = c->next) {
+			if (c->dev_addr == CTLADDR_SLOT_DEV(s->index, s->dev->num))
+				c->curval = 0;
+			else if (c->dev_addr == CTLADDR_SLOT_DEV(s->index, d->num)) {
+				c->curval = 1;
+				c->val_mask = ~0;
+			}
+		}
 		s->dev = d;
 	}
 

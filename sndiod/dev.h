@@ -22,8 +22,10 @@
 #include "siofile.h"
 #include "dev_sioctl.h"
 
-#define CTLADDR_SLOT_LEVEL(n)	(n)
-#define CTLADDR_MASTER		(DEV_NSLOT)
+#define CTLADDR_SLOT_NCTL	(DEV_NMAX + 1)
+#define CTLADDR_SLOT_DEV(n, d)	((n) * CTLADDR_SLOT_NCTL + (d))
+#define CTLADDR_SLOT_LEVEL(n)	((n) * CTLADDR_SLOT_NCTL + DEV_NMAX)
+#define CTLADDR_MASTER		(DEV_NSLOT * CTLADDR_SLOT_NCTL)
 #define CTLADDR_ALT_SEL		(CTLADDR_MASTER + 1)
 #define CTLADDR_END		(CTLADDR_ALT_SEL + DEV_NMAX)
 
