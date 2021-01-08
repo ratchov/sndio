@@ -919,7 +919,7 @@ sock_hello(struct sock *f)
 	opt = opt_byname(d, p->opt);
 	if (opt == NULL)
 		return 0;
-	f->slot = slot_new(d, opt, id, p->who, &sock_slotops, f, mode);
+	f->slot = slot_new(opt, id, p->who, &sock_slotops, f, mode);
 	if (f->slot == NULL)
 		return 0;
 	f->midi = NULL;

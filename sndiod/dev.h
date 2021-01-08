@@ -300,7 +300,7 @@ void dev_midi_vol(struct dev *, struct slot *);
  * sio_open(3) like interface for clients
  */
 void slot_log(struct slot *);
-struct slot *slot_new(struct dev *, struct opt *, unsigned int, char *,
+struct slot *slot_new(struct opt *, unsigned int, char *,
     struct slotops *, void *, int);
 void slot_del(struct slot *);
 void slot_setvol(struct slot *, unsigned int);

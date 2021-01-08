@@ -1825,7 +1825,7 @@ slot_freebufs(struct slot *s)
  * allocate a new slot and register the given call-backs
  */
 struct slot *
-slot_new(struct dev *d, struct opt *opt, unsigned int id, char *who,
+slot_new(struct opt *opt, unsigned int id, char *who,
     struct slotops *ops, void *arg, int mode)
 {
 	char *p;
@@ -1920,7 +1920,7 @@ slot_new(struct dev *d, struct opt *opt, unsigned int id, char *who,
 		; /* nothing */
 	s->unit = i;
 	s->id = id;
-	s->dev = d;
+	s->dev = opt->dev;
 	slot_ctlname(s, ctl_name, CTL_NAMEMAX);
 	ctl_new(s->dev, CTLADDR_SLOT_LEVEL(s->index), CTL_NUM,
 	    "app", ctl_name, -1, "level", NULL, -1,
@@ -1933,7 +1933,7 @@ slot_new(struct dev *d, struct opt *opt, unsigned int id, char *who,
 
 found:
 	/* move controls to new device */
-	slot_setdev(s, d);
+	slot_setdev(s, opt->dev);
 
 	if ((mode & MODE_REC) && (opt->mode & MODE_MON)) {
 		mode |= MODE_MON;
@@ -1946,14 +1946,14 @@ found:
 		}
 		return 0;
 	}
-	if (!dev_ref(d))
+	if (!dev_ref(s->dev))
 		return NULL;
-	if ((mode & d->mode) != mode) {
+	if ((mode & s->dev->mode) != mode) {
 		if (log_level >= 1) {
 			slot_log(s);
 			log_puts(": requested mode not supported\n");
 		}
-		dev_unref(d);
+		dev_unref(s->dev);
 		return NULL;
 	}
 	s->opt = opt;
@@ -1967,16 +1967,16 @@ found:
 	if (s->mode & MODE_RECMASK)
 		s->sub.nch = s->opt->rmax - s->opt->rmin + 1;
 	s->xrun = s->opt->mmc ? XRUN_SYNC : XRUN_IGNORE;
-	s->appbufsz = d->bufsz;
-	s->round = d->round;
-	s->rate = d->rate;
-	dev_midi_slotdesc(d, s);
-	dev_midi_vol(d, s);
+	s->appbufsz = s->dev->bufsz;
+	s->round = s->dev->round;
+	s->rate = s->dev->rate;
+	dev_midi_slotdesc(s->dev, s);
+	dev_midi_vol(s->dev, s);
 #ifdef DEBUG
 	if (log_level >= 3) {
 		slot_log(s);
 		log_puts(": using ");
-		dev_log(d);
+		dev_log(s->dev);
 		log_puts(".");
 		log_puts(opt->name);
 		log_puts(", mode = ");
