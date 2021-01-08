@@ -48,6 +48,8 @@ opt_new(struct dev *d, char *name,
 			return NULL;
 		}
 	}
+	if (d != NULL && strcmp(name, "default") == 0)
+		name = d->ctl_name;
 	if (opt_byname(d, name)) {
 		dev_log(d);
 		log_puts(".");
@@ -113,6 +115,8 @@ opt_byname(struct dev *d, char *name)
 {
 	struct opt *o;
 
+	if (strcmp(name, "default") == 0)
+		name = d->ctl_name;
 	for (o = opt_list; o != NULL; o = o->next) {
 		if (d != NULL && o->dev != d)
 			continue;
