@@ -34,13 +34,6 @@ opt_new(struct dev *d, char *name,
 	unsigned int len;
 	char c;
 
-	if (opt_byname(d, name)) {
-		dev_log(d);
-		log_puts(".");
-		log_puts(name);
-		log_puts(": already defined\n");
-		return NULL;
-	}
 	for (len = 0; name[len] != '\0'; len++) {
 		if (len == OPT_NAMEMAX) {
 			log_puts(name);
@@ -54,6 +47,13 @@ opt_new(struct dev *d, char *name,
 			log_puts(": only alphabetic chars allowed\n");
 			return NULL;
 		}
+	}
+	if (opt_byname(d, name)) {
+		dev_log(d);
+		log_puts(".");
+		log_puts(name);
+		log_puts(": already defined\n");
+		return NULL;
 	}
 	o = xmalloc(sizeof(struct opt));
 	o->dev = d;
