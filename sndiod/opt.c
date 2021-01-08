@@ -30,8 +30,8 @@ opt_new(struct dev *d, char *name,
     int pmin, int pmax, int rmin, int rmax,
     int maxweight, int mmc, int dup, unsigned int mode)
 {
-	struct opt *o;
-	unsigned int len;
+	struct opt *o, **po;
+	unsigned int len, num;
 	char c;
 
 	for (len = 0; name[len] != '\0'; len++) {
@@ -48,6 +48,16 @@ opt_new(struct dev *d, char *name,
 			return NULL;
 		}
 	}
+
+	num = 0;
+	for (po = &opt_list; *po != NULL; po = &(*po)->next)
+		num++;
+	if (num >= OPT_NMAX) {
+		log_puts(name);
+		log_puts(": too long\n");
+		return NULL;
+	}
+
 	if (d != NULL && strcmp(name, "default") == 0)
 		name = d->ctl_name;
 	if (opt_byname(d, name)) {
@@ -72,8 +82,8 @@ opt_new(struct dev *d, char *name,
 	o->dup = dup;
 	o->mode = mode;
 	memcpy(o->name, name, len + 1);
-	o->next = opt_list;
-	opt_list = o;
+	o->next = *po;
+	*po = o;
 	if (log_level >= 2) {
 		dev_log(d);
 		log_puts(".");

@@ -17,6 +17,8 @@
 #ifndef OPT_H
 #define OPT_H
 
+#define OPT_NMAX		16
+
 struct dev;
 
 struct opt {
