@@ -913,9 +913,13 @@ sock_hello(struct sock *f)
 		f->ctlsyncpending = 0;
 		return 1;
 	}
-	d = dev_bynum(p->devnum);
-	if (d == NULL)
-		return 0;
+	if (p->devnum == 15)
+		d = NULL;
+	else {
+		d = dev_bynum(p->devnum);
+		if (d == NULL)
+			return 0;
+	}
 	opt = opt_byname(d, p->opt);
 	if (opt == NULL)
 		return 0;
