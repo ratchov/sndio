@@ -2392,6 +2392,20 @@ ctlslot_unique(struct ctlslot *s, struct ctl *c)
 	return (c->dev_addr >= CTLADDR_MASTER) && (s->dev != NULL);
 }
 
+struct ctl *
+ctlslot_lookup(struct ctlslot *s, int slot_addr)
+{
+	struct ctl *c;
+
+	for (c = ctl_list; c != NULL; c = c->next) {
+		if (c->type != CTL_NONE && c->slot_addr == slot_addr)
+			break;
+	}
+	if (!ctlslot_visible(s, c))
+		return NULL;
+	return c;
+}
+
 void
 ctl_node_log(struct ctl_node *c)
 {
@@ -2431,18 +2445,6 @@ ctl_log(struct ctl *c)
 	log_puts("(");
 	log_putu(c->dev_addr);
 	log_puts(")");
-}
-
-struct ctl *
-ctl_lookup(int slot_addr)
-{
-	struct ctl *c;
-
-	for (c = ctl_list; c != NULL; c = c->next) {
-		if (c->type != CTL_NONE && c->slot_addr == slot_addr)
-			break;
-	}
-	return c;
 }
 
 int

@@ -1293,22 +1293,12 @@ sock_execmsg(struct sock *f)
 			return 0;
 		}
 
-		c = ctl_lookup(ntohs(m->u.ctlset.addr));
+		c = ctlslot_lookup(f->ctlslot, ntohs(m->u.ctlset.addr));
 		if (c == NULL) {
 #ifdef DEBUG
 			if (log_level >= 1) {
 				sock_log(f);
 				log_puts(": CTLSET, wrong addr\n");
-			}
-#endif
-			sock_close(f);
-			return 0;
-		}
-		if (!ctlslot_visible(f->ctlslot, c)) {
-#ifdef DEBUG
-			if (log_level >= 1) {
-				sock_log(f);
-				log_puts(": CTLSET, unauthorized\n");
 			}
 #endif
 			sock_close(f);

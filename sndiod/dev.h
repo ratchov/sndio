@@ -315,13 +315,14 @@ void slot_write(struct slot *);
  */
 
 void ctl_log(struct ctl *);
-struct ctl *ctl_lookup(int slot_addr);
 int ctl_setval(struct ctl *c, int val);
 
 struct ctlslot *ctlslot_new(struct dev *, struct ctlops *, void *);
 void ctlslot_del(struct ctlslot *);
 int ctlslot_visible(struct ctlslot *, struct ctl *);
 int ctlslot_unique(struct ctlslot *, struct ctl *);
+struct ctl *ctlslot_lookup(struct ctlslot *, int);
+
 int dev_onval(struct dev *, int, int);
 int dev_nctl(struct dev *);
 void dev_label(struct dev *, int);
