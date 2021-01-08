@@ -1833,7 +1833,6 @@ slot_new(struct dev *d, struct opt *opt, unsigned int id, char *who,
 	char ctl_name[CTL_NAMEMAX];
 	unsigned int i, ser, bestser, bestidx;
 	struct dev *dsel;
-	struct ctl *c;
 	struct slot *unit[DEV_NSLOT];
 	struct slot *s;
 
@@ -1934,18 +1933,7 @@ slot_new(struct dev *d, struct opt *opt, unsigned int id, char *who,
 
 found:
 	/* move controls to new device */
-	if (s->dev != d) {
-		ctl_move(s->dev, CTLADDR_SLOT_LEVEL(s->index), d);
-		for (c = ctl_list; c != NULL; c = c->next) {
-			if (c->dev_addr == CTLADDR_SLOT_DEV(s->index, s->dev->num))
-				c->curval = 0;
-			else if (c->dev_addr == CTLADDR_SLOT_DEV(s->index, d->num)) {
-				c->curval = 1;
-				c->val_mask = ~0;
-			}
-		}
-		s->dev = d;
-	}
+	slot_setdev(s, d);
 
 	if ((mode & MODE_REC) && (opt->mode & MODE_MON)) {
 		mode |= MODE_MON;
@@ -2038,6 +2026,33 @@ slot_setvol(struct slot *s, unsigned int vol)
 #endif
 	s->vol = vol;
 	s->mix.vol = MIDI_TO_ADATA(s->vol);
+}
+
+/*
+ * set device for this slot
+ */
+void
+slot_setdev(struct slot *s, struct dev *d)
+{
+	struct ctl *c;
+
+	if (s->dev == d)
+		return;
+
+	if (s->pstate != SLOT_INIT)
+		return;
+
+	ctl_move(s->dev, CTLADDR_SLOT_LEVEL(s->index), d);
+
+	for (c = ctl_list; c != NULL; c = c->next) {
+		if (c->dev_addr == CTLADDR_SLOT_DEV(s->index, s->dev->num))
+			c->curval = 0;
+		else if (c->dev_addr == CTLADDR_SLOT_DEV(s->index, d->num)) {
+			c->curval = 1;
+			c->val_mask = ~0;
+		}
+	}
+	s->dev = d;
 }
 
 /*
@@ -2434,6 +2449,7 @@ int
 ctl_setval(struct ctl *c, int val)
 {
 	struct slot *s;
+	struct dev *d;
 	int addr, num;
 
 	if (c->curval == val) {
@@ -2485,6 +2501,16 @@ ctl_setval(struct ctl *c, int val)
 		dev_midi_vol(c->dev, s);
 		c->val_mask = ~0U;
 		c->curval = val;
+		return 1;
+	} if (addr >= CTLADDR_SLOT_DEV(0, 0)) {
+		d = dev_bynum(addr - CTLADDR_SLOT_DEV(0, 0));
+		if (d == NULL)
+			return 1;
+		slot_log(s);
+		log_puts(": setting device to ");
+		dev_log(d);
+		log_puts("\n");
+		slot_setdev(s, d) ;
 		return 1;
 	} else {
 		if (log_level >= 2) {
