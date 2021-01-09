@@ -24,6 +24,7 @@ struct dev;
 struct opt {
 	struct opt *next;
 	struct dev *dev;
+	int num;
 #define OPT_NAMEMAX 11
 	char name[OPT_NAMEMAX + 1];
 	int maxweight;		/* max dynamic range for clients */
@@ -40,5 +41,7 @@ struct opt *opt_new(struct dev *, char *, int, int, int, int,
     int, int, int, unsigned int);
 void opt_del(struct opt *);
 struct opt *opt_byname(struct dev *, char *);
+struct opt *opt_bynum(int);
+
 
 #endif /* !defined(OPT_H) */

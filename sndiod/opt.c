@@ -68,6 +68,7 @@ opt_new(struct dev *d, char *name,
 		return NULL;
 	}
 	o = xmalloc(sizeof(struct opt));
+	o->num = num;
 	o->dev = d;
 	if (mode & MODE_PLAY) {
 		o->pmin = pmin;
@@ -131,6 +132,18 @@ opt_byname(struct dev *d, char *name)
 		if (d != NULL && o->dev != d)
 			continue;
 		if (strcmp(name, o->name) == 0)
+			return o;
+	}
+	return NULL;
+}
+
+struct opt *
+opt_bynum(int num)
+{
+	struct opt *o;
+
+	for (o = opt_list; o != NULL; o = o->next) {
+		if (o->num == num)
 			return o;
 	}
 	return NULL;

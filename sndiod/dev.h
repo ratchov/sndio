@@ -21,8 +21,9 @@
 #include "dsp.h"
 #include "siofile.h"
 #include "dev_sioctl.h"
+#include "opt.h"
 
-#define CTLADDR_SLOT_NCTL	(DEV_NMAX + 1)
+#define CTLADDR_SLOT_NCTL	(OPT_NMAX + 1)
 #define CTLADDR_SLOT_DEV(n, d)	((n) * CTLADDR_SLOT_NCTL + (d))
 #define CTLADDR_SLOT_LEVEL(n)	((n) * CTLADDR_SLOT_NCTL + DEV_NMAX)
 #define CTLADDR_MASTER		(DEV_NSLOT * CTLADDR_SLOT_NCTL)
@@ -304,7 +305,7 @@ struct slot *slot_new(struct opt *, unsigned int, char *,
     struct slotops *, void *, int);
 void slot_del(struct slot *);
 void slot_setvol(struct slot *, unsigned int);
-void slot_setdev(struct slot *, struct dev *);
+void slot_setopt(struct slot *, struct opt *);
 void slot_start(struct slot *);
 void slot_stop(struct slot *);
 void slot_read(struct slot *);
