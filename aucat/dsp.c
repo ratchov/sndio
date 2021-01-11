@@ -453,6 +453,20 @@ resamp_do(struct resamp *p, adata_t *in, adata_t *out, int icnt, int ocnt)
 			for (c = nch; c > 0; c--) {
 				s = f[c] >> RESAMP_BITS;
 				s = (int64_t)s * p->filt_cutoff >> RESAMP_BITS;
+#if ADATA_BITS == 16
+				/*
+				 * In 16-bit mode, we've no room for filter
+				 * overshoots, so we need to clip the signal
+				 * to avoid 16-bit integers to wrap around.
+				 * In 24-bit mode, samples may exceed the
+				 * [-1:1] range. Later, cmap_add() will clip
+				 * them, so no need to clip them here as well.
+				 */
+				if (s >= ADATA_UNIT)
+					s = ADATA_UNIT - 1;
+				else if (s < -ADATA_UNIT)
+					s = -ADATA_UNIT;
+#endif
 				*odata++ = s;
 			}
 
