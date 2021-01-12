@@ -169,9 +169,22 @@ opt_del(struct opt *o)
 void
 opt_init(struct opt *o)
 {
+	struct dev *d;
+
+	if (strcmp(o->name, o->dev->ctl_name) != 0) {
+		for (d = dev_list; d != NULL; d = d->next) {
+			ctl_new(CTL_OPT_DEV, o, d,
+			    CTL_SEL, "", o->name, -1, "device",
+			    d->ctl_name, -1, 1, o->dev == d);
+		}
+	}
 }
 
 void
 opt_done(struct opt *o)
 {
+	struct dev *d;
+
+	for (d = dev_list; d != NULL; d = d->next)
+		ctl_del(CTL_OPT_DEV, o, d);
 }

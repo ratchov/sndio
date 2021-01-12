@@ -2625,7 +2625,7 @@ ctl_new(int scope, void *arg0, void *arg1,
 	c->next = *pc;
 	*pc = c;
 #ifdef DEBUG
-	if (log_level >= 3) {
+	if (log_level >= 2) {
 		ctl_log(c);
 		log_puts(": added\n");
 	}
@@ -2714,7 +2714,7 @@ ctl_del(int scope, void *arg0, void *arg1)
 			return;
 		if (ctl_match(c, scope, arg0, arg1)) {
 #ifdef DEBUG
-			if (log_level >= 3) {
+			if (log_level >= 2) {
 				ctl_log(c);
 				log_puts(": removed, refs_mask = 0x");
 				log_putx(c->refs_mask);
