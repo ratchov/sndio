@@ -23,13 +23,6 @@
 #include "dev_sioctl.h"
 #include "opt.h"
 
-#define CTLADDR_SLOT_NCTL	(OPT_NMAX + 1)
-#define CTLADDR_SLOT_DEV(n, d)	((n) * CTLADDR_SLOT_NCTL + (d))
-#define CTLADDR_SLOT_LEVEL(n)	((n) * CTLADDR_SLOT_NCTL + DEV_NMAX)
-#define CTLADDR_MASTER		(DEV_NSLOT * CTLADDR_SLOT_NCTL)
-#define CTLADDR_ALT_SEL		(CTLADDR_MASTER + 1)
-#define CTLADDR_END		(CTLADDR_ALT_SEL + DEV_NMAX)
-
 /*
  * preallocated audio clients
  */
@@ -124,7 +117,7 @@ struct slot {
 
 struct ctl {
 	struct ctl *next;
-	struct dev *dev;
+
 #define CTL_NONE	0		/* deleted */
 #define CTL_NUM		2		/* number (aka integer value) */
 #define CTL_SW		3		/* on/off switch, only bit 7 counts */
@@ -132,7 +125,43 @@ struct ctl {
 #define CTL_LIST	5		/* switch, element of a list */
 #define CTL_SEL		6		/* element of a selector */
 	unsigned int type;		/* one of above */
-	unsigned int dev_addr;		/* device side control address */
+
+#define CTL_HW		0
+#define CTL_DEV_MASTER	1
+#define CTL_DEV_ALT	2
+#define CTL_OPT_DEV	3
+#define CTL_SLOT_LEVEL	4
+#define CTL_SLOT_OPT	5
+	unsigned int scope;
+	union {
+		struct {
+			void *arg0;
+			void *arg1;
+		} any;
+		struct {
+			struct dev *dev;
+			unsigned int addr;
+		} hw;
+		struct {
+			struct dev *dev;
+		} dev_master;
+		struct {
+			struct dev *dev;
+			struct dev_alt *alt;
+		} dev_alt;
+		struct {
+			struct slot *slot;
+		} slot_level;
+		struct {
+			struct slot *slot;
+			struct opt *opt;
+		} slot_opt;
+		struct {
+			struct opt *opt;
+			struct dev *dev;
+		} opt_dev;
+	} u;
+
 	unsigned int slot_addr;		/* slot side control address */
 #define CTL_NAMEMAX	16		/* max name lenght */
 	char func[CTL_NAMEMAX];		/* parameter function name */
@@ -315,8 +344,15 @@ void slot_write(struct slot *);
  * control related functions
  */
 
+struct ctl *ctl_new(int, void *, void *,
+    int, char *, char *, int, char *, char *, int, int, int);
+void ctl_del(int, void *, void *);
 void ctl_log(struct ctl *);
 int ctl_setval(struct ctl *c, int val);
+int ctl_match(struct ctl *, int, void *, void *);
+struct ctl *ctl_find(int, void *, void *);
+void ctl_update(struct ctl *);
+int ctl_onval(int, void *, void *, int);
 
 struct ctlslot *ctlslot_new(struct dev *, struct ctlops *, void *);
 void ctlslot_del(struct ctlslot *);
@@ -324,13 +360,7 @@ int ctlslot_visible(struct ctlslot *, struct ctl *);
 int ctlslot_unique(struct ctlslot *, struct ctl *);
 struct ctl *ctlslot_lookup(struct ctlslot *, int);
 
-int dev_onval(struct dev *, int, int);
-int dev_nctl(struct dev *);
 void dev_label(struct dev *, int);
-struct ctl *ctl_new(struct dev *, int, int,
-    char *, char *, int, char *, char *, int, int, int);
-void ctl_del(struct dev *, int);
-void ctl_move(struct dev *, int, struct dev *);
 int dev_makeunit(struct dev *, char *);
 void dev_ctlsync(struct dev *);
 

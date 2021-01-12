@@ -118,13 +118,11 @@ dev_sio_openlist(struct dev *d, unsigned int mode, struct sioctl_hdl **rctlhdl)
 				}
 			}
 			d->alt_num = n->idx;
+			// XXX ctl_find()
 			for (c = ctl_list; c != NULL; c = c->next) {
-				if (c->dev != d)
+				if (!ctl_match(c, CTL_DEV_ALT, d, NULL))
 					continue;
-				if (c->dev_addr < CTLADDR_ALT_SEL ||
-				    c->dev_addr >= CTLADDR_ALT_SEL + DEV_NMAX)
-					continue;
-				val = (c->dev_addr - CTLADDR_ALT_SEL) == n->idx;
+				val = (c->u.dev_alt.alt == n);
 				if (c->curval == val)
 					continue;
 				c->curval = val;

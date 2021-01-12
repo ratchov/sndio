@@ -52,17 +52,16 @@ void
 dev_sioctl_ondesc(void *arg, struct sioctl_desc *desc, int val)
 {
 	struct dev *d = arg;
-	int addr;
 
 	if (desc == NULL) {
 		dev_ctlsync(d);
 		return;
 	}
 
-	addr = CTLADDR_END + desc->addr;
-	ctl_del(d, addr);
+	ctl_del(CTL_HW, d, &desc->addr);
 
-	ctl_new(d, addr, desc->type, d->ctl_name,
+	ctl_new(CTL_HW, d, &desc->addr,
+	    desc->type, d->ctl_name,
 	    desc->node0.name, desc->node0.unit, desc->func,
 	    desc->node1.name, desc->node1.unit, desc->maxval, val);
 }
@@ -73,8 +72,6 @@ dev_sioctl_onval(void *arg, unsigned int addr, unsigned int val)
 	struct dev *d = arg;
 	struct ctl *c;
 
-	addr += CTLADDR_END;
-
 	dev_log(d);
 	log_puts(": onctl: addr = ");
 	log_putu(addr);
@@ -83,7 +80,7 @@ dev_sioctl_onval(void *arg, unsigned int addr, unsigned int val)
 	log_puts("\n");
 
 	for (c = ctl_list; c != NULL; c = c->next) {
-		if (c->dev != d || c->dev_addr != addr)
+		if (c->scope != CTL_HW || c->u.hw.addr != addr)
 			continue;
 		ctl_log(c);
 		log_puts(": new value -> ");
@@ -125,7 +122,7 @@ dev_sioctl_close(struct dev *d)
 	/* remove controls */
 	pc = &ctl_list;
 	while ((c = *pc) != NULL) {
-		if (c->dev == d && c->dev_addr >= CTLADDR_END) {
+		if (c->scope == CTL_HW && c->u.hw.dev == d) {
 			c->refs_mask &= ~CTL_DEVMASK;
 			if (c->refs_mask == 0) {
 				*pc = c->next;
@@ -148,7 +145,7 @@ dev_sioctl_pollfd(void *arg, struct pollfd *pfd)
 	int events = 0;
 
 	for (c = ctl_list; c != NULL; c = c->next) {
-		if (c->dev == d && c->dirty)
+		if (c->scope == CTL_HW && c->u.hw.dev == d && c->dirty)
 			events |= POLLOUT;
 	}
 	return sioctl_pollfd(d->sioctl.hdl, pfd, events);
@@ -181,10 +178,9 @@ dev_sioctl_out(void *arg)
 	 */
 	cnt = 0;
 	for (c = ctl_list; c != NULL; c = c->next) {
-		if (c->dev != d || !c->dirty)
+		if (c->scope != CTL_HW || c->u.hw.dev != d || !c->dirty)
 			continue;
-		if (!sioctl_setval(d->sioctl.hdl,
-			c->dev_addr - CTLADDR_END, c->curval)) {
+		if (!sioctl_setval(d->sioctl.hdl, c->u.hw.addr, c->curval)) {
 			ctl_log(c);
 			log_puts(": set failed\n");
 			break;

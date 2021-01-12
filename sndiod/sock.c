@@ -1234,8 +1234,7 @@ sock_execmsg(struct sock *f)
 		f->lastvol = ctl; /* dont trigger feedback message */
 		slot_setvol(s, ctl);
 		dev_midi_vol(s->dev, s);
-		dev_onval(s->dev,
-		    CTLADDR_SLOT_LEVEL(f->slot - slot_array), ctl);
+		ctl_onval(CTL_SLOT_LEVEL, s, NULL, ctl);
 		break;
 	case AMSG_CTLSUB:
 #ifdef DEBUG
