@@ -373,6 +373,7 @@ main(int argc, char **argv)
 	unsigned int hold, autovol, bufsz, round, rate;
 	const char *str;
 	struct aparams par;
+	struct opt *o;
 	struct dev *d;
 	struct port *p;
 	struct listen *l;
@@ -556,6 +557,8 @@ main(int argc, char **argv)
 		if (!dev_init(d))
 			return 1;
 	}
+	for (o = opt_list; o != NULL; o = o->next)
+		opt_init(o);
 	if (background) {
 		log_flush();
 		log_level = 0;
@@ -587,6 +590,8 @@ main(int argc, char **argv)
 		listen_close(listen_list);
 	while (sock_list != NULL)
 		sock_close(sock_list);
+	for (o = opt_list; o != NULL; o = o->next)
+		opt_done(o);
 	for (d = dev_list; d != NULL; d = d->next)
 		dev_done(d);
 	for (p = port_list; p != NULL; p = p->next)

@@ -165,3 +165,13 @@ opt_del(struct opt *o)
 	*po = o->next;
 	xfree(o);
 }
+
+void
+opt_init(struct opt *o)
+{
+}
+
+void
+opt_done(struct opt *o)
+{
+}
