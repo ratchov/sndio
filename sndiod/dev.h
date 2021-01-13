@@ -162,7 +162,7 @@ struct ctl {
 		} opt_dev;
 	} u;
 
-	unsigned int slot_addr;		/* slot side control address */
+	unsigned int addr;		/* slot side control address */
 #define CTL_NAMEMAX	16		/* max name lenght */
 	char func[CTL_NAMEMAX];		/* parameter function name */
 	char group[CTL_NAMEMAX];	/* group aka namespace */

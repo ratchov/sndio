@@ -2402,12 +2402,12 @@ ctlslot_visible(struct ctlslot *s, struct ctl *c)
 }
 
 struct ctl *
-ctlslot_lookup(struct ctlslot *s, int slot_addr)
+ctlslot_lookup(struct ctlslot *s, int addr)
 {
 	struct ctl *c;
 
 	for (c = ctl_list; c != NULL; c = c->next) {
-		if (c->type != CTL_NONE && c->slot_addr == slot_addr)
+		if (c->type != CTL_NONE && c->addr == addr)
 			break;
 	}
 	if (!ctlslot_visible(s, c))
@@ -2450,7 +2450,7 @@ ctl_log(struct ctl *c)
 		log_putu(c->curval);
 	}
 	log_puts(" at ");
-	log_putu(c->slot_addr);
+	log_putu(c->addr);
 	log_puts(" -> ");
 	switch (c->scope) {
 	case CTL_HW:
@@ -2566,19 +2566,19 @@ ctl_new(int scope, void *arg0, void *arg1,
 {
 	struct ctl *c, **pc;
 	struct ctlslot *s;
-	int slot_addr;
+	int addr;
 	int i;
 
 	/*
-	 * find the smallest unused slot_addr number and
+	 * find the smallest unused addr number and
 	 * the last position in the list
 	 */
-	slot_addr = 0;
+	addr = 0;
 	for (pc = &ctl_list; (c = *pc) != NULL; pc = &c->next) {
-		if (c->slot_addr > slot_addr)
-			slot_addr = c->slot_addr;
+		if (c->addr > addr)
+			addr = c->addr;
 	}
-	slot_addr++;
+	addr++;
 
 	c = xmalloc(sizeof(struct ctl));
 	c->type = type;
@@ -2605,7 +2605,7 @@ ctl_new(int scope, void *arg0, void *arg1,
 	default:
 		c->u.any.arg1 = NULL;
 	}
-	c->slot_addr = slot_addr;
+	c->addr = addr;
 	c->maxval = maxval;
 	c->val_mask = ~0;
 	c->desc_mask = ~0;

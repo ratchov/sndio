@@ -1590,7 +1590,7 @@ sock_buildmsg(struct sock *f)
 			desc->node1.unit = ntohs(c->node1.unit);
 			desc->type = type;
 			strlcpy(desc->func, c->func, AMSG_CTL_NAMEMAX);
-			desc->addr = htons(c->slot_addr);
+			desc->addr = htons(c->addr);
 			desc->maxval = htons(c->maxval);
 			desc->curval = htons(c->curval);
 			size += sizeof(struct amsg_ctl_desc);
@@ -1633,7 +1633,7 @@ sock_buildmsg(struct sock *f)
 			c->val_mask &= ~mask;
 			AMSG_INIT(&f->wmsg);
 			f->wmsg.cmd = htonl(AMSG_CTLSET);
-			f->wmsg.u.ctlset.addr = htons(c->slot_addr);
+			f->wmsg.u.ctlset.addr = htons(c->addr);
 			f->wmsg.u.ctlset.val = htons(c->curval);
 			f->wtodo = sizeof(struct amsg);
 			f->wstate = SOCK_WMSG;
