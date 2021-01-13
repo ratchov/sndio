@@ -1437,7 +1437,7 @@ dev_init(struct dev *d)
 		for (a = d->alt_list; a != NULL; a = a->next) {
 			snprintf(name, sizeof(name), "%d", a->idx);
 			ctl_new(CTL_DEV_ALT, d, a,
-			    CTL_SEL, "", "server", -1, "device", name, -1,
+			    CTL_SEL, d->ctl_name, "server", -1, "device", name, -1,
 			    1, a->idx == d->alt_num);
 		}
 	}
