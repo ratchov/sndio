@@ -164,7 +164,7 @@ struct cmap {
 };
 
 #define MIDI_TO_ADATA(m)	(aparams_ctltovol[m] << (ADATA_BITS - 16))
-extern int aparams_ctltovol[128];
+extern const int aparams_ctltovol[128];
 
 void aparams_init(struct aparams *);
 void aparams_log(struct aparams *);

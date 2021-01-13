@@ -18,7 +18,7 @@
 #include "dsp.h"
 #include "utils.h"
 
-int aparams_ctltovol[128] = {
+const int aparams_ctltovol[128] = {
 	    0,
 	  256,	  266,	  276,	  287,	  299,	  310,	  323,	  335,
 	  348,	  362,	  376,	  391,	  406,	  422,	  439,	  456,
@@ -38,7 +38,7 @@ int aparams_ctltovol[128] = {
 	26008,	27029,	28090,	29193,	30339,	31530,	32768
 };
 
-int resamp_filt[RESAMP_LENGTH / RESAMP_STEP + 1] = {
+const int resamp_filt[RESAMP_LENGTH / RESAMP_STEP + 1] = {
 	      0,       0,       3,       9,      22,      42,      73,     116,
 	    174,     248,     341,     454,     589,     749,     934,    1148,
 	   1392,    1666,    1974,    2316,    2693,    3107,    3560,    4051,
