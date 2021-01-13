@@ -114,7 +114,6 @@ struct slotops zomb_slotops = {
 
 struct ctl *ctl_list = NULL;
 struct dev *dev_list = NULL;
-unsigned int dev_sndnum = 0;
 
 struct ctlslot ctlslot_array[DEV_NCTLSLOT];
 struct slot slot_array[DEV_NSLOT];
@@ -1039,17 +1038,22 @@ dev_new(char *path, struct aparams *par,
     unsigned int mode, unsigned int bufsz, unsigned int round,
     unsigned int rate, unsigned int hold, unsigned int autovol)
 {
-	struct dev *d;
+	struct dev *d, **pd;
+	unsigned int num;
 
-	if (dev_sndnum == DEV_NMAX) {
+	num = 0;
+	for (pd = &dev_list; *pd != NULL; pd = &(*pd)->next)
+		num++;
+	if (num >= DEV_NMAX) {
 		if (log_level >= 1)
 			log_puts("too many devices\n");
 		return NULL;
 	}
+
 	d = xmalloc(sizeof(struct dev));
 	d->alt_list = NULL;
 	dev_addname(d, path);
-	d->num = dev_sndnum++;
+	d->num = num;
 	d->alt_num = -1;
 
 	/*
@@ -1077,8 +1081,8 @@ dev_new(char *path, struct aparams *par,
 	d->mtc.origin = 0;
 	d->tstate = MMC_STOP;
 	snprintf(d->ctl_name, CTL_NAMEMAX, "%u", d->num);
-	d->next = dev_list;
-	dev_list = d;
+	d->next = *pd;
+	*pd = d;
 	return d;
 }
 
