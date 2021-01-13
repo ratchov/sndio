@@ -52,6 +52,7 @@ void
 dev_sioctl_ondesc(void *arg, struct sioctl_desc *desc, int val)
 {
 	struct dev *d = arg;
+	char *group, group_buf[CTL_NAMEMAX];
 
 	if (desc == NULL) {
 		dev_ctlsync(d);
@@ -60,8 +61,17 @@ dev_sioctl_ondesc(void *arg, struct sioctl_desc *desc, int val)
 
 	ctl_del(CTL_HW, d, &desc->addr);
 
+	if (desc->group[0] == 0)
+		group = d->ctl_name;
+	else {
+		if (snprintf(group_buf, CTL_NAMEMAX, "%s/%s",
+			d->ctl_name, desc->group) >= CTL_NAMEMAX)
+			return;
+		group = group_buf;
+	}
+
 	ctl_new(CTL_HW, d, &desc->addr,
-	    desc->type, d->ctl_name,
+	    desc->type, group,
 	    desc->node0.name, desc->node0.unit, desc->func,
 	    desc->node1.name, desc->node1.unit, desc->maxval, val);
 }
