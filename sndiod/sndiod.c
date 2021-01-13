@@ -520,12 +520,27 @@ main(int argc, char **argv)
 			    bufsz, round, rate, 0, autovol);
 		}
 	}
-	for (d = dev_list; d != NULL; d = d->next) {
-		if (opt_byname(d, "default"))
-			continue;
-		if (mkopt("default", d, pmin, pmax, rmin, rmax,
-			mode, vol, mmc, dup) == NULL)
+
+	/*
+	 * Add default sub-device (if none) backed by the last device
+	 */
+	o = opt_byname("default");
+	if (o == NULL) {
+		o = mkopt("default", dev_list, pmin, pmax, rmin, rmax,
+		    mode, vol, mmc, dup);
+		if (o == NULL)
 			return 1;
+	}
+
+	/*
+	 * For each device create an anonymous sub-device using
+	 * the "default" sub-device as template
+	 */
+	for (d = dev_list; d != NULL; d = d->next) {
+		if (opt_new(d, NULL, o->pmin, o->pmax, o->rmin, o->rmax,
+			o->maxweight, o->mmc, o->dup, o->mode) == NULL)
+			return 1;
+		dev_adjpar(d, o->pmax, o->rmax, o->mode);
 	}
 
 	setsig();

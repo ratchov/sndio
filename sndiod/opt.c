@@ -34,18 +34,23 @@ opt_new(struct dev *d, char *name,
 	unsigned int len, num;
 	char c;
 
-	for (len = 0; name[len] != '\0'; len++) {
-		if (len == OPT_NAMEMAX) {
-			log_puts(name);
-			log_puts(": too long\n");
-			return NULL;
-		}
-		c = name[len];
-		if ((c < 'a' || c > 'z') &&
-		    (c < 'A' || c > 'Z')) {
-			log_puts(name);
-			log_puts(": only alphabetic chars allowed\n");
-			return NULL;
+	if (name == NULL) {
+		name = d->ctl_name;
+		len = strlen(name);
+	} else {
+		for (len = 0; name[len] != '\0'; len++) {
+			if (len == OPT_NAMEMAX) {
+				log_puts(name);
+				log_puts(": too long\n");
+				return NULL;
+			}
+			c = name[len];
+			if ((c < 'a' || c > 'z') &&
+			    (c < 'A' || c > 'Z')) {
+				log_puts(name);
+				log_puts(": only alphabetic chars allowed\n");
+				return NULL;
+			}
 		}
 	}
 
@@ -54,19 +59,16 @@ opt_new(struct dev *d, char *name,
 		num++;
 	if (num >= OPT_NMAX) {
 		log_puts(name);
-		log_puts(": too long\n");
+		log_puts(": too many opts\n");
 		return NULL;
 	}
 
-	if (d != NULL && strcmp(name, "default") == 0)
-		name = d->ctl_name;
-	if (opt_byname(d, name)) {
-		dev_log(d);
-		log_puts(".");
+	if (opt_byname(name)) {
 		log_puts(name);
 		log_puts(": already defined\n");
 		return NULL;
 	}
+
 	o = xmalloc(sizeof(struct opt));
 	o->num = num;
 	o->dev = d;
@@ -122,15 +124,11 @@ opt_new(struct dev *d, char *name,
 }
 
 struct opt *
-opt_byname(struct dev *d, char *name)
+opt_byname(char *name)
 {
 	struct opt *o;
 
-	if (strcmp(name, "default") == 0)
-		name = d->ctl_name;
 	for (o = opt_list; o != NULL; o = o->next) {
-		if (d != NULL && o->dev != d)
-			continue;
 		if (strcmp(name, o->name) == 0)
 			return o;
 	}

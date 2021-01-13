@@ -40,7 +40,7 @@ extern struct opt *opt_list;
 struct opt *opt_new(struct dev *, char *, int, int, int, int,
     int, int, int, unsigned int);
 void opt_del(struct opt *);
-struct opt *opt_byname(struct dev *, char *);
+struct opt *opt_byname(char *);
 struct opt *opt_bynum(int);
 void opt_init(struct opt *);
 void opt_done(struct opt *);

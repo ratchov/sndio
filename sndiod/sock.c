@@ -913,16 +913,21 @@ sock_hello(struct sock *f)
 		f->ctlsyncpending = 0;
 		return 1;
 	}
-	if (p->devnum == 15)
-		d = NULL;
-	else {
+	if (p->devnum == 15) {
+		opt = opt_byname(p->opt);
+		if (opt == NULL)
+			return 0;
+	} else {
 		d = dev_bynum(p->devnum);
 		if (d == NULL)
 			return 0;
+		opt = opt_byname(strcmp(p->opt, "default") == 0 ?
+		    d->ctl_name : p->opt);
+		if (opt == NULL)
+			return 0;
+		if (opt->dev != d)
+			return 0;
 	}
-	opt = opt_byname(d, p->opt);
-	if (opt == NULL)
-		return 0;
 	f->slot = slot_new(opt, id, p->who, &sock_slotops, f, mode);
 	if (f->slot == NULL)
 		return 0;
