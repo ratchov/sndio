@@ -2034,28 +2034,31 @@ slot_setopt(struct slot *s, struct opt *o)
 	struct ctl *c;
 
 	slot_log(s);
-	log_puts(": setting device to ");
+	log_puts(": setting opt to ");
 	log_puts(o->name);
 	log_puts("\n");
-
-	if (s->opt == o)
-		return;
 
 	if (s->pstate != SLOT_INIT)
 		return;
 
-	c = ctl_find(CTL_SLOT_OPT, s, s->opt);
-	c->curval = 0;
+	if (s->opt != o) {
+		c = ctl_find(CTL_SLOT_OPT, s, s->opt);
+		c->curval = 0;
 
-	s->opt = o;
-	s->dev = o->dev;
+		s->opt = o;
 
-	c = ctl_find(CTL_SLOT_OPT, s, s->opt);
-	c->curval = 1;
-	c->val_mask = ~0;
+		c = ctl_find(CTL_SLOT_OPT, s, s->opt);
+		c->curval = 1;
+		c->val_mask = ~0;
+	}
 
-	c = ctl_find(CTL_SLOT_LEVEL, s, NULL);
-	ctl_update(c);
+	/* opt's device may have changed */
+	if (s->dev != o->dev) {
+		s->dev = o->dev;
+
+		c = ctl_find(CTL_SLOT_LEVEL, s, NULL);
+		ctl_update(c);
+	}
 }
 
 /*
