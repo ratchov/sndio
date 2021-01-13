@@ -186,3 +186,21 @@ opt_done(struct opt *o)
 	for (d = dev_list; d != NULL; d = d->next)
 		ctl_del(CTL_OPT_DEV, o, d);
 }
+
+void
+opt_setdev(struct opt *o, struct dev *d)
+{
+	struct ctl *c;
+
+	if (o->dev == d)
+		return;
+
+	c = ctl_find(CTL_OPT_DEV, o, o->dev);
+	c->curval = 0;
+
+	o->dev = d;
+
+	c = ctl_find(CTL_OPT_DEV, o, o->dev);
+	c->curval = 1;
+	c->val_mask = ~0;
+}

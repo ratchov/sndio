@@ -2554,7 +2554,10 @@ ctl_setval(struct ctl *c, int val)
 		c->curval = val;
 		return 1;
 	case CTL_SLOT_OPT:
-		slot_setopt(c->u.slot_opt.slot, c->u.slot_opt.opt) ;
+		slot_setopt(c->u.slot_opt.slot, c->u.slot_opt.opt);
+		return 1;
+	case CTL_OPT_DEV:
+		opt_setdev(c->u.opt_dev.opt, c->u.opt_dev.dev);
 		return 1;
 	default:
 		if (log_level >= 2) {
