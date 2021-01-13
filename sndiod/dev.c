@@ -1973,8 +1973,6 @@ found:
 	if (log_level >= 3) {
 		slot_log(s);
 		log_puts(": using ");
-		dev_log(s->dev);
-		log_puts(".");
 		log_puts(opt->name);
 		log_puts(", mode = ");
 		log_putx(mode);
