@@ -2401,19 +2401,6 @@ ctlslot_visible(struct ctlslot *s, struct ctl *c)
 	}
 }
 
-int
-ctlslot_unique(struct ctlslot *s, struct ctl *c)
-{
-	switch (c->scope) {
-	case CTL_HW:
-	case CTL_DEV_MASTER:
-	case CTL_DEV_ALT:
-		return (s->dev != NULL);
-	default:
-		return 0;
-	}
-}
-
 struct ctl *
 ctlslot_lookup(struct ctlslot *s, int slot_addr)
 {

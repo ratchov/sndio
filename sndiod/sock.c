@@ -1578,8 +1578,13 @@ sock_buildmsg(struct sock *f)
 			c->val_mask &= ~mask;
 			type = ctlslot_visible(f->ctlslot, c) ?
 			    c->type : CTL_NONE;
-			strlcpy(desc->group, ctlslot_unique(f->ctlslot, c) ?
-			    "" : c->group, AMSG_CTL_NAMEMAX);
+			if (f->ctlslot->dev != NULL &&
+			    strcmp(c->group, f->ctlslot->dev->ctl_name) == 0)
+				desc->group[0] = 0;
+			else {
+				strlcpy(desc->group, c->group,
+				    AMSG_CTL_NAMEMAX);
+			}
 			strlcpy(desc->node0.name, c->node0.name,
 			    AMSG_CTL_NAMEMAX);
 			desc->node0.unit = ntohs(c->node0.unit);

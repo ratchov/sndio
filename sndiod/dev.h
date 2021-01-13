@@ -357,7 +357,6 @@ int ctl_onval(int, void *, void *, int);
 struct ctlslot *ctlslot_new(struct dev *, struct ctlops *, void *);
 void ctlslot_del(struct ctlslot *);
 int ctlslot_visible(struct ctlslot *, struct ctl *);
-int ctlslot_unique(struct ctlslot *, struct ctl *);
 struct ctl *ctlslot_lookup(struct ctlslot *, int);
 
 void dev_label(struct dev *, int);
