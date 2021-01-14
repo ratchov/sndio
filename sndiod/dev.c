@@ -949,9 +949,15 @@ dev_onmove(struct dev *d, int delta)
 		 * s->ops->onmove() may remove the slot
 		 */
 		snext = s->next;
-		pos = (long long)delta * s->round + s->delta_rem;
+		pos = s->delta_rem +
+		    (long long)s->delta * d->round +
+		    (long long)delta * s->round;
+		s->delta = pos / (int)d->round;
 		s->delta_rem = pos % d->round;
-		s->delta += pos / (int)d->round;
+		if (s->delta_rem < 0) {
+			s->delta_rem += d->round;
+			s->delta--;
+		}
 		if (s->delta >= 0)
 			s->ops->onmove(s->arg);
 	}
