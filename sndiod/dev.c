@@ -1590,6 +1590,7 @@ dev_sync_attach(struct dev *d)
 		if (s->dev != d || !s->ops || !s->opt->mmc)
 			continue;
 		slot_attach(s);
+		s->pstate = SLOT_RUN;
 	}
 	d->tstate = MMC_RUN;
 	dev_midi_full(d);
@@ -2067,7 +2068,6 @@ slot_attach(struct slot *s)
 {
 	struct dev *d = s->dev;
 	long long pos;
-	int startpos;
 
 	/*
 	 * start the device if not started
@@ -2075,26 +2075,27 @@ slot_attach(struct slot *s)
 	dev_wakeup(d);
 
 	/*
-	 * get the current position, the origin is when the first sample
-	 * played and/or recorded
-	 */
-	startpos = dev_getpos(d) * (int)s->round / (int)d->round;
-
-	/*
 	 * adjust initial clock
 	 */
-	pos = (long long)d->delta * s->round;
-	s->delta = startpos + pos / (int)d->round;
+	pos = s->delta_rem +
+	    (long long)s->delta * d->round +
+	    (long long)d->delta * s->round;
+	s->delta = pos / (int)d->round;
 	s->delta_rem = pos % d->round;
+	if (s->delta_rem < 0) {
+		s->delta_rem += d->round;
+		s->delta--;
+	}
 
-	s->pstate = SLOT_RUN;
 #ifdef DEBUG
 	if (log_level >= 2) {
 		slot_log(s);
 		log_puts(": attached at ");
-		log_puti(startpos);
-		log_puts(", delta = ");
-		log_puti(d->delta);
+		log_puti(s->delta);
+		log_puts(" + ");
+		log_puti(s->delta_rem);
+		log_puts("/");
+		log_puti(s->round);
 		log_puts("\n");
 	}
 #endif
@@ -2132,9 +2133,10 @@ slot_ready(struct slot *s)
 	 */
 	if (s->dev->pstate == DEV_CFG)
 		return;
-	if (!s->opt->mmc)
+	if (!s->opt->mmc) {
 		slot_attach(s);
-	else
+		s->pstate = SLOT_RUN;
+	} else
 		dev_sync_attach(s->dev);
 }
 
@@ -2182,6 +2184,13 @@ slot_start(struct slot *s)
 	}
 	s->skip = 0;
 
+	/*
+	 * get the current position, the origin is when the first sample
+	 * played and/or recorded
+	 */
+	s->delta = dev_getpos(s->dev) * (int)s->round / (int)s->dev->round;
+	s->delta_rem = 0;
+
 	if (s->mode & MODE_PLAY) {
 		s->pstate = SLOT_START;
 	} else {
@@ -2197,6 +2206,8 @@ void
 slot_detach(struct slot *s)
 {
 	struct slot **ps;
+	struct dev *d;
+	long long pos;
 
 #ifdef DEBUG
 	if (log_level >= 3) {
@@ -2214,6 +2225,35 @@ slot_detach(struct slot *s)
 #endif
 	}
 	*ps = s->next;
+
+	d = s->dev;
+
+	/*
+	 * adjust clock, go back d->delta ticks so that slot_attach()
+	 * could be called with the resulting state
+	 */
+	pos = s->delta_rem +
+	    (long long)s->delta * d->round -
+	    (long long)d->delta * s->round;
+	s->delta = pos / (int)d->round;
+	s->delta_rem = pos % d->round;
+	if (s->delta_rem < 0) {
+		s->delta_rem += d->round;
+		s->delta--;
+	}
+
+#ifdef DEBUG
+	if (log_level >= 2) {
+		slot_log(s);
+		log_puts(": detached at ");
+		log_puti(s->delta);
+		log_puts(" + ");
+		log_puti(s->delta_rem);
+		log_puts("/");
+		log_puti(d->round);
+		log_puts("\n");
+	}
+#endif
 	if (s->mode & MODE_PLAY)
 		dev_mix_adjvol(s->dev);
 }
