@@ -2212,16 +2212,10 @@ void
 slot_detach(struct slot *s)
 {
 	struct slot **ps;
-	struct dev *d;
+	struct dev *d = s->dev;
 	long long pos;
 
-#ifdef DEBUG
-	if (log_level >= 3) {
-		slot_log(s);
-		log_puts(": detaching\n");
-	}
-#endif
-	for (ps = &s->dev->slot_list; *ps != s; ps = &(*ps)->next) {
+	for (ps = &d->slot_list; *ps != s; ps = &(*ps)->next) {
 #ifdef DEBUG
 		if (*ps == NULL) {
 			slot_log(s);
@@ -2231,8 +2225,6 @@ slot_detach(struct slot *s)
 #endif
 	}
 	*ps = s->next;
-
-	d = s->dev;
 
 	/*
 	 * adjust clock, go back d->delta ticks so that slot_attach()
@@ -2261,7 +2253,7 @@ slot_detach(struct slot *s)
 	}
 #endif
 	if (s->mode & MODE_PLAY)
-		dev_mix_adjvol(s->dev);
+		dev_mix_adjvol(d);
 }
 
 /*
