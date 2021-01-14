@@ -540,7 +540,7 @@ main(int argc, char **argv)
 		if (opt_new(d, NULL, o->pmin, o->pmax, o->rmin, o->rmax,
 			o->maxweight, o->mmc, o->dup, o->mode) == NULL)
 			return 1;
-		dev_adjpar(d, o->pmax, o->rmax, o->mode);
+		dev_adjpar(d, o->mode, o->pmax, o->rmax);
 	}
 
 	setsig();
