@@ -191,6 +191,8 @@ void
 opt_setdev(struct opt *o, struct dev *d)
 {
 	struct ctl *c;
+	struct slot *s;
+	int i;
 
 	if (o->dev == d)
 		return;
@@ -203,4 +205,10 @@ opt_setdev(struct opt *o, struct dev *d)
 	c = ctl_find(CTL_OPT_DEV, o, o->dev);
 	c->curval = 1;
 	c->val_mask = ~0;
+
+	for (i = 0; i < DEV_NSLOT; i++) {
+		s = slot_array + i;
+		if (s->opt == o)
+			slot_setopt(s, o);
+	}
 }

@@ -2037,14 +2037,62 @@ void
 slot_setopt(struct slot *s, struct opt *o)
 {
 	struct ctl *c;
+	struct dev *d;
+
+	if (s->opt->mmc) {
+		if (log_level >= 1) {
+			slot_log(s);
+			log_puts(": uses mmc, can't change device\n");
+		}
+		return;
+	}
 
 	slot_log(s);
 	log_puts(": setting opt to ");
 	log_puts(o->name);
 	log_puts("\n");
 
-	if (s->pstate != SLOT_INIT)
-		return;
+	/*
+	 * Even if opt pointer didn't change, opt's
+	 * device may have changed
+	 */
+	if (s->dev != o->dev) {
+		if (s->pstate != SLOT_INIT) {
+			if (!dev_ref(o->dev))
+				return;
+
+			/* check if new device is compatible with slot */
+			if (s->dev->round != o->dev->round ||
+			    s->dev->bufsz != o->dev->bufsz ||
+			    s->dev->rate != o->dev->rate ||
+			    s->mode != (o->dev->mode & s->mode)) {
+				if (log_level >= 2) {
+					slot_log(s);
+					log_puts(": device ");
+					log_puts(o->dev->ctl_name);
+					log_puts(" not compatible\n");
+				}
+				dev_unref(o->dev);
+				return;
+			}
+		}
+
+		if (s->pstate == SLOT_RUN || s->pstate == SLOT_STOP)
+			slot_detach(s);
+
+		d = s->dev;
+		s->dev = o->dev;
+		c = ctl_find(CTL_SLOT_LEVEL, s, NULL);
+		ctl_update(c);
+
+		if (s->pstate == SLOT_RUN || s->pstate == SLOT_STOP) {
+			slot_initconv(s);
+			slot_attach(s);
+		}
+
+		if (s->pstate != SLOT_INIT)
+			dev_unref(d);
+	}
 
 	if (s->opt != o) {
 		c = ctl_find(CTL_SLOT_OPT, s, s->opt);
@@ -2057,13 +2105,6 @@ slot_setopt(struct slot *s, struct opt *o)
 		c->val_mask = ~0;
 	}
 
-	/* opt's device may have changed */
-	if (s->dev != o->dev) {
-		s->dev = o->dev;
-
-		c = ctl_find(CTL_SLOT_LEVEL, s, NULL);
-		ctl_update(c);
-	}
 }
 
 /*
