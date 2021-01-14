@@ -1937,13 +1937,13 @@ slot_new(struct opt *opt, unsigned int id, char *who,
 
 found:
 	/* move controls to new device */
-	slot_setopt(s, opt);
+	slot_setopt(s, s->opt);
 
-	if ((mode & MODE_REC) && (opt->mode & MODE_MON)) {
+	if ((mode & MODE_REC) && (s->opt->mode & MODE_MON)) {
 		mode |= MODE_MON;
 		mode &= ~MODE_REC;
 	}
-	if ((mode & opt->mode) != mode) {
+	if ((mode & s->opt->mode) != mode) {
 		if (log_level >= 1) {
 			slot_log(s);
 			log_puts(": requested mode not allowed\n");
@@ -1960,7 +1960,6 @@ found:
 		dev_unref(s->dev);
 		return NULL;
 	}
-	s->opt = opt;
 	s->ops = ops;
 	s->arg = arg;
 	s->pstate = SLOT_INIT;
@@ -1980,7 +1979,7 @@ found:
 	if (log_level >= 3) {
 		slot_log(s);
 		log_puts(": using ");
-		log_puts(opt->name);
+		log_puts(s->opt->name);
 		log_puts(", mode = ");
 		log_putx(mode);
 		log_puts("\n");
