@@ -186,6 +186,9 @@ port_mio_hup(void *arg)
 {
 	struct port *p = arg;
 
-	if (!port_reopen(p))
-		port_abort(p);
+	if (!port_reopen(p)) {
+		midi_abort(p->midi);
+		if (p->state != PORT_CFG)
+			port_close(p);
+	}
 }

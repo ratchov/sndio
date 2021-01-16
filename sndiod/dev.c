@@ -1275,6 +1275,8 @@ dev_abort(struct dev *d)
 		c->ops = NULL;
 	}
 
+	midi_abort(d->midi);
+
 	if (d->pstate != DEV_CFG)
 		dev_close(d);
 }
