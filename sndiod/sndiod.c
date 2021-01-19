@@ -527,7 +527,7 @@ main(int argc, char **argv)
 	o = opt_byname("default");
 	if (o == NULL) {
 		o = mkopt("default", dev_list, pmin, pmax, rmin, rmax,
-		    mode, vol, mmc, dup);
+		    mode, vol, 0, dup);
 		if (o == NULL)
 			return 1;
 	}

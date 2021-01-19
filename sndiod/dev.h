@@ -34,6 +34,13 @@
 #define DEV_NCTLSLOT 8
 
 /*
+ * MIDI machine control (MMC) states
+ */
+#define MMC_STOP	1			/* stopped, can't start */
+#define MMC_START	2			/* attempting to start */
+#define MMC_RUN		3			/* started */
+
+/*
  * audio stream state structure
  */
 
@@ -189,6 +196,25 @@ struct ctlslot {
 	unsigned int mode;
 };
 
+	/*
+	 * MIDI time code (MTC)
+	 */
+struct mtc {
+	unsigned int origin;		/* MTC start time */
+	unsigned int fps;		/* MTC frames per second */
+#define MTC_FPS_24	0
+#define MTC_FPS_25	1
+#define MTC_FPS_30	3
+	unsigned int fps_id;		/* one of above */
+	unsigned int hr;		/* MTC hours */
+	unsigned int min;		/* MTC minutes */
+	unsigned int sec;		/* MTC seconds */
+	unsigned int fr;		/* MTC frames */
+	unsigned int qfr;		/* MTC quarter frames */
+	int delta;			/* rel. to the last MTC tick */
+	int refs;
+};
+
 /*
  * audio device with plenty of slots
  */
@@ -256,33 +282,6 @@ struct dev {
 	unsigned int bufsz, round, rate;
 	unsigned int prime;
 
-	/*
-	 * MIDI time code (MTC)
-	 */
-	struct {
-		unsigned int origin;		/* MTC start time */
-		unsigned int fps;		/* MTC frames per second */
-#define MTC_FPS_24	0
-#define MTC_FPS_25	1
-#define MTC_FPS_30	3
-		unsigned int fps_id;		/* one of above */
-		unsigned int hr;		/* MTC hours */
-		unsigned int min;		/* MTC minutes */
-		unsigned int sec;		/* MTC seconds */
-		unsigned int fr;		/* MTC frames */
-		unsigned int qfr;		/* MTC quarter frames */
-		int delta;			/* rel. to the last MTC tick */
-		int refs;
-	} mtc;
-
-	/*
-	 * MIDI machine control (MMC)
-	 */
-#define MMC_STOP	1			/* stopped, can't start */
-#define MMC_START	2			/* attempting to start */
-#define MMC_RUN		3			/* started */
-	unsigned int tstate;			/* one of above */
-
 	unsigned int master;			/* software vol. knob */
 	unsigned int master_enabled;		/* 1 if h/w has no vo. knob */
 
@@ -292,6 +291,10 @@ extern struct dev *dev_list;
 extern struct ctl *ctl_list;
 extern struct slot slot_array[DEV_NSLOT];
 extern struct ctlslot ctlslot_array[DEV_NCTLSLOT];
+
+extern struct mtc mtc;
+extern unsigned int mmc_tstate;		/* one of MMC_* constants */
+extern struct dev *mmc_dev;
 
 void slot_array_init(void);
 
@@ -320,9 +323,6 @@ void dev_cycle(struct dev *);
 /*
  * midi & midi call-backs
  */
-void dev_mmcstart(struct dev *);
-void dev_mmcstop(struct dev *);
-void dev_mmcloc(struct dev *, unsigned int);
 void dev_master(struct dev *, unsigned int);
 void dev_midi_vol(struct dev *, struct slot *);
 

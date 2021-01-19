@@ -69,6 +69,17 @@ opt_new(struct dev *d, char *name,
 		return NULL;
 	}
 
+	if (mmc) {
+		if (mmc_dev != NULL && mmc_dev != d) {
+			log_puts(name);
+			log_puts(": MMC already setup for another device\n");
+			return NULL;
+		}
+		mmc_dev = d;
+		dev_log(mmc_dev);
+		log_puts(": will be MMC controlled\n");
+	}
+
 	o = xmalloc(sizeof(struct opt));
 	o->num = num;
 	o->dev = d;
