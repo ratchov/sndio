@@ -1333,6 +1333,10 @@ dev_close(struct dev *d)
 	d->pstate = DEV_CFG;
 	dev_sio_close(d);
 	dev_freebufs(d);
+	if (d->master_enabled) {
+		d->master_enabled = 0;
+		ctl_del(CTL_DEV_MASTER, d, NULL);
+	}
 }
 
 /*
@@ -1517,7 +1521,6 @@ dev_del(struct dev *d)
 		dev_close(d);
 
 	/* there are no clients, just free remaining local controls */
-	ctl_del(CTL_DEV_MASTER, d, NULL);
 	ctl_del(CTL_DEV_ALT, d, NULL);
 
 	for (p = &dev_list; *p != d; p = &(*p)->next) {
