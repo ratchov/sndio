@@ -198,6 +198,10 @@ opt_done(struct opt *o)
 		ctl_del(CTL_OPT_DEV, o, d);
 }
 
+/*
+ * Set opt's device, and (if necessary) move clients to
+ * to the new device
+ */
 void
 opt_setdev(struct opt *o, struct dev *d)
 {
@@ -207,6 +211,15 @@ opt_setdev(struct opt *o, struct dev *d)
 
 	if (o->dev == d)
 		return;
+
+	/*
+	 * if we're using MMC, move all opts to the new device, mmc_setdev()
+	 * will call us back
+	 */
+	if (o->mmc && mmc_dev != d) {
+		mmc_setdev(d);
+		return;
+	}
 
 	c = ctl_find(CTL_OPT_DEV, o, o->dev);
 	c->curval = 0;
@@ -222,4 +235,33 @@ opt_setdev(struct opt *o, struct dev *d)
 		if (s->opt == o)
 			slot_setopt(s, o);
 	}
+}
+
+/*
+ * Get a reference to opt's device
+ */
+struct dev *
+opt_devref(struct opt *o)
+{
+	struct dev *d, *a;
+
+	/* circulate to the first "alternate" device (greatest num) */
+	for (a = o->dev; a->alt_next->num > a->num; a = a->alt_next)
+		;
+
+	/* find first working one */
+	d = a;
+	while (1) {
+		if (dev_ref(d))
+			break;
+		d = d->alt_next;
+		if (d == a)
+			return NULL;
+	}
+
+	/* if device changed, move everything to the new one */
+	if (d != o->dev)
+		opt_setdev(o, d);
+
+	return d;
 }

@@ -135,10 +135,9 @@ struct ctl {
 
 #define CTL_HW		0
 #define CTL_DEV_MASTER	1
-#define CTL_DEV_ALT	2
-#define CTL_OPT_DEV	3
-#define CTL_SLOT_LEVEL	4
-#define CTL_SLOT_OPT	5
+#define CTL_OPT_DEV	2
+#define CTL_SLOT_LEVEL	3
+#define CTL_SLOT_OPT	4
 	unsigned int scope;
 	union {
 		struct {
@@ -152,10 +151,6 @@ struct ctl {
 		struct {
 			struct dev *dev;
 		} dev_master;
-		struct {
-			struct dev *dev;
-			struct dev_alt *alt;
-		} dev_alt;
 		struct {
 			struct slot *slot;
 		} slot_level;
@@ -229,6 +224,11 @@ struct dev {
 	char ctl_name[CTL_NAMEMAX];
 
 	/*
+	 * next to try if this fails
+	 */
+	struct dev *alt_next;
+
+	/*
 	 * audio device (while opened)
 	 */
 	struct dev_sio sio;
@@ -268,12 +268,7 @@ struct dev {
 #define DEV_INIT	1			/* stopped */
 #define DEV_RUN		2			/* playin & recording */
 	unsigned int pstate;			/* one of above */
-	struct dev_alt {
-		struct dev_alt *next;
-		char *name;
-		unsigned int idx;
-	} *alt_list;
-	int alt_num;
+	char *path;
 
 	/*
 	 * actual parameters and runtime state (i.e. once opened)
@@ -300,11 +295,10 @@ void slot_array_init(void);
 
 void dev_log(struct dev *);
 void dev_abort(struct dev *);
-int dev_reopen(struct dev *);
+struct dev *dev_migrate(struct dev *);
 struct dev *dev_new(char *, struct aparams *, unsigned int, unsigned int,
     unsigned int, unsigned int, unsigned int, unsigned int);
 struct dev *dev_bynum(int);
-int dev_addname(struct dev *, char *);
 void dev_del(struct dev *);
 void dev_adjpar(struct dev *, int, int, int);
 int  dev_init(struct dev *);
@@ -325,6 +319,8 @@ void dev_cycle(struct dev *);
  */
 void dev_master(struct dev *, unsigned int);
 void dev_midi_vol(struct dev *, struct slot *);
+
+void mmc_setdev(struct dev *);
 
 /*
  * sio_open(3) like interface for clients
@@ -358,6 +354,8 @@ struct ctlslot *ctlslot_new(struct dev *, struct ctlops *, void *);
 void ctlslot_del(struct ctlslot *);
 int ctlslot_visible(struct ctlslot *, struct ctl *);
 struct ctl *ctlslot_lookup(struct ctlslot *, int);
+void ctlslot_update(struct ctlslot *);
+void ctlslot_setdev(struct ctlslot *, struct dev *);
 
 void dev_label(struct dev *, int);
 int dev_makeunit(struct dev *, char *);

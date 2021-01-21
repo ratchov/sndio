@@ -45,5 +45,6 @@ struct opt *opt_bynum(int);
 void opt_init(struct opt *);
 void opt_done(struct opt *);
 void opt_setdev(struct opt *, struct dev *);
+struct dev *opt_devref(struct opt *);
 
 #endif /* !defined(OPT_H) */

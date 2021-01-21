@@ -315,8 +315,7 @@ mkdev(char *path, struct aparams *par,
 	struct dev *d;
 
 	for (d = dev_list; d != NULL; d = d->next) {
-		if (d->alt_list->next == NULL &&
-		    strcmp(d->alt_list->name, path) == 0)
+		if (strcmp(d->path, path) == 0)
 			return d;
 	}
 	if (!bufsz && !round) {
@@ -338,8 +337,7 @@ mkport(char *path, int hold)
 	struct port *c;
 
 	for (c = port_list; c != NULL; c = c->next) {
-		if (c->path_list->next == NULL &&
-		    strcmp(c->path_list->str, path) == 0)
+		if (strcmp(c->path, path) == 0)
 			return c;
 	}
 	c = port_new(path, MODE_MIDIMASK, hold);
@@ -374,8 +372,8 @@ main(int argc, char **argv)
 	const char *str;
 	struct aparams par;
 	struct opt *o;
-	struct dev *d;
-	struct port *p;
+	struct dev *d, *dev_first, *dev_next;
+	struct port *p, *port_first, *port_next;
 	struct listen *l;
 	struct passwd *pw;
 	struct tcpaddr {
@@ -404,6 +402,8 @@ main(int argc, char **argv)
 	rmax = 1;
 	aparams_init(&par);
 	mode = MODE_PLAY | MODE_REC;
+	dev_first = dev_next = NULL;
+	port_first = port_next = NULL;
 	tcpaddr_list = NULL;
 	devindex = 0;
 
@@ -456,21 +456,29 @@ main(int argc, char **argv)
 				errx(1, "%s: volume is %s", optarg, str);
 			break;
 		case 's':
-			if ((d = dev_list) == NULL) {
-				d = mkdev(default_devs[devindex++], &par, 0,
-				    bufsz, round, rate, hold, autovol);
+			if (dev_list == NULL) {
+				for (i = 0; default_devs[i] != NULL; i++) {
+					mkdev(default_devs[i], &par, 0,
+					    bufsz, round, rate, 0, autovol);
+				}
 			}
-			if (mkopt(optarg, d, pmin, pmax, rmin, rmax,
+			if (mkopt(optarg, dev_list, pmin, pmax, rmin, rmax,
 				mode, vol, mmc, dup) == NULL)
 				return 1;
 			break;
 		case 'q':
-			mkport(optarg, hold);
+			p = mkport(optarg, hold);
+			/* create new circulate list */
+			port_first = port_next = p;
 			break;
 		case 'Q':
-			if (port_list == NULL)
+			if (port_first == NULL)
 				errx(1, "-Q %s: no ports defined", optarg);
-			namelist_add(&port_list->path_list, optarg);
+			p = mkport(optarg, hold);
+			/* add to circulate list */
+			p->alt_next = port_next;
+			port_first->alt_next = p;
+			port_next = p;
 			break;
 		case 'a':
 			hold = opt_onoff();
@@ -489,15 +497,20 @@ main(int argc, char **argv)
 				errx(1, "%s: block size is %s", optarg, str);
 			break;
 		case 'f':
-			mkdev(optarg, &par, 0, bufsz, round,
+			d = mkdev(optarg, &par, 0, bufsz, round,
 			    rate, hold, autovol);
-			devindex = -1;
+			/* create new circulate list */
+			dev_first = dev_next = d;
 			break;
 		case 'F':
-			if ((d = dev_list) == NULL)
+			if (dev_first == NULL)
 				errx(1, "-F %s: no devices defined", optarg);
-			if (!dev_addname(d, optarg))
-				exit(1);
+			d = mkdev(optarg, &par, 0, bufsz, round,
+			    rate, hold, autovol);
+			/* add to circulate list */
+			d->alt_next = dev_next;
+			dev_first->alt_next = d;
+			dev_next = d;
 			break;
 		default:
 			fputs(usagestr, stderr);
@@ -514,7 +527,7 @@ main(int argc, char **argv)
 		for (i = 0; default_ports[i] != NULL; i++)
 			mkport(default_ports[i], 0);
 	}
-	if (devindex != -1) {
+	if (dev_list == NULL) {
 		for (i = devindex; default_devs[i] != NULL; i++) {
 			mkdev(default_devs[i], &par, 0,
 			    bufsz, round, rate, 0, autovol);
@@ -542,6 +555,12 @@ main(int argc, char **argv)
 			return 1;
 		dev_adjpar(d, o->mode, o->pmax, o->rmax);
 	}
+
+	/*
+	 * If mmc_dev is not set, set to one pointed by default device
+	 */
+	if (mmc_dev == NULL)
+		mmc_setdev(o->dev);
 
 	setsig();
 	filelist_init();
@@ -593,10 +612,17 @@ main(int argc, char **argv)
 			break;
 		if (reopen_flag) {
 			reopen_flag = 0;
-			for (d = dev_list; d != NULL; d = d->next)
-				dev_reopen(d);
-			for (p = port_list; p != NULL; p = p->next)
-				port_reopen(p);
+			o = opt_byname("default");
+			if (o != NULL)
+				dev_migrate(o->dev);
+			for (p = port_list; p != NULL; p = p->next) {
+				if (p->state != PORT_CFG)
+					break;
+			}
+			if (p != NULL) {
+				port_migrate(p);
+				port_close(p);
+			}
 		}
 		if (!file_poll())
 			break;
