@@ -2807,9 +2807,7 @@ ctl_del(int scope, void *arg0, void *arg1)
 #ifdef DEBUG
 			if (log_level >= 2) {
 				ctl_log(c);
-				log_puts(": removed, refs_mask = 0x");
-				log_putx(c->refs_mask);
-				log_puts("\n");
+				log_puts(": removed\n");
 			}
 #endif
 			c->refs_mask &= ~CTL_DEVMASK;
