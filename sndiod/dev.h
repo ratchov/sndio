@@ -332,7 +332,7 @@ void slot_del(struct slot *);
 void slot_setvol(struct slot *, unsigned int);
 void slot_setopt(struct slot *, struct opt *);
 void slot_start(struct slot *);
-void slot_stop(struct slot *);
+void slot_stop(struct slot *, int);
 void slot_read(struct slot *);
 void slot_write(struct slot *);
 
