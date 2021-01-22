@@ -309,6 +309,9 @@ void slot_start(struct slot *);
 void slot_stop(struct slot *);
 void slot_read(struct slot *);
 void slot_write(struct slot *);
+void slot_initconv(struct slot *);
+void slot_attach(struct slot *);
+void slot_detach(struct slot *);
 
 /*
  * control related functions
