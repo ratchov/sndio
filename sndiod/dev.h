@@ -306,7 +306,7 @@ struct slot *slot_new(struct dev *, struct opt *, unsigned int, char *,
 void slot_del(struct slot *);
 void slot_setvol(struct slot *, unsigned int);
 void slot_start(struct slot *);
-void slot_stop(struct slot *);
+void slot_stop(struct slot *, int);
 void slot_read(struct slot *);
 void slot_write(struct slot *);
 void slot_initconv(struct slot *);

@@ -1973,9 +1973,8 @@ slot_del(struct slot *s)
 	case SLOT_START:
 	case SLOT_READY:
 	case SLOT_RUN:
-		slot_stop(s);
-		/* PASSTHROUGH */
 	case SLOT_STOP:
+		slot_stop(s, 0);
 		break;
 	}
 	dev_unref(s->dev);
@@ -2196,7 +2195,7 @@ slot_detach(struct slot *s)
  * stop & detach if no data to drain.
  */
 void
-slot_stop(struct slot *s)
+slot_stop(struct slot *s, int drain)
 {
 #ifdef DEBUG
 	if (log_level >= 3) {
@@ -2215,7 +2214,7 @@ slot_stop(struct slot *s)
 	}
 
 	if (s->pstate == SLOT_RUN) {
-		if (s->mode & MODE_PLAY) {
+		if ((s->mode & MODE_PLAY) && drain) {
 			/*
 			 * Don't detach, dev_cycle() will do it for us
 			 * when the buffer is drained.
@@ -2223,6 +2222,8 @@ slot_stop(struct slot *s)
 			s->pstate = SLOT_STOP;
 			return;
 		}
+		slot_detach(s);
+	} else if (s->pstate == SLOT_STOP) {
 		slot_detach(s);
 	} else {
 #ifdef DEBUG
