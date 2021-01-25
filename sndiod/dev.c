@@ -2427,7 +2427,7 @@ ctlslot_new(struct opt *o, struct ctlops *ops, void *arg)
 				s->dev_mask |= 1 << d->num;
 		}
 	} else {
-		if (dev_ref(o->dev))
+		if (opt_devref(o))
 			s->dev_mask |= 1 << o->dev->num;
 	}
 	if (s->dev_mask == 0)
