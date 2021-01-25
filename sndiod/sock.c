@@ -616,7 +616,7 @@ int
 sock_setpar(struct sock *f)
 {
 	struct slot *s = f->slot;
-	struct dev *d = s->dev;
+	struct dev *d = s->opt->dev;
 	struct amsg_par *p = &f->rmsg.u.par;
 	unsigned int min, max;
 	uint32_t rate, appbufsz;
@@ -1242,7 +1242,7 @@ sock_execmsg(struct sock *f)
 		f->rstate = SOCK_RMSG;
 		f->lastvol = ctl; /* dont trigger feedback message */
 		slot_setvol(s, ctl);
-		dev_midi_vol(s->dev, s);
+		dev_midi_vol(s->opt->dev, s);
 		ctl_onval(CTL_SLOT_LEVEL, s, NULL, ctl);
 		break;
 	case AMSG_CTLSUB:

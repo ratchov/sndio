@@ -66,12 +66,9 @@ void slot_ctlname(struct slot *, char *, size_t);
 void slot_log(struct slot *);
 void slot_del(struct slot *);
 void slot_setvol(struct slot *, unsigned int);
-void slot_attach(struct slot *);
 void slot_ready(struct slot *);
 void slot_allocbufs(struct slot *);
 void slot_freebufs(struct slot *);
-void slot_initconv(struct slot *);
-void slot_detach(struct slot *);
 void slot_skip_update(struct slot *);
 void slot_write(struct slot *);
 void slot_read(struct slot *);
@@ -110,7 +107,7 @@ slot_array_init(void)
 		slot_array[i].ops = NULL;
 		slot_array[i].vol = MIDI_MAXCTL;
 		slot_array[i].index = i;
-		slot_array[i].dev = NULL;
+		slot_array[i].opt = NULL;
 		slot_array[i].serial = slot_serial++;
 		memset(slot_array[i].name, 0, SLOT_NAMEMAX);
 	}
@@ -429,7 +426,7 @@ dev_midi_dump(struct dev *d)
 
 	dev_midi_master(d);
 	for (i = 0, s = slot_array; i < DEV_NSLOT; i++, s++) {
-		if (s->dev != d)
+		if (s->opt != NULL && s->opt->dev != d)
 			continue;
 		dev_midi_slotdesc(d, s);
 		dev_midi_vol(d, s);
@@ -1103,10 +1100,9 @@ dev_abort(struct dev *d)
 	unsigned int opt_mask;
 
 	for (s = slot_array, i = DEV_NSLOT; i > 0; i--, s++) {
-		if (s->dev != d)
+		if (s->ops == NULL || s->opt->dev != d)
 			continue;
-		if (s->ops)
-			s->ops->exit(s->arg);
+		s->ops->exit(s->arg);
 		s->ops = NULL;
 	}
 	d->slot_list = NULL;
@@ -1177,6 +1173,24 @@ dev_close(struct dev *d)
 	}
 }
 
+int
+dev_iscompat(struct dev *odev, struct dev *ndev, unsigned int mode)
+{
+	if ((odev->mode & mode) != (ndev->mode & mode) ||
+	    (odev->round != ndev->round) ||
+	    (odev->bufsz != ndev->bufsz) ||
+	    (odev->rate != ndev->rate)) {
+		if (log_level >= 1) {
+			log_puts(ndev->ctl_name);
+			log_puts(": not compatible\n");
+			log_puts(odev->ctl_name);
+			log_puts("\n");
+		}
+		return 0;
+	}
+	return 1;
+}
+
 /*
  * Close the device, but attempt to migrate everything to a new sndio
  * device.
@@ -1210,14 +1224,7 @@ dev_migrate(struct dev *odev)
 			continue;
 
 		/* check if new parameters are compatible with old ones */
-		if (ndev->mode != odev->mode ||
-		    ndev->round != odev->round ||
-		    ndev->bufsz != odev->bufsz ||
-		    ndev->rate != odev->rate) {
-			if (log_level >= 1) {
-				dev_log(ndev);
-				log_puts(": not compatible, trying next one\n");
-			}
+		if (!dev_iscompat(odev, ndev, odev->mode)) {
 			dev_unref(ndev);
 			continue;
 		}
@@ -1238,17 +1245,18 @@ dev_migrate(struct dev *odev)
 
 	/* move opts to new device (also moves clients using the opts) */
 	for (o = opt_list; o != NULL; o = o->next) {
+		if (o->dev != odev)
+			continue;
 		if (strcmp(o->name, o->dev->ctl_name) == 0)
 			continue;
 		opt_setdev(o, ndev);
 	}
 
-	/* move remaining clients to new device */
-	o = opt_byname(ndev->ctl_name);
+	/* terminate remaining clients */
 	for (i = 0; i < DEV_NSLOT; i++) {
 		s = slot_array + i;
 		if (s->ops != NULL && s->opt->dev == odev)
-			slot_setopt(s, o);
+			s->ops->exit(s);
 	}
 
 	/* slots and/or MMC hold refs, drop ours */
@@ -1419,7 +1427,7 @@ mmc_trigger(void)
 	}
 	for (i = 0; i < DEV_NSLOT; i++) {
 		s = slot_array + i;
-		if (s->dev != mmc_dev || !s->ops || !s->opt->mmc)
+		if (s->opt == NULL || s->opt->dev != mmc_dev || !s->ops || !s->opt->mmc)
 			continue;
 		if (s->pstate != SLOT_READY) {
 #ifdef DEBUG
@@ -1435,7 +1443,7 @@ mmc_trigger(void)
 		return;
 	for (i = 0; i < DEV_NSLOT; i++) {
 		s = slot_array + i;
-		if (s->dev != mmc_dev || !s->ops || !s->opt->mmc)
+		if (s->opt == NULL || s->opt->dev != mmc_dev || !s->ops || !s->opt->mmc)
 			continue;
 		slot_attach(s);
 		s->pstate = SLOT_RUN;
@@ -1519,6 +1527,11 @@ mmc_setdev(struct dev *d)
 	if (mmc_dev == d)
 		return;
 
+	if (log_level >= 2) {
+		dev_log(d);
+		log_puts(": set to be MIDI clock source\n");
+	}
+
 	/* adjust clock and ref counter, if needed */
 	if (mmc_tstate == MMC_RUN) {
 		mtc.delta -= mmc_dev->delta;
@@ -1547,7 +1560,7 @@ void
 slot_initconv(struct slot *s)
 {
 	unsigned int dev_nch;
-	struct dev *d = s->dev;
+	struct dev *d = s->opt->dev;
 
 	if (s->mode & MODE_PLAY) {
 		cmap_init(&s->mix.cmap,
@@ -1628,7 +1641,7 @@ slot_initconv(struct slot *s)
 void
 slot_allocbufs(struct slot *s)
 {
-	struct dev *d = s->dev;
+	struct dev *d = s->opt->dev;
 
 	if (s->mode & MODE_PLAY) {
 		s->mix.bpf = s->par.bps * s->mix.nch;
@@ -1785,7 +1798,7 @@ slot_new(struct opt *opt, unsigned int id, char *who,
 	}
 
 	s = slot_array + bestidx;
-	if (s->dev != NULL) {
+	if (s->opt == NULL) {
 		/* slot recycled, delete old controls */
 		ctl_del(CTL_SLOT_LEVEL, s, NULL);
 		ctl_del(CTL_SLOT_OPT, s, NULL);
@@ -1798,7 +1811,6 @@ slot_new(struct opt *opt, unsigned int id, char *who,
 	s->unit = i;
 	s->id = id;
 	s->opt = opt;
-	s->dev = opt->dev;
 	slot_ctlname(s, ctl_name, CTL_NAMEMAX);
 	ctl_new(CTL_SLOT_LEVEL, s, NULL,
 	    CTL_NUM, "app", ctl_name, -1, "level",
@@ -1828,9 +1840,6 @@ found:
 	if (!opt_ref(s->opt))
 		return NULL;
 
-	/* move controls to (possibly) new device */
-	slot_setopt(s, s->opt);
-
 	s->ops = ops;
 	s->arg = arg;
 	s->pstate = SLOT_INIT;
@@ -1841,11 +1850,11 @@ found:
 	if (s->mode & MODE_RECMASK)
 		s->sub.nch = s->opt->rmax - s->opt->rmin + 1;
 	s->xrun = s->opt->mmc ? XRUN_SYNC : XRUN_IGNORE;
-	s->appbufsz = s->dev->bufsz;
-	s->round = s->dev->round;
-	s->rate = s->dev->rate;
-	dev_midi_slotdesc(s->dev, s);
-	dev_midi_vol(s->dev, s);
+	s->appbufsz = s->opt->dev->bufsz;
+	s->round = s->opt->dev->round;
+	s->rate = s->opt->dev->rate;
+	dev_midi_slotdesc(s->opt->dev, s);
+	dev_midi_vol(s->opt->dev, s);
 #ifdef DEBUG
 	if (log_level >= 3) {
 		slot_log(s);
@@ -1905,70 +1914,49 @@ slot_setvol(struct slot *s, unsigned int vol)
 void
 slot_setopt(struct slot *s, struct opt *o)
 {
+	struct dev *odev, *ndev;
 	struct ctl *c;
-	struct dev *d;
 
-	slot_log(s);
-	log_puts(": setting opt to ");
-	log_puts(o->name);
-	log_puts("\n");
+	if (s->opt == NULL || s->opt == o)
+		return;
 
-	/*
-	 * Even if opt pointer didn't change, opt's
-	 * device may have changed
-	 */
-	if (s->dev != o->dev) {
-		if (s->pstate != SLOT_INIT) {
-			if (!opt_ref(o))
-				return;
-
-			/* check if new device is compatible with slot */
-			if (s->dev->round != o->dev->round ||
-			    s->dev->bufsz != o->dev->bufsz ||
-			    s->dev->rate != o->dev->rate ||
-			    s->mode != (o->dev->mode & s->mode)) {
-				if (log_level >= 2) {
-					slot_log(s);
-					log_puts(": device ");
-					log_puts(o->dev->ctl_name);
-					log_puts(" not compatible\n");
-				}
-				opt_unref(o);
-				return;
-			}
-		}
-
-		if (s->pstate == SLOT_RUN || s->pstate == SLOT_STOP)
-			slot_detach(s);
-
-		s->dev = o->dev;
-		c = ctl_find(CTL_SLOT_LEVEL, s, NULL);
-		ctl_update(c);
-
-		if (s->pstate == SLOT_RUN || s->pstate == SLOT_STOP) {
-			slot_initconv(s);
-			slot_attach(s);
-		}
-
-		if (s->pstate != SLOT_INIT)
-			opt_unref(o);
+	if (log_level >= 2) {
+		slot_log(s);
+		log_puts(": moving to opt ");
+		log_puts(o->name);
+		log_puts("\n");
 	}
 
-	if (s->opt != o) {
-		d = opt_ref(o);
-		if (d == NULL)
-			return;
+	odev = s->opt->dev;
+	ndev = opt_ref(o);
+	if (ndev == NULL)
+		return;
 
-		c = ctl_find(CTL_SLOT_OPT, s, s->opt);
-		c->curval = 0;
-
-		opt_unref(s->opt);
-		s->opt = o;
-
-		c = ctl_find(CTL_SLOT_OPT, s, s->opt);
-		c->curval = 1;
-		c->val_mask = ~0;
+	if (s->ops != NULL && !dev_iscompat(odev, ndev, s->mode)) {
+		opt_unref(o);
+		return;
 	}
+
+	c = ctl_find(CTL_SLOT_OPT, s, s->opt);
+	c->curval = 0;
+
+	if (s->pstate == SLOT_RUN || s->pstate == SLOT_STOP)
+		slot_detach(s);
+
+	opt_unref(s->opt);
+	s->opt = o;
+
+	c = ctl_find(CTL_SLOT_LEVEL, s, NULL);
+	ctl_update(c);
+
+	if (s->pstate == SLOT_RUN || s->pstate == SLOT_STOP) {
+		slot_initconv(s);
+		slot_attach(s);
+	}
+
+	c = ctl_find(CTL_SLOT_OPT, s, s->opt);
+	c->curval = 1;
+	c->val_mask = ~0;
 }
 
 /*
@@ -1977,7 +1965,7 @@ slot_setopt(struct slot *s, struct opt *o)
 void
 slot_attach(struct slot *s)
 {
-	struct dev *d = s->dev;
+	struct dev *d = s->opt->dev;
 	long long pos;
 
 	/*
@@ -2042,7 +2030,7 @@ slot_ready(struct slot *s)
 	 * device may be disconnected, and if so we're called from
 	 * slot->ops->exit() on a closed device
 	 */
-	if (s->dev->pstate == DEV_CFG)
+	if (s->opt->dev->pstate == DEV_CFG)
 		return;
 	if (!s->opt->mmc) {
 		slot_attach(s);
@@ -2058,6 +2046,7 @@ slot_ready(struct slot *s)
 void
 slot_start(struct slot *s)
 {
+	struct dev *d = s->opt->dev;
 #ifdef DEBUG
 	if (s->pstate != SLOT_INIT) {
 		slot_log(s);
@@ -2070,7 +2059,7 @@ slot_start(struct slot *s)
 			log_puts(": playing ");
 			aparams_log(&s->par);
 			log_puts(" -> ");
-			aparams_log(&s->dev->par);
+			aparams_log(&d->par);
 			log_puts("\n");
 		}
 	}
@@ -2080,7 +2069,7 @@ slot_start(struct slot *s)
 			log_puts(": recording ");
 			aparams_log(&s->par);
 			log_puts(" <- ");
-			aparams_log(&s->dev->par);
+			aparams_log(&d->par);
 			log_puts("\n");
 		}
 	}
@@ -2091,7 +2080,7 @@ slot_start(struct slot *s)
 		/*
 		 * N-th recorded block is the N-th played block
 		 */
-		s->sub.prime = -dev_getpos(s->dev) / s->dev->round;
+		s->sub.prime = -dev_getpos(d) / d->round;
 	}
 	s->skip = 0;
 
@@ -2099,7 +2088,7 @@ slot_start(struct slot *s)
 	 * get the current position, the origin is when the first sample
 	 * played and/or recorded
 	 */
-	s->delta = dev_getpos(s->dev) * (int)s->round / (int)s->dev->round;
+	s->delta = dev_getpos(d) * (int)s->round / (int)d->round;
 	s->delta_rem = 0;
 
 	if (s->mode & MODE_PLAY) {
@@ -2117,7 +2106,7 @@ void
 slot_detach(struct slot *s)
 {
 	struct slot **ps;
-	struct dev *d = s->dev;
+	struct dev *d = s->opt->dev;
 	long long pos;
 
 	for (ps = &d->slot_list; *ps != s; ps = &(*ps)->next) {
@@ -2338,7 +2327,7 @@ ctlslot_visible(struct ctlslot *s, struct ctl *c)
 	case CTL_DEV_MASTER:
 		return (s->opt->dev == c->u.any.arg0);
 	case CTL_SLOT_LEVEL:
-		return (s->opt->dev == c->u.slot_level.slot->dev);
+		return (s->opt->dev == c->u.slot_level.slot->opt->dev);
 	default:
 		return 0;
 	}
@@ -2489,7 +2478,7 @@ ctl_setval(struct ctl *c, int val)
 	case CTL_SLOT_LEVEL:
 		slot_setvol(c->u.slot_level.slot, val);
 		// XXX change dev_midi_vol() into slot_midi_vol()
-		dev_midi_vol(c->u.slot_level.slot->dev, c->u.slot_level.slot);
+		dev_midi_vol(c->u.slot_level.slot->opt->dev, c->u.slot_level.slot);
 		c->val_mask = ~0U;
 		c->curval = val;
 		return 1;

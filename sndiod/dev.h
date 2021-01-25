@@ -63,7 +63,6 @@ struct ctlops
 struct slot {
 	struct slotops *ops;			/* client callbacks */
 	struct slot *next;			/* next on the play list */
-	struct dev *dev;			/* device this belongs to */
 	struct opt *opt;			/* config used */
 	void *arg;				/* user data for callbacks */
 	struct aparams par;			/* socket side params */
@@ -95,7 +94,7 @@ struct slot {
 	int xrun;				/* underrun policy */
 	int skip;				/* cycles to skip (for xrun) */
 #define SLOT_BUFSZ(s) \
-	((s)->appbufsz + (s)->dev->bufsz / (s)->dev->round * (s)->round)
+	((s)->appbufsz + (s)->opt->dev->bufsz / (s)->opt->dev->round * (s)->round)
 	int appbufsz;				/* slot-side buffer size */
 	int round;				/* slot-side block size */
 	int rate;				/* slot-side sample rate */
@@ -306,6 +305,7 @@ int dev_ref(struct dev *);
 void dev_unref(struct dev *);
 int  dev_getpos(struct dev *);
 unsigned int dev_roundof(struct dev *, unsigned int);
+int dev_iscompat(struct dev *, struct dev *, unsigned int);
 
 /*
  * interface to hardware device
@@ -343,6 +343,9 @@ void slot_start(struct slot *);
 void slot_stop(struct slot *, int);
 void slot_read(struct slot *);
 void slot_write(struct slot *);
+void slot_initconv(struct slot *);
+void slot_attach(struct slot *);
+void slot_detach(struct slot *);
 
 /*
  * control related functions

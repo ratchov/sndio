@@ -366,7 +366,7 @@ opt_done(struct opt *o)
  * to the new device
  */
 void
-opt_setdev(struct opt *o, struct dev *d)
+opt_setdev(struct opt *o, struct dev *ndev)
 {
 	struct dev *odev;
 	struct ctl *c;
@@ -374,15 +374,25 @@ opt_setdev(struct opt *o, struct dev *d)
 	struct slot *s;
 	int i;
 
-	if (o->dev == d)
+	odev = o->dev;
+	if (odev == ndev)
 		return;
+
+	/* check if clients can use new device */
+	for (i = 0; i < DEV_NSLOT; i++) {
+		s = slot_array + i;
+		if (s->opt != o)
+			continue;
+		if (s->ops != NULL && !dev_iscompat(odev, ndev, s->mode))
+			return;
+	}
 
 	/*
 	 * if we're using MMC, move all opts to the new device, mmc_setdev()
 	 * will call us back
 	 */
-	if (o->mmc && mmc_dev != d) {
-		mmc_setdev(d);
+	if (o->mmc && mmc_dev != ndev) {
+		mmc_setdev(ndev);
 		return;
 	}
 
@@ -390,8 +400,17 @@ opt_setdev(struct opt *o, struct dev *d)
 	if (c != NULL)
 		c->curval = 0;
 
-	odev = o->dev;
-	o->dev = d;
+	/* detach clients from old device */
+	for (i = 0; i < DEV_NSLOT; i++) {
+		s = slot_array + i;
+		if (s->ops == NULL || s->opt != o)
+			continue;
+
+		if (s->pstate == SLOT_RUN || s->pstate == SLOT_STOP)
+			slot_detach(s);
+	}
+
+	o->dev = ndev;
 
 	if (o->refcnt > 0) {
 		dev_unref(odev);
@@ -404,10 +423,19 @@ opt_setdev(struct opt *o, struct dev *d)
 		c->val_mask = ~0;
 	}
 
+	/* attach clients to new device */
 	for (i = 0; i < DEV_NSLOT; i++) {
 		s = slot_array + i;
-		if (s->opt == o)
-			slot_setopt(s, o);
+		if (s->ops == NULL || s->opt != o)
+			continue;
+
+		c = ctl_find(CTL_SLOT_LEVEL, s, NULL);
+		ctl_update(c);
+
+		if (s->pstate == SLOT_RUN || s->pstate == SLOT_STOP) {
+			slot_initconv(s);
+			slot_attach(s);
+		}
 	}
 
 	/* move controlling clients to new device */
