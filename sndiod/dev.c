@@ -1197,9 +1197,6 @@ dev_migrate(struct dev *odev)
 	while (1) {
 		/* try next one, circulating through the list */
 		ndev = ndev->alt_next;
-		log_puts("trying ");
-		log_puts(ndev->ctl_name);
-		log_puts("\n");
 		if (ndev == odev) {
 			if (log_level >= 1) {
 				dev_log(odev);
