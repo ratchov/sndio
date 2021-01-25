@@ -185,7 +185,7 @@ struct ctl {
 struct ctlslot {
 	struct ctlops *ops;
 	void *arg;
-	struct dev *dev;		/* or NULL if not bound to a devices */
+	struct opt *opt;		/* or NULL if not bound to a device */
 	unsigned int dev_mask;		/* devices visible by this client */
 	unsigned int self;		/* equal to (1 << index) */
 	unsigned int mode;
@@ -350,12 +350,11 @@ struct ctl *ctl_find(int, void *, void *);
 void ctl_update(struct ctl *);
 int ctl_onval(int, void *, void *, int);
 
-struct ctlslot *ctlslot_new(struct dev *, struct ctlops *, void *);
+struct ctlslot *ctlslot_new(struct opt *, struct ctlops *, void *);
 void ctlslot_del(struct ctlslot *);
 int ctlslot_visible(struct ctlslot *, struct ctl *);
 struct ctl *ctlslot_lookup(struct ctlslot *, int);
 void ctlslot_update(struct ctlslot *);
-void ctlslot_setdev(struct ctlslot *, struct dev *);
 
 void dev_label(struct dev *, int);
 int dev_makeunit(struct dev *, char *);

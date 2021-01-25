@@ -885,21 +885,10 @@ sock_hello(struct sock *f)
 		return 1;
 	}
 	if (mode & MODE_CTLMASK) {
-		if (p->devnum == 15)
-			d = NULL;
-		else {
-			d = dev_bynum(p->devnum);
-			if (d == NULL) {
-				if (log_level >= 2) {
-					sock_log(f);
-					log_puts(": ");
-					log_putu(p->devnum);
-					log_puts(": no such device\n");
-				}
-				return 0;
-			}
-		}
-		f->ctlslot = ctlslot_new(d, &sock_ctlops, f);
+		opt = opt_byname(p->opt);
+		if (opt == NULL && strcmp(p->opt, "*") != 0)
+			return 0;
+		f->ctlslot = ctlslot_new(opt, &sock_ctlops, f);
 		if (f->ctlslot == NULL) {
 			if (log_level >= 2) {
 				sock_log(f);
@@ -1578,8 +1567,8 @@ sock_buildmsg(struct sock *f)
 			c->val_mask &= ~mask;
 			type = ctlslot_visible(f->ctlslot, c) ?
 			    c->type : CTL_NONE;
-			strlcpy(desc->group, (f->ctlslot->dev == NULL ||
-			    strcmp(c->group, f->ctlslot->dev->ctl_name) != 0) ?
+			strlcpy(desc->group, (f->ctlslot->opt == NULL ||
+			    strcmp(c->group, f->ctlslot->opt->dev->ctl_name) != 0) ?
 			    c->group : "",
 			    AMSG_CTL_NAMEMAX);
 			strlcpy(desc->node0.name, c->node0.name,

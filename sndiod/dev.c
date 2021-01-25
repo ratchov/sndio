@@ -1219,7 +1219,7 @@ dev_open(struct dev *d)
 	for (s = ctlslot_array, i = 0; i < DEV_NCTLSLOT; i++, s++) {
 		if (s->ops == NULL)
 			continue;
-		if (s->dev == NULL && (s->dev_mask & dev_mask) == 0) {
+		if (s->opt == NULL && (s->dev_mask & dev_mask) == 0) {
 			d->refcnt++;
 			s->dev_mask |= dev_mask;
 		}
@@ -1252,7 +1252,7 @@ dev_abort(struct dev *d)
 			continue;
 		if ((c->dev_mask & dev_mask) == 0)
 			continue;
-		if (c->dev == NULL) {
+		if (c->opt == NULL) {
 			c->dev_mask &= ~dev_mask;
 			dev_unref(d);
 			ctlslot_update(c);
@@ -1318,7 +1318,6 @@ dev_migrate(struct dev *odev)
 	struct dev *ndev;
 	struct opt *o;
 	struct slot *s;
-	struct ctlslot *c;
 	int i;
 
 	/* not opened */
@@ -1384,14 +1383,6 @@ dev_migrate(struct dev *odev)
 		s = slot_array + i;
 		if (s->ops != NULL && s->opt->dev == odev)
 			slot_setopt(s, o);
-	}
-
-	/* move controlling clients to new device */
-	for (c = ctlslot_array, i = 0; i < DEV_NCTLSLOT; i++, c++) {
-		if (c->ops == NULL)
-			continue;
-		if (c->dev == odev)
-			ctlslot_setdev(c, ndev);
 	}
 
 	/* connect control MIDI ports to new device */
@@ -2116,7 +2107,6 @@ slot_setopt(struct slot *s, struct opt *o)
 		c->curval = 1;
 		c->val_mask = ~0;
 	}
-
 }
 
 /*
@@ -2412,10 +2402,11 @@ slot_read(struct slot *s)
  * allocate at control slot
  */
 struct ctlslot *
-ctlslot_new(struct dev *d, struct ctlops *ops, void *arg)
+ctlslot_new(struct opt *o, struct ctlops *ops, void *arg)
 {
 	struct ctlslot *s;
 	struct ctl *c;
+	struct dev *d;
 	int i;
 
 	i = 0;
@@ -2429,15 +2420,15 @@ ctlslot_new(struct dev *d, struct ctlops *ops, void *arg)
 	}
 	s->dev_mask = 0;
 	s->self = 1 << i;
-	s->dev = d;
-	if (d == NULL) {
+	s->opt = o;
+	if (o == NULL) {
 		for (d = dev_list; d != NULL; d = d->next) {
 			if (dev_ref(d))
 				s->dev_mask |= 1 << d->num;
 		}
 	} else {
-		if (dev_ref(d))
-			s->dev_mask |= 1 << d->num;
+		if (dev_ref(o->dev))
+			s->dev_mask |= 1 << o->dev->num;
 	}
 	if (s->dev_mask == 0)
 		return NULL;
@@ -2480,14 +2471,14 @@ ctlslot_del(struct ctlslot *s)
 int
 ctlslot_visible(struct ctlslot *s, struct ctl *c)
 {
-	if (s->dev == NULL)
+	if (s->opt == NULL)
 		return 1;
 	switch (c->scope) {
 	case CTL_HW:
 	case CTL_DEV_MASTER:
-		return (s->dev == c->u.any.arg0);
+		return (s->opt->dev == c->u.any.arg0);
 	case CTL_SLOT_LEVEL:
-		return (s->dev == c->u.slot_level.slot->dev);
+		return (s->opt->dev == c->u.slot_level.slot->dev);
 	default:
 		return 0;
 	}
@@ -2527,24 +2518,6 @@ ctlslot_update(struct ctlslot *s)
 		/* if control is hidden */
 		c->desc_mask |= s->self;
 	}
-}
-
-void
-ctlslot_setdev(struct ctlslot *s, struct dev *d)
-{
-	if (s->dev == NULL)
-		return;
-
-	if (!dev_ref(d))
-		return;
-
-	dev_unref(s->dev);
-
-	s->dev_mask &= ~(1 << s->dev->num);
-	s->dev_mask |= (1 << d->num);
-	s->dev = d;
-
-	ctlslot_update(s);
 }
 
 void

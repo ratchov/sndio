@@ -205,7 +205,9 @@ opt_done(struct opt *o)
 void
 opt_setdev(struct opt *o, struct dev *d)
 {
+	struct dev *odev;
 	struct ctl *c;
+	struct ctlslot *p;
 	struct slot *s;
 	int i;
 
@@ -224,6 +226,7 @@ opt_setdev(struct opt *o, struct dev *d)
 	c = ctl_find(CTL_OPT_DEV, o, o->dev);
 	c->curval = 0;
 
+	odev = o->dev;
 	o->dev = d;
 
 	c = ctl_find(CTL_OPT_DEV, o, o->dev);
@@ -234,6 +237,19 @@ opt_setdev(struct opt *o, struct dev *d)
 		s = slot_array + i;
 		if (s->opt == o)
 			slot_setopt(s, o);
+	}
+
+	/* move controlling clients to new device */
+	for (p = ctlslot_array, i = 0; i < DEV_NCTLSLOT; i++, p++) {
+		if (p->ops == NULL)
+			continue;
+		if (p->opt == o) {
+			p->dev_mask &= ~(1 << odev->num);
+			dev_unref(odev);
+			if (dev_ref(d))
+				p->dev_mask |= (1 << d->num);
+			ctlslot_update(p);
+		}
 	}
 }
 
