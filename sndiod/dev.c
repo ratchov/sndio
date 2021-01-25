@@ -36,14 +36,7 @@ void zomb_eof(void *);
 void zomb_exit(void *);
 
 void dev_log(struct dev *);
-void dev_midi_vol(struct dev *, struct slot *);
-void dev_midi_master(struct dev *);
-void dev_midi_slotdesc(struct dev *, struct slot *);
-void dev_midi_dump(struct dev *);
-void dev_midi_imsg(void *, unsigned char *, int);
-void dev_midi_omsg(void *, unsigned char *, int);
-void dev_midi_fill(void *, int);
-void dev_midi_exit(void *);
+void dev_midi_send(struct dev *, void *, int);
 
 void dev_mix_badd(struct dev *, struct slot *);
 void dev_mix_adjvol(struct dev *);
@@ -69,13 +62,6 @@ void dev_del(struct dev *);
 unsigned int dev_roundof(struct dev *, unsigned int);
 void dev_wakeup(struct dev *);
 
-void mtc_midi_qfr(int);
-void mtc_midi_full(void);
-void mmc_trigger(void);
-void mmc_start(void);
-void mmc_stop(void);
-void mmc_loc(unsigned int);
-
 void slot_ctlname(struct slot *, char *, size_t);
 void slot_log(struct slot *);
 void slot_del(struct slot *);
@@ -93,13 +79,6 @@ int slot_skip(struct slot *);
 
 void ctl_node_log(struct ctl_node *);
 void ctl_log(struct ctl *);
-
-struct midiops dev_midiops = {
-	dev_midi_imsg,
-	dev_midi_omsg,
-	dev_midi_fill,
-	dev_midi_exit
-};
 
 struct slotops zomb_slotops = {
 	zomb_onmove,
@@ -232,6 +211,21 @@ zomb_exit(void *arg)
 }
 
 /*
+ * Broadcast MIDI data to all opts using this device
+ */
+void
+dev_midi_send(struct dev *d, void *msg, int msglen)
+{
+	struct opt *o;
+
+	for (o = opt_list; o != NULL; o = o->next) {
+		if (o->dev != d)
+			continue;
+		midi_send(o->midi, msg, msglen);
+	}
+}
+
+/*
  * send a quarter frame MTC message
  */
 void
@@ -296,7 +290,7 @@ mtc_midi_qfr(int delta)
 		buf[1] = (mtc.qfr << 4) | data;
 		mtc.qfr++;
 		mtc.qfr &= 7;
-		midi_send(mmc_dev->midi, buf, 2);
+		dev_midi_send(mmc_dev, buf, 2);
 		mtc.delta -= qfrlen;
 	}
 }
@@ -348,7 +342,7 @@ mtc_midi_full(void)
 	x.u.full.fr = mtc.fr;
 	x.u.full.end = SYSEX_END;
 	mtc.qfr = 0;
-	midi_send(mmc_dev->midi, (unsigned char *)&x, SYSEX_SIZE(full));
+	dev_midi_send(mmc_dev, (unsigned char *)&x, SYSEX_SIZE(full));
 }
 
 /*
@@ -362,7 +356,7 @@ dev_midi_vol(struct dev *d, struct slot *s)
 	msg[0] = MIDI_CTL | s->index;
 	msg[1] = MIDI_CTL_VOL;
 	msg[2] = s->vol;
-	midi_send(d->midi, msg, 3);
+	dev_midi_send(d, msg, 3);
 }
 
 /*
@@ -402,7 +396,7 @@ dev_midi_master(struct dev *d)
 	x.u.master.fine = 0;
 	x.u.master.coarse = master;
 	x.u.master.end = SYSEX_END;
-	midi_send(d->midi, (unsigned char *)&x, SYSEX_SIZE(master));
+	dev_midi_send(d, (unsigned char *)&x, SYSEX_SIZE(master));
 }
 
 /*
@@ -423,7 +417,7 @@ dev_midi_slotdesc(struct dev *d, struct slot *s)
 		slot_ctlname(s, (char *)x.u.slotdesc.name, SYSEX_NAMELEN);
 	x.u.slotdesc.chan = s->index;
 	x.u.slotdesc.end = SYSEX_END;
-	midi_send(d->midi, (unsigned char *)&x, SYSEX_SIZE(slotdesc));
+	dev_midi_send(d, (unsigned char *)&x, SYSEX_SIZE(slotdesc));
 }
 
 void
@@ -446,136 +440,7 @@ dev_midi_dump(struct dev *d)
 	x.id0 = SYSEX_AUCAT;
 	x.id1 = SYSEX_AUCAT_DUMPEND;
 	x.u.dumpend.end = SYSEX_END;
-	midi_send(d->midi, (unsigned char *)&x, SYSEX_SIZE(dumpend));
-}
-
-void
-dev_midi_imsg(void *arg, unsigned char *msg, int len)
-{
-#ifdef DEBUG
-	struct dev *d = arg;
-
-	dev_log(d);
-	log_puts(": can't receive midi messages\n");
-	panic();
-#endif
-}
-
-void
-dev_midi_omsg(void *arg, unsigned char *msg, int len)
-{
-	struct dev *d = arg;
-	struct sysex *x;
-	unsigned int fps, chan;
-
-	if ((msg[0] & MIDI_CMDMASK) == MIDI_CTL && msg[1] == MIDI_CTL_VOL) {
-		chan = msg[0] & MIDI_CHANMASK;
-		if (chan >= DEV_NSLOT)
-			return;
-		if (slot_array[chan].dev != d)
-			return;
-		slot_setvol(slot_array + chan, msg[2]);
-		ctl_onval(CTL_SLOT_LEVEL, slot_array + chan, NULL, msg[2]);
-		return;
-	}
-	x = (struct sysex *)msg;
-	if (x->start != SYSEX_START)
-		return;
-	if (len < SYSEX_SIZE(empty))
-		return;
-	switch (x->type) {
-	case SYSEX_TYPE_RT:
-		if (x->id0 == SYSEX_CONTROL && x->id1 == SYSEX_MASTER) {
-			if (len == SYSEX_SIZE(master)) {
-				dev_master(d, x->u.master.coarse);
-				if (d->master_enabled) {
-					ctl_onval(CTL_DEV_MASTER, d, NULL,
-					   x->u.master.coarse);
-				}
-			}
-			return;
-		}
-		if (x->id0 != SYSEX_MMC)
-			return;
-		switch (x->id1) {
-		case SYSEX_MMC_STOP:
-			if (len != SYSEX_SIZE(stop))
-				return;
-			if (mmc_dev != d)
-				return;
-			if (log_level >= 2) {
-				dev_log(d);
-				log_puts(": mmc stop\n");
-			}
-			mmc_stop();
-			break;
-		case SYSEX_MMC_START:
-			if (len != SYSEX_SIZE(start))
-				return;
-			if (mmc_dev != d)
-				return;
-			if (log_level >= 2) {
-				dev_log(d);
-				log_puts(": mmc start\n");
-			}
-			mmc_start();
-			break;
-		case SYSEX_MMC_LOC:
-			if (len != SYSEX_SIZE(loc) ||
-			    x->u.loc.len != SYSEX_MMC_LOC_LEN ||
-			    x->u.loc.cmd != SYSEX_MMC_LOC_CMD)
-				return;
-			if (mmc_dev != d)
-				return;
-			switch (x->u.loc.hr >> 5) {
-			case MTC_FPS_24:
-				fps = 24;
-				break;
-			case MTC_FPS_25:
-				fps = 25;
-				break;
-			case MTC_FPS_30:
-				fps = 30;
-				break;
-			default:
-				mmc_stop();
-				return;
-			}
-			mmc_loc(
-			    (x->u.loc.hr & 0x1f) * 3600 * MTC_SEC +
-			     x->u.loc.min * 60 * MTC_SEC +
-			     x->u.loc.sec * MTC_SEC +
-			     x->u.loc.fr * (MTC_SEC / fps));
-			break;
-		}
-		break;
-	case SYSEX_TYPE_EDU:
-		if (x->id0 != SYSEX_AUCAT || x->id1 != SYSEX_AUCAT_DUMPREQ)
-			return;
-		if (len != SYSEX_SIZE(dumpreq))
-			return;
-		dev_midi_dump(d);
-		break;
-	}
-}
-
-void
-dev_midi_fill(void *arg, int count)
-{
-	/* nothing to do */
-}
-
-void
-dev_midi_exit(void *arg)
-{
-	struct dev *d = arg;
-
-	if (log_level >= 1) {
-		dev_log(d);
-		log_puts(": midi end point died\n");
-	}
-	if (d->pstate != DEV_CFG)
-		dev_close(d);
+	dev_midi_send(d, (unsigned char *)&x, SYSEX_SIZE(dumpend));
 }
 
 int
@@ -1069,15 +934,6 @@ dev_new(char *path, struct aparams *par,
 	d->path = path;
 	d->num = num;
 
-	/*
-	 * XXX: below, we allocate a midi input buffer, since we don't
-	 *	receive raw midi data, so no need to allocate a input
-	 *	ibuf.  Possibly set imsg & fill callbacks to NULL and
-	 *	use this to in midi_new() to check if buffers need to be
-	 *	allocated
-	 */
-	d->midi = midi_new(&dev_midiops, d, MODE_MIDIIN | MODE_MIDIOUT);
-	midi_tag(d->midi, d->num);
 	d->reqpar = *par;
 	d->reqmode = mode;
 	d->reqpchan = d->reqrchan = 0;
@@ -1236,6 +1092,7 @@ dev_abort(struct dev *d)
 	int i;
 	struct slot *s;
 	struct ctlslot *c;
+	struct opt *o;
 	unsigned int dev_mask = 1 << d->num;
 
 	for (s = slot_array, i = DEV_NSLOT; i > 0; i--, s++) {
@@ -1262,7 +1119,8 @@ dev_abort(struct dev *d)
 		}
 	}
 
-	midi_abort(d->midi);
+	for (o = opt_list; o != NULL; o = o->next)
+		midi_abort(o->midi);
 
 	if (d->pstate != DEV_CFG)
 		dev_close(d);
@@ -1385,9 +1243,6 @@ dev_migrate(struct dev *odev)
 			slot_setopt(s, o);
 	}
 
-	/* connect control MIDI ports to new device */
-	midi_migrate(odev->midi, ndev->midi);
-
 	/* slots and/or MMC hold refs, drop ours */
 	dev_unref(ndev);
 
@@ -1498,7 +1353,6 @@ dev_del(struct dev *d)
 		}
 #endif
 	}
-	midi_del(d->midi);
 	*p = d->next;
 	xfree(d);
 }
@@ -1656,10 +1510,6 @@ mmc_setdev(struct dev *d)
 
 	if (mmc_dev == d)
 		return;
-
-	/* reconnect MIDI control ports to MMC */
-	if (mmc_dev)
-		midi_migrate(mmc_dev->midi, d->midi);
 
 	/* adjust clock and ref counter, if needed */
 	if (mmc_tstate == MMC_RUN) {

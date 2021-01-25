@@ -216,7 +216,6 @@ struct mtc {
 struct dev {
 	struct dev *next;
 	struct slot *slot_list;			/* audio streams attached */
-	struct midi *midi;
 
 	/*
 	 * name used for various controls
@@ -319,7 +318,16 @@ void dev_cycle(struct dev *);
  */
 void dev_master(struct dev *, unsigned int);
 void dev_midi_vol(struct dev *, struct slot *);
+void dev_midi_master(struct dev *);
+void dev_midi_slotdesc(struct dev *, struct slot *);
+void dev_midi_dump(struct dev *);
 
+void mtc_midi_qfr(int);
+void mtc_midi_full(void);
+void mmc_trigger(void);
+void mmc_start(void);
+void mmc_stop(void);
+void mmc_loc(unsigned int);
 void mmc_setdev(struct dev *);
 
 /*

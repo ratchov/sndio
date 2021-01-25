@@ -865,13 +865,28 @@ sock_hello(struct sock *f)
 		if (f->midi == NULL)
 			return 0;
 		/* XXX: add 'devtype' to libsndio */
-		if (p->devnum < 16) {
+		if (p->devnum == 15) {
+			opt = opt_byname(p->opt);
+			if (opt == NULL)
+				return 0;
+			if (!opt_devref(opt))
+				return 0;
+			midi_tag(f->midi, opt->num);
+		} else if (p->devnum < 16) {
 			d = dev_bynum(p->devnum);
 			if (d == NULL)
 				return 0;
-			if (!dev_ref(d))
+			opt = opt_list;
+			while (1) {
+				if (opt == NULL)
+					return 0;
+				if (strcmp(d->ctl_name, opt->name) == 0)
+					break;
+				opt = opt->next;
+			}
+			if (!opt_devref(opt))
 				return 0;
-			midi_tag(f->midi, p->devnum);
+			midi_tag(f->midi, opt->num);
 		} else if (p->devnum < 32) {
 			midi_tag(f->midi, p->devnum);
 		} else if (p->devnum < 48) {
