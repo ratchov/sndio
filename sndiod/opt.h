@@ -34,6 +34,7 @@ struct opt {
 	int mmc;		/* true if MMC control enabled */
 	int dup;		/* true if join/expand enabled */
 	int mode;		/* bitmap of MODE_XXX */
+	int refcnt;
 };
 
 extern struct opt *opt_list;
@@ -46,6 +47,7 @@ struct opt *opt_bynum(int);
 void opt_init(struct opt *);
 void opt_done(struct opt *);
 void opt_setdev(struct opt *, struct dev *);
-struct dev *opt_devref(struct opt *);
+struct dev *opt_ref(struct opt *);
+void opt_unref(struct opt *);
 
 #endif /* !defined(OPT_H) */

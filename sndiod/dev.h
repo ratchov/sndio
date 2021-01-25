@@ -186,7 +186,7 @@ struct ctlslot {
 	struct ctlops *ops;
 	void *arg;
 	struct opt *opt;		/* or NULL if not bound to a device */
-	unsigned int dev_mask;		/* devices visible by this client */
+	unsigned int opt_mask;		/* devices visible by this client */
 	unsigned int self;		/* equal to (1 << index) */
 	unsigned int mode;
 };

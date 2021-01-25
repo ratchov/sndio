@@ -228,6 +228,7 @@ opt_new(struct dev *d, char *name,
 	o = xmalloc(sizeof(struct opt));
 	o->num = num;
 	o->dev = d;
+	o->refcnt = 0;
 
 	/*
 	 * XXX: below, we allocate a midi input buffer, since we don't
@@ -351,6 +352,11 @@ opt_done(struct opt *o)
 {
 	struct dev *d;
 
+	if (o->refcnt != 0) {
+		// XXX: all clients are already kicked, so this never happens
+		log_puts(o->name);
+		log_puts(": still has refs\n");
+	}
 	for (d = dev_list; d != NULL; d = d->next)
 		ctl_del(CTL_OPT_DEV, o, d);
 }
@@ -387,6 +393,11 @@ opt_setdev(struct opt *o, struct dev *d)
 	odev = o->dev;
 	o->dev = d;
 
+	if (o->refcnt > 0) {
+		dev_unref(odev);
+		dev_ref(o->dev);
+	}
+
 	c = ctl_find(CTL_OPT_DEV, o, o->dev);
 	if (c != NULL) {
 		c->curval = 1;
@@ -403,13 +414,8 @@ opt_setdev(struct opt *o, struct dev *d)
 	for (p = ctlslot_array, i = 0; i < DEV_NCTLSLOT; i++, p++) {
 		if (p->ops == NULL)
 			continue;
-		if (p->opt == o) {
-			p->dev_mask &= ~(1 << odev->num);
-			dev_unref(odev);
-			if (dev_ref(d))
-				p->dev_mask |= (1 << d->num);
+		if (p->opt_mask & (1 << o->num))
 			ctlslot_update(p);
-		}
 	}
 }
 
@@ -417,27 +423,46 @@ opt_setdev(struct opt *o, struct dev *d)
  * Get a reference to opt's device
  */
 struct dev *
-opt_devref(struct opt *o)
+opt_ref(struct opt *o)
 {
 	struct dev *d, *a;
 
-	/* circulate to the first "alternate" device (greatest num) */
-	for (a = o->dev; a->alt_next->num > a->num; a = a->alt_next)
-		;
+	if (o->refcnt == 0) {
+		if (strcmp(o->name, o->dev->ctl_name) == 0) {
+			if (!dev_ref(o->dev))
+				return NULL;
+		} else {
+			/* circulate to the first "alternate" device (greatest num) */
+			for (a = o->dev; a->alt_next->num > a->num; a = a->alt_next)
+				;
 
-	/* find first working one */
-	d = a;
-	while (1) {
-		if (dev_ref(d))
-			break;
-		d = d->alt_next;
-		if (d == a)
-			return NULL;
+			/* find first working one */
+			d = a;
+			while (1) {
+				if (dev_ref(d))
+					break;
+				d = d->alt_next;
+				if (d == a)
+					return NULL;
+			}
+
+			/* if device changed, move everything to the new one */
+			if (d != o->dev)
+				opt_setdev(o, d);
+		}
 	}
 
-	/* if device changed, move everything to the new one */
-	if (d != o->dev)
-		opt_setdev(o, d);
+	o->refcnt++;
+	return o->dev;
+}
 
-	return d;
+/*
+ * Release opt's device
+ */
+void
+opt_unref(struct opt *o)
+{
+	o->refcnt--;
+	if (o->refcnt == 0)
+		dev_unref(o->dev);
 }

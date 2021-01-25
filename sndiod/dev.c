@@ -1045,7 +1045,8 @@ int
 dev_open(struct dev *d)
 {
 	struct ctlslot *s;
-	unsigned int dev_mask = 1 << d->num;
+	struct opt *o;
+	unsigned int opt_mask;
 	int i;
 
 	d->mode = d->reqmode;
@@ -1069,17 +1070,23 @@ dev_open(struct dev *d)
 	if (!dev_allocbufs(d))
 		return 0;
 
-	d->pstate = DEV_INIT;
-
 	/* take an extra ref per controlling client */
-	for (s = ctlslot_array, i = 0; i < DEV_NCTLSLOT; i++, s++) {
-		if (s->ops == NULL)
+	for (o = opt_list; o != NULL; o = o->next) {
+		if (o->dev != d)
 			continue;
-		if (s->opt == NULL && (s->dev_mask & dev_mask) == 0) {
-			d->refcnt++;
-			s->dev_mask |= dev_mask;
+		opt_mask = 1 << o->num;
+		for (s = ctlslot_array, i = 0; i < DEV_NCTLSLOT; i++, s++) {
+			if (s->ops == NULL)
+				continue;
+			if (s->opt == NULL && (s->opt_mask & opt_mask) == 0) {
+				o->refcnt++;
+				d->refcnt++;
+				s->opt_mask |= opt_mask;
+			}
 		}
 	}
+
+	d->pstate = DEV_INIT;
 	return 1;
 }
 
@@ -1093,7 +1100,7 @@ dev_abort(struct dev *d)
 	struct slot *s;
 	struct ctlslot *c;
 	struct opt *o;
-	unsigned int dev_mask = 1 << d->num;
+	unsigned int opt_mask;
 
 	for (s = slot_array, i = DEV_NSLOT; i > 0; i--, s++) {
 		if (s->dev != d)
@@ -1104,23 +1111,27 @@ dev_abort(struct dev *d)
 	}
 	d->slot_list = NULL;
 
-	for (c = ctlslot_array, i = 0; i < DEV_NCTLSLOT; i++, c++) {
-		if (c->ops == NULL)
+	for (o = opt_list; o != NULL; o = o->next) {
+		if (o->dev != d)
 			continue;
-		if ((c->dev_mask & dev_mask) == 0)
-			continue;
-		if (c->opt == NULL) {
-			c->dev_mask &= ~dev_mask;
-			dev_unref(d);
-			ctlslot_update(c);
-		} else {
-			s->ops->exit(s->arg);
-			s->ops = NULL;
+		opt_mask = 1 << o->num;
+		for (c = ctlslot_array, i = 0; i < DEV_NCTLSLOT; i++, c++) {
+			if (c->ops == NULL)
+				continue;
+			if ((c->opt_mask & opt_mask) == 0)
+				continue;
+			if (c->opt == NULL) {
+				c->opt_mask &= ~opt_mask;
+				opt_unref(o);
+				ctlslot_update(c);
+			} else {
+				s->ops->exit(s->arg);
+				s->ops = NULL;
+			}
 		}
-	}
 
-	for (o = opt_list; o != NULL; o = o->next)
 		midi_abort(o->midi);
+	}
 
 	if (d->pstate != DEV_CFG)
 		dev_close(d);
@@ -1817,7 +1828,7 @@ found:
 	}
 
 	/* open device, this may change opt's device */
-	if (!opt_devref(s->opt))
+	if (!opt_ref(s->opt))
 		return NULL;
 
 	/* move controls to (possibly) new device */
@@ -1870,7 +1881,7 @@ slot_del(struct slot *s)
 		slot_stop(s, 0);
 		break;
 	}
-	dev_unref(s->dev);
+	opt_unref(s->opt);
 }
 
 /*
@@ -1911,7 +1922,7 @@ slot_setopt(struct slot *s, struct opt *o)
 	 */
 	if (s->dev != o->dev) {
 		if (s->pstate != SLOT_INIT) {
-			if (!dev_ref(o->dev))
+			if (!opt_ref(o))
 				return;
 
 			/* check if new device is compatible with slot */
@@ -1925,7 +1936,7 @@ slot_setopt(struct slot *s, struct opt *o)
 					log_puts(o->dev->ctl_name);
 					log_puts(" not compatible\n");
 				}
-				dev_unref(o->dev);
+				opt_unref(o);
 				return;
 			}
 		}
@@ -1933,7 +1944,6 @@ slot_setopt(struct slot *s, struct opt *o)
 		if (s->pstate == SLOT_RUN || s->pstate == SLOT_STOP)
 			slot_detach(s);
 
-		d = s->dev;
 		s->dev = o->dev;
 		c = ctl_find(CTL_SLOT_LEVEL, s, NULL);
 		ctl_update(c);
@@ -1944,13 +1954,18 @@ slot_setopt(struct slot *s, struct opt *o)
 		}
 
 		if (s->pstate != SLOT_INIT)
-			dev_unref(d);
+			opt_unref(o);
 	}
 
 	if (s->opt != o) {
+		d = opt_ref(o);
+		if (d == NULL)
+			return;
+
 		c = ctl_find(CTL_SLOT_OPT, s, s->opt);
 		c->curval = 0;
 
+		opt_unref(s->opt);
 		s->opt = o;
 
 		c = ctl_find(CTL_SLOT_OPT, s, s->opt);
@@ -2256,7 +2271,6 @@ ctlslot_new(struct opt *o, struct ctlops *ops, void *arg)
 {
 	struct ctlslot *s;
 	struct ctl *c;
-	struct dev *d;
 	int i;
 
 	i = 0;
@@ -2268,20 +2282,19 @@ ctlslot_new(struct opt *o, struct ctlops *ops, void *arg)
 			break;
 		i++;
 	}
-	s->dev_mask = 0;
+	s->opt_mask = 0;
 	s->self = 1 << i;
 	s->opt = o;
 	if (o == NULL) {
-		for (d = dev_list; d != NULL; d = d->next) {
-			if (dev_ref(d))
-				s->dev_mask |= 1 << d->num;
+		for (o = opt_list; o != NULL; o = o->next) {
+			if (opt_ref(o))
+				s->opt_mask |= 1 << o->num;
 		}
 	} else {
-		if (opt_devref(o))
-			s->dev_mask |= 1 << o->dev->num;
+		if (!opt_ref(o))
+			return NULL;
+		s->opt_mask |= 1 << o->num;
 	}
-	if (s->dev_mask == 0)
-		return NULL;
 	s->ops = ops;
 	s->arg = arg;
 	for (c = ctl_list; c != NULL; c = c->next) {
@@ -2299,7 +2312,7 @@ void
 ctlslot_del(struct ctlslot *s)
 {
 	struct ctl *c, **pc;
-	struct dev *d;
+	struct opt *o;
 
 	pc = &ctl_list;
 	while ((c = *pc) != NULL) {
@@ -2311,11 +2324,11 @@ ctlslot_del(struct ctlslot *s)
 			pc = &c->next;
 	}
 	s->ops = NULL;
-	for (d = dev_list; d != NULL; d = d->next) {
-		if (s->dev_mask & (1 << d->num))
-			dev_unref(d);
+	for (o = opt_list; o != NULL; o = o->next) {
+		if (s->opt_mask & (1 << o->num))
+			opt_unref(o);
 	}
-	s->dev_mask = 0;
+	s->opt_mask = 0;
 }
 
 int
@@ -2675,6 +2688,7 @@ dev_ctlsync(struct dev *d)
 {
 	struct ctl *c;
 	struct ctlslot *s;
+	struct opt *o;
 	int found, i;
 
 	found = 0;
@@ -2709,7 +2723,11 @@ dev_ctlsync(struct dev *d)
 	for (s = ctlslot_array, i = 0; i < DEV_NCTLSLOT; i++, s++) {
 		if (s->ops == NULL)
 			continue;
-		if (s->dev_mask & (1 << d->num))
-			s->ops->sync(s->arg);
+		for (o = opt_list; o != NULL; o = o->next) {
+			if (s->opt_mask & (1 << d->num)) {
+				s->ops->sync(s->arg);
+				break;
+			}
+		}
 	}
 }
