@@ -888,7 +888,7 @@ dev_master(struct dev *d, unsigned int master)
 			if (c->scope != CTL_HW || c->u.hw.dev != d)
 				continue;
 			if (c->type != CTL_NUM ||
-			    strcmp(c->group, d->ctl_name) != 0 ||
+			    strcmp(c->group, d->name) != 0 ||
 			    strcmp(c->node0.name, "output") != 0 ||
 			    strcmp(c->func, "level") != 0)
 				continue;
@@ -945,7 +945,7 @@ dev_new(char *path, struct aparams *par,
 	d->master = MIDI_MAXCTL;
 	d->master_enabled = 0;
 	d->alt_next = d;
-	snprintf(d->ctl_name, CTL_NAMEMAX, "%u", d->num);
+	snprintf(d->name, CTL_NAMEMAX, "%u", d->num);
 	d->next = *pd;
 	*pd = d;
 	return d;
@@ -1181,9 +1181,9 @@ dev_iscompat(struct dev *odev, struct dev *ndev, unsigned int mode)
 	    (odev->bufsz != ndev->bufsz) ||
 	    (odev->rate != ndev->rate)) {
 		if (log_level >= 1) {
-			log_puts(ndev->ctl_name);
+			log_puts(ndev->name);
 			log_puts(": not compatible\n");
-			log_puts(odev->ctl_name);
+			log_puts(odev->name);
 			log_puts("\n");
 		}
 		return 0;
@@ -1247,7 +1247,7 @@ dev_migrate(struct dev *odev)
 	for (o = opt_list; o != NULL; o = o->next) {
 		if (o->dev != odev)
 			continue;
-		if (strcmp(o->name, o->dev->ctl_name) == 0)
+		if (strcmp(o->name, o->dev->name) == 0)
 			continue;
 		opt_setdev(o, ndev);
 	}
@@ -2409,13 +2409,13 @@ ctl_log(struct ctl *c)
 	switch (c->scope) {
 	case CTL_HW:
 		log_puts("hw:");
-		log_puts(c->u.hw.dev->ctl_name);
+		log_puts(c->u.hw.dev->name);
 		log_puts("/");
 		log_putu(c->u.hw.addr);
 		break;
 	case CTL_DEV_MASTER:
 		log_puts("dev_master:");
-		log_puts(c->u.dev_master.dev->ctl_name);
+		log_puts(c->u.dev_master.dev->name);
 		break;
 	case CTL_SLOT_LEVEL:
 		log_puts("slot_level:");
@@ -2433,7 +2433,7 @@ ctl_log(struct ctl *c)
 		log_puts("opt_dev:");
 		log_puts(c->u.opt_dev.opt->name);
 		log_puts("/");
-		log_puts(c->u.opt_dev.dev->ctl_name);
+		log_puts(c->u.opt_dev.dev->name);
 		break;
 	default:
 		log_puts("unknown");
@@ -2682,7 +2682,7 @@ dev_ctlsync(struct dev *d)
 		if (c->scope == CTL_HW &&
 		    c->u.hw.dev == d &&
 		    c->type == CTL_NUM &&
-		    strcmp(c->group, d->ctl_name) == 0 &&
+		    strcmp(c->group, d->name) == 0 &&
 		    strcmp(c->node0.name, "output") == 0 &&
 		    strcmp(c->func, "level") == 0)
 			found = 1;
@@ -2702,7 +2702,7 @@ dev_ctlsync(struct dev *d)
 		}
 		d->master_enabled = 1;
 		ctl_new(CTL_DEV_MASTER, d, NULL,
-		    CTL_NUM, d->ctl_name, "output", -1, "level",
+		    CTL_NUM, d->name, "output", -1, "level",
 		    NULL, -1, 127, d->master);
 	}
 

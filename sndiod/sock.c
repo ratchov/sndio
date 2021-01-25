@@ -880,7 +880,7 @@ sock_hello(struct sock *f)
 			while (1) {
 				if (opt == NULL)
 					return 0;
-				if (strcmp(d->ctl_name, opt->name) == 0)
+				if (strcmp(d->name, opt->name) == 0)
 					break;
 				opt = opt->next;
 			}
@@ -926,7 +926,7 @@ sock_hello(struct sock *f)
 		if (d == NULL)
 			return 0;
 		opt = opt_byname(strcmp(p->opt, "default") == 0 ?
-		    d->ctl_name : p->opt);
+		    d->name : p->opt);
 		if (opt == NULL)
 			return 0;
 		if (opt->dev != d)
@@ -1583,7 +1583,7 @@ sock_buildmsg(struct sock *f)
 			type = ctlslot_visible(f->ctlslot, c) ?
 			    c->type : CTL_NONE;
 			strlcpy(desc->group, (f->ctlslot->opt == NULL ||
-			    strcmp(c->group, f->ctlslot->opt->dev->ctl_name) != 0) ?
+			    strcmp(c->group, f->ctlslot->opt->dev->name) != 0) ?
 			    c->group : "",
 			    AMSG_CTL_NAMEMAX);
 			strlcpy(desc->node0.name, c->node0.name,

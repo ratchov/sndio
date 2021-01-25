@@ -219,7 +219,7 @@ struct dev {
 	/*
 	 * name used for various controls
 	 */
-	char ctl_name[CTL_NAMEMAX];
+	char name[CTL_NAMEMAX];
 
 	/*
 	 * next to try if this fails

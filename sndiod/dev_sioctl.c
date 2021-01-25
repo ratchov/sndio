@@ -62,10 +62,10 @@ dev_sioctl_ondesc(void *arg, struct sioctl_desc *desc, int val)
 	ctl_del(CTL_HW, d, &desc->addr);
 
 	if (desc->group[0] == 0)
-		group = d->ctl_name;
+		group = d->name;
 	else {
 		if (snprintf(group_buf, CTL_NAMEMAX, "%s/%s",
-			d->ctl_name, desc->group) >= CTL_NAMEMAX)
+			d->name, desc->group) >= CTL_NAMEMAX)
 			return;
 		group = group_buf;
 	}

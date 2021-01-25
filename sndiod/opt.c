@@ -180,7 +180,7 @@ opt_new(struct dev *d, char *name,
 	char c;
 
 	if (name == NULL) {
-		name = d->ctl_name;
+		name = d->name;
 		len = strlen(name);
 	} else {
 		for (len = 0; name[len] != '\0'; len++) {
@@ -338,11 +338,11 @@ opt_init(struct opt *o)
 {
 	struct dev *d;
 
-	if (strcmp(o->name, o->dev->ctl_name) != 0) {
+	if (strcmp(o->name, o->dev->name) != 0) {
 		for (d = dev_list; d != NULL; d = d->next) {
 			ctl_new(CTL_OPT_DEV, o, d,
 			    CTL_SEL, "", o->name, -1, "device",
-			    d->ctl_name, -1, 1, o->dev == d);
+			    d->name, -1, 1, o->dev == d);
 		}
 	}
 }
@@ -456,7 +456,7 @@ opt_ref(struct opt *o)
 	struct dev *d, *a;
 
 	if (o->refcnt == 0) {
-		if (strcmp(o->name, o->dev->ctl_name) == 0) {
+		if (strcmp(o->name, o->dev->name) == 0) {
 			if (!dev_ref(o->dev))
 				return NULL;
 		} else {
