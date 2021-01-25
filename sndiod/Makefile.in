@@ -68,7 +68,7 @@ midi.o:		midi.c abuf.h defs.h dev.h dsp.h siofile.h file.h \
 		../bsd-compat/bsd-compat.h
 miofile.o:	miofile.c defs.h file.h midi.h abuf.h miofile.h utils.h
 opt.o:		opt.c dev.h abuf.h dsp.h defs.h siofile.h file.h \
-		dev_sioctl.h opt.h utils.h
+		dev_sioctl.h opt.h midi.h miofile.h sysex.h utils.h
 siofile.o:	siofile.c abuf.h defs.h dev.h dsp.h siofile.h file.h \
 		dev_sioctl.h opt.h utils.h
 sndiod.o:	sndiod.c ../libsndio/amsg.h defs.h dev.h abuf.h dsp.h \
