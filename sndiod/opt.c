@@ -224,14 +224,17 @@ opt_setdev(struct opt *o, struct dev *d)
 	}
 
 	c = ctl_find(CTL_OPT_DEV, o, o->dev);
-	c->curval = 0;
+	if (c != NULL)
+		c->curval = 0;
 
 	odev = o->dev;
 	o->dev = d;
 
 	c = ctl_find(CTL_OPT_DEV, o, o->dev);
-	c->curval = 1;
-	c->val_mask = ~0;
+	if (c != NULL) {
+		c->curval = 1;
+		c->val_mask = ~0;
+	}
 
 	for (i = 0; i < DEV_NSLOT; i++) {
 		s = slot_array + i;
