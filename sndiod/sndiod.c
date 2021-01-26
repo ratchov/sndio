@@ -613,8 +613,10 @@ main(int argc, char **argv)
 		if (reopen_flag) {
 			reopen_flag = 0;
 			o = opt_byname("default");
-			if (o != NULL)
-				dev_migrate(o->dev);
+			if (o != NULL) {
+				o->alt_first = o->alt_first->alt_next;
+				opt_setdev(o, o->alt_first);
+			}
 			for (p = port_list; p != NULL; p = p->next) {
 				if (p->state != PORT_CFG)
 					break;
