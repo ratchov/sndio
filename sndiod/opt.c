@@ -426,6 +426,12 @@ opt_setdev(struct opt *o, struct dev *ndev)
 		if (s->ops == NULL || s->opt != o)
 			continue;
 
+		if (ndev != odev) {
+			dev_midi_slotdesc(odev, s);
+			dev_midi_slotdesc(ndev, s);
+			dev_midi_vol(ndev, s);
+		}
+
 		c = ctl_find(CTL_SLOT_LEVEL, s, NULL);
 		ctl_update(c);
 

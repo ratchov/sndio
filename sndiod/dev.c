@@ -410,7 +410,7 @@ dev_midi_slotdesc(struct dev *d, struct slot *s)
 	x.dev = SYSEX_DEV_ANY;
 	x.id0 = SYSEX_AUCAT;
 	x.id1 = SYSEX_AUCAT_SLOTDESC;
-	if (*s->name != '\0')
+	if (s->opt != NULL && s->opt->dev == d)
 		slot_ctlname(s, (char *)x.u.slotdesc.name, SYSEX_NAMELEN);
 	x.u.slotdesc.chan = s->index;
 	x.u.slotdesc.end = SYSEX_END;
@@ -1948,6 +1948,12 @@ slot_setopt(struct slot *s, struct opt *o)
 
 	c = ctl_find(CTL_SLOT_LEVEL, s, NULL);
 	ctl_update(c);
+
+	if (ndev != odev) {
+		dev_midi_slotdesc(odev, s);
+		dev_midi_slotdesc(ndev, s);
+		dev_midi_vol(ndev, s);
+	}
 
 	if (s->pstate == SLOT_RUN || s->pstate == SLOT_STOP) {
 		slot_initconv(s);
