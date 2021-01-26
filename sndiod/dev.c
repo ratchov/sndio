@@ -2340,6 +2340,8 @@ ctlslot_visible(struct ctlslot *s, struct ctl *c)
 	case CTL_HW:
 	case CTL_DEV_MASTER:
 		return (s->opt->dev == c->u.any.arg0);
+	case CTL_OPT_DEV:
+		return (s->opt == c->u.any.arg0);
 	case CTL_SLOT_LEVEL:
 		return (s->opt->dev == c->u.slot_level.slot->opt->dev);
 	default:
