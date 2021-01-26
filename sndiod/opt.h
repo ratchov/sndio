@@ -23,7 +23,7 @@ struct dev;
 
 struct opt {
 	struct opt *next;
-	struct dev *dev;
+	struct dev *dev, *alt_first;
 	struct midi *midi;
 	int num;
 #define OPT_NAMEMAX 11

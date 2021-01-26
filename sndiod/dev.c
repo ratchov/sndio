@@ -2500,6 +2500,7 @@ ctl_setval(struct ctl *c, int val)
 		slot_setopt(c->u.slot_opt.slot, c->u.slot_opt.opt);
 		return 1;
 	case CTL_OPT_DEV:
+		c->u.opt_dev.opt->alt_first = c->u.opt_dev.dev;
 		opt_setdev(c->u.opt_dev.opt, c->u.opt_dev.dev);
 		return 1;
 	default:

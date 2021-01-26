@@ -175,6 +175,7 @@ opt_new(struct dev *d, char *name,
     int pmin, int pmax, int rmin, int rmax,
     int maxweight, int mmc, int dup, unsigned int mode)
 {
+	struct dev *a;
 	struct opt *o, **po;
 	unsigned int len, num;
 	char c;
@@ -225,9 +226,17 @@ opt_new(struct dev *d, char *name,
 		log_puts(": will be MMC controlled\n");
 	}
 
+	if (strcmp(d->name, name) == 0)
+		a = d;
+	else {
+		/* circulate to the first "alternate" device (greatest num) */
+		for (a = d; a->alt_next->num > a->num; a = a->alt_next)
+			;
+	}
+
 	o = xmalloc(sizeof(struct opt));
 	o->num = num;
-	o->dev = d;
+	o->alt_first = o->dev = a;
 	o->refcnt = 0;
 
 	/*
@@ -466,24 +475,20 @@ opt_setdev(struct opt *o, struct dev *ndev)
 struct dev *
 opt_ref(struct opt *o)
 {
-	struct dev *d, *a;
+	struct dev *d;
 
 	if (o->refcnt == 0) {
 		if (strcmp(o->name, o->dev->name) == 0) {
 			if (!dev_ref(o->dev))
 				return NULL;
 		} else {
-			/* circulate to the first "alternate" device (greatest num) */
-			for (a = o->dev; a->alt_next->num > a->num; a = a->alt_next)
-				;
-
 			/* find first working one */
-			d = a;
+			d = o->alt_first;
 			while (1) {
 				if (dev_ref(d))
 					break;
 				d = d->alt_next;
-				if (d == a)
+				if (d == o->alt_first)
 					return NULL;
 			}
 
