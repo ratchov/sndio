@@ -706,7 +706,7 @@ port_migrate(struct port *op)
 		/* try next one, circulating through the list */
 		np = np->alt_next;
 		if (np == op) {
-			if (log_level >= 1) {
+			if (log_level >= 2) {
 				port_log(op);
 				log_puts(": no fall-back port found\n");
 			}
@@ -717,7 +717,7 @@ port_migrate(struct port *op)
 			break;
 	}
 
-	if (log_level >= 1) {
+	if (log_level >= 2) {
 		port_log(op);
 		log_puts(": switching to ");
 		port_log(np);
