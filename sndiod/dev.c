@@ -1914,6 +1914,7 @@ slot_setvol(struct slot *s, unsigned int vol)
 void
 slot_setopt(struct slot *s, struct opt *o)
 {
+	struct opt *t;
 	struct dev *odev, *ndev;
 	struct ctl *c;
 
@@ -1928,13 +1929,15 @@ slot_setopt(struct slot *s, struct opt *o)
 	}
 
 	odev = s->opt->dev;
-	ndev = opt_ref(o);
-	if (ndev == NULL)
-		return;
+	if (s->ops != NULL) {
+		ndev = opt_ref(o);
+		if (ndev == NULL)
+			return;
 
-	if (s->ops != NULL && !dev_iscompat(odev, ndev, s->mode)) {
-		opt_unref(o);
-		return;
+		if (!dev_iscompat(odev, ndev, s->mode)) {
+			opt_unref(o);
+			return;
+		}
 	}
 
 	c = ctl_find(CTL_SLOT_OPT, s, s->opt);
@@ -1943,13 +1946,13 @@ slot_setopt(struct slot *s, struct opt *o)
 	if (s->pstate == SLOT_RUN || s->pstate == SLOT_STOP)
 		slot_detach(s);
 
-	opt_unref(s->opt);
+	t = s->opt;
 	s->opt = o;
 
 	c = ctl_find(CTL_SLOT_LEVEL, s, NULL);
 	ctl_update(c);
 
-	if (ndev != odev) {
+	if (o->dev != t->dev) {
 		dev_midi_slotdesc(odev, s);
 		dev_midi_slotdesc(ndev, s);
 		dev_midi_vol(ndev, s);
@@ -1963,6 +1966,11 @@ slot_setopt(struct slot *s, struct opt *o)
 	c = ctl_find(CTL_SLOT_OPT, s, s->opt);
 	c->curval = 1;
 	c->val_mask = ~0;
+
+	if (s->ops != NULL) {
+		opt_unref(t);
+		return;
+	}
 }
 
 /*

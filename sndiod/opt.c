@@ -401,7 +401,7 @@ opt_setdev(struct opt *o, struct dev *ndev)
 
 	/* detach clients from old device */
 	for (i = 0, s = slot_array; i < DEV_NSLOT; i++, s++) {
-		if (s->ops == NULL || s->opt != o)
+		if (s->opt != o)
 			continue;
 
 		if (s->pstate == SLOT_RUN || s->pstate == SLOT_STOP)
@@ -423,7 +423,7 @@ opt_setdev(struct opt *o, struct dev *ndev)
 
 	/* attach clients to new device */
 	for (i = 0, s = slot_array; i < DEV_NSLOT; i++, s++) {
-		if (s->ops == NULL || s->opt != o)
+		if (s->opt != o)
 			continue;
 
 		if (ndev != odev) {
