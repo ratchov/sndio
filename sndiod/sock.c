@@ -101,6 +101,31 @@ struct sock *sock_list = NULL;
 unsigned int sock_sesrefs = 0;		/* connections to the session */
 uint8_t sock_sescookie[AMSG_COOKIELEN];	/* owner of the session */
 
+/*
+ * Old clients used to send dev number and opt name. This routine
+ * finds proper opt pointer for the given device.
+ */
+static struct opt *
+legacy_opt(int devnum, char *optname)
+{
+	struct dev *d;
+	struct opt *o;
+
+	d = dev_bynum(devnum);
+	if (d == NULL)
+		return NULL;
+	if (strcmp(optname, "default") == 0) {
+		for (o = opt_list; o != NULL; o = o->next) {
+			if (strcmp(o->name, d->name) == 0)
+				return o;
+		}
+		return NULL;
+	} else {
+		o = opt_byname(optname);
+		return (o != NULL && o->dev == d) ? o : NULL;
+	}
+}
+
 void
 sock_log(struct sock *f)
 {
@@ -807,7 +832,6 @@ sock_hello(struct sock *f)
 {
 	struct amsg_hello *p = &f->rmsg.u.hello;
 	struct port *c;
-	struct dev *d;
 	struct opt *opt;
 	unsigned int mode;
 	unsigned int id;
@@ -865,7 +889,7 @@ sock_hello(struct sock *f)
 		if (f->midi == NULL)
 			return 0;
 		/* XXX: add 'devtype' to libsndio */
-		if (p->devnum == 15) {
+		if (p->devnum == AMSG_NODEV) {
 			opt = opt_byname(p->opt);
 			if (opt == NULL)
 				return 0;
@@ -873,17 +897,9 @@ sock_hello(struct sock *f)
 				return 0;
 			midi_tag(f->midi, opt->num);
 		} else if (p->devnum < 16) {
-			d = dev_bynum(p->devnum);
-			if (d == NULL)
+			opt = legacy_opt(p->devnum, p->opt);
+			if (opt == NULL)
 				return 0;
-			opt = opt_list;
-			while (1) {
-				if (opt == NULL)
-					return 0;
-				if (strcmp(d->name, opt->name) == 0)
-					break;
-				opt = opt->next;
-			}
 			if (!opt_ref(opt))
 				return 0;
 			midi_tag(f->midi, opt->num);
@@ -900,9 +916,15 @@ sock_hello(struct sock *f)
 		return 1;
 	}
 	if (mode & MODE_CTLMASK) {
-		opt = opt_byname(p->opt);
-		if (opt == NULL && strcmp(p->opt, "*") != 0)
-			return 0;
+		if (p->devnum == AMSG_NODEV) {
+			opt = opt_byname(p->opt);
+			if (opt == NULL && strcmp(p->opt, "*") != 0)
+				return 0;
+		} else {
+			opt = legacy_opt(p->devnum, p->opt);
+			if (opt == NULL)
+				return 0;
+		}
 		f->ctlslot = ctlslot_new(opt, &sock_ctlops, f);
 		if (f->ctlslot == NULL) {
 			if (log_level >= 2) {
@@ -917,21 +939,10 @@ sock_hello(struct sock *f)
 		f->ctlsyncpending = 0;
 		return 1;
 	}
-	if (p->devnum == 15) {
-		opt = opt_byname(p->opt);
-		if (opt == NULL)
-			return 0;
-	} else {
-		d = dev_bynum(p->devnum);
-		if (d == NULL)
-			return 0;
-		opt = opt_byname(strcmp(p->opt, "default") == 0 ?
-		    d->name : p->opt);
-		if (opt == NULL)
-			return 0;
-		if (opt->dev != d)
-			return 0;
-	}
+	opt = (p->devnum == AMSG_NODEV) ?
+	    opt_byname(p->opt) : legacy_opt(p->devnum, p->opt);
+	if (opt == NULL)
+		return 0;
 	f->slot = slot_new(opt, id, p->who, &sock_slotops, f, mode);
 	if (f->slot == NULL)
 		return 0;

@@ -504,15 +504,18 @@ _aucat_open(struct aucat *hdl, const char *str, unsigned int mode)
 		DPRINTF("%s: '/' expected\n", str);
 		return 0;
 	}
-	p = _sndio_parsenum(++p, &devnum, 15);
-	if (p == NULL)
-		return 0;
-	if (*p == '.') {
-		p = parsestr(++p, opt, AMSG_OPTMAX);
+	p++;
+	if (type == 0) {
+		devnum = AMSG_NODEV;
+		p = parsestr(p, opt, AMSG_OPTMAX);
 		if (p == NULL)
 			return 0;
-	} else
-		strlcpy(opt, "default", AMSG_OPTMAX);
+	} else {
+		p = _sndio_parsenum(p, &devnum, 15);
+		if (p == NULL)
+			return 0;
+		memset(opt, 0, sizeof(opt));
+	}
 	if (*p != '\0') {
 		DPRINTF("%s: junk at end of dev name\n", p);
 		return 0;

@@ -106,6 +106,7 @@ struct amsg {
 			uint16_t mode;		/* bitmap of MODE_XXX */
 #define AMSG_VERSION	7
 			uint8_t version;	/* protocol version */
+#define AMSG_NODEV	255
 			uint8_t devnum;		/* device number */
 			uint32_t id;		/* client id */
 #define AMSG_OPTMAX	12
