@@ -668,6 +668,31 @@ port_done(struct port *c)
 }
 
 struct port *
+port_alt_ref(int num)
+{
+	struct port *a, *p;
+
+	a = port_bynum(num);
+	if (a == NULL)
+		return NULL;
+
+	/* circulate to first alt port */
+	while (a->alt_next->num > a->num)
+		a = a->alt_next;
+
+	p = a;
+	while (1) {
+		if (port_ref(p))
+			break;
+		p = p->alt_next;
+		if (p == a)
+			return NULL;
+	}
+
+	return p;
+}
+
+struct port *
 port_migrate(struct port *op)
 {
 	struct port *np;
@@ -680,9 +705,6 @@ port_migrate(struct port *op)
 	while (1) {
 		/* try next one, circulating through the list */
 		np = np->alt_next;
-		log_puts("trying ");
-		log_puts(np->path);
-		log_puts("\n");
 		if (np == op) {
 			if (log_level >= 1) {
 				port_log(op);

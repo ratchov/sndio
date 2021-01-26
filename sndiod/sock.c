@@ -906,8 +906,8 @@ sock_hello(struct sock *f)
 		} else if (p->devnum < 32) {
 			midi_tag(f->midi, p->devnum);
 		} else if (p->devnum < 48) {
-			c = port_bynum(p->devnum - 32);
-			if (c == NULL || !port_ref(c))
+			c = port_alt_ref(p->devnum - 32);
+			if (c == NULL)
 				return 0;
 			f->port = c;
 			midi_link(f->midi, c->midi);

@@ -126,6 +126,7 @@ int  port_init(struct port *);
 void port_done(struct port *);
 void port_drain(struct port *);
 int  port_close(struct port *);
+struct port *port_alt_ref(int);
 struct port *port_migrate(struct port *);
 
 #endif /* !defined(MIDI_H) */
