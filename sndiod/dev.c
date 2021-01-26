@@ -1064,7 +1064,7 @@ dev_abort(struct dev *d)
 	struct opt *o;
 	unsigned int opt_mask;
 
-	for (s = slot_array, i = DEV_NSLOT; i > 0; i--, s++) {
+	for (i = 0, s = slot_array; i < DEV_NSLOT; i++, s++) {
 		if (s->opt == NULL || s->opt->dev != d)
 			continue;
 		if (s->ops != NULL) {
@@ -1220,8 +1220,7 @@ dev_migrate(struct dev *odev)
 	}
 
 	/* terminate remaining clients */
-	for (i = 0; i < DEV_NSLOT; i++) {
-		s = slot_array + i;
+	for (i = 0, s = slot_array; i < DEV_NSLOT; i++, s++) {
 		if (s->opt == NULL || s->opt->dev != odev)
 			continue;
 		if (s->ops != NULL) {
@@ -1396,8 +1395,7 @@ mmc_trigger(void)
 		}
 		return;
 	}
-	for (i = 0; i < DEV_NSLOT; i++) {
-		s = slot_array + i;
+	for (i = 0, s = slot_array; i < DEV_NSLOT; i++, s++) {
 		if (s->opt == NULL || s->opt->dev != mmc_dev)
 			continue;
 		if (s->ops != NULL && s->opt->mmc && s->pstate != SLOT_READY) {
@@ -1412,8 +1410,7 @@ mmc_trigger(void)
 	}
 	if (!dev_ref(mmc_dev))
 		return;
-	for (i = 0; i < DEV_NSLOT; i++) {
-		s = slot_array + i;
+	for (i = 0, s = slot_array; i < DEV_NSLOT; i++, s++) {
 		if (s->opt == NULL || s->opt->dev != mmc_dev)
 			continue;
 		if (s->ops != NULL && s->opt->mmc) {
@@ -1720,8 +1717,7 @@ slot_new(struct opt *opt, unsigned int id, char *who,
 	 */
 	for (i = 0; i < DEV_NSLOT; i++)
 		unit[i] = NULL;
-	for (i = 0; i < DEV_NSLOT; i++) {
-		s = slot_array + i;
+	for (i = 0, s = slot_array; i < DEV_NSLOT; i++, s++) {
 		if (strcmp(s->name, name) == 0)
 			unit[s->unit] = s;
 	}

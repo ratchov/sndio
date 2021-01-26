@@ -379,8 +379,7 @@ opt_setdev(struct opt *o, struct dev *ndev)
 		return;
 
 	/* check if clients can use new device */
-	for (i = 0; i < DEV_NSLOT; i++) {
-		s = slot_array + i;
+	for (i = 0, s = slot_array; i < DEV_NSLOT; i++, s++) {
 		if (s->opt != o)
 			continue;
 		if (s->ops != NULL && !dev_iscompat(odev, ndev, s->mode))
@@ -401,8 +400,7 @@ opt_setdev(struct opt *o, struct dev *ndev)
 		c->curval = 0;
 
 	/* detach clients from old device */
-	for (i = 0; i < DEV_NSLOT; i++) {
-		s = slot_array + i;
+	for (i = 0, s = slot_array; i < DEV_NSLOT; i++, s++) {
 		if (s->ops == NULL || s->opt != o)
 			continue;
 
@@ -424,8 +422,7 @@ opt_setdev(struct opt *o, struct dev *ndev)
 	}
 
 	/* attach clients to new device */
-	for (i = 0; i < DEV_NSLOT; i++) {
-		s = slot_array + i;
+	for (i = 0, s = slot_array; i < DEV_NSLOT; i++, s++) {
 		if (s->ops == NULL || s->opt != o)
 			continue;
 
