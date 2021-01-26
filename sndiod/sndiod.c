@@ -622,8 +622,8 @@ main(int argc, char **argv)
 					break;
 			}
 			if (p != NULL) {
-				port_migrate(p);
-				port_close(p);
+				if (port_migrate(p) != p)
+					port_close(p);
 			}
 		}
 		if (!file_poll())

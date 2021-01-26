@@ -688,7 +688,7 @@ port_migrate(struct port *op)
 				port_log(op);
 				log_puts(": no fall-back port found\n");
 			}
-			return NULL;
+			return op;
 		}
 
 		if (port_ref(np))
