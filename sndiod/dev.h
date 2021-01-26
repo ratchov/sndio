@@ -317,9 +317,7 @@ void dev_cycle(struct dev *);
  * midi & midi call-backs
  */
 void dev_master(struct dev *, unsigned int);
-void dev_midi_vol(struct dev *, struct slot *);
 void dev_midi_master(struct dev *);
-void dev_midi_slotdesc(struct dev *, struct slot *);
 void dev_midi_dump(struct dev *);
 
 void mtc_midi_qfr(int);
@@ -346,6 +344,8 @@ void slot_write(struct slot *);
 void slot_initconv(struct slot *);
 void slot_attach(struct slot *);
 void slot_detach(struct slot *);
+void slot_midi_vol(struct slot *);
+void slot_midi_desc(struct slot *);
 
 /*
  * control related functions

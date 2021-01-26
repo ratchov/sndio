@@ -1242,7 +1242,7 @@ sock_execmsg(struct sock *f)
 		f->rstate = SOCK_RMSG;
 		f->lastvol = ctl; /* dont trigger feedback message */
 		slot_setvol(s, ctl);
-		dev_midi_vol(s->opt->dev, s);
+		slot_midi_vol(s);
 		ctl_onval(CTL_SLOT_LEVEL, s, NULL, ctl);
 		break;
 	case AMSG_CTLSUB:
