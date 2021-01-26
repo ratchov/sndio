@@ -374,16 +374,23 @@ opt_setdev(struct opt *o, struct dev *ndev)
 	struct slot *s;
 	int i;
 
-	odev = o->dev;
-	if (odev == ndev)
+	if (!dev_ref(ndev))
 		return;
+
+	odev = o->dev;
+	if (odev == ndev) {
+		dev_unref(ndev);
+		return;
+	}
 
 	/* check if clients can use new device */
 	for (i = 0, s = slot_array; i < DEV_NSLOT; i++, s++) {
 		if (s->opt != o)
 			continue;
-		if (s->ops != NULL && !dev_iscompat(odev, ndev, s->mode))
+		if (s->ops != NULL && !dev_iscompat(odev, ndev, s->mode)) {
+			dev_unref(ndev);
 			return;
+		}
 	}
 
 	/*
@@ -392,6 +399,7 @@ opt_setdev(struct opt *o, struct dev *ndev)
 	 */
 	if (o->mmc && mmc_dev != ndev) {
 		mmc_setdev(ndev);
+		dev_unref(ndev);
 		return;
 	}
 
@@ -448,6 +456,8 @@ opt_setdev(struct opt *o, struct dev *ndev)
 		if (p->opt_mask & (1 << o->num))
 			ctlslot_update(p);
 	}
+
+	dev_unref(ndev);
 }
 
 /*
