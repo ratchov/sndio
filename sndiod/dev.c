@@ -343,6 +343,20 @@ mtc_midi_full(void)
 }
 
 /*
+ * send a volume change MIDI message
+ */
+void
+dev_midi_vol(struct dev *d, struct slot *s)
+{
+	unsigned char msg[3];
+
+	msg[0] = MIDI_CTL | s->index;
+	msg[1] = MIDI_CTL_VOL;
+	msg[2] = s->vol;
+	dev_midi_send(d, msg, 3);
+}
+
+/*
  * send a master volume MIDI message
  */
 void
@@ -382,6 +396,27 @@ dev_midi_master(struct dev *d)
 	dev_midi_send(d, (unsigned char *)&x, SYSEX_SIZE(master));
 }
 
+/*
+ * send a sndiod-specific slot description MIDI message
+ */
+void
+dev_midi_slotdesc(struct dev *d, struct slot *s)
+{
+	struct sysex x;
+
+	memset(&x, 0, sizeof(struct sysex));
+	x.start = SYSEX_START;
+	x.type = SYSEX_TYPE_EDU;
+	x.dev = SYSEX_DEV_ANY;
+	x.id0 = SYSEX_AUCAT;
+	x.id1 = SYSEX_AUCAT_SLOTDESC;
+	if (*s->name != '\0')
+		slot_ctlname(s, (char *)x.u.slotdesc.name, SYSEX_NAMELEN);
+	x.u.slotdesc.chan = s->index;
+	x.u.slotdesc.end = SYSEX_END;
+	dev_midi_send(d, (unsigned char *)&x, SYSEX_SIZE(slotdesc));
+}
+
 void
 dev_midi_dump(struct dev *d)
 {
@@ -391,10 +426,10 @@ dev_midi_dump(struct dev *d)
 
 	dev_midi_master(d);
 	for (i = 0, s = slot_array; i < DEV_NSLOT; i++, s++) {
-		if (s->opt == NULL || s->opt->dev != d)
+		if (s->opt != NULL && s->opt->dev != d)
 			continue;
-		slot_midi_desc(s);
-		slot_midi_vol(s);
+		dev_midi_slotdesc(d, s);
+		dev_midi_vol(d, s);
 	}
 	x.start = SYSEX_START;
 	x.type = SYSEX_TYPE_EDU;
@@ -1067,10 +1102,8 @@ dev_abort(struct dev *d)
 	for (i = 0, s = slot_array; i < DEV_NSLOT; i++, s++) {
 		if (s->opt == NULL || s->opt->dev != d)
 			continue;
-		if (s->ops != NULL) {
-			s->ops->exit(s->arg);
-			s->ops = NULL;
-		}
+		s->ops->exit(s->arg);
+		s->ops = NULL;
 	}
 	d->slot_list = NULL;
 
@@ -1398,7 +1431,7 @@ mmc_trigger(void)
 	for (i = 0, s = slot_array; i < DEV_NSLOT; i++, s++) {
 		if (s->opt == NULL || s->opt->dev != mmc_dev)
 			continue;
-		if (s->ops != NULL && s->opt->mmc && s->pstate != SLOT_READY) {
+		if (s->pstate != SLOT_READY) {
 #ifdef DEBUG
 			if (log_level >= 3) {
 				slot_log(s);
@@ -1413,10 +1446,8 @@ mmc_trigger(void)
 	for (i = 0, s = slot_array; i < DEV_NSLOT; i++, s++) {
 		if (s->opt == NULL || s->opt->dev != mmc_dev)
 			continue;
-		if (s->ops != NULL && s->opt->mmc) {
-			slot_attach(s);
-			s->pstate = SLOT_RUN;
-		}
+		slot_attach(s);
+		s->pstate = SLOT_RUN;
 	}
 	mmc_tstate = MMC_RUN;
 	mtc_midi_full();
@@ -1822,8 +1853,8 @@ found:
 	s->appbufsz = s->opt->dev->bufsz;
 	s->round = s->opt->dev->round;
 	s->rate = s->opt->dev->rate;
-	slot_midi_desc(s);
-	slot_midi_vol(s);
+	dev_midi_slotdesc(s->opt->dev, s);
+	dev_midi_vol(s->opt->dev, s);
 #ifdef DEBUG
 	if (log_level >= 3) {
 		slot_log(s);
@@ -1857,41 +1888,6 @@ slot_del(struct slot *s)
 		break;
 	}
 	opt_unref(s->opt);
-}
-
-/*
- * send a volume change MIDI message
- */
-void
-slot_midi_vol(struct slot *s)
-{
-	unsigned char msg[3];
-
-	msg[0] = MIDI_CTL | s->index;
-	msg[1] = MIDI_CTL_VOL;
-	msg[2] = s->vol;
-	dev_midi_send(s->opt->dev, msg, 3);
-}
-
-/*
- * send a sndiod-specific slot description MIDI message
- */
-void
-slot_midi_desc(struct slot *s)
-{
-	struct sysex x;
-
-	memset(&x, 0, sizeof(struct sysex));
-	x.start = SYSEX_START;
-	x.type = SYSEX_TYPE_EDU;
-	x.dev = SYSEX_DEV_ANY;
-	x.id0 = SYSEX_AUCAT;
-	x.id1 = SYSEX_AUCAT_SLOTDESC;
-	if (*s->name != '\0')
-		slot_ctlname(s, (char *)x.u.slotdesc.name, SYSEX_NAMELEN);
-	x.u.slotdesc.chan = s->index;
-	x.u.slotdesc.end = SYSEX_END;
-	dev_midi_send(s->opt->dev, (unsigned char *)&x, SYSEX_SIZE(slotdesc));
 }
 
 /*
@@ -2481,7 +2477,8 @@ ctl_setval(struct ctl *c, int val)
 		return 1;
 	case CTL_SLOT_LEVEL:
 		slot_setvol(c->u.slot_level.slot, val);
-		slot_midi_vol(c->u.slot_level.slot);
+		// XXX change dev_midi_vol() into slot_midi_vol()
+		dev_midi_vol(c->u.slot_level.slot->opt->dev, c->u.slot_level.slot);
 		c->val_mask = ~0U;
 		c->curval = val;
 		return 1;
