@@ -157,11 +157,10 @@ dev_sio_openlist(struct dev *d,
 				log_puts("\n");
 			}
 			d->alt_num = n->idx;
-			for (c = d->ctl_list; c != NULL; c = c->next) {
-				if (c->addr < CTLADDR_ALT_SEL ||
-				    c->addr >= CTLADDR_ALT_SEL + DEV_NMAX)
+			for (c = ctl_list; c != NULL; c = c->next) {
+				if (!ctl_match(c, CTL_DEV_ALT, d, NULL))
 					continue;
-				val = (c->addr - CTLADDR_ALT_SEL) == n->idx;
+				val = c->u.dev_alt.idx == n->idx;
 				if (c->curval == val)
 					continue;
 				c->curval = val;

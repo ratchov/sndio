@@ -1229,8 +1229,7 @@ sock_execmsg(struct sock *f)
 		f->lastvol = ctl; /* dont trigger feedback message */
 		slot_setvol(s, ctl);
 		dev_midi_vol(s->opt->dev, s);
-		dev_onval(s->opt->dev,
-		    CTLADDR_SLOT_LEVEL(f->slot - slot_array), ctl);
+		ctl_onval(CTL_SLOT_LEVEL, s, NULL, ctl);
 		break;
 	case AMSG_CTLSUB:
 #ifdef DEBUG
@@ -1256,9 +1255,10 @@ sock_execmsg(struct sock *f)
 		if (m->u.ctlsub.desc) {
 			if (!(f->ctlops & SOCK_CTLDESC)) {
 				ctl = f->ctlslot->self;
-				c = f->ctlslot->opt->dev->ctl_list;
+				c = ctl_list;
 				while (c != NULL) {
-					c->desc_mask |= ctl;
+					if (ctlslot_visible(f->ctlslot, c))
+						c->desc_mask |= ctl;
 					c = c->next;
 				}
 				f->ctlops |= SOCK_CTLDESC;
@@ -1290,13 +1290,23 @@ sock_execmsg(struct sock *f)
 			sock_close(f);
 			return 0;
 		}
-		if (!dev_setctl(f->ctlslot->opt->dev,
-			ntohs(m->u.ctlset.addr),
-			ntohs(m->u.ctlset.val))) {
+
+		c = ctlslot_lookup(f->ctlslot, ntohs(m->u.ctlset.addr));
+		if (c == NULL) {
 #ifdef DEBUG
 			if (log_level >= 1) {
 				sock_log(f);
-				log_puts(": CTLSET, wrong addr/val\n");
+				log_puts(": CTLSET, wrong addr\n");
+			}
+#endif
+			sock_close(f);
+			return 0;
+		}
+		if (!ctl_setval(c, ntohs(m->u.ctlset.val))) {
+#ifdef DEBUG
+			if (log_level >= 1) {
+				sock_log(f);
+				log_puts(": CTLSET, bad value\n");
 			}
 #endif
 			sock_close(f);
@@ -1392,7 +1402,7 @@ sock_execmsg(struct sock *f)
 int
 sock_buildmsg(struct sock *f)
 {
-	unsigned int size, mask;
+	unsigned int size, type, mask;
 	struct amsg_ctl_desc *desc;
 	struct ctl *c, **pc;
 
@@ -1544,7 +1554,7 @@ sock_buildmsg(struct sock *f)
 		desc = f->ctldesc;
 		mask = f->ctlslot->self;
 		size = 0;
-		pc = &f->ctlslot->opt->dev->ctl_list;
+		pc = &ctl_list;
 		while ((c = *pc) != NULL) {
 			if ((c->desc_mask & mask) == 0 ||
 			    (c->refs_mask & mask) == 0) {
@@ -1556,7 +1566,11 @@ sock_buildmsg(struct sock *f)
 				break;
 			c->desc_mask &= ~mask;
 			c->val_mask &= ~mask;
-			strlcpy(desc->group, c->group,
+			type = ctlslot_visible(f->ctlslot, c) ?
+			    c->type : CTL_NONE;
+			strlcpy(desc->group, (f->ctlslot->opt == NULL ||
+			    strcmp(c->group, f->ctlslot->opt->dev->name) != 0) ?
+			    c->group : "",
 			    AMSG_CTL_NAMEMAX);
 			strlcpy(desc->node0.name, c->node0.name,
 			    AMSG_CTL_NAMEMAX);
@@ -1564,7 +1578,7 @@ sock_buildmsg(struct sock *f)
 			strlcpy(desc->node1.name, c->node1.name,
 			    AMSG_CTL_NAMEMAX);
 			desc->node1.unit = ntohs(c->node1.unit);
-			desc->type = c->type;
+			desc->type = type;
 			strlcpy(desc->func, c->func, AMSG_CTL_NAMEMAX);
 			desc->addr = htons(c->addr);
 			desc->maxval = htons(c->maxval);
@@ -1573,7 +1587,7 @@ sock_buildmsg(struct sock *f)
 			desc++;
 
 			/* if this is a deleted entry unref it */
-			if (c->type == CTL_NONE) {
+			if (type == CTL_NONE) {
 				c->refs_mask &= ~mask;
 				if (c->refs_mask == 0) {
 					*pc = c->next;
@@ -1601,7 +1615,9 @@ sock_buildmsg(struct sock *f)
 	}
 	if (f->ctlslot && (f->ctlops & SOCK_CTLVAL)) {
 		mask = f->ctlslot->self;
-		for (c = f->ctlslot->opt->dev->ctl_list; c != NULL; c = c->next) {
+		for (c = ctl_list; c != NULL; c = c->next) {
+			if (!ctlslot_visible(f->ctlslot, c))
+				continue;
 			if ((c->val_mask & mask) == 0)
 				continue;
 			c->val_mask &= ~mask;
