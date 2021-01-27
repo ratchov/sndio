@@ -2087,6 +2087,7 @@ slot_ready(struct slot *s)
 void
 slot_start(struct slot *s)
 {
+	struct dev *d = s->dev;
 #ifdef DEBUG
 	if (s->pstate != SLOT_INIT) {
 		slot_log(s);
@@ -2099,7 +2100,7 @@ slot_start(struct slot *s)
 			log_puts(": playing ");
 			aparams_log(&s->par);
 			log_puts(" -> ");
-			aparams_log(&s->dev->par);
+			aparams_log(&d->par);
 			log_puts("\n");
 		}
 	}
@@ -2109,7 +2110,7 @@ slot_start(struct slot *s)
 			log_puts(": recording ");
 			aparams_log(&s->par);
 			log_puts(" <- ");
-			aparams_log(&s->dev->par);
+			aparams_log(&d->par);
 			log_puts("\n");
 		}
 	}
@@ -2120,7 +2121,7 @@ slot_start(struct slot *s)
 		/*
 		 * N-th recorded block is the N-th played block
 		 */
-		s->sub.prime = -dev_getpos(s->dev) / s->dev->round;
+		s->sub.prime = -dev_getpos(d) / d->round;
 	}
 	s->skip = 0;
 
@@ -2128,7 +2129,7 @@ slot_start(struct slot *s)
 	 * get the current position, the origin is when the first sample
 	 * played and/or recorded
 	 */
-	s->delta = dev_getpos(s->dev) * (int)s->round / (int)s->dev->round;
+	s->delta = dev_getpos(d) * (int)s->round / (int)d->round;
 	s->delta_rem = 0;
 
 	if (s->mode & MODE_PLAY) {
@@ -2146,16 +2147,10 @@ void
 slot_detach(struct slot *s)
 {
 	struct slot **ps;
-	struct dev *d;
+	struct dev *d = s->dev;
 	long long pos;
 
-#ifdef DEBUG
-	if (log_level >= 3) {
-		slot_log(s);
-		log_puts(": detaching\n");
-	}
-#endif
-	for (ps = &s->dev->slot_list; *ps != s; ps = &(*ps)->next) {
+	for (ps = &d->slot_list; *ps != s; ps = &(*ps)->next) {
 #ifdef DEBUG
 		if (*ps == NULL) {
 			slot_log(s);
@@ -2165,8 +2160,6 @@ slot_detach(struct slot *s)
 #endif
 	}
 	*ps = s->next;
-
-	d = s->dev;
 
 	/*
 	 * adjust clock, go back d->delta ticks so that slot_attach()
@@ -2195,7 +2188,7 @@ slot_detach(struct slot *s)
 	}
 #endif
 	if (s->mode & MODE_PLAY)
-		dev_mix_adjvol(s->dev);
+		dev_mix_adjvol(d);
 }
 
 /*
