@@ -60,7 +60,6 @@ struct ctlops
 struct slot {
 	struct slotops *ops;			/* client callbacks */
 	struct slot *next;			/* next on the play list */
-	struct dev *dev;			/* device this belongs to */
 	struct opt *opt;			/* config used */
 	void *arg;				/* user data for callbacks */
 	struct aparams par;			/* socket side params */
@@ -92,7 +91,7 @@ struct slot {
 	int xrun;				/* underrun policy */
 	int skip;				/* cycles to skip (for xrun) */
 #define SLOT_BUFSZ(s) \
-	((s)->appbufsz + (s)->dev->bufsz / (s)->dev->round * (s)->round)
+	((s)->appbufsz + (s)->opt->dev->bufsz / (s)->opt->dev->round * (s)->round)
 	int appbufsz;				/* slot-side buffer size */
 	int round;				/* slot-side block size */
 	int rate;				/* slot-side sample rate */
@@ -293,7 +292,7 @@ void dev_midi_vol(struct dev *, struct slot *);
  * sio_open(3) like interface for clients
  */
 void slot_log(struct slot *);
-struct slot *slot_new(struct dev *, struct opt *, unsigned int, char *,
+struct slot *slot_new(struct opt *, unsigned int, char *,
     struct slotops *, void *, int);
 void slot_del(struct slot *);
 void slot_setvol(struct slot *, unsigned int);

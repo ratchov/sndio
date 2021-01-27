@@ -123,7 +123,7 @@ slot_array_init(void)
 		slot_array[i].unit = i;
 		slot_array[i].ops = NULL;
 		slot_array[i].vol = MIDI_MAXCTL;
-		slot_array[i].dev = NULL;
+		slot_array[i].opt = NULL;
 		slot_array[i].serial = slot_serial++;
 		memset(slot_array[i].name, 0, SLOT_NAMEMAX);
 	}
@@ -409,7 +409,7 @@ dev_midi_slotdesc(struct dev *d, struct slot *s)
 	x.dev = SYSEX_DEV_ANY;
 	x.id0 = SYSEX_AUCAT;
 	x.id1 = SYSEX_AUCAT_SLOTDESC;
-	if (*s->name != '\0')
+	if (s->opt != NULL && s->opt->dev == d)
 		slot_ctlname(s, (char *)x.u.slotdesc.name, SYSEX_NAMELEN);
 	x.u.slotdesc.chan = (s - slot_array);
 	x.u.slotdesc.end = SYSEX_END;
@@ -425,7 +425,7 @@ dev_midi_dump(struct dev *d)
 
 	dev_midi_master(d);
 	for (i = 0, s = slot_array; i < DEV_NSLOT; i++, s++) {
-		if (s->dev != d)
+		if (s->opt != NULL && s->opt->dev != d)
 			continue;
 		dev_midi_slotdesc(d, s);
 		dev_midi_vol(d, s);
@@ -462,7 +462,8 @@ dev_midi_omsg(void *arg, unsigned char *msg, int len)
 		chan = msg[0] & MIDI_CHANMASK;
 		if (chan >= DEV_NSLOT)
 			return;
-		if (slot_array[chan].dev != d)
+		if (slot_array[chan].opt == NULL ||
+		    slot_array[chan].opt->dev != d)
 			return;
 		slot_setvol(slot_array + chan, msg[2]);
 		dev_onval(d, CTLADDR_SLOT_LEVEL(chan), msg[2]);
@@ -1236,7 +1237,7 @@ dev_open(struct dev *d)
 		return 0;
 
 	for (i = 0, s = slot_array; i < DEV_NSLOT; i++, s++) {
-		if (s->dev != d || s->name[0] == 0)
+		if (s->opt == NULL || s->opt->dev != d || s->name[0] == 0)
 			continue;
 		slot_ctlname(s, name, CTL_NAMEMAX);
 		dev_addctl(d, "app", CTL_NUM,
@@ -1271,20 +1272,22 @@ dev_abort(struct dev *d)
 	struct ctlslot *c;
 
 	for (i = 0, s = slot_array; i < DEV_NSLOT; i++, s++) {
-		if (s->dev != d)
+		if (s->opt == NULL || s->opt->dev != d)
 			continue;
-		if (s->ops)
+		if (s->ops) {
 			s->ops->exit(s->arg);
-		s->ops = NULL;
+			s->ops = NULL;
+		}
 	}
 	d->slot_list = NULL;
 
 	for (c = ctlslot_array, i = DEV_NCTLSLOT; i > 0; i--, c++) {
 		if (c->opt->dev != d)
 			continue;
-		if (c->ops)
+		if (c->ops) {
 			c->ops->exit(c->arg);
-		c->ops = NULL;
+			c->ops = NULL;
+		}
 	}
 
 	midi_abort(d->midi);
@@ -1575,7 +1578,7 @@ dev_sync_attach(struct dev *d)
 	}
 
 	for (i = 0, s = slot_array; i < DEV_NSLOT; i++, s++) {
-		if (s->dev != d || !s->ops || !s->opt->mmc)
+		if (s->opt == NULL || s->opt->dev != d || !s->ops || !s->opt->mmc)
 			continue;
 		if (s->pstate != SLOT_READY) {
 #ifdef DEBUG
@@ -1591,7 +1594,7 @@ dev_sync_attach(struct dev *d)
 		return;
 
 	for (i = 0, s = slot_array; i < DEV_NSLOT; i++, s++) {
-		if (s->dev != d || !s->ops || !s->opt->mmc)
+		if (s->opt == NULL || s->opt->dev != d || !s->ops || !s->opt->mmc)
 			continue;
 		slot_attach(s);
 		s->pstate = SLOT_RUN;
@@ -1671,7 +1674,7 @@ void
 slot_initconv(struct slot *s)
 {
 	unsigned int dev_nch;
-	struct dev *d = s->dev;
+	struct dev *d = s->opt->dev;
 
 	if (s->mode & MODE_PLAY) {
 		cmap_init(&s->mix.cmap,
@@ -1752,7 +1755,7 @@ slot_initconv(struct slot *s)
 void
 slot_allocbufs(struct slot *s)
 {
-	struct dev *d = s->dev;
+	struct dev *d = s->opt->dev;
 
 	if (s->mode & MODE_PLAY) {
 		s->mix.bpf = s->par.bps * s->mix.nch;
@@ -1827,7 +1830,7 @@ slot_freebufs(struct slot *s)
  * allocate a new slot and register the given call-backs
  */
 struct slot *
-slot_new(struct dev *d, struct opt *opt, unsigned int id, char *who,
+slot_new(struct opt *opt, unsigned int id, char *who,
     struct slotops *ops, void *arg, int mode)
 {
 	char *p;
@@ -1924,20 +1927,18 @@ found:
 			slot_log(s);
 			log_puts(": requested mode not allowed\n");
 		}
-		return 0;
-	}
-	if (!dev_ref(d))
 		return NULL;
-	dev_label(d, s - slot_array);
-	if ((mode & d->mode) != mode) {
+	}
+	if (!dev_ref(opt->dev))
+		return NULL;
+	if ((mode & opt->dev->mode) != mode) {
 		if (log_level >= 1) {
 			slot_log(s);
 			log_puts(": requested mode not supported\n");
 		}
-		dev_unref(d);
+		dev_unref(opt->dev);
 		return NULL;
 	}
-	s->dev = d;
 	s->opt = opt;
 	s->ops = ops;
 	s->arg = arg;
@@ -1949,18 +1950,19 @@ found:
 	if (s->mode & MODE_RECMASK)
 		s->sub.nch = s->opt->rmax - s->opt->rmin + 1;
 	s->xrun = s->opt->mmc ? XRUN_SYNC : XRUN_IGNORE;
-	s->appbufsz = d->bufsz;
-	s->round = d->round;
-	s->rate = d->rate;
-	dev_midi_slotdesc(d, s);
-	dev_midi_vol(d, s);
+	s->appbufsz = s->opt->dev->bufsz;
+	s->round = s->opt->dev->round;
+	s->rate = s->opt->dev->rate;
+	dev_label(s->opt->dev, s - slot_array);
+	dev_midi_slotdesc(s->opt->dev, s);
+	dev_midi_vol(s->opt->dev, s);
 #ifdef DEBUG
 	if (log_level >= 3) {
 		slot_log(s);
 		log_puts(": using ");
-		dev_log(d);
+		dev_log(s->opt->dev);
 		log_puts(".");
-		log_puts(opt->name);
+		log_puts(s->opt->name);
 		log_puts(", mode = ");
 		log_putx(mode);
 		log_puts("\n");
@@ -1988,8 +1990,7 @@ slot_del(struct slot *s)
 		slot_stop(s, 0);
 		break;
 	}
-	dev_unref(s->dev);
-	s->dev = NULL;
+	dev_unref(s->opt->dev);
 }
 
 /*
@@ -2016,7 +2017,7 @@ slot_setvol(struct slot *s, unsigned int vol)
 void
 slot_attach(struct slot *s)
 {
-	struct dev *d = s->dev;
+	struct dev *d = s->opt->dev;
 	long long pos;
 
 	/*
@@ -2081,13 +2082,13 @@ slot_ready(struct slot *s)
 	 * device may be disconnected, and if so we're called from
 	 * slot->ops->exit() on a closed device
 	 */
-	if (s->dev->pstate == DEV_CFG)
+	if (s->opt->dev->pstate == DEV_CFG)
 		return;
 	if (!s->opt->mmc) {
 		slot_attach(s);
 		s->pstate = SLOT_RUN;
 	} else
-		dev_sync_attach(s->dev);
+		dev_sync_attach(s->opt->dev);
 }
 
 /*
@@ -2097,7 +2098,7 @@ slot_ready(struct slot *s)
 void
 slot_start(struct slot *s)
 {
-	struct dev *d = s->dev;
+	struct dev *d = s->opt->dev;
 #ifdef DEBUG
 	if (s->pstate != SLOT_INIT) {
 		slot_log(s);
@@ -2157,7 +2158,7 @@ void
 slot_detach(struct slot *s)
 {
 	struct slot **ps;
-	struct dev *d = s->dev;
+	struct dev *d = s->opt->dev;
 	long long pos;
 
 	for (ps = &d->slot_list; *ps != s; ps = &(*ps)->next) {
@@ -2571,7 +2572,7 @@ dev_setctl(struct dev *d, int addr, int val)
 		} else {
 			num = addr - CTLADDR_SLOT_LEVEL(0);
 			s = slot_array + num;
-			if (s->dev != d)
+			if (s->opt->dev != d)
 				return 1;
 			slot_setvol(s, val);
 			dev_midi_vol(d, s);
