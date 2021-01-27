@@ -24,6 +24,7 @@ struct dev;
 struct opt {
 	struct opt *next;
 	struct dev *dev;
+	struct midi *midi;
 	int num;
 #define OPT_NAMEMAX 11
 	char name[OPT_NAMEMAX + 1];

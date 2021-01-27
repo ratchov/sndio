@@ -869,9 +869,12 @@ sock_hello(struct sock *f)
 			d = dev_bynum(p->devnum);
 			if (d == NULL)
 				return 0;
+			opt = opt_byname(d, p->opt);
+			if (opt == NULL)
+				return 0;
 			if (!dev_ref(d))
 				return 0;
-			midi_tag(f->midi, p->devnum);
+			midi_tag(f->midi, opt->num);
 		} else if (p->devnum < 32) {
 			midi_tag(f->midi, p->devnum);
 		} else if (p->devnum < 48) {
