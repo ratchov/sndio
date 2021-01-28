@@ -748,7 +748,7 @@ sock_setpar(struct sock *f)
 			return 0;
 		}
 		s->xrun = p->xrun;
-		if (s->opt->mmc && s->xrun == XRUN_IGNORE)
+		if (s->opt->mtc != NULL && s->xrun == XRUN_IGNORE)
 			s->xrun = XRUN_SYNC;
 #ifdef DEBUG
 		if (log_level >= 3) {

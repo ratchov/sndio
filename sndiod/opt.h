@@ -25,13 +25,14 @@ struct opt {
 	struct opt *next;
 	struct dev *dev;
 	struct midi *midi;
+	struct mtc *mtc;	/* if set, MMC-controlled MTC source */
+
 	int num;
 #define OPT_NAMEMAX 11
 	char name[OPT_NAMEMAX + 1];
 	int maxweight;		/* max dynamic range for clients */
 	int pmin, pmax;		/* play channels */
 	int rmin, rmax;		/* recording channels */
-	int mmc;		/* true if MMC control enabled */
 	int dup;		/* true if join/expand enabled */
 	int mode;		/* bitmap of MODE_XXX */
 };
