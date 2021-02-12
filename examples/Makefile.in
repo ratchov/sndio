@@ -13,7 +13,7 @@ LDADD = -lsndio @ldadd@
 # variables defined on configure script command line (if any)
 @vars@
 
-PROG = play rec fd vol cap
+PROG = play rec fd vol cap gen-fir
 
 all:		${PROG}
 
@@ -31,6 +31,9 @@ vol:		vol.o tools.o
 
 cap:		cap.o tools.o
 		${CC} ${LDFLAGS} ${LIB} -o cap cap.o tools.o ${LDADD}
+
+gen-fir:	gen-fir.c
+		${CC} ${LDFLAGS} ${LIB} -o gen-fir gen-fir.c -lm
 
 .c.o:
 		${CC} ${CFLAGS} ${INCLUDE} ${DEFS} -c $<
