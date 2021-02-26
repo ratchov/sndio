@@ -554,6 +554,11 @@ sio_alsa_setpar_hw(snd_pcm_t *pcm, snd_pcm_hw_params_t *hwp,
 
 	req_rate = *rate;
 
+	err = snd_pcm_hw_free(pcm);
+	if (err < 0) {
+		DALSA("couldn't reset hw configuration", err);
+		return 0;
+	}
 	err = snd_pcm_hw_params_any(pcm, hwp);
 	if (err < 0) {
 		DALSA("couldn't init pars", err);
