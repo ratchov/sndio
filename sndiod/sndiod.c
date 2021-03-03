@@ -387,11 +387,11 @@ main(int argc, char **argv)
 	/*
 	 * global options defaults
 	 */
-	vol = 118;
+	vol = 127;
 	dup = 1;
 	mmc = 0;
 	hold = 0;
-	autovol = 1;
+	autovol = 0;
 	bufsz = 0;
 	round = 0;
 	rate = DEFAULT_RATE;

@@ -343,7 +343,7 @@ Reducing the volume in advance allows a client's volume to stay independent
 from the number of clients as long as their number is small enough.
 18 volume units (i.e. \-6dB attenuation) allows the number
 of playback programs to be doubled.
-The default is 118 i.e. \-3dB.
+The default is 127.
 .It Fl w Ar flag
 Control
 .Nm
@@ -355,11 +355,8 @@ option.
 If the flag is
 .Va on ,
 then the master volume is automatically adjusted to avoid clipping.
-Using
-.Va off
-makes sense in the rare situation where all programs lower their volumes.
 The default is
-.Va on .
+.Va off .
 .It Fl z Ar nframes
 The audio device block size in frames.
 This is the number of frames between audio clock ticks,
