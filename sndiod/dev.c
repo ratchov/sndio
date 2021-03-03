@@ -1290,12 +1290,12 @@ dev_abort(struct dev *d)
 	d->slot_list = NULL;
 
 	for (c = ctlslot_array, i = DEV_NCTLSLOT; i > 0; i--, c++) {
+		if (c->ops == NULL)
+			continue;
 		if (c->opt->dev != d)
 			continue;
-		if (c->ops) {
-			c->ops->exit(c->arg);
-			c->ops = NULL;
-		}
+		c->ops->exit(c->arg);
+		c->ops = NULL;
 	}
 
 	midi_abort(d->midi);
