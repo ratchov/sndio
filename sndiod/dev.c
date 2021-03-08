@@ -1776,23 +1776,23 @@ slot_new(struct opt *opt, unsigned int id, char *who,
 			bestidx = i;
 		}
 	}
-	if (bestidx != DEV_NSLOT) {
-		s = slot_array + bestidx;
-		s->vol = MIDI_MAXCTL;
-		strlcpy(s->name, name, SLOT_NAMEMAX);
-		s->serial = slot_serial++;
-		for (i = 0; unit[i] != NULL; i++)
-			; /* nothing */
-		s->unit = i;
-		s->id = id;
-		goto found;
+
+	if (bestidx == DEV_NSLOT) {
+		if (log_level >= 1) {
+			log_puts(name);
+			log_puts(": out of sub-device slots\n");
+		}
+		return NULL;
 	}
 
-	if (log_level >= 1) {
-		log_puts(name);
-		log_puts(": out of sub-device slots\n");
-	}
-	return NULL;
+	s = slot_array + bestidx;
+	s->vol = MIDI_MAXCTL;
+	strlcpy(s->name, name, SLOT_NAMEMAX);
+	s->serial = slot_serial++;
+	for (i = 0; unit[i] != NULL; i++)
+		; /* nothing */
+	s->unit = i;
+	s->id = id;
 
 found:
 	if ((mode & MODE_REC) && (opt->mode & MODE_MON)) {
