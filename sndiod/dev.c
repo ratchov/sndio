@@ -1151,7 +1151,7 @@ dev_abort(struct dev *d)
 	}
 	d->slot_list = NULL;
 
-	for (c = ctlslot_array, i = DEV_NCTLSLOT; i > 0; i--, c++) {
+	for (c = ctlslot_array, i = 0; i < DEV_NCTLSLOT; i++, c++) {
 		if (c->ops == NULL)
 			continue;
 		if (c->opt->dev != d)
@@ -2588,8 +2588,10 @@ dev_ctlsync(struct dev *d)
 		    NULL, -1, 127, d->master);
 	}
 
-	for (s = ctlslot_array, i = DEV_NCTLSLOT; i > 0; i--, s++) {
-		if (s->ops && s->opt->dev == d)
+	for (s = ctlslot_array, i = 0; i < DEV_NCTLSLOT; i++, s++) {
+		if (s->ops == NULL)
+			continue;
+		if (s->opt->dev == d)
 			s->ops->sync(s->arg);
 	}
 }
