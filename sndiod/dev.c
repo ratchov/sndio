@@ -942,6 +942,7 @@ dev_new(char *path, struct aparams *par,
 	d->pstate = DEV_CFG;
 	d->slot_list = NULL;
 	d->master = MIDI_MAXCTL;
+	d->master_enabled = 0;
 	snprintf(d->name, CTL_NAMEMAX, "%u", d->num);
 	d->next = dev_list;
 	dev_list = d;
@@ -1094,7 +1095,6 @@ dev_open(struct dev *d)
 	char name[CTL_NAMEMAX];
 	struct dev_alt *a;
 
-	d->master_enabled = 0;
 	d->mode = d->reqmode;
 	d->round = d->reqround;
 	d->bufsz = d->reqbufsz;
