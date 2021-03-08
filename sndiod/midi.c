@@ -483,7 +483,7 @@ port_exit(void *arg)
 struct port *
 port_new(char *path, unsigned int mode, int hold)
 {
-	struct port *c;
+	struct port *c, **pc;
 
 	c = xmalloc(sizeof(struct port));
 	c->path_list = NULL;
@@ -492,8 +492,10 @@ port_new(char *path, unsigned int mode, int hold)
 	c->hold = hold;
 	c->midi = midi_new(&port_midiops, c, mode);
 	c->num = midi_portnum++;
-	c->next = port_list;
-	port_list = c;
+	for (pc = &port_list; *pc != NULL; pc = &(*pc)->next)
+		;
+	c->next = *pc;
+	*pc = c;
 	return c;
 }
 
