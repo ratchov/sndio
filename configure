@@ -11,6 +11,7 @@ Usage: configure [options]
 --datadir=DIR			install read-only data in DIR [\$prefix/share]
 --includedir=DIR		install header files in DIR [\$prefix/include]
 --libdir=DIR			install libraries in DIR [\$prefix/lib]
+--pkgconfdir=DIR		install pkg-config file in DIR [\$libdir/pkgconfig]
 --mandir=DIR			install man pages in DIR [\$prefix/man]
 --precision=NUMBER		aucat/sndiod processing precision [$precision]
 --privsep-user=USER		non-privileged user for sndio daemon [$user]
@@ -31,6 +32,7 @@ END
 #
 # defaults
 #
+version=1.7.0				# package version (used by pkg-config)
 prefix=/usr/local			# where to install sndio
 so="libsndio.so.\${MAJ}.\${MIN}"	# shared libs to build
 alsa=no					# do we want alsa support ?
@@ -48,6 +50,7 @@ unset datadir				# path where to install doc
 unset mandir				# path where to install man pages
 unset includedir			# path where to install header file
 unset libdir				# path where to install library
+unset pkgconfdir			# path where to install pkg-config file
 unset defs				# no extra #defines
 unset ldadd				# no extra libraries (-l options)
 unset dev
@@ -124,6 +127,9 @@ for i; do
 	--libdir=*)
 		libdir="${i#--libdir=}"
 		shift;;
+	--pkgconfdir=*)
+		pkgconfdir="${i#--pkgconfdir=}"
+		shift;;
 	--mandir=*)
 		mandir="${i#--mandir=}"
 		shift;;
@@ -193,6 +199,7 @@ bindir="${bindir:-$prefix/bin}"
 datadir="${datadir:-$prefix/share}"
 includedir="${includedir:-$prefix/include}"
 libdir="${libdir:-$prefix/lib}"
+pkgconfdir="${pkgconfdir:-$prefix/lib/pkgconfig}"
 mandir="${mandir:-$prefix/share/man}"
 
 #
@@ -253,7 +260,7 @@ fi
 
 
 for f in Makefile aucat/Makefile midicat/Makefile sndiod/Makefile \
-libsndio/Makefile \
+libsndio/Makefile libsndio/sndio.pc \
 sndioctl/Makefile \
 examples/Makefile \
 contrib/init.d.sndiod \
@@ -264,7 +271,9 @@ do
 	-e "s:@datadir@:$datadir:" \
 	-e "s:@includedir@:$includedir:" \
 	-e "s:@libdir@:$libdir:" \
+	-e "s:@pkgconfdir@:$pkgconfdir:" \
 	-e "s:@mandir@:$mandir:" \
+	-e "s:@version@:$version:" \
 	-e "s:@defs@:$defs:" \
 	-e "s:@ldadd@:$ldadd:" \
 	-e "s:@so@:$so:" \
@@ -282,10 +291,12 @@ chmod +x contrib/init.d.sndiod
 
 cat <<EOF
 
+version.................. $version
 bindir................... $bindir
 datadir.................. $datadir
 includedir............... $includedir
 libdir................... $libdir
+pkgconfdir............... $pkgconfdir
 mandir................... $mandir
 user..................... $user
 libbsd................... $libbsd

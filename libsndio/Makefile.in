@@ -24,6 +24,7 @@ SO_LDFLAGS = -shared @so_ldflags@
 #
 INCLUDE_DIR = @includedir@
 LIB_DIR = @libdir@
+PKGCONF_DIR = @pkgconfdir@
 MAN3_DIR = @mandir@/man3
 MAN7_DIR = @mandir@/man7
 
@@ -57,10 +58,12 @@ all:		${SO} ${SO_LINK} ${SO_LINK_MAJ}
 install:
 		mkdir -p ${DESTDIR}${INCLUDE_DIR}
 		mkdir -p ${DESTDIR}${LIB_DIR}
+		mkdir -p ${DESTDIR}${PKGCONF_DIR}
 		mkdir -p ${DESTDIR}${MAN3_DIR}
 		mkdir -p ${DESTDIR}${MAN7_DIR}
 		cp sndio.h ${DESTDIR}${INCLUDE_DIR}
 		cp -R ${SO} ${SO_LINK} ${SO_LINK_MAJ} ${DESTDIR}${LIB_DIR}
+		cp sndio.pc ${DESTDIR}${PKGCONF_DIR}
 		cp sio_open.3 ${DESTDIR}${MAN3_DIR}
 		ln -sf sio_open.3 ${DESTDIR}${MAN3_DIR}/sio_close.3
 		ln -sf sio_open.3 ${DESTDIR}${MAN3_DIR}/sio_setpar.3
@@ -100,6 +103,7 @@ install:
 uninstall:
 		rm -f ${DESTDIR}${INCLUDE_DIR}/sndio.h
 		cd ${DESTDIR}${LIB_DIR} && rm -f ${SO} ${SO_LINK}
+		cd ${DESTDIR}${PKGCONF_DIR} && rm -f sndio.pc
 		cd ${DESTDIR}${MAN3_DIR} && rm -f ${MAN3}
 		cd ${DESTDIR}${MAN7_DIR} && rm -f ${MAN7}
 
