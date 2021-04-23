@@ -6,11 +6,12 @@
 help() {
 cat << END
 Usage: configure [options]
---prefix=DIR			set install prefix to DIR [$prefix]
---bindir=DIR			install executables in DIR [\$prefix/bin]
+--prefix=DIR			set arch independent install prefix to DIR [$prefix]
+--exec-prefix=DIR		set arch dependent install prefix to DIR [\$prefix]
+--bindir=DIR			install executables in DIR [\$exec_prefix/bin]
 --datadir=DIR			install read-only data in DIR [\$prefix/share]
 --includedir=DIR		install header files in DIR [\$prefix/include]
---libdir=DIR			install libraries in DIR [\$prefix/lib]
+--libdir=DIR			install libraries in DIR [\$exec_prefix/lib]
 --pkgconfdir=DIR		install pkg-config file in DIR [\$libdir/pkgconfig]
 --mandir=DIR			install man pages in DIR [\$prefix/man]
 --precision=NUMBER		aucat/sndiod processing precision [$precision]
@@ -45,6 +46,7 @@ user=_sndio				# non-privileged user for sndio daemon
 libbsd=no				# use libbsd?
 so_ldflags=				# extra linker flags for shared libs
 unset vars				# variables passed as arguments
+unset exec_prefix			# prefix for arch. independent files
 unset bindir				# path where to install binaries
 unset datadir				# path where to install doc
 unset mandir				# path where to install man pages
@@ -114,6 +116,9 @@ for i; do
 	case "$i" in
 	--prefix=*)
 		prefix="${i#--prefix=}"
+		shift;;
+	--exec-prefix=*)
+		exec_prefix="${i#--exec-prefix=}"
 		shift;;
 	--bindir=*)
 		bindir="${i#--bindir=}"
@@ -195,10 +200,11 @@ done
 #
 # if $xxxdir is not specified, define it to $prefix/xxx
 #
-bindir="${bindir:-$prefix/bin}"
+exec_prefix="${exec_prefix:-$prefix}"
+bindir="${bindir:-$exec_prefix/bin}"
 datadir="${datadir:-$prefix/share}"
 includedir="${includedir:-$prefix/include}"
-libdir="${libdir:-$prefix/lib}"
+libdir="${libdir:-$exec_prefix/lib}"
 pkgconfdir="${pkgconfdir:-$prefix/lib/pkgconfig}"
 mandir="${mandir:-$prefix/share/man}"
 
