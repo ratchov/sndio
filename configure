@@ -266,7 +266,7 @@ fi
 
 
 for f in Makefile aucat/Makefile midicat/Makefile sndiod/Makefile \
-libsndio/Makefile libsndio/sndio.pc \
+libsndio/Makefile \
 sndioctl/Makefile \
 examples/Makefile \
 contrib/init.d.sndiod \
@@ -292,6 +292,25 @@ do
 	-e "s:@devs@:$devs:" \
 	< $f.in > $f
 done
+
+#
+# Generate sndio.pc. Substitute path prefixes with ${prefix} or
+# ${exec_prefix} variable names, so that they can be overriden by the
+# user
+#
+cat <<EOF >libsndio/sndio.pc
+prefix=${prefix}
+exec_prefix=`echo $exec_prefix | sed -e "s:^${prefix}:\\${prefix}:"`
+libdir=`echo $libdir | sed -e "s:^${exec_prefix}:\\${exec_prefix}:"`
+includedir=`echo $includedir | sed -e "s:^${prefix}:\\${prefix}:"`
+
+Name: sndio
+Description: sndio library
+Version: 1.7.0
+Requires:
+Libs: -L\${libdir} -lsndio
+Cflags: -I\${includedir}
+EOF
 
 chmod +x contrib/init.d.sndiod
 

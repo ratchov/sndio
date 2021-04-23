@@ -31,6 +31,7 @@ distclean:	clean
 	rm -f \
 		Makefile aucat/Makefile midicat/Makefile sndiod/Makefile \
 		libsndio/Makefile \
+		libsndio/sndio.pc \
 		sndioctl/Makefile \
 		examples/Makefile \
 		contrib/init.d.sndiod \

@@ -1,6 +1,0 @@
-Name: sndio
-Description: sndio library
-Version: @version@
-Requires: 
-Libs: -L@libdir@ -lsndio
-Cflags: -I@includedir@
