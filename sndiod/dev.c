@@ -1594,7 +1594,7 @@ slot_initconv(struct slot *s)
 	}
 
 	if (s->mode & MODE_RECMASK) {
-		unsigned int outchan = (s->mode & MODE_MON) ?
+		unsigned int outchan = (s->opt->mode & MODE_MON) ?
 		    d->pchan : d->rchan;
 
 		s->sub.encbuf = NULL;
