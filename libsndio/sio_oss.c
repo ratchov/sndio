@@ -436,9 +436,9 @@ sio_oss_setpar(struct sio_hdl *sh, struct sio_par *par)
 	if (hdl->rate > 192000)
 		hdl->rate = 192000;
 
-	if (hdl->sio.mode & SIO_PLAY)
+	if ((hdl->sio.mode & SIO_PLAY) && par->pchan != ~0U)
 		hdl->chan = par->pchan;
-	else if (hdl->sio.mode & SIO_REC)
+	else if ((hdl->sio.mode & SIO_REC) && par->rchan != ~0U)
 		hdl->chan = par->rchan;
 
 	if (ioctl(hdl->fd, SNDCTL_DSP_SETFMT, &hdl->fmt) == -1) {
