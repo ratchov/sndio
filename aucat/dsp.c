@@ -429,7 +429,7 @@ resamp_do(struct resamp *p, adata_t *in, adata_t *out, int icnt, int ocnt)
 			if (ofr == 0)
 				break;
 
-			for (c = nch; c > 0; c--)
+			for (c = 0; c < nch; c++)
 				f[c] = 0;
 
 			q = diff * p->filt_step;
@@ -442,7 +442,7 @@ resamp_do(struct resamp *p, adata_t *in, adata_t *out, int icnt, int ocnt)
 				ds = resamp_filt[qi + 1] - s;
 				s += (int64_t)qf * ds >> RESAMP_STEP_BITS;
 				ctx = ctxbuf;
-				for (c = nch; c > 0; c--) {
+				for (c = 0; c < nch; c++) {
 					f[c] += (int64_t)ctx[n] * s;
 					ctx += RESAMP_NCTX;
 				}
@@ -450,7 +450,7 @@ resamp_do(struct resamp *p, adata_t *in, adata_t *out, int icnt, int ocnt)
 				n = (n + 1) & (RESAMP_NCTX - 1);
 			}
 
-			for (c = nch; c > 0; c--) {
+			for (c = 0; c < nch; c++) {
 				s = f[c] >> RESAMP_BITS;
 				s = (int64_t)s * p->filt_cutoff >> RESAMP_BITS;
 #if ADATA_BITS == 16
