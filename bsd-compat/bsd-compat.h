@@ -32,11 +32,6 @@ size_t strlcpy(char *, const char *, size_t);
 long long strtonum(const char *, long long, long long, const char **);
 #endif
 
-#ifndef HAVE_SOCK_CLOEXEC
-#define strtonum _sndio_strtonum
-long long strtonum(const char *, long long, long long, const char **);
-#endif
-
 #ifndef HAVE_CLOCK_GETTIME
 #define CLOCK_MONOTONIC	0
 #define clock_gettime _sndio_clock_gettime
