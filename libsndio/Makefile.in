@@ -120,7 +120,7 @@ OBJS = debug.o aucat.o \
 mio.o mio_rmidi.o mio_alsa.o mio_aucat.o \
 sio.o sio_alsa.o sio_aucat.o sio_oss.o sio_sun.o \
 sioctl.o sioctl_aucat.o sioctl_sun.o \
-issetugid.o strlcat.o strlcpy.o strtonum.o clock_gettime.o
+getpeereid.o issetugid.o strlcat.o strlcpy.o strtonum.o clock_gettime.o
 
 .c.o:
 		${CC} ${CFLAGS} ${SO_CFLAGS} -I. ${INCLUDE} ${DEFS} -o $@ -c $<
@@ -133,6 +133,9 @@ ${SO_LINK}:
 
 ${SO_LINK_MAJ}:
 		ln -sf ${SO} ${SO_LINK_MAJ}
+
+getpeereid.o:	../bsd-compat/getpeereid.c
+		${CC} ${CFLAGS} ${SO_CFLAGS} ${INCLUDE} ${DEFS} -c -o getpeereid.o ../bsd-compat/getpeereid.c
 
 issetugid.o:	../bsd-compat/issetugid.c
 		${CC} ${CFLAGS} ${SO_CFLAGS} ${INCLUDE} ${DEFS} -c -o issetugid.o ../bsd-compat/issetugid.c

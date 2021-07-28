@@ -15,6 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 #include <sys/types.h>
+#include <sys/socket.h>
 #include <netinet/in.h>
 #include <errno.h>
 #include <poll.h>
@@ -788,6 +789,17 @@ int
 sock_auth(struct sock *f)
 {
 	struct amsg_auth *p = &f->rmsg.u.auth;
+	uid_t euid;
+	gid_t egid;
+
+	/*
+	 * root bypasses any authenication checks and has no session
+	 */
+	if (getpeereid(f->fd, &euid, &egid) == 0 && euid == 0) {
+		f->pstate = SOCK_HELLO;
+		f->sesrefs = 0;
+		return 1;
+	}
 
 	if (sock_sesrefs == 0) {
 		/* start a new session */

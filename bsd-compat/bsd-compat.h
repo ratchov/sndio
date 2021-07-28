@@ -5,6 +5,11 @@
 #include <bsd/bsd.h>
 #endif
 
+#ifndef HAVE_GETPEEREID
+#define getpeereid _sndio_getpeereid
+int getpeereid(int, uid_t *, gid_t *);
+#endif
+
 #ifndef HAVE_ISSETUGID
 #define issetugid _sndio_issetugid
 int issetugid(void);
