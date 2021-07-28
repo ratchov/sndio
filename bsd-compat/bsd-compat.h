@@ -1,6 +1,8 @@
 #ifndef BSD_COMPAT_H
 #define BSD_COMPAT_H
 
+#include <sys/types.h>
+
 #ifdef USE_LIBBSD
 #include <bsd/bsd.h>
 #endif
