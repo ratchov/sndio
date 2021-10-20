@@ -34,7 +34,6 @@
 #if ADATA_BITS == 16
 
 #define ADATA_MUL(x,y)		(((int)(x) * (int)(y)) >> (ADATA_BITS - 1))
-#define ADATA_MULDIV(x,y,z)	((int)(x) * (int)(y) / (int)(z))
 
 typedef short adata_t;
 
@@ -42,8 +41,6 @@ typedef short adata_t;
 
 #define ADATA_MUL(x,y)		\
 	((int)(((long long)(x) * (long long)(y)) >> (ADATA_BITS - 1)))
-#define ADATA_MULDIV(x,y,z)	\
-	((int)((long long)(x) * (long long)(y) / (long long)(z)))
 
 typedef int adata_t;
 
