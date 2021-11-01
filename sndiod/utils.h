@@ -20,11 +20,6 @@
 
 #include <stddef.h>
 
-struct name {
-	struct name *next;
-	char str[];
-};
-
 void log_puts(char *);
 void log_putx(unsigned long);
 void log_putu(unsigned long);
