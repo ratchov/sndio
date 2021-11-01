@@ -63,7 +63,7 @@ sio_open(const char *str, unsigned int mode, int nbio)
 			str = devany;
 	}
 	if (strcmp(str, devany) == 0) {
-		hdl = _sio_aucat_open("snd/0", mode, nbio);
+		hdl = _sio_aucat_open("snd/default", mode, nbio);
 		if (hdl != NULL)
 			return hdl;
 #if defined(USE_SUN)

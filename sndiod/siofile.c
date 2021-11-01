@@ -86,24 +86,25 @@ dev_sio_timeout(void *arg)
 	dev_abort(d);
 }
 
-static int
-dev_sio_openalt(struct dev *d, struct dev_alt *n,
-    struct sio_hdl **rhdl, struct sioctl_hdl **rctlhdl, unsigned int *rmode)
+/*
+ * open the device.
+ */
+int
+dev_sio_open(struct dev *d)
 {
-	struct sio_hdl *hdl;
-	struct sioctl_hdl *ctlhdl;
-	unsigned int mode = d->reqmode & (MODE_PLAY | MODE_REC);
+	struct sio_par par;
+	unsigned int rate, mode = d->reqmode & (SIO_PLAY | SIO_REC);
 
-	hdl = sio_open(n->name, mode, 1);
-	if (hdl == NULL) {
+	d->sio.hdl = sio_open(d->path, mode, 1);
+	if (d->sio.hdl == NULL) {
 		if (mode != (SIO_PLAY | SIO_REC))
 			return 0;
-		hdl = sio_open(n->name, SIO_PLAY, 1);
-		if (hdl != NULL)
+		d->sio.hdl = sio_open(d->path, SIO_PLAY, 1);
+		if (d->sio.hdl != NULL)
 			mode = SIO_PLAY;
 		else {
-			hdl = sio_open(n->name, SIO_REC, 1);
-			if (hdl != NULL)
+			d->sio.hdl = sio_open(d->path, SIO_REC, 1);
+			if (d->sio.hdl != NULL)
 				mode = SIO_REC;
 			else
 				return 0;
@@ -114,75 +115,15 @@ dev_sio_openalt(struct dev *d, struct dev_alt *n,
 			log_puts(" mode\n");
 		}
 	}
+	d->mode = mode;
 
-	ctlhdl = sioctl_open(n->name, SIOCTL_READ | SIOCTL_WRITE, 0);
-	if (ctlhdl == NULL) {
+	d->sioctl.hdl = sioctl_open(d->path, SIOCTL_READ | SIOCTL_WRITE, 0);
+	if (d->sioctl.hdl == NULL) {
 		if (log_level >= 1) {
 			dev_log(d);
 			log_puts(": no control device\n");
 		}
 	}
-
-	*rhdl = hdl;
-	*rctlhdl = ctlhdl;
-	*rmode = mode;
-	return 1;
-}
-
-/*
- * open the device using one of the provided paths
- */
-static int
-dev_sio_openlist(struct dev *d,
-    struct sio_hdl **rhdl, struct sioctl_hdl **rctlhdl, unsigned int *rmode)
-{
-	struct dev_alt *n;
-	struct ctl *c;
-	int val;
-
-	for (n = d->alt_list; n != NULL; n = n->next) {
-		if (d->alt_num == n->idx)
-			continue;
-		if (log_level >= 2) {
-			dev_log(d);
-			log_puts(": trying ");
-			log_puts(n->name);
-			log_puts("\n");
-		}
-		if (dev_sio_openalt(d, n, rhdl, rctlhdl, rmode)) {
-			if (log_level >= 2) {
-				dev_log(d);
-				log_puts(": using ");
-				log_puts(n->name);
-				log_puts("\n");
-			}
-			d->alt_num = n->idx;
-			for (c = ctl_list; c != NULL; c = c->next) {
-				if (!ctl_match(c, CTL_DEV_ALT, d, NULL))
-					continue;
-				val = c->u.dev_alt.idx == n->idx;
-				if (c->curval == val)
-					continue;
-				c->curval = val;
-				if (val)
-					c->val_mask = ~0U;
-			}
-			return 1;
-		}
-	}
-	return 0;
-}
-
-/*
- * open the device.
- */
-int
-dev_sio_open(struct dev *d)
-{
-	struct sio_par par;
-
-	if (!dev_sio_openlist(d, &d->sio.hdl, &d->sioctl.hdl, &d->mode))
-		return 0;
 
 	sio_initpar(&par);
 	par.bits = d->par.bits;
@@ -194,16 +135,39 @@ dev_sio_open(struct dev *d)
 		par.pchan = d->pchan;
 	if (d->mode & SIO_REC)
 		par.rchan = d->rchan;
-	if (d->bufsz)
-		par.appbufsz = d->bufsz;
-	if (d->round)
-		par.round = d->round;
-	if (d->rate)
-		par.rate = d->rate;
+	par.appbufsz = d->bufsz;
+	par.round = d->round;
+	par.rate = d->rate;
 	if (!sio_setpar(d->sio.hdl, &par))
 		goto bad_close;
 	if (!sio_getpar(d->sio.hdl, &par))
 		goto bad_close;
+
+	/*
+	 * If the requested rate is not supported by the device,
+	 * use the new one, but retry using a block size that would
+	 * match the requested one
+	 */
+	rate = par.rate;
+	if (rate != d->rate) {
+		sio_initpar(&par);
+		par.bits = d->par.bits;
+		par.bps = d->par.bps;
+		par.sig = d->par.sig;
+		par.le = d->par.le;
+		par.msb = d->par.msb;
+		if (mode & SIO_PLAY)
+			par.pchan = d->reqpchan;
+		if (mode & SIO_REC)
+			par.rchan = d->reqrchan;
+		par.appbufsz = d->bufsz * rate / d->rate;
+		par.round = d->round * rate / d->rate;
+		par.rate = rate;
+		if (!sio_setpar(d->sio.hdl, &par))
+			goto bad_close;
+		if (!sio_getpar(d->sio.hdl, &par))
+			goto bad_close;
+	}
 
 #ifdef DEBUG
 	/*
@@ -265,7 +229,6 @@ dev_sio_open(struct dev *d)
 		goto bad_close;
 	}
 #endif
-
 	d->par.bits = par.bits;
 	d->par.bps = par.bps;
 	d->par.sig = par.sig;
@@ -298,88 +261,6 @@ dev_sio_open(struct dev *d)
 	return 0;
 }
 
-/*
- * Open an alternate device. Upon success and if the new device is
- * compatible with the old one, close the old device and continue
- * using the new one. The new device is not started.
- */
-int
-dev_sio_reopen(struct dev *d)
-{
-	struct sio_par par;
-	struct sio_hdl *hdl;
-	struct sioctl_hdl *ctlhdl;
-	unsigned int mode;
-
-	if (!dev_sio_openlist(d, &hdl, &ctlhdl, &mode))
-		return 0;
-
-	sio_initpar(&par);
-	par.bits = d->par.bits;
-	par.bps = d->par.bps;
-	par.sig = d->par.sig;
-	par.le = d->par.le;
-	par.msb = d->par.msb;
-	if (mode & SIO_PLAY)
-		par.pchan = d->reqpchan;
-	if (mode & SIO_REC)
-		par.rchan = d->reqrchan;
-	par.appbufsz = d->bufsz;
-	par.round = d->round;
-	par.rate = d->rate;
-	if (!sio_setpar(hdl, &par))
-		goto bad_close;
-	if (!sio_getpar(hdl, &par))
-		goto bad_close;
-
-	/* check if new parameters are compatible with old ones */
-	if (par.round != d->round || par.bufsz != d->bufsz ||
-	    par.rate != d->rate) {
-		if (log_level >= 1) {
-			dev_log(d);
-			log_puts(": alternate device not compatible\n");
-		}
-		goto bad_close;
-	}
-
-	/* close unused device */
-	timo_del(&d->sio.watchdog);
-	file_del(d->sio.file);
-	sio_close(d->sio.hdl);
-	if (d->sioctl.hdl) {
-		file_del(d->sioctl.file);
-		sioctl_close(d->sioctl.hdl);
-		d->sioctl.hdl = NULL;
-	}
-
-	/* update parameters */
-	d->mode = mode;
-	d->par.bits = par.bits;
-	d->par.bps = par.bps;
-	d->par.sig = par.sig;
-	d->par.le = par.le;
-	d->par.msb = par.msb;
-	if (d->mode & SIO_PLAY)
-		d->pchan = par.pchan;
-	if (d->mode & SIO_REC)
-		d->rchan = par.rchan;
-
-	d->sio.hdl = hdl;
-	d->sioctl.hdl = ctlhdl;
-	d->sio.file = file_new(&dev_sio_ops, d, "dev", sio_nfds(hdl));
-	if (d->sioctl.hdl) {
-		d->sioctl.file = file_new(&dev_sioctl_ops, d, "mix",
-		    sioctl_nfds(ctlhdl));
-	}
-	sio_onmove(hdl, dev_sio_onmove, d);
-	return 1;
-bad_close:
-	sio_close(hdl);
-	if (ctlhdl)
-		sioctl_close(ctlhdl);
-	return 0;
-}
-
 void
 dev_sio_close(struct dev *d)
 {
@@ -398,7 +279,6 @@ dev_sio_close(struct dev *d)
 		sioctl_close(d->sioctl.hdl);
 		d->sioctl.hdl = NULL;
 	}
-	d->alt_num = -1;
 }
 
 void
@@ -661,6 +541,6 @@ dev_sio_hup(void *arg)
 		log_puts(": disconnected\n");
 	}
 #endif
-	if (!dev_reopen(d))
-		dev_abort(d);
+	dev_migrate(d);
+	dev_abort(d);
 }

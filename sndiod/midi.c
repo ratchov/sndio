@@ -434,6 +434,45 @@ midi_abort(struct midi *p)
 	}
 }
 
+/*
+ * connect to "nep" all endpoints currently connected to "oep"
+ */
+void
+midi_migrate(struct midi *oep, struct midi *nep)
+{
+	struct midithru *t;
+	struct midi *ep;
+	int i;
+
+	for (i = 0; i < MIDITHRU_NMAX; i++) {
+		t = midithru + i;
+		if (t->txmask & oep->self) {
+			t->txmask &= ~oep->self;
+			t->txmask |= nep->self;
+		}
+		if (t->rxmask & oep->self) {
+			t->rxmask &= ~oep->self;
+			t->rxmask |= nep->self;
+		}
+	}
+
+	for (i = 0; i < MIDI_NEP; i++) {
+		ep = midi_ep + i;
+		if (ep->txmask & oep->self) {
+			ep->txmask &= ~oep->self;
+			ep->txmask |= nep->self;
+		}
+	}
+
+	for (i = 0; i < MIDI_NEP; i++) {
+		ep = midi_ep + i;
+		if (oep->txmask & ep->self) {
+			oep->txmask &= ~ep->self;
+			nep->txmask |= ep->self;
+		}
+	}
+}
+
 void
 port_log(struct port *p)
 {
@@ -483,19 +522,17 @@ port_exit(void *arg)
 struct port *
 port_new(char *path, unsigned int mode, int hold)
 {
-	struct port *c, **pc;
+	struct port *c;
 
 	c = xmalloc(sizeof(struct port));
-	c->path_list = NULL;
-	namelist_add(&c->path_list, path);
+	c->path = path;
 	c->state = PORT_CFG;
 	c->hold = hold;
 	c->midi = midi_new(&port_midiops, c, mode);
 	c->num = midi_portnum++;
-	for (pc = &port_list; *pc != NULL; pc = &(*pc)->next)
-		;
-	c->next = *pc;
-	*pc = c;
+	c->alt_next = c;
+	c->next = port_list;
+	port_list = c;
 	return c;
 }
 
@@ -519,7 +556,6 @@ port_del(struct port *c)
 #endif
 	}
 	*p = c->next;
-	namelist_clear(&c->path_list);
 	xfree(c);
 }
 
@@ -553,6 +589,67 @@ port_unref(struct port *c)
 	if ((rxmask & c->midi->self) == 0 && c->midi->txmask == 0 &&
 	    c->state == PORT_INIT && !c->hold)
 		port_drain(c);
+}
+
+struct port *
+port_alt_ref(int num)
+{
+	struct port *a, *p;
+
+	a = port_bynum(num);
+	if (a == NULL)
+		return NULL;
+
+	/* circulate to first alt port */
+	while (a->alt_next->num > a->num)
+		a = a->alt_next;
+
+	p = a;
+	while (1) {
+		if (port_ref(p))
+			break;
+		p = p->alt_next;
+		if (p == a)
+			return NULL;
+	}
+
+	return p;
+}
+
+struct port *
+port_migrate(struct port *op)
+{
+	struct port *np;
+
+	/* not opened */
+	if (op->state == PORT_CFG)
+		return op;
+
+	np = op;
+	while (1) {
+		/* try next one, circulating through the list */
+		np = np->alt_next;
+		if (np == op) {
+			if (log_level >= 2) {
+				port_log(op);
+				log_puts(": no fall-back port found\n");
+			}
+			return op;
+		}
+
+		if (port_ref(np))
+			break;
+	}
+
+	if (log_level >= 2) {
+		port_log(op);
+		log_puts(": switching to ");
+		port_log(np);
+		log_puts("\n");
+	}
+
+	midi_migrate(op->midi, np->midi);
+	return np;
 }
 
 struct port *
@@ -591,6 +688,8 @@ port_close(struct port *c)
 		panic();
 	}
 #endif
+	port_log(c);
+	log_puts(": closed\n");
 	c->state = PORT_CFG;
 	port_mio_close(c);
 	return 1;
@@ -627,16 +726,4 @@ port_done(struct port *c)
 {
 	if (c->state == PORT_INIT)
 		port_drain(c);
-}
-
-int
-port_reopen(struct port *p)
-{
-	if (p->state == PORT_CFG)
-		return 1;
-
-	if (!port_mio_reopen(p))
-		return 0;
-
-	return 1;
 }
