@@ -506,10 +506,22 @@ _aucat_open(struct aucat *hdl, const char *str, unsigned int mode)
 	}
 	p++;
 	if (type == 0) {
-		devnum = AMSG_NODEV;
-		p = parsestr(p, opt, AMSG_OPTMAX);
-		if (p == NULL)
-			return 0;
+		if (*p < '0' || *p > '9') {
+			devnum = AMSG_NODEV;
+			p = parsestr(p, opt, AMSG_OPTMAX);
+			if (p == NULL)
+				return 0;
+		} else {
+			p = _sndio_parsenum(p, &devnum, 15);
+			if (p == NULL)
+				return 0;
+			if (*p == '.') {
+				p = parsestr(++p, opt, AMSG_OPTMAX);
+				if (p == NULL)
+					return 0;
+			} else
+				strlcpy(opt, "default", AMSG_OPTMAX);
+		}
 	} else {
 		p = _sndio_parsenum(p, &devnum, 15);
 		if (p == NULL)
