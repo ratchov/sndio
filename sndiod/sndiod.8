@@ -564,11 +564,6 @@ $ sndiod -r 48000 -b 480 -z 240
 Resampling is low quality; down-sampling especially should be avoided
 when recording.
 .Pp
-Processing is done using 16-bit arithmetic,
-thus samples with more than 16 bits are rounded.
-16 bits (i.e. 97dB dynamic) are largely enough for most applications though.
-Processing precision can be increased to 24-bit at compilation time though.
-.Pp
 If
 .Fl a Ar off
 is used,

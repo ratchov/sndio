@@ -14,7 +14,7 @@ Usage: configure [options]
 --libdir=DIR			install libraries in DIR [\$exec_prefix/lib]
 --pkgconfdir=DIR		install pkg-config file in DIR [\$libdir/pkgconfig]
 --mandir=DIR			install man pages in DIR [\$prefix/man]
---precision=NUMBER		aucat/sndiod processing precision [$precision]
+--precision=NUMBER		default sndiod device bit-depth [$precision]
 --privsep-user=USER		non-privileged user for sndio daemon [$user]
 --enable-alsa			enable alsa audio & midi backends [$alsa]
 --disable-alsa			disable alsa audio & midi backends
@@ -41,7 +41,7 @@ sun=no					# do we want sun support ?
 oss=no					# do we want oss support ?
 rmidi=no				# do we want support for raw char dev ?
 umidi=no				# do we want support for umidi ?
-precision=16				# aucat/sndiod arithmetic precision
+precision=16				# sndiod default device bit-depth
 user=_sndio				# non-privileged user for sndio daemon
 libbsd=no				# use libbsd?
 so_ldflags=				# extra linker flags for shared libs

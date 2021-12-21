@@ -78,6 +78,13 @@
 #define DEFAULT_BUFSZ	7680
 #endif
 
+/*
+ * default device precision
+ */
+#ifndef DEFAULT_BITS
+#define DEFAULT_BITS	16
+#endif
+
 void sigint(int);
 void sighup(int);
 void opt_ch(int *, int *);
@@ -401,7 +408,11 @@ main(int argc, char **argv)
 	pmax = 1;
 	rmin = 0;
 	rmax = 1;
-	aparams_init(&par);
+	par.bits = DEFAULT_BITS;
+	par.bps = APARAMS_BPS(par.bits);
+	par.le = ADATA_LE;
+	par.sig = 1;
+	par.msb = 0;
 	mode = MODE_PLAY | MODE_REC;
 	dev_first = dev_next = NULL;
 	port_first = port_next = NULL;

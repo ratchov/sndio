@@ -5,7 +5,7 @@ INCLUDE = -I../libsndio -I../bsd-compat
 LIB = -L../libsndio
 
 # extra defines (-D options)
-DEFS = -DDEBUG -DSNDIO_USER=\"@user@\" -DADATA_BITS=@precision@ @defs@
+DEFS = -DDEBUG -DSNDIO_USER=\"@user@\" -DDEFAULT_BITS=@precision@ @defs@
 
 # extra libraries (-l options)
 LDADD = -lsndio @ldadd@
