@@ -706,6 +706,11 @@ cmd(char *line)
 		}
 		break;
 	case SIOCTL_SEL:
+		if (*pos == '\0') {
+			fprintf(stderr, "%s.%s: expects value\n", astr, func);
+			exit(1);
+		}
+		/* FALLTROUGH */
 	case SIOCTL_VEC:
 	case SIOCTL_LIST:
 		for (i = g; i != NULL; i = nextpar(i)) {
