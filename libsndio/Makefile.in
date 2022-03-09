@@ -108,7 +108,7 @@ uninstall:
 		cd ${DESTDIR}${MAN7_DIR} && rm -f ${MAN7}
 
 clean:
-		rm -f -- ${SO} ${SO_LINK} *.o
+		rm -f -- ${SO} ${SO_LINK} ${SO_LINK_MAJ} *.o
 
 # ---------------------------------------------------------- dependencies ---
 
