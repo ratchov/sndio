@@ -1777,7 +1777,7 @@ slot_new(struct opt *opt, unsigned int id, char *who,
 
 found:
 	/* open device, this may change opt's device */
-	if (!opt_ref(s->opt))
+	if (!opt_ref(opt))
 		return NULL;
 	s->opt = opt;
 	s->ops = ops;
