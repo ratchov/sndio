@@ -151,7 +151,7 @@ struct amsg_ctl_desc {
 	uint16_t addr;			/* control address */
 	uint16_t maxval;
 	uint16_t curval;
-	uint32_t __pad2[3];
+	char display[AMSG_CTL_NAMEMAX];	/* free-format help string */
 };
 
 /*

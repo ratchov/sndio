@@ -1631,6 +1631,7 @@ sock_buildmsg(struct sock *f)
 			desc->node1.unit = ntohs(c->node1.unit);
 			desc->type = type;
 			strlcpy(desc->func, c->func, AMSG_CTL_NAMEMAX);
+			strlcpy(desc->display, c->display, AMSG_CTL_NAMEMAX);
 			desc->addr = htons(c->addr);
 			desc->maxval = htons(c->maxval);
 			desc->curval = htons(c->curval);

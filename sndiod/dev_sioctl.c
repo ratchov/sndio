@@ -71,7 +71,7 @@ dev_sioctl_ondesc(void *arg, struct sioctl_desc *desc, int val)
 	}
 
 	ctl_new(CTL_HW, d, &desc->addr,
-	    desc->type, group,
+	    desc->type, desc->display, group,
 	    desc->node0.name, desc->node0.unit, desc->func,
 	    desc->node1.name, desc->node1.unit, desc->maxval, val);
 }
@@ -98,6 +98,14 @@ dev_sioctl_onval(void *arg, unsigned int addr, unsigned int val)
 		log_puts("\n");
 		c->val_mask = ~0U;
 		c->curval = val;
+
+		/* if hardware's server.device changed, update name */
+		if (c->type == CTL_SEL &&
+		    strcmp(c->group, d->name) == 0 &&
+		    strcmp(c->node0.name, "server") == 0 &&
+		    strcmp(c->func, "device") == 0 &&
+		    c->curval == 1)
+			dev_setdisplay(d, c->display);
 	}
 }
 

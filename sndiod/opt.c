@@ -346,15 +346,6 @@ opt_del(struct opt *o)
 void
 opt_init(struct opt *o)
 {
-	struct dev *d;
-
-	if (strcmp(o->name, o->dev->name) != 0) {
-		for (d = dev_list; d != NULL; d = d->next) {
-			ctl_new(CTL_OPT_DEV, o, d,
-			    CTL_SEL, o->name, "server", -1, "device",
-			    d->name, -1, 1, o->dev == d);
-		}
-	}
 }
 
 void
@@ -382,6 +373,7 @@ opt_setdev(struct opt *o, struct dev *ndev)
 	struct ctl *c;
 	struct ctlslot *p;
 	struct slot *s;
+	char *display;
 	int i;
 
 	if (!dev_ref(ndev))
@@ -437,6 +429,11 @@ opt_setdev(struct opt *o, struct dev *ndev)
 	if (c != NULL) {
 		c->curval = 1;
 		c->val_mask = ~0;
+		display = dev_getdisplay(o->dev);
+		if (strcmp(c->display, display) != 0) {
+			strlcpy(c->display, display, CTL_NAMEMAX);
+			c->desc_mask = ~0;
+		}
 	}
 
 	/* attach clients to new device */
@@ -496,6 +493,16 @@ opt_ref(struct opt *o)
 			/* if device changed, move everything to the new one */
 			if (d != o->dev)
 				opt_setdev(o, d);
+
+			/* create server.device control */
+			for (d = dev_list; d != NULL; d = d->next) {
+				if (!dev_ref(d))
+					continue;
+				ctl_new(CTL_OPT_DEV, o, d,
+				    CTL_SEL, dev_getdisplay(d),
+				    o->name, "server", -1, "device",
+				    d->name, -1, 1, o->dev == d);
+			}
 		}
 	}
 
@@ -509,7 +516,15 @@ opt_ref(struct opt *o)
 void
 opt_unref(struct opt *o)
 {
+	struct dev *d;
+
 	o->refcnt--;
-	if (o->refcnt == 0)
+	if (o->refcnt == 0) {
+		/* delete server.device control */
+		for (d = dev_list; d != NULL; d = d->next) {
+			if (ctl_del(CTL_OPT_DEV, o, d))
+				dev_unref(d);
+		}
 		dev_unref(o->dev);
+	}
 }

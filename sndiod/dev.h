@@ -158,6 +158,7 @@ struct ctl {
 #define CTL_NAMEMAX	16		/* max name lenght */
 	char func[CTL_NAMEMAX];		/* parameter function name */
 	char group[CTL_NAMEMAX];	/* group aka namespace */
+	char display[CTL_NAMEMAX];	/* free-format "help" string */
 	struct ctl_node {
 		char name[CTL_NAMEMAX];	/* stream name */
 		int unit;
@@ -351,7 +352,7 @@ void slot_detach(struct slot *);
  */
 
 struct ctl *ctl_new(int, void *, void *,
-    int, char *, char *, int, char *, char *, int, int, int);
+    int, char *, char *, char *, int, char *, char *, int, int, int);
 void ctl_del(int, void *, void *);
 void ctl_log(struct ctl *);
 int ctl_setval(struct ctl *c, int val);
@@ -367,6 +368,8 @@ struct ctl *ctlslot_lookup(struct ctlslot *, int);
 void ctlslot_update(struct ctlslot *);
 
 void dev_label(struct dev *, int);
+void dev_setdisplay(struct dev *, char *);
+char *dev_getdisplay(struct dev *);
 void dev_ctlsync(struct dev *);
 
 #endif /* !defined(DEV_H) */
