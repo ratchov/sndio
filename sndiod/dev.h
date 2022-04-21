@@ -353,7 +353,7 @@ void slot_detach(struct slot *);
 
 struct ctl *ctl_new(int, void *, void *,
     int, char *, char *, char *, int, char *, char *, int, int, int);
-void ctl_del(int, void *, void *);
+int ctl_del(int, void *, void *);
 void ctl_log(struct ctl *);
 int ctl_setval(struct ctl *c, int val);
 int ctl_match(struct ctl *, int, void *, void *);
