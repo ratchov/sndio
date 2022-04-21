@@ -90,7 +90,8 @@ dev_sioctl_onval(void *arg, unsigned int addr, unsigned int val)
 	log_puts("\n");
 
 	for (c = ctl_list; c != NULL; c = c->next) {
-		if (c->scope != CTL_HW || c->u.hw.addr != addr)
+		if (c->scope != CTL_HW || c->u.hw.dev != d ||
+		    c->u.hw.addr != addr)
 			continue;
 		ctl_log(c);
 		log_puts(": new value -> ");
