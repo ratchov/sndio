@@ -273,6 +273,7 @@ struct dev {
 	unsigned int mode;			/* bitmap of MODE_xxx */
 	unsigned int bufsz, round, rate;
 	unsigned int prime;
+	unsigned int idle;			/* cycles with no client */
 
 	unsigned int master;			/* software vol. knob */
 	unsigned int master_enabled;		/* 1 if h/w has no vo. knob */
