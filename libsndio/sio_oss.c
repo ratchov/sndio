@@ -103,7 +103,7 @@ static int sio_oss_pollfd(struct sio_hdl *, struct pollfd *, int);
 static int sio_oss_revents(struct sio_hdl *, struct pollfd *);
 static int sio_oss_setpar(struct sio_hdl *, struct sio_par *);
 static int sio_oss_start(struct sio_hdl *);
-static int sio_oss_stop(struct sio_hdl *);
+static int sio_oss_flush(struct sio_hdl *);
 static int sio_oss_xrun(struct sio_oss_hdl *);
 static size_t sio_oss_read(struct sio_hdl *, void *, size_t);
 static size_t sio_oss_write(struct sio_hdl *, const void *, size_t);
@@ -119,7 +119,8 @@ static struct sio_ops sio_oss_ops = {
 	sio_oss_write,
 	sio_oss_read,
 	sio_oss_start,
-	sio_oss_stop,
+	NULL,
+	sio_oss_flush,
 	sio_oss_nfds,
 	sio_oss_pollfd,
 	sio_oss_revents,
@@ -381,7 +382,7 @@ sio_oss_start(struct sio_hdl *sh)
 }
 
 static int
-sio_oss_stop(struct sio_hdl *sh)
+sio_oss_flush(struct sio_hdl *sh)
 {
 	struct sio_oss_hdl *hdl = (struct sio_oss_hdl*)sh;
 	int trig;
@@ -392,7 +393,7 @@ sio_oss_stop(struct sio_hdl *sh)
 	}
 	trig = 0;
 	if (ioctl(hdl->fd, SNDCTL_DSP_SETTRIGGER, &trig) == -1) {
-		DPERROR("sio_oss_stop: SETTRIGGER");
+		DPERROR("sio_oss_flush: SETTRIGGER");
 		hdl->sio.eof = 1;
 		return 0;
 	}
@@ -693,7 +694,7 @@ sio_oss_xrun(struct sio_oss_hdl *hdl)
 
 	DPRINTFN(2, "wsil = %d, cmove = %d, rdrop = %d\n", wsil, cmove, rdrop);
 
-	if (!sio_oss_stop(&hdl->sio))
+	if (!sio_oss_flush(&hdl->sio))
 		return 0;
 	if (!sio_oss_start(&hdl->sio))
 		return 0;

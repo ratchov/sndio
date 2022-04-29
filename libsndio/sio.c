@@ -146,6 +146,8 @@ sio_start(struct sio_hdl *hdl)
 int
 sio_stop(struct sio_hdl *hdl)
 {
+	if (hdl->ops->stop == NULL)
+		return sio_flush(hdl);
 	if (hdl->eof) {
 		DPRINTF("sio_stop: eof\n");
 		return 0;
@@ -156,6 +158,28 @@ sio_stop(struct sio_hdl *hdl)
 		return 0;
 	}
 	if (!hdl->ops->stop(hdl))
+		return 0;
+#ifdef DEBUG
+	DPRINTFN(2, "libsndio: polls: %llu, samples = %llu\n",
+	    hdl->pollcnt, hdl->cpos);
+#endif
+	hdl->started = 0;
+	return 1;
+}
+
+int
+sio_flush(struct sio_hdl *hdl)
+{
+	if (hdl->eof) {
+		DPRINTF("sio_flush: eof\n");
+		return 0;
+	}
+	if (!hdl->started) {
+		DPRINTF("sio_flush: not started\n");
+		hdl->eof = 1;
+		return 0;
+	}
+	if (!hdl->ops->flush(hdl))
 		return 0;
 #ifdef DEBUG
 	DPRINTFN(2, "libsndio: polls: %llu, samples = %llu\n",

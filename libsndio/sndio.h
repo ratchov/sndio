@@ -164,6 +164,7 @@ size_t sio_write(struct sio_hdl *, const void *, size_t);
 size_t sio_read(struct sio_hdl *, void *, size_t);
 int sio_start(struct sio_hdl *);
 int sio_stop(struct sio_hdl *);
+int sio_flush(struct sio_hdl *);
 int sio_nfds(struct sio_hdl *);
 int sio_pollfd(struct sio_hdl *, struct pollfd *, int);
 int sio_revents(struct sio_hdl *, struct pollfd *);

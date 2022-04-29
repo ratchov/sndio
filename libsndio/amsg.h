@@ -96,6 +96,9 @@ struct amsg {
 #define AMSG_DATAMAX	0x1000
 			uint32_t size;
 		} data;
+		struct amsg_stop {
+			uint8_t drain;
+		} stop;
 		struct amsg_ts {
 			int32_t delta;
 		} ts;

@@ -1187,7 +1187,7 @@ sock_execmsg(struct sock *f)
 				f->ralign = s->round * s->mix.bpf;
 			}
 		}
-		slot_stop(s, 1);
+		slot_stop(s, AMSG_ISSET(m->u.stop.drain) ? m->u.stop.drain : 1);
 		break;
 	case AMSG_SETPAR:
 #ifdef DEBUG

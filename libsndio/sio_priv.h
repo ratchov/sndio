@@ -58,6 +58,7 @@ struct sio_ops {
 	size_t (*read)(struct sio_hdl *, void *, size_t);
 	int (*start)(struct sio_hdl *);
 	int (*stop)(struct sio_hdl *);
+	int (*flush)(struct sio_hdl *);
 	int (*nfds)(struct sio_hdl *);
 	int (*pollfd)(struct sio_hdl *, struct pollfd *, int);
 	int (*revents)(struct sio_hdl *, struct pollfd *);

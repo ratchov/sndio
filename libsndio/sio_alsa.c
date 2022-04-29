@@ -64,7 +64,7 @@ static void sio_alsa_onmove(struct sio_alsa_hdl *);
 static int sio_alsa_revents(struct sio_hdl *, struct pollfd *);
 static void sio_alsa_close(struct sio_hdl *);
 static int sio_alsa_start(struct sio_hdl *);
-static int sio_alsa_stop(struct sio_hdl *);
+static int sio_alsa_flush(struct sio_hdl *);
 static int sio_alsa_setpar(struct sio_hdl *, struct sio_par *);
 static int sio_alsa_getpar(struct sio_hdl *, struct sio_par *);
 static int sio_alsa_getcap(struct sio_hdl *, struct sio_cap *);
@@ -82,7 +82,8 @@ static struct sio_ops sio_alsa_ops = {
 	sio_alsa_write,
 	sio_alsa_read,
 	sio_alsa_start,
-	sio_alsa_stop,
+	NULL,
+	sio_alsa_flush,
 	sio_alsa_nfds,
 	sio_alsa_pollfd,
 	sio_alsa_revents,
@@ -445,7 +446,7 @@ sio_alsa_start(struct sio_hdl *sh)
 }
 
 static int
-sio_alsa_stop(struct sio_hdl *sh)
+sio_alsa_flush(struct sio_hdl *sh)
 {
 	struct sio_alsa_hdl *hdl = (struct sio_alsa_hdl *)sh;
 	int err;
@@ -476,7 +477,7 @@ sio_alsa_stop(struct sio_hdl *sh)
 			return 0;
 		}
 	}
-	DPRINTFN(2, "sio_alsa_stop: stopped\n");
+	DPRINTFN(2, "sio_alsa_flush: stopped\n");
 	return 1;
 }
 
@@ -517,7 +518,7 @@ sio_alsa_xrun(struct sio_alsa_hdl *hdl)
 
 	DPRINTFN(2, "wsil = %d, cmove = %d, rdrop = %d\n", wsil, cmove, rdrop);
 
-	if (!sio_alsa_stop(&hdl->sio))
+	if (!sio_alsa_flush(&hdl->sio))
 		return 0;
 	if (!sio_alsa_start(&hdl->sio))
 		return 0;

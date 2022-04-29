@@ -316,7 +316,7 @@ dev_sio_start(struct dev *d)
 void
 dev_sio_stop(struct dev *d)
 {
-	if (!sio_eof(d->sio.hdl) && !sio_stop(d->sio.hdl)) {
+	if (!sio_eof(d->sio.hdl) && !sio_flush(d->sio.hdl)) {
 		if (log_level >= 1) {
 			dev_log(d);
 			log_puts(": failed to stop device\n");
