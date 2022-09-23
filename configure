@@ -75,7 +75,8 @@ case `uname` in
 		user=sndiod
 		so_ldflags="-Wl,-soname=libsndio.so.\${MAJ}"
 		so_link="libsndio.so libsndio.so.\${MAJ} libsndio.so.\${MAJ}.0"
-		defs='-D_GNU_SOURCE -DHAVE_SOCK_CLOEXEC -DHAVE_CLOCK_GETTIME'
+		defs='-D_GNU_SOURCE -DHAVE_SOCK_CLOEXEC -DHAVE_CLOCK_GETTIME \\\
+		-DHAVE_GETPEEREID'
 		;;
 	GNU) # No output support on Hurd, but otherwise like linux
 		oss=no
@@ -83,7 +84,8 @@ case `uname` in
 		user=sndiod
 		so_ldflags="-Wl,-soname=libsndio.so.\${MAJ}"
 		so_link="libsndio.so libsndio.so.\${MAJ} libsndio.so.\${MAJ}.0"
-		defs='-D_GNU_SOURCE -DHAVE_SOCK_CLOEXEC -DHAVE_CLOCK_GETTIME'
+		defs='-D_GNU_SOURCE -DHAVE_SOCK_CLOEXEC -DHAVE_CLOCK_GETTIME \\\
+		-DHAVE_GETPEEREID'
 		;;
 	NetBSD)
 		sun=no
