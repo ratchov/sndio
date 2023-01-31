@@ -222,7 +222,7 @@ bindir="${bindir:-$exec_prefix/bin}"
 datadir="${datadir:-$prefix/share}"
 includedir="${includedir:-$prefix/include}"
 libdir="${libdir:-$exec_prefix/lib}"
-pkgconfdir="${pkgconfdir:-$prefix/lib/pkgconfig}"
+pkgconfdir="${pkgconfdir:-$libdir/pkgconfig}"
 mandir="${mandir:-$prefix/share/man}"
 
 #
