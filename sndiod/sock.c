@@ -1662,6 +1662,7 @@ sock_buildmsg(struct sock *f)
 				log_puts(": building control DATA message\n");
 			}
 #endif
+			f->ctlsyncpending = 1;
 			return 1;
 		}
 	}

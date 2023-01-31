@@ -251,6 +251,35 @@ opt_mode(void)
 	return mode;
 }
 
+static void
+rescan(void)
+{
+	struct opt *o;
+	struct dev *d;
+
+	/*
+	 * Check if there are logical devices in use.
+	 */
+	o = opt_list;
+	while (1) {
+		if (o == NULL)
+			return;
+		if (o->refcnt > 0)
+			break;
+		o = o->next;
+	}
+
+	/*
+	 * Attempt to open devices that are configured
+	 * but not open yet. dev_open() will add the server.device
+	 * controls where needed.
+	 */
+	for (d = dev_list; d != NULL; d = d->next) {
+		if (d->pstate == DEV_CFG)
+			dev_open(d);
+	}
+}
+
 void
 setsig(void)
 {
@@ -376,7 +405,6 @@ main(int argc, char **argv)
 	char base[SOCKPATH_MAX], path[SOCKPATH_MAX];
 	unsigned int mode, dup, mmc, vol;
 	unsigned int hold, autovol, bufsz, round, rate;
-	unsigned int reopen_list;
 	const char *str;
 	struct aparams par;
 	struct opt *o;
@@ -620,28 +648,7 @@ main(int argc, char **argv)
 			break;
 		if (reopen_flag) {
 			reopen_flag = 0;
-
-			reopen_list = 0;
-			for (d = dev_list; d != NULL; d = d->next) {
-				if (d->pstate != DEV_CFG)
-					reopen_list |= (1 << d->num);
-			}
-			for (d = dev_list; d != NULL; d = d->next) {
-				if (reopen_list & (1 << d->num))
-					dev_migrate(d);
-			}
-
-			reopen_list = 0;
-			for (p = port_list; p != NULL; p = p->next) {
-				if (p->state != PORT_CFG)
-					reopen_list |= (1 << p->num);
-			}
-			for (p = port_list; p != NULL; p = p->next) {
-				if (reopen_list & (1 << p->num)) {
-					if (port_migrate(p) != p)
-						port_close(p);
-				}
-			}
+			rescan();
 		}
 		if (!file_poll())
 			break;
