@@ -61,7 +61,7 @@ typedef int adata_t;
 #define RESAMP_RATIO		64
 
 /*
- * Maximum size of the encording string (the longest possible
+ * Maximum size of the encoding string (the longest possible
  * encoding is ``s24le3msb'').
  */
 #define ENCMAX	10

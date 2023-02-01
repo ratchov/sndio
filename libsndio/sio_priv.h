@@ -33,7 +33,7 @@ struct sio_hdl {
 	unsigned mode;			/* SIO_PLAY | SIO_REC */
 	int started;			/* true if started */
 	int nbio;			/* true if non-blocking io */
-	int eof;			/* true if error occured */
+	int eof;			/* true if error occurred */
 	int rdrop;			/* recorded bytes to drop */
 	int wsil;			/* silence to play */
 	int rused;			/* bytes used in read buffer */

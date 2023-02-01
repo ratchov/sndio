@@ -46,7 +46,7 @@
 #define   SYSEX_MMC_LOC_CMD	0x01
 
 /*
- * sepcial "any" midi device number
+ * special "any" midi device number
  */
 #define SYSEX_DEV_ANY		0x7f
 

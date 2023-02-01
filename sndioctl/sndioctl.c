@@ -710,7 +710,7 @@ cmd(char *line)
 			fprintf(stderr, "%s.%s: expects value\n", astr, func);
 			exit(1);
 		}
-		/* FALLTROUGH */
+		/* FALLTHROUGH */
 	case SIOCTL_VEC:
 	case SIOCTL_LIST:
 		for (i = g; i != NULL; i = nextpar(i)) {
@@ -839,7 +839,7 @@ list(void)
 /*
  * register a new knob/button, called from the poll() loop.  this may be
  * called when label string changes, in which case we update the
- * existing label widged rather than inserting a new one.
+ * existing label widget rather than inserting a new one.
  */
 void
 ondesc(void *arg, struct sioctl_desc *d, int curval)

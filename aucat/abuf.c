@@ -80,7 +80,7 @@ abuf_rgetblk(struct abuf *buf, int *rsize)
 }
 
 /*
- * discard "count" bytes at the start postion.
+ * discard "count" bytes at the start position.
  */
 void
 abuf_rdiscard(struct abuf *buf, int count)

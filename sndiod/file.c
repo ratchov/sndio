@@ -40,7 +40,7 @@
  *	from the callback
  *
  *	the timeout can be aborted with timo_del(), it is OK to try to
- *	abort a timout that has expired
+ *	abort a timeout that has expired
  *
  */
 
@@ -144,7 +144,7 @@ timo_del(struct timo *o)
 
 /*
  * routine to be called by the timer when 'delta' 24-th of microsecond
- * elapsed. This routine updates time referece used by timeouts and
+ * elapsed. This routine updates time reference used by timeouts and
  * calls expired timeouts
  */
 void

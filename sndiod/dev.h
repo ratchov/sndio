@@ -155,7 +155,7 @@ struct ctl {
 	} u;
 
 	unsigned int addr;		/* slot side control address */
-#define CTL_NAMEMAX	16		/* max name lenght */
+#define CTL_NAMEMAX	16		/* max name length */
 	char func[CTL_NAMEMAX];		/* parameter function name */
 	char group[CTL_NAMEMAX];	/* group aka namespace */
 	struct ctl_node {
