@@ -202,11 +202,6 @@ The number of played channels; meaningful only if
 mode was selected.
 .It Fa rate
 The sampling frequency in Hz.
-.It Fa bufsz
-The maximum number of frames that may be buffered.
-This parameter takes into account any buffers, and
-can be used for latency calculations.
-It is read-only.
 .It Fa appbufsz
 Size of the buffer in frames the application must maintain non-empty
 (on the play end) or non-full (on the record end) by calling
@@ -216,6 +211,11 @@ or
 fast enough to avoid overrun or underrun conditions.
 The audio subsystem may use additional buffering, thus this
 parameter cannot be used for latency calculations.
+.It Fa bufsz
+The maximum number of frames that may be buffered.
+This parameter takes into account any buffers, and
+can be used for latency calculations.
+It is read-only.
 .It Fa round
 Optimal number of frames that the application buffers
 should be a multiple of, to get best performance.
