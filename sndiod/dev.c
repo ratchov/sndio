@@ -1952,7 +1952,7 @@ slot_attach(struct slot *s)
 	}
 
 	/*
-	 * setup converions layer
+	 * setup conversions layer
 	 */
 	slot_initconv(s);
 
@@ -2365,7 +2365,7 @@ ctlslot_update(struct ctlslot *s)
 		/* nothing to do if no visibility change */
 		if (((c->refs_mask & s->self) ^ refs_mask) == 0)
 			continue;
-		/* if control becomes visble */
+		/* if control becomes visible */
 		if (refs_mask)
 			c->refs_mask |= s->self;
 		/* if control is hidden */
@@ -2585,7 +2585,7 @@ ctl_update(struct ctl *c)
 		/* nothing to do if no visibility change */
 		if (((c->refs_mask & s->self) ^ refs_mask) == 0)
 			continue;
-		/* if control becomes visble */
+		/* if control becomes visible */
 		if (refs_mask)
 			c->refs_mask |= s->self;
 		/* if control is hidden */

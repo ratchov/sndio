@@ -28,7 +28,7 @@ struct mio_hdl {
 	struct mio_ops *ops;
 	unsigned mode;			/* MIO_IN | MIO_OUT */
 	int nbio;			/* true if non-blocking io */
-	int eof;			/* true if error occured */
+	int eof;			/* true if error occurred */
 };
 
 /*

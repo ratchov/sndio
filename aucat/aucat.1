@@ -19,7 +19,7 @@
 .Os
 .Sh NAME
 .Nm aucat
-.Nd audio files manipulation tool
+.Nd audio file manipulation tool
 .Sh SYNOPSIS
 .Nm aucat
 .Op Fl dn
@@ -265,9 +265,11 @@ At this stage,
 will start, stop and relocate automatically following all user
 actions in the MIDI sequencer, assuming it's configured to
 transmit MMC on
-.Va midithru/0 .
+.Va midithru/0
+and
+.Va snd/0.mmc .
 Furthermore, the MIDI sequencer could be configured to use the
-.Va snd/0
+.Va snd/0.mmc
 port as MTC clock source, assured to be synchronous to playback of
 .Pa file.wav .
 .Sh EXAMPLES

@@ -835,7 +835,7 @@ sock_auth(struct sock *f)
 	gid_t egid;
 
 	/*
-	 * root bypasses any authenication checks and has no session
+	 * root bypasses any authentication checks and has no session
 	 */
 	if (getpeereid(f->fd, &euid, &egid) == 0 && euid == 0) {
 		f->pstate = SOCK_HELLO;

@@ -1,3 +1,4 @@
+/*	$OpenBSD$	*/
 /*
  * Copyright (c) 2015 Alexandre Ratchov <alex@caoua.org>
  *
@@ -21,8 +22,7 @@
 #include <string.h>
 #include "bsd-compat.h"
 
-char usagestr[] = "usage: midicat [-d] [-i in-file] [-o out-file] "
-	"[-q in-port] [-q out-port]\n";
+void usage(void);
 
 int
 main(int argc, char **argv)
@@ -61,16 +61,14 @@ main(int argc, char **argv)
 			ofile = optarg;
 			break;
 		default:
-			goto bad_usage;
+			usage();
 		}
 	}
 	argc -= optind;
 	argv += optind;
-	if (argc != 0) {
-	bad_usage:
-		fputs(usagestr, stderr);
-		return 1;
-	}
+
+	if (argc != 0)
+		usage();
 
 	/* we don't support more than one data flow */
 	if (ifile != NULL && ofile != NULL) {
@@ -86,7 +84,7 @@ main(int argc, char **argv)
 
 	/* if there're neither files nor ports, then we've nothing to do */
 	if (port0 == NULL && ifile == NULL && ofile == NULL)
-		goto bad_usage;
+		usage();
 
 	/* if no port specified, use default one */
 	if (port0 == NULL)
@@ -94,9 +92,10 @@ main(int argc, char **argv)
 
 	/* open input or output file (if any) */
 	if (ifile) {
-		if (strcmp(ifile, "-") == 0)
+		if (strcmp(ifile, "-") == 0) {
+			ifile = "stdin";
 			ifd = STDIN_FILENO;
-		else {
+		} else {
 			ifd = open(ifile, O_RDONLY);
 			if (ifd == -1) {
 				perror(ifile);
@@ -104,9 +103,10 @@ main(int argc, char **argv)
 			}
 		}
 	} else if (ofile) {
-		if (strcmp(ofile, "-") == 0)
+		if (strcmp(ofile, "-") == 0) {
+			ofile = "stdout";
 			ofd = STDOUT_FILENO;
-		else {
+		} else {
 			ofd = open(ofile, O_WRONLY | O_CREAT | O_TRUNC, 0666);
 			if (ofd == -1) {
 				perror(ofile);
@@ -190,4 +190,12 @@ main(int argc, char **argv)
 	if (ofile)
 		close(ofd);
 	return 0;
+}
+
+void
+usage(void)
+{
+	fprintf(stderr, "usage: midicat [-d] [-i in-file] [-o out-file] "
+	    "[-q in-port] [-q out-port]\n");
+	exit(1);
 }

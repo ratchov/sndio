@@ -588,7 +588,7 @@ sio_sun_revents(struct sio_hdl *sh, struct pollfd *pfd)
 
 	/*
 	 * GETPOS reports positions including xruns,
-	 * so we have to substract to get the real position
+	 * so we have to subtract to get the real position
 	 */
 	hdl->idelta -= dierr;
 	hdl->odelta -= doerr;

@@ -32,7 +32,7 @@ struct sioctl_hdl {
 	void *ctl_arg;
 	unsigned int mode;		/* SIOCTL_READ | SIOCTL_WRITE */
 	int nbio;			/* true if non-blocking io */
-	int eof;			/* true if error occured */
+	int eof;			/* true if error occurred */
 };
 
 /*
