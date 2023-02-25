@@ -44,8 +44,7 @@ struct sio_sun_hdl {
 	int filling;
 	unsigned int ibpf, obpf;	/* bytes per frame */
 	unsigned int ibytes, obytes;	/* bytes the hw transferred */
-	unsigned int ierr, oerr;	/* frames the hw dropped */
-	int idelta, odelta;		/* position reported to client */
+	int idelta, odelta;		/* position not reported yet */
 };
 
 static void sio_sun_close(struct sio_hdl *);
@@ -372,8 +371,6 @@ sio_sun_start(struct sio_hdl *sh)
 	hdl->ibpf = hdl->sio.par.rchan * hdl->sio.par.bps;
 	hdl->ibytes = 0;
 	hdl->obytes = 0;
-	hdl->ierr = 0;
-	hdl->oerr = 0;
 	hdl->idelta = 0;
 	hdl->odelta = 0;
 
@@ -518,6 +515,62 @@ sio_sun_write(struct sio_hdl *sh, const void *buf, size_t len)
 }
 
 static int
+sio_sun_xrun(struct sio_sun_hdl *hdl)
+{
+	int clk;
+	int wsil, rdrop, cmove;
+	int rbpf, rround;
+	int wbpf;
+
+	DPRINTFN(2, "%s: 1: sil = %d, rdrop = %d, odelta = %d, idelta = %d\n",
+	    __func__, hdl->sio.wsil, hdl->sio.rdrop, hdl->odelta, hdl->idelta);
+#ifdef DEBUG
+	if (_sndio_debug >= 2)
+		_sio_printpos(&hdl->sio);
+#endif
+
+	/*
+	 * we assume rused/wused are zero if rec/play modes are not
+	 * selected. This allows us to keep the same formula for all
+	 * modes, provided we set rbpf/wbpf to 1 to avoid division by
+	 * zero.
+	 *
+	 * to understand the formula, draw a picture :)
+	 */
+	rbpf = (hdl->sio.mode & SIO_REC) ? hdl->ibpf : 1;
+	wbpf = (hdl->sio.mode & SIO_PLAY) ? hdl->obpf : 1;
+	rround = hdl->sio.par.round * rbpf;
+
+	clk = hdl->sio.cpos % hdl->sio.par.round;
+	rdrop = (clk * rbpf - hdl->sio.rused) % rround;
+	if (rdrop < 0)
+		rdrop += rround;
+	cmove = (rdrop + hdl->sio.rused) / rbpf;
+	wsil = cmove * wbpf + hdl->sio.wused;
+
+	DPRINTFN(2, "%s: wsil = %d, cmove = %d, rdrop = %d\n",
+	    __func__, wsil, cmove, rdrop);
+
+	if (!sio_sun_flush(&hdl->sio))
+		return 0;
+	if (!sio_sun_start(&hdl->sio))
+		return 0;
+	if (hdl->sio.mode & SIO_PLAY) {
+		hdl->odelta -= cmove;
+		hdl->sio.wsil = wsil;
+	}
+	if (hdl->sio.mode & SIO_REC) {
+		hdl->idelta -= cmove;
+		hdl->sio.rdrop = rdrop;
+	}
+
+	DPRINTFN(2, "%s: 2: wsil = %d, rdrop = %d, odelta = %d, idelta = %d\n",
+	    __func__, hdl->sio.wsil, hdl->sio.rdrop, hdl->odelta, hdl->idelta);
+
+	return 1;
+}
+
+static int
 sio_sun_nfds(struct sio_hdl *hdl)
 {
 	return 1;
@@ -538,6 +591,7 @@ sio_sun_pollfd(struct sio_hdl *sh, struct pollfd *pfd, int events)
 			hdl->sio.eof = 1;
 			return 0;
 		}
+		DPRINTFN(2, "sio_sun_pollfd: started\n");
 		_sio_onmove_cb(&hdl->sio, 0);
 	}
 	return 1;
@@ -548,67 +602,56 @@ sio_sun_revents(struct sio_hdl *sh, struct pollfd *pfd)
 {
 	struct sio_sun_hdl *hdl = (struct sio_sun_hdl *)sh;
 	struct audio_pos ap;
-	int dierr = 0, doerr = 0, offset, delta;
+	int delta;
 	int revents = pfd->revents;
 
 	if ((pfd->revents & POLLHUP) ||
 	    (pfd->revents & (POLLIN | POLLOUT)) == 0)
 		return pfd->revents;
+
 	if (ioctl(hdl->fd, AUDIO_GETPOS, &ap) == -1) {
 		DPERROR("sio_sun_revents: GETPOS");
 		hdl->sio.eof = 1;
 		return POLLHUP;
 	}
-	if (hdl->sio.mode & SIO_PLAY) {
-		delta = (ap.play_pos - hdl->obytes) / hdl->obpf;
-		doerr = (ap.play_xrun - hdl->oerr) / hdl->obpf;
-		hdl->obytes = ap.play_pos;
-		hdl->oerr = ap.play_xrun;
-		hdl->odelta += delta;
-		if (!(hdl->sio.mode & SIO_REC)) {
-			hdl->idelta += delta;
-			dierr = doerr;
+	if (ap.play_xrun > 0 || ap.rec_xrun > 0) {
+		if (!sio_sun_xrun(hdl))
+			return POLLHUP;
+	} else {
+		if (hdl->sio.mode & SIO_PLAY) {
+			hdl->odelta += (ap.play_pos - hdl->obytes) / hdl->obpf;
+			hdl->obytes = ap.play_pos;
 		}
-		if (doerr > 0)
-			DPRINTFN(2, "play xrun %d\n", doerr);
-	}
-	if (hdl->sio.mode & SIO_REC) {
-		delta = (ap.rec_pos - hdl->ibytes) / hdl->ibpf;
-		dierr = (ap.rec_xrun - hdl->ierr) / hdl->ibpf;
-		hdl->ibytes = ap.rec_pos;
-		hdl->ierr = ap.rec_xrun;
-		hdl->idelta += delta;
-		if (!(hdl->sio.mode & SIO_PLAY)) {
-			hdl->odelta += delta;
-			doerr = dierr;
+		if (hdl->sio.mode & SIO_REC) {
+			hdl->idelta += (ap.rec_pos - hdl->ibytes) / hdl->ibpf;
+			hdl->ibytes = ap.rec_pos;
 		}
-		if (dierr > 0)
-			DPRINTFN(2, "rec xrun %d\n", dierr);
 	}
 
-	/*
-	 * GETPOS reports positions including xruns,
-	 * so we have to subtract to get the real position
-	 */
-	hdl->idelta -= dierr;
-	hdl->odelta -= doerr;
-
-	offset = doerr - dierr;
-	if (offset > 0) {
-		hdl->sio.rdrop += offset * hdl->ibpf;
-		hdl->idelta -= offset;
-		DPRINTFN(2, "will drop %d and pause %d\n", offset, doerr);
-	} else if (offset < 0) {
-		hdl->sio.wsil += -offset * hdl->obpf;
-		hdl->odelta -= -offset;
-		DPRINTFN(2, "will insert %d and pause %d\n", -offset, dierr);
+	switch (hdl->sio.mode & (SIO_PLAY | SIO_REC)) {
+	case SIO_PLAY:
+		delta = hdl->odelta;
+		break;
+	case SIO_REC:
+		delta = hdl->idelta;
+		break;
+	default:
+		/*
+		 * Use the max of two directions but do not allow
+		 * the other to become negative
+		 */
+		delta = hdl->odelta > hdl->idelta ? hdl->odelta : hdl->idelta;
+		if (delta > hdl->idelta)
+			delta = hdl->idelta;
+		if (delta > hdl->odelta)
+			delta = hdl->odelta;
 	}
-
-	delta = (hdl->idelta > hdl->odelta) ? hdl->idelta : hdl->odelta;
 	if (delta > 0) {
 		_sio_onmove_cb(&hdl->sio, delta);
-		hdl->idelta -= delta;
-		hdl->odelta -= delta;
+		if (hdl->sio.mode & SIO_PLAY)
+			hdl->odelta -= delta;
+		if (hdl->sio.mode & SIO_REC)
+			hdl->idelta -= delta;
 	}
 	return revents;
 }
