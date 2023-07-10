@@ -85,6 +85,7 @@ struct resamp {
 	adata_t ctx[NCHAN_MAX * RESAMP_NCTX];
 	int filt_cutoff, filt_step;
 	unsigned int iblksz, oblksz;
+	int diff;
 	int nch;
 };
 
@@ -115,7 +116,8 @@ int aparams_strtoenc(struct aparams *, char *);
 int aparams_enctostr(struct aparams *, char *);
 int aparams_native(struct aparams *);
 
-void resamp_do(struct resamp *, adata_t *, adata_t *, int);
+void resamp_getcnt(struct resamp *, int *, int *);
+void resamp_do(struct resamp *, adata_t *, adata_t *, int, int);
 void resamp_init(struct resamp *, unsigned int, unsigned int, int);
 void enc_do(struct conv *, unsigned char *, unsigned char *, int);
 void enc_sil_do(struct conv *, unsigned char *, int);
