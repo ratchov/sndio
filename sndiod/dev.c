@@ -520,7 +520,8 @@ dev_mix_badd(struct dev *d, struct slot *s)
 	}
 
 	if (s->mix.resampbuf) {
-		resamp_do(&s->mix.resamp, in, s->mix.resampbuf, s->round);
+		resamp_do(&s->mix.resamp,
+		    in, s->mix.resampbuf, s->round, d->round);
 		in = s->mix.resampbuf;
 	}
 
@@ -657,7 +658,7 @@ dev_sub_bcopy(struct dev *d, struct slot *s)
 
 	if (s->sub.resampbuf) {
 		resamp_do(&s->sub.resamp,
-		    s->sub.resampbuf, resamp_out, d->round);
+		    s->sub.resampbuf, resamp_out, d->round, s->round);
 	}
 
 	if (s->sub.encbuf)
