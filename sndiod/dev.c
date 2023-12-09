@@ -1413,7 +1413,7 @@ dev_migrate(struct dev *odev)
 		if (s->opt == NULL || s->opt->dev != odev)
 			continue;
 		if (s->ops != NULL) {
-			s->ops->exit(s);
+			s->ops->exit(s->arg);
 			s->ops = NULL;
 		}
 	}
