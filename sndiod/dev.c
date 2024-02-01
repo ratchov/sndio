@@ -42,8 +42,6 @@ void dev_sub_bcopy(struct dev *, struct slot *);
 void dev_onmove(struct dev *, int);
 void dev_master(struct dev *, unsigned int);
 void dev_cycle(struct dev *);
-struct dev *dev_new(char *, struct aparams *, unsigned int, unsigned int,
-    unsigned int, unsigned int, unsigned int, unsigned int);
 void dev_adjpar(struct dev *, int, int, int);
 int dev_allocbufs(struct dev *);
 void dev_freebufs(struct dev *);
