@@ -27,8 +27,16 @@
 
 /*
  * limits
+ *
+ * XXX: increase SIOCTL_DISPLAYMAX to 24 and pad sioctl_desc to 96B
+ *
+ * for now we use 12, just for testing. It nicely fits in the
+ * padding of struct sioctl_desc which makes this libsndio binary
+ * compatible with old one, so no need to rebuild every single
+ * audio program (and web browser!) to test
  */
 #define SIOCTL_NAMEMAX		12	/* max name length */
+#define SIOCTL_DISPLAYMAX	12	/* max display string length */
 
 /*
  * private ``handle'' structure
@@ -115,7 +123,8 @@ struct sioctl_desc {
 	struct sioctl_node node0;	/* affected node */
 	struct sioctl_node node1;	/* dito for SIOCTL_{VEC,LIST,SEL} */
 	unsigned int maxval;		/* max value */
-	char display[SIOCTL_NAMEMAX];	/* ex. non-unique device name */
+/*	int __pad[4]; */
+	char display[SIOCTL_DISPLAYMAX];	/* free-format help string */
 };
 
 /*

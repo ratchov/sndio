@@ -45,7 +45,8 @@
 /*
  * limits
  */
-#define AMSG_CTL_NAMEMAX	16	/* max name length */
+#define AMSG_CTL_NAMEMAX	12	/* max name length */
+#define AMSG_CTL_DISPLAYMAX	24	/* max display string length */
 
 /*
  * WARNING: since the protocol may be simultaneously used by static
@@ -107,7 +108,7 @@ struct amsg {
 		} vol;
 		struct amsg_hello {
 			uint16_t mode;		/* bitmap of MODE_XXX */
-#define AMSG_VERSION	7
+#define AMSG_VERSION	8
 			uint8_t version;	/* protocol version */
 #define AMSG_NODEV	255
 			uint8_t devnum;		/* device number */
@@ -151,7 +152,8 @@ struct amsg_ctl_desc {
 	uint16_t addr;			/* control address */
 	uint16_t maxval;
 	uint16_t curval;
-	char display[AMSG_CTL_NAMEMAX];	/* free-format help string */
+	uint32_t __pad2[2];
+	char display[AMSG_CTL_DISPLAYMAX];	/* free-format help string */
 };
 
 /*

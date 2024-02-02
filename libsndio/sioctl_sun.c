@@ -55,7 +55,7 @@ struct volume
 
 struct sioctl_sun_hdl {
 	struct sioctl_hdl sioctl;
-	char display[SIOCTL_NAMEMAX];
+	char display[SIOCTL_DISPLAYMAX];
 	int display_addr;
 	struct volume output, input;
 	int fd, events;
@@ -173,9 +173,9 @@ init(struct sioctl_sun_hdl *hdl)
 
 	hdl->display_addr = 128;
 	if (ioctl(hdl->fd, AUDIO_GETDEV, &getdev) == -1)
-		strlcpy(hdl->display, "unknown", SIOCTL_NAMEMAX);
+		strlcpy(hdl->display, "unknown", SIOCTL_DISPLAYMAX);
 	else
-		strlcpy(hdl->display, getdev.name, SIOCTL_NAMEMAX);
+		strlcpy(hdl->display, getdev.name, SIOCTL_DISPLAYMAX);
 	DPRINTF("init: server.device: display = %s\n", hdl->display);
 }
 
@@ -436,7 +436,7 @@ sioctl_sun_ondesc(struct sioctl_hdl *addr)
 	desc.node0.unit = -1;
 	strlcpy(desc.node1.name, "0", SIOCTL_NAMEMAX);
 	desc.node1.unit = -1;
-	strlcpy(desc.display, hdl->display, SIOCTL_NAMEMAX);
+	strlcpy(desc.display, hdl->display, SIOCTL_DISPLAYMAX);
 	desc.addr = hdl->display_addr;
 	_sioctl_ondesc_cb(&hdl->sioctl, &desc, 1);
 

@@ -2525,7 +2525,7 @@ ctl_new(int scope, void *arg0, void *arg1,
 	c->type = type;
 	strlcpy(c->func, func, CTL_NAMEMAX);
 	strlcpy(c->group, gstr, CTL_NAMEMAX);
-	strlcpy(c->display, display, CTL_NAMEMAX);
+	strlcpy(c->display, display, CTL_DISPLAYMAX);
 	strlcpy(c->node0.name, str0, CTL_NAMEMAX);
 	c->node0.unit = unit0;
 	if (c->type == CTL_VEC || c->type == CTL_LIST || c->type == CTL_SEL) {
@@ -2680,7 +2680,7 @@ dev_setdisplay(struct dev *d, char *display)
 		    c->u.opt_dev.dev != d ||
 		    strcmp(c->display, display) == 0)
 			continue;
-		strlcpy(c->display, display, CTL_NAMEMAX);
+		strlcpy(c->display, display, CTL_DISPLAYMAX);
 		c->desc_mask = ~0;
 	}
 }

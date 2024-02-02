@@ -431,7 +431,7 @@ opt_setdev(struct opt *o, struct dev *ndev)
 		c->val_mask = ~0;
 		display = dev_getdisplay(o->dev);
 		if (strcmp(c->display, display) != 0) {
-			strlcpy(c->display, display, CTL_NAMEMAX);
+			strlcpy(c->display, display, CTL_DISPLAYMAX);
 			c->desc_mask = ~0;
 		}
 	}

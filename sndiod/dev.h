@@ -155,10 +155,11 @@ struct ctl {
 	} u;
 
 	unsigned int addr;		/* slot side control address */
-#define CTL_NAMEMAX	16		/* max name length */
+#define CTL_NAMEMAX	12		/* max name length */
+#define CTL_DISPLAYMAX	24		/* max name length */
 	char func[CTL_NAMEMAX];		/* parameter function name */
 	char group[CTL_NAMEMAX];	/* group aka namespace */
-	char display[CTL_NAMEMAX];	/* free-format "help" string */
+	char display[CTL_DISPLAYMAX];	/* free-format "help" string */
 	struct ctl_node {
 		char name[CTL_NAMEMAX];	/* stream name */
 		int unit;
