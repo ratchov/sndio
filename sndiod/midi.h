@@ -112,6 +112,7 @@ void midi_send(struct midi *, unsigned char *, int);
 void midi_fill(struct midi *);
 void midi_tag(struct midi *, unsigned int);
 unsigned int midi_tags(struct midi *);
+unsigned int midi_rxmask(struct midi *);
 void midi_link(struct midi *, struct midi *);
 void midi_abort(struct midi *);
 void midi_migrate(struct midi *, struct midi *);

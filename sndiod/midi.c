@@ -156,6 +156,23 @@ midi_link(struct midi *ep, struct midi *peer)
 }
 
 /*
+ * return the list of endpoints the given one receives from
+ */
+unsigned int
+midi_rxmask(struct midi *ep)
+{
+	int i, rxmask;
+
+	for (rxmask = 0, i = 0; i < MIDI_NEP; i++) {
+		if ((midi_ep[i].txmask & ep->self) == 0)
+			continue;
+		rxmask |= midi_ep[i].self;
+	}
+
+	return rxmask;
+}
+
+/*
  * add the midi endpoint in the ``tag'' midi thru box
  */
 void
