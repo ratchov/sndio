@@ -252,7 +252,7 @@ opt_mode(void)
 }
 
 static void
-rescan(void)
+dev_reopen(void)
 {
 	struct opt *o;
 	struct dev *d;
@@ -277,6 +277,39 @@ rescan(void)
 	for (d = dev_list; d != NULL; d = d->next) {
 		if (d->pstate == DEV_CFG)
 			dev_open(d);
+	}
+}
+
+static void
+port_reopen(void)
+{
+	struct port *p, *a;
+
+	for (p = port_list; p != NULL; p = p->next) {
+
+		/* skip if already open */
+		if (p->state != PORT_CFG)
+			continue;
+		/*
+		 * Migrate to p connections of all other ports
+		 * for which p is a prioritary alt.
+		 *
+		 * The alt list is a circular list, ordered in decreasing
+		 * priority order (i.e. decreasing a->num) until it wraps.
+		 */
+		for (a = p->alt_next; a->num < p->num; a = a->alt_next) {
+
+			/* if alt is connected, migrate it to p */
+			if (midi_rxmask(a->midi) != 0 || a->midi->txmask != 0) {
+
+				/* if p is not usable, we're done */
+				if (!port_ref(p))
+					break;
+
+				midi_migrate(a->midi, p->midi);
+				midi_abort(a->midi);
+			}
+		}
 	}
 }
 
@@ -648,7 +681,8 @@ main(int argc, char **argv)
 			break;
 		if (reopen_flag) {
 			reopen_flag = 0;
-			rescan();
+			dev_reopen();
+			port_reopen();
 		}
 		if (!file_poll())
 			break;
