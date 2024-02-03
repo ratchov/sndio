@@ -59,7 +59,8 @@ struct sock {
 	struct midi *midi;		/* midi endpoint */
 	struct port *port;		/* midi port */
 	struct ctlslot *ctlslot;
-	struct amsg_ctl_desc *ctldesc;	/* temporary buffer */
+	unsigned char *ctldesc;		/* temporary buffer */
+	size_t ctl_desc_size;		/* size of client amsg_ctl_desc */
 #define SOCK_CTLDESC	1		/* dump desc and send changes */
 #define SOCK_CTLVAL	2		/* send value changes */
 	unsigned int ctlops;		/* bitmap of above */

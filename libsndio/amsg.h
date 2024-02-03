@@ -45,8 +45,14 @@
 /*
  * limits
  */
-#define AMSG_CTL_NAMEMAX	12	/* max name length */
-#define AMSG_CTL_DISPLAYMAX	24	/* max display string length */
+#define AMSG_CTL_NAMEMAX	16	/* max name length */
+#define AMSG_CTL_DISPLAYMAX	32	/* max display string length */
+
+/*
+ * Size of the struct amsg_ctl_desc expected by clients
+ * using the AMSG_CTLSUB_OLD request
+ */
+#define AMSG_OLD_DESC_SIZE	92
 
 /*
  * WARNING: since the protocol may be simultaneously used by static
@@ -70,9 +76,10 @@ struct amsg {
 #define AMSG_HELLO	10	/* say hello, check versions and so ... */
 #define AMSG_BYE	11	/* ask server to drop connection */
 #define AMSG_AUTH	12	/* send authentication cookie */
-#define AMSG_CTLSUB	13	/* ondesc/onctl subscription */
+#define AMSG_CTLSUB_OLD	13	/* ondesc/onctl subscription */
 #define AMSG_CTLSET	14	/* set control value */
 #define AMSG_CTLSYNC	15	/* end of controls descriptions */
+#define AMSG_CTLSUB	16	/* ondesc/onctl subscription */
 	uint32_t cmd;
 	uint32_t __pad;
 	union {
@@ -108,7 +115,7 @@ struct amsg {
 		} vol;
 		struct amsg_hello {
 			uint16_t mode;		/* bitmap of MODE_XXX */
-#define AMSG_VERSION	8
+#define AMSG_VERSION	7
 			uint8_t version;	/* protocol version */
 #define AMSG_NODEV	255
 			uint8_t devnum;		/* device number */
@@ -152,7 +159,7 @@ struct amsg_ctl_desc {
 	uint16_t addr;			/* control address */
 	uint16_t maxval;
 	uint16_t curval;
-	uint32_t __pad2[2];
+	uint32_t __pad2[4];
 	char display[AMSG_CTL_DISPLAYMAX];	/* free-format help string */
 };
 

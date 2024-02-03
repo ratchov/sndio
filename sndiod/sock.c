@@ -34,7 +34,7 @@
 #include "utils.h"
 #include "bsd-compat.h"
 
-#define SOCK_CTLDESC_SIZE	16	/* number of entries in s->ctldesc */
+#define SOCK_CTLDESC_SIZE	0x103	/* size of s->ctldesc */
 
 void sock_log(struct sock *);
 void sock_close(struct sock *);
@@ -627,8 +627,7 @@ sock_wdata(struct sock *f)
 		else if (f->midi)
 			data = abuf_rgetblk(&f->midi->obuf, &count);
 		else {
-			data = (unsigned char *)f->ctldesc +
-			    (f->wsize - f->wtodo);
+			data = f->ctldesc + (f->wsize - f->wtodo);
 			count = f->wtodo;
 		}
 		if (count > f->wtodo)
@@ -962,8 +961,7 @@ sock_hello(struct sock *f)
 			}
 			return 0;
 		}
-		f->ctldesc = xmalloc(SOCK_CTLDESC_SIZE *
-		    sizeof(struct amsg_ctl_desc));
+		f->ctldesc = xmalloc(SOCK_CTLDESC_SIZE);
 		f->ctlops = 0;
 		f->ctlsyncpending = 0;
 		return 1;
@@ -990,8 +988,10 @@ sock_execmsg(struct sock *f)
 	struct amsg *m = &f->rmsg;
 	unsigned char *data;
 	int size, ctl;
+	int cmd;
 
-	switch (ntohl(m->cmd)) {
+	cmd = ntohl(m->cmd);
+	switch (cmd) {
 	case AMSG_DATA:
 #ifdef DEBUG
 		if (log_level >= 4) {
@@ -1285,6 +1285,7 @@ sock_execmsg(struct sock *f)
 		dev_midi_vol(s->opt->dev, s);
 		ctl_onval(CTL_SLOT_LEVEL, s, NULL, ctl);
 		break;
+	case AMSG_CTLSUB_OLD:
 	case AMSG_CTLSUB:
 #ifdef DEBUG
 		if (log_level >= 3) {
@@ -1317,6 +1318,9 @@ sock_execmsg(struct sock *f)
 				}
 				f->ctlops |= SOCK_CTLDESC;
 				f->ctlsyncpending = 1;
+				f->ctl_desc_size = (cmd == AMSG_CTLSUB) ?
+				    sizeof(struct amsg_ctl_desc) :
+				    AMSG_OLD_DESC_SIZE;
 			}
 		} else
 			f->ctlops &= ~SOCK_CTLDESC;
@@ -1605,7 +1609,6 @@ sock_buildmsg(struct sock *f)
 	 * searching for the {desc,val}_mask bits
 	 */
 	if (f->ctlslot && (f->ctlops & SOCK_CTLDESC)) {
-		desc = f->ctldesc;
 		mask = f->ctlslot->self;
 		size = 0;
 		pc = &ctl_list;
@@ -1615,9 +1618,9 @@ sock_buildmsg(struct sock *f)
 				pc = &c->next;
 				continue;
 			}
-			if (size == SOCK_CTLDESC_SIZE *
-				sizeof(struct amsg_ctl_desc))
+			if (size + f->ctl_desc_size > SOCK_CTLDESC_SIZE)
 				break;
+			desc = (struct amsg_ctl_desc *)(f->ctldesc + size);
 			c->desc_mask &= ~mask;
 			c->val_mask &= ~mask;
 			type = ctlslot_visible(f->ctlslot, c) ?
@@ -1631,12 +1634,17 @@ sock_buildmsg(struct sock *f)
 			desc->node1.unit = ntohs(c->node1.unit);
 			desc->type = type;
 			strlcpy(desc->func, c->func, AMSG_CTL_NAMEMAX);
-			strlcpy(desc->display, c->display, AMSG_CTL_DISPLAYMAX);
 			desc->addr = htons(c->addr);
 			desc->maxval = htons(c->maxval);
 			desc->curval = htons(c->curval);
-			size += sizeof(struct amsg_ctl_desc);
-			desc++;
+
+			/* old clients don't have the 'display' member */
+			if (f->ctl_desc_size >= offsetof(struct amsg_ctl_desc,
+				display) + AMSG_CTL_DISPLAYMAX) {
+				strlcpy(desc->display, c->display, AMSG_CTL_DISPLAYMAX);
+			}
+
+			size += f->ctl_desc_size;
 
 			/* if this is a deleted entry unref it */
 			if (type == CTL_NONE) {
