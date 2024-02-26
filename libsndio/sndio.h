@@ -124,7 +124,6 @@ struct sioctl_desc {
 	struct sioctl_node node0;	/* affected node */
 	struct sioctl_node node1;	/* dito for SIOCTL_{VEC,LIST,SEL} */
 	unsigned int maxval;		/* max value */
-/*	int __pad[1]; */
 	char display[SIOCTL_DISPLAYMAX];	/* free-format help string */
 };
 
