@@ -28,12 +28,13 @@
 /*
  * limits
  *
- * XXX: increase SIOCTL_DISPLAYMAX to 24 and pad sioctl_desc to 96B
- *
- * for now we use 12, just for testing. It nicely fits in the
- * padding of struct sioctl_desc which makes this libsndio binary
- * compatible with old one, so no need to rebuild every single
- * audio program (and web browser!) to test
+ * For now SIOCTL_DISPLAYMAX is 12 byte only. It nicely fits in the
+ * padding of the sioctl_desc structure: this allows any binary linked
+ * to the library version with no sioctl_desc->display to work with
+ * this library version. Currently, any string reported by the lower
+ * layers fits in the 12-byte buffer. Once larger strings start
+ * being used (or the ABI changes for any other reason) increase
+ * SIOCTL_DISPLAYMAX and properly pad the sioctl_desc structure.
  */
 #define SIOCTL_NAMEMAX		12	/* max name length */
 #define SIOCTL_DISPLAYMAX	12	/* max display string length */
