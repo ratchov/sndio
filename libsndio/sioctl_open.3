@@ -168,6 +168,7 @@ struct sioctl_desc {
 	struct sioctl_node node0;	/* affected node */
 	struct sioctl_node node1;	/* dito for SIOCTL_{VEC,LIST,SEL} */
 	unsigned int maxval;		/* max value */
+	char display[SIOCTL_DISPLAYMAX];	/* free-format help string */
 };
 .Ed
 .Pp
@@ -238,6 +239,11 @@ The
 .Fa maxval
 attribute indicates the maximum value of this control.
 For boolean control types it is set to 1.
+.Pp
+The
+.Fa display
+attribute contains an optional free-format string providing additional
+hints about the control, like the hardware model, or the units.
 .Ss Changing and reading control values
 Controls are changed with the
 .Fn sioctl_setval
