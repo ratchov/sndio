@@ -160,7 +160,7 @@ struct amsg_ctl_desc {
 	uint16_t maxval;
 	uint16_t curval;
 	uint32_t __pad2[4];
-	char display[AMSG_CTL_DISPLAYMAX];	/* free-format help string */
+	char display[AMSG_CTL_DISPLAYMAX];	/* free-format hint */
 };
 
 /*
