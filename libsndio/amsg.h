@@ -76,7 +76,7 @@ struct amsg {
 #define AMSG_HELLO	10	/* say hello, check versions and so ... */
 #define AMSG_BYE	11	/* ask server to drop connection */
 #define AMSG_AUTH	12	/* send authentication cookie */
-#define AMSG_CTLSUB_OLD	13	/* ondesc/onctl subscription */
+#define AMSG_CTLSUB_OLD	13	/* amsg_ctl_desc with no "display" attribute */
 #define AMSG_CTLSET	14	/* set control value */
 #define AMSG_CTLSYNC	15	/* end of controls descriptions */
 #define AMSG_CTLSUB	16	/* ondesc/onctl subscription */
