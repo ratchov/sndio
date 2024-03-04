@@ -83,6 +83,7 @@ dev_sio_timeout(void *arg)
 
 	dev_log(d);
 	log_puts(": watchdog timeout\n");
+	dev_migrate(d);
 	dev_abort(d);
 }
 
