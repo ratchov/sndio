@@ -1122,7 +1122,7 @@ dev_abort(struct dev *d)
 			if (c->ops == NULL)
 				continue;
 			if (c->opt == o) {
-				c->ops->exit(s->arg);
+				c->ops->exit(c->arg);
 				c->ops = NULL;
 			}
 		}
