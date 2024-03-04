@@ -278,6 +278,25 @@ dev_reopen(void)
 		if (d->pstate == DEV_CFG)
 			dev_open(d);
 	}
+
+	/*
+	 * Migrate each logical device in use to the hardware device with the
+	 * highest priority.
+	 */
+	for (o = opt_list; o != NULL; o = o->next) {
+		if (o->refcnt != 0) {
+			d = o->alt_first;
+			while (1) {
+				if (d->pstate != DEV_CFG) {
+					opt_setdev(o, d);
+					break;
+				}
+				d = d->alt_next;
+				if (d == o->alt_first)
+					break;
+			}
+		}
+	}
 }
 
 static void
