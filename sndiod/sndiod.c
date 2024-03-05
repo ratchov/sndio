@@ -251,23 +251,23 @@ opt_mode(void)
 	return mode;
 }
 
+/*
+ * Open all devices. Possibly switch to the new devices if they have higher
+ * priorities than the current ones.
+ */
 static void
 dev_reopen(void)
 {
 	struct opt *o;
 	struct dev *d, *dpri;
 
-	/*
-	 * Migrate each logical device in use to the hardware device with the
-	 * highest priority.
-	 */
 	for (o = opt_list; o != NULL; o = o->next) {
 
-		/* skip unused ones and ones with fixed hardware */
+		/* skip unused logical devices and ones with fixed hardware */
 		if (o->refcnt == 0 || strcmp(o->name, o->dev->name) == 0)
 			continue;
 
-		/* open devices, select the one with the highest prio */
+		/* open alt devices, find the one with the highest prio */
 		dpri = NULL;
 		d = o->alt_first;
 		do {
@@ -277,6 +277,7 @@ dev_reopen(void)
 				dpri = d;
 		} while ((d = d->alt_next) != o->alt_first);
 
+		/* switch to the alt device with the highest prio */
 		if (o->dev != dpri)
 			opt_setdev(o, dpri);
 	}
@@ -294,7 +295,7 @@ port_reopen(void)
 			continue;
 		/*
 		 * Migrate to p connections of all other ports
-		 * for which p is a prioritary alt.
+		 * for which p is a higher prioritary alt.
 		 *
 		 * The alt list is a circular list, ordered in decreasing
 		 * priority order (i.e. decreasing a->num) until it wraps.
