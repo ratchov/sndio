@@ -283,35 +283,43 @@ dev_reopen(void)
 	}
 }
 
+/*
+ * For each port, open the alt with the highest priority and switch to it
+ */
 static void
 port_reopen(void)
 {
-	struct port *p, *a;
+	struct port *p, *a, *apri;
+	int inuse;
 
-	for (p = port_list; p != NULL; p = p->next) {
+	for (p = port_list; p != NULL; p = a->next) {
 
-		/* skip if already open */
-		if (p->state != PORT_CFG)
+		/* skip unused ports */
+		inuse = 0;
+		a = p;
+		while (1) {
+			if (midi_rxmask(a->midi) || a->midi->txmask)
+				inuse = 1;
+			if (a->alt_next == p)
+				break;
+			a = a->alt_next;
+		}
+		if (!inuse)
 			continue;
-		/*
-		 * Migrate to p connections of all other ports
-		 * for which p is a higher prioritary alt.
-		 *
-		 * The alt list is a circular list, ordered in decreasing
-		 * priority order (i.e. decreasing a->num) until it wraps.
-		 */
-		for (a = p->alt_next; a->num < p->num; a = a->alt_next) {
 
-			/* if alt is connected, migrate it to p */
-			if (midi_rxmask(a->midi) != 0 || a->midi->txmask != 0) {
+		/* open the alt with the highest prio */
+		apri = port_alt_ref(p->num);
 
-				/* if p is not usable, we're done */
-				if (!port_ref(p))
-					break;
-
-				midi_migrate(a->midi, p->midi);
-				midi_abort(a->midi);
+		/* switch to it */
+		a = p;
+		while (1) {
+			if (a != apri) {
+				midi_migrate(a->midi, apri->midi);
+				port_unref(a);
 			}
+			if (a->alt_next == p)
+				break;
+			a = a->alt_next;
 		}
 	}
 }
@@ -679,6 +687,7 @@ main(int argc, char **argv)
 		    setuid(pw->pw_uid) == -1)
 			err(1, "cannot drop privileges");
 	}
+
 	for (;;) {
 		if (quit_flag)
 			break;
