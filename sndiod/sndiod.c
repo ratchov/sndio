@@ -255,47 +255,30 @@ static void
 dev_reopen(void)
 {
 	struct opt *o;
-	struct dev *d;
-
-	/*
-	 * Check if there are logical devices in use.
-	 */
-	o = opt_list;
-	while (1) {
-		if (o == NULL)
-			return;
-		if (o->refcnt > 0)
-			break;
-		o = o->next;
-	}
-
-	/*
-	 * Attempt to open devices that are configured
-	 * but not open yet. dev_open() will add the server.device
-	 * controls where needed.
-	 */
-	for (d = dev_list; d != NULL; d = d->next) {
-		if (d->pstate == DEV_CFG)
-			dev_open(d);
-	}
+	struct dev *d, *dpri;
 
 	/*
 	 * Migrate each logical device in use to the hardware device with the
 	 * highest priority.
 	 */
 	for (o = opt_list; o != NULL; o = o->next) {
-		if (o->refcnt != 0) {
-			d = o->alt_first;
-			while (1) {
-				if (d->pstate != DEV_CFG) {
-					opt_setdev(o, d);
-					break;
-				}
-				d = d->alt_next;
-				if (d == o->alt_first)
-					break;
-			}
-		}
+
+		/* skip unused ones and ones with fixed hardware */
+		if (o->refcnt == 0 || strcmp(o->name, o->dev->name) == 0)
+			continue;
+
+		/* open devices, select the one with the highest prio */
+		dpri = NULL;
+		d = o->alt_first;
+		do {
+			if (d->pstate == DEV_CFG && !dev_open(d))
+				continue;
+			if (dpri == NULL)
+				dpri = d;
+		} while ((d = d->alt_next) != o->alt_first);
+
+		if (o->dev != dpri)
+			opt_setdev(o, dpri);
 	}
 }
 
