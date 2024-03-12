@@ -24,13 +24,14 @@
 .Nm aucat
 .Op Fl dn
 .Op Fl b Ar size
-.Op Fl c Ar min : Ns Ar max
+.Op Fl c Ar channels
 .Op Fl e Ar enc
 .Op Fl f Ar device
 .Op Fl g Ar position
 .Op Fl h Ar fmt
 .Op Fl i Ar file
 .Op Fl j Ar flag
+.Op Fl m Ar min : Ns Ar max Ns / Ns Ar min : Ns Ar max
 .Op Fl o Ar file
 .Op Fl p Ar position
 .Op Fl q Ar port
@@ -78,11 +79,9 @@ The options are as follows:
 .It Fl b Ar size
 The buffer size of the audio device in frames.
 Default is 7680.
-.It Fl c Ar min : Ns Ar max
-The range of audio file channel numbers.
-The default is
-.Cm 0:1 ,
-i.e. stereo.
+.It Fl c Ar channels
+The audio file channels count.
+The default is 2, i.e. stereo.
 .It Fl d
 Increase log verbosity.
 .It Fl e Ar enc
@@ -161,6 +160,9 @@ For instance, this feature could be used to convert
 a stereo file into a mono file mixing left and right channels together.
 The default is
 .Cm off .
+.It Fl m Ar min : Ns Ar max Ns / Ns Ar min : Ns Ar max
+Map the given range of source channels into the given range of
+destination channels.
 .It Fl n
 Off-line mode.
 Read input files and store the result in the output files,
@@ -282,13 +284,13 @@ Record channels 2 and 3 into one stereo file and
 channels 6 and 7 into another stereo file using a 44.1kHz sampling
 rate for both:
 .Bd -literal -offset indent
-$ aucat -r 44100 -c 2:3 -o file1.wav -c 6:7 -o file2.wav
+$ aucat -r 44100 -m 2:3/0:1 -o file1.wav -m 6:7/0:1 -o file2.wav
 .Ed
 .Pp
 Split a stereo file into two mono files:
 .Bd -literal -offset indent
-$ aucat -n -i stereo.wav -c 0:0 -o left.wav \e
-	-c 1:1 -o right.wav
+$ aucat -n -i stereo.wav -c 1 -m 0:0/0:0 -o left.wav \e
+	-m 1:1/0:0 -o right.wav
 .Ed
 .Sh SEE ALSO
 .Xr cdio 1 ,
