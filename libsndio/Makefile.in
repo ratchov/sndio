@@ -11,7 +11,7 @@ DEFS = -DDEBUG @defs@
 LDADD = @ldadd@
 
 # extra compiler flags to produce objects for shared library
-SO_CFLAGS = -fPIC
+SO_CFLAGS = @so_cflags@
 
 # extra compiler flags to produce a shared library with the given name
 SO_LDFLAGS = -shared @so_ldflags@
@@ -50,8 +50,9 @@ MAJ = 7
 MIN = 3
 SO = @so@
 SO_LINK = @so_link@
+STATIC_LIB = @static_lib@
 
-all:		${SO}
+all:		${STATIC_LIB} ${SO}
 		for i in ${SO_LINK}; do ln -sf ${SO} $$i; done
 
 install:
@@ -61,7 +62,7 @@ install:
 		mkdir -p ${DESTDIR}${MAN3_DIR}
 		mkdir -p ${DESTDIR}${MAN7_DIR}
 		cp sndio.h ${DESTDIR}${INCLUDE_DIR}
-		cp -R ${SO} ${SO_LINK} ${DESTDIR}${LIB_DIR}
+		cp -R ${STATIC_LIB} ${SO} ${SO_LINK} ${DESTDIR}${LIB_DIR}
 		cp sndio.pc ${DESTDIR}${PKGCONF_DIR}
 		cp sio_open.3 ${DESTDIR}${MAN3_DIR}
 		ln -sf sio_open.3 ${DESTDIR}${MAN3_DIR}/sio_close.3
@@ -101,13 +102,13 @@ install:
 
 uninstall:
 		rm -f ${DESTDIR}${INCLUDE_DIR}/sndio.h
-		cd ${DESTDIR}${LIB_DIR} && rm -f ${SO} ${SO_LINK}
+		cd ${DESTDIR}${LIB_DIR} && rm -f ${STATIC_LIB} ${SO} ${SO_LINK}
 		cd ${DESTDIR}${PKGCONF_DIR} && rm -f sndio.pc
 		cd ${DESTDIR}${MAN3_DIR} && rm -f ${MAN3}
 		cd ${DESTDIR}${MAN7_DIR} && rm -f ${MAN7}
 
 clean:
-		rm -f -- ${SO} ${SO_LINK} *.o
+		rm -f -- ${STATIC_LIB} ${SO} ${SO_LINK} *.o
 
 # ---------------------------------------------------------- dependencies ---
 
@@ -126,6 +127,9 @@ getpeereid.o issetugid.o strlcat.o strlcpy.o strtonum.o clock_gettime.o
 
 ${SO}:		${OBJS}
 		${CC} ${LDFLAGS} ${SO_CFLAGS} ${SO_LDFLAGS} -o ${SO} ${OBJS} ${LDADD}
+
+libsndio.a:	${OBJS}
+		${AR} rcs libsndio.a ${OBJS}
 
 getpeereid.o:	../bsd-compat/getpeereid.c
 		${CC} ${CFLAGS} ${SO_CFLAGS} ${INCLUDE} ${DEFS} -c -o getpeereid.o ../bsd-compat/getpeereid.c
