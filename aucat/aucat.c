@@ -1450,6 +1450,7 @@ main(int argc, char **argv)
 	dup = 0;
 	bufsz = 0;
 	nch = 2;
+	off = 0;
 	rate = DEFAULT_RATE;
 	imin = imax = omin = omax = -1;
 	par.bits = ADATA_BITS;
