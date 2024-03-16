@@ -552,6 +552,7 @@ sio_alsa_setpar_hw(snd_pcm_t *pcm, snd_pcm_hw_params_t *hwp,
 	};
 	int i, err, dir = 0;
 	unsigned req_rate, min_periods = 2;
+	unsigned int sample_size, period_mask;
 
 	req_rate = *rate;
 
@@ -621,8 +622,25 @@ sio_alsa_setpar_hw(snd_pcm_t *pcm, snd_pcm_hw_params_t *hwp,
 		return 0;
 	}
 
+	/*
+	 * Make sure that the period size is multiple of 64B
+	 * to workaround possible driver bugs. Try to allow small
+	 * period sizes if the sample size is allows to do so.
+	 */
+	sample_size = snd_pcm_format_size(*reqfmt, 1);
+	switch (sample_size) {
+	case 4:
+		period_mask = 15;
+		break;
+	case 2:
+		period_mask = 31;
+		break;
+	default:
+		period_mask = 63;
+	}
+
 	*round = *round * *rate / req_rate;
-	*round = (*round + 31) & ~31;
+	*round = (*round + period_mask) & ~period_mask;
 
 	err = snd_pcm_hw_params_set_period_size_near(pcm, hwp, round, &dir);
 	if (err < 0) {
