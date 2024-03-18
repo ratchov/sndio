@@ -1333,36 +1333,36 @@ opt_hdr(char *s, int *hdr)
 }
 
 static int
-opt_map(char *str, int *rfmin, int *rfmax, int *rdmin, int *rdmax)
+opt_map(char *str, int *rimin, int *rimax, int *romin, int *romax)
 {
 	char *s, *next;
-	long fmin, fmax, dmin, dmax;
+	long imin, imax, omin, omax;
 
 	errno = 0;
 	s = str;
-	fmin = strtol(s, &next, 10);
+	imin = strtol(s, &next, 10);
 	if (next == s || *next != ':')
 		goto failed;
 	s = next + 1;
-	fmax = strtol(s, &next, 10);
+	imax = strtol(s, &next, 10);
 	if (next == s || *next != '/')
 		goto failed;
 	s = next + 1;
-	dmin = strtol(s, &next, 10);
+	omin = strtol(s, &next, 10);
 	if (next == s || *next != ':')
 		goto failed;
 	s = next + 1;
-	dmax = strtol(s, &next, 10);
+	omax = strtol(s, &next, 10);
 	if (next == s || *next != '\0')
 		goto failed;
-	if (fmin < 0 || fmax < fmin || fmax >= NCHAN_MAX)
+	if (imin < 0 || imax < imin || imax >= NCHAN_MAX)
 		goto failed;
-	if (dmin < 0 || dmax < dmin || dmax >= NCHAN_MAX)
+	if (omin < 0 || omax < omin || omax >= NCHAN_MAX)
 		goto failed;
-	*rfmin = fmin;
-	*rfmax = fmax;
-	*rdmin = dmin;
-	*rdmax = dmax;
+	*rimin = imin;
+	*rimax = imax;
+	*romin = omin;
+	*romax = omax;
 	return 1;
 failed:
 	log_puts(str);
@@ -1443,7 +1443,7 @@ opt_pos(char *s, long long *pos)
 int
 main(int argc, char **argv)
 {
-	int dup, fmin, fmax, dmin, dmax, nch, off, rate, vol, bufsz, hdr, mode;
+	int dup, imin, imax, omin, omax, nch, off, rate, vol, bufsz, hdr, mode;
 	char *port, *dev;
 	struct aparams par;
 	int n_flag, c;
@@ -1455,7 +1455,7 @@ main(int argc, char **argv)
 	nch = 2;
 	off = 0;
 	rate = DEFAULT_RATE;
-	fmin = fmax = dmin = dmax = -1;
+	imin = imax = omin = omax = -1;
 	par.bits = ADATA_BITS;
 	par.bps = APARAMS_BPS(par.bits);
 	par.le = ADATA_LE;
@@ -1478,11 +1478,6 @@ main(int argc, char **argv)
 		case 'c':
 			if (!opt_nch(optarg, &nch, &off))
 				return 1;
-			if (off > 0) {
-				/* compat with legacy -c syntax */
-				dmin = off;
-				dmax = off + nch - 1;
-			}
 			break;
 		case 'd':
 			log_level++;
@@ -1503,11 +1498,17 @@ main(int argc, char **argv)
 				return 1;
 			break;
 		case 'i':
+			if (off > 0) {
+				/* compat with legacy -c syntax */
+				omin = off;
+				omax = off + nch - 1;
+			}
 			if (!slot_new(optarg, SIO_PLAY,
-				&par, hdr, fmin, fmax, dmin, dmax,
+				&par, hdr, imin, imax, omin, omax,
 				nch, rate, dup, vol, pos))
 				return 1;
 			mode |= SIO_PLAY;
+			imin = imax = omin = omax = -1;
 			break;
 		case 'j':
 			/* compat with legacy -j option */
@@ -1515,17 +1516,23 @@ main(int argc, char **argv)
 				return 1;
 			break;
 		case 'm':
-			if (!opt_map(optarg, &fmin, &fmax, &dmin, &dmax))
+			if (!opt_map(optarg, &imin, &imax, &omin, &omax))
 				return 1;
 			break;
 		case 'n':
 			n_flag = 1;
 			break;
 		case 'o':
+			if (off > 0) {
+				/* compat with legacy -c syntax */
+				imin = off;
+				imax = off + nch - 1;
+			}
 			if (!slot_new(optarg, SIO_REC,
-				&par, hdr, dmin, dmax, fmin, fmax,
+				&par, hdr, imin, imax, omin, omax,
 				nch, rate, dup, 0, pos))
 				return 1;
+			imin = imax = omin = omax = -1;
 			mode |= SIO_REC;
 			break;
 		case 'p':
