@@ -82,7 +82,7 @@ struct slot {
 	int join;			/* channel join factor */
 	int expand;			/* channel expand factor */
 	void *resampbuf, *convbuf;	/* conversion tmp buffers */
-	int dup;			/* mono-to-stereo and alike */
+	int dup;			/* compat with legacy -j option */
 	int round;			/* slot-side block size */
 	int mode;			/* MODE_{PLAY,REC} */
 #define SLOT_CFG	0		/* buffers not allocated yet */
@@ -326,7 +326,7 @@ slot_init(struct slot *s)
 	inch = s->imax - s->imin + 1;
 	onch = s->omax - s->omin + 1;
 	if (s->dup) {
-		/* legacy -j option */
+		/* compat with legacy -j option */
 		if (s->mode == SIO_PLAY)
 			onch = dev_pchan;
 		else
@@ -1510,6 +1510,7 @@ main(int argc, char **argv)
 			mode |= SIO_PLAY;
 			break;
 		case 'j':
+			/* compat with legacy -j option */
 			if (!opt_onoff(optarg, &dup))
 				return 1;
 			break;
