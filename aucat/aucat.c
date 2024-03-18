@@ -1392,8 +1392,6 @@ opt_nch(char *str, int *rnch, int *roff)
 			goto failed;
 		nch = cmax - cmin + 1;
 		off = cmin;
-		log_puts(str);
-		log_puts(": warning: ranges are not supported anymore\n");
 	} else {
 		off = 0;
 		if (nch < 0 || nch >= NCHAN_MAX)
