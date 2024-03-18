@@ -268,13 +268,13 @@ Record channels 2 and 3 into one stereo file and
 channels 6 and 7 into another stereo file using a 44.1kHz sampling
 rate for both:
 .Bd -literal -offset indent
-$ aucat -r 44100 -m 2:3/0:1 -o file1.wav -m 6:7/0:1 -o file2.wav
+$ aucat -r 44100 -m 0:1/2:3 -o file1.wav -m 0:1/6:7 -o file2.wav
 .Ed
 .Pp
 Split a stereo file into two mono files:
 .Bd -literal -offset indent
 $ aucat -n -i stereo.wav -c 1 -m 0:0/0:0 -o left.wav \e
-	-m 1:1/0:0 -o right.wav
+	-m 0:0/1:1 -o right.wav
 .Ed
 .Sh SEE ALSO
 .Xr cdio 1 ,
