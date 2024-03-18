@@ -30,7 +30,6 @@
 .Op Fl g Ar position
 .Op Fl h Ar fmt
 .Op Fl i Ar file
-.Op Fl j Ar flag
 .Op Fl m Ar min : Ns Ar max Ns / Ns Ar min : Ns Ar max
 .Op Fl o Ar file
 .Op Fl p Ar position
@@ -145,21 +144,6 @@ Play this audio file.
 If the option argument is
 .Sq -
 then standard input will be used.
-.It Fl j Ar flag
-Control whether source channels are joined or expanded if
-they don't match the destination number of channels.
-If the flag is
-.Cm off ,
-then each source channel is routed to a single destination channel,
-possibly discarding channels.
-If the flag is
-.Cm on ,
-then a single source may be sent to multiple destinations
-and multiple sources may be mixed into a single destination.
-For instance, this feature could be used to convert
-a stereo file into a mono file mixing left and right channels together.
-The default is
-.Cm off .
 .It Fl m Ar min : Ns Ar max Ns / Ns Ar min : Ns Ar max
 Map the given range of file channels into the given range of
 device channels.

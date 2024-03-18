@@ -137,8 +137,8 @@ const unsigned int common_len[] = { 0, 2, 3, 2, 0, 0, 1, 1 };
 
 char usagestr[] = "usage: aucat [-dn] [-b size] "
     "[-c channels] [-e enc] [-f device] [-g position]\n\t"
-    "[-h fmt] [-i file] [-j flag] [-m min:max/min:max] [-o file]\n\t"
-    "[-p position] [-q port] [-r rate] [-v volume]\n";
+    "[-h fmt] [-i file] [-m min:max/min:max] [-o file] [-p position]\n\t"
+    "[-q port] [-r rate] [-v volume]\n";
 
 static void *
 allocbuf(int nfr, int nch)
@@ -323,14 +323,19 @@ slot_init(struct slot *s)
 	s->resampbuf = NULL;
 	s->join = 1;
 	s->expand = 1;
+	inch = s->imax - s->imin + 1;
+	onch = s->omax - s->omin + 1;
 	if (s->dup) {
-		inch = s->imax - s->imin + 1;
-		onch = s->omax - s->omin + 1;
-		if (onch > inch)
-			s->expand = onch / inch;
-		else if (onch < inch)
-			s->join = inch / onch;
+		/* legacy -j option */
+		if (s->mode == SIO_PLAY)
+			onch = dev_pchan;
+		else
+			inch = dev_rchan;
 	}
+	if (onch > inch)
+		s->expand = onch / inch;
+	else if (onch < inch)
+		s->join = inch / onch;
 	if (s->mode & SIO_PLAY) {
 		cmap_init(&s->cmap,
 		    0, s->afile.nch - 1, s->imin, s->imax,
