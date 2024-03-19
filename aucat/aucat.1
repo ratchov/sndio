@@ -24,6 +24,7 @@
 .Nm aucat
 .Op Fl dn
 .Op Fl b Ar size
+.Op Fl C Ar channels Ns Oo / Ns channels Oc
 .Op Fl c Ar channels
 .Op Fl e Ar enc
 .Op Fl f Ar device
@@ -78,6 +79,10 @@ The options are as follows:
 .It Fl b Ar size
 The buffer size of the audio device in frames.
 Default is 7680.
+.It Fl C Ar channels Ns Oo / Ns channels Oc
+Set the device recording and playback channels counts respectively.
+If only a single number is provided, then both are set.
+By default, the device channels are determined from the provided files.
 .It Fl c Ar channels
 The audio file channels count.
 The default is 2, i.e. stereo.

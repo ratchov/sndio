@@ -672,7 +672,7 @@ slot_sub_bcopy(struct slot *s, adata_t *idata, int itodo)
 }
 
 static int
-dev_open(char *dev, int mode, int bufsz, char *port)
+dev_open(char *dev, int mode, int rchan, int pchan, int bufsz, char *port)
 {
 	int rate, pmax, rmax;
 	struct sio_par par;
@@ -716,11 +716,11 @@ dev_open(char *dev, int mode, int bufsz, char *port)
 	par.bps = sizeof(adata_t);
 	par.msb = 0;
 	par.le = SIO_LE_NATIVE;
-	par.rate = rate;
+	par.rate = rate != 0 ? rate : DEFAULT_RATE;
 	if (mode & SIO_PLAY)
-		par.pchan = pmax + 1;
+		par.pchan = pchan != -1 ? pchan : pmax + 1;
 	if (mode & SIO_REC)
-		par.rchan = rmax + 1;
+		par.rchan = rchan != -1 ? rchan : rmax + 1;
 	par.appbufsz = bufsz > 0 ? bufsz : rate * DEFAULT_BUFSZ_MS / 1000;
 	if (!sio_setpar(dev_sh, &par) || !sio_getpar(dev_sh, &par)) {
 		log_puts(dev_name);
@@ -1206,7 +1206,7 @@ sigint(int s)
 }
 
 static int
-playrec(char *dev, int mode, int bufsz, char *port)
+playrec(char *dev, int mode, int rchan, int pchan, int bufsz, char *port)
 {
 #define MIDIBUFSZ 0x100
 	unsigned char mbuf[MIDIBUFSZ];
@@ -1215,7 +1215,7 @@ playrec(char *dev, int mode, int bufsz, char *port)
 	struct slot *s;
 	int n, ns, nm, ev;
 
-	if (!dev_open(dev, mode, bufsz, port))
+	if (!dev_open(dev, mode, rchan, pchan, bufsz, port))
 		return 0;
 	n = sio_nfds(dev_sh);
 	if (dev_mh)
@@ -1434,6 +1434,37 @@ failed:
 }
 
 static int
+opt_devnch(char *str, int *rrchan, int *rpchan)
+{
+	char *s, *next;
+	long rchan, pchan;
+
+	errno = 0;
+	s = str;
+	rchan = strtol(s, &next, 10);
+	if (next == s)
+		goto failed;
+	if (*next == '/') {
+		s = next + 1;
+		pchan = strtol(s, &next, 10);
+		if (next == s)
+			goto failed;
+	} else
+		pchan = rchan;
+	if (*next != '\0')
+		goto failed;
+	if (pchan < 0 || pchan > NCHAN_MAX || pchan < 0 || pchan > NCHAN_MAX)
+		goto failed;
+	*rrchan = rchan;
+	*rpchan = pchan;
+	return 1;
+failed:
+	log_puts(str);
+	log_puts(": play and/or rec channel counts expected\n");
+	return 0;
+}
+
+static int
 opt_num(char *s, int min, int max, int *num)
 {
 	const char *errstr;
@@ -1469,6 +1500,7 @@ int
 main(int argc, char **argv)
 {
 	int dup, imin, imax, omin, omax, nch, off, rate, vol, bufsz, hdr, mode;
+	int rchan, pchan;
 	char *port, *dev;
 	struct aparams par;
 	int n_flag, c;
@@ -1480,7 +1512,7 @@ main(int argc, char **argv)
 	nch = 2;
 	off = 0;
 	rate = DEFAULT_RATE;
-	imin = imax = omin = omax = -1;
+	rchan = pchan = imin = imax = omin = omax = -1;
 	par.bits = ADATA_BITS;
 	par.bps = APARAMS_BPS(par.bits);
 	par.le = ADATA_LE;
@@ -1494,8 +1526,12 @@ main(int argc, char **argv)
 	pos = 0;
 
 	while ((c = getopt(argc, argv,
-		"b:c:de:f:g:h:i:j:m:no:p:q:r:t:v:")) != -1) {
+		"C:b:c:de:f:g:h:i:j:m:no:p:q:r:t:v:")) != -1) {
 		switch (c) {
+		case 'C':
+			if (!opt_devnch(optarg, &rchan, &pchan))
+				return 1;
+			break;
 		case 'b':
 			if (!opt_num(optarg, 1, RATE_MAX, &bufsz))
 				return 1;
@@ -1604,7 +1640,7 @@ main(int argc, char **argv)
 			log_puts("at least -i or -o required\n");
 			return 1;
 		}
-		if (!playrec(dev, mode, bufsz, port))
+		if (!playrec(dev, mode, rchan, pchan, bufsz, port))
 			return 1;
 	}
 	return 0;
