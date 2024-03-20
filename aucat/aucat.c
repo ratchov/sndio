@@ -118,6 +118,20 @@ struct mio_hdl *dev_mh;			/* MIDI control port handle */
 unsigned int dev_volctl = MIDI_MAXCTL;	/* master volume */
 
 /*
+ * play the recorded signal, similar properties and
+ * state as for files.
+ */
+int mon_enable;
+int mon_imin;
+int mon_imax;
+int mon_omin;
+int mon_omax;
+struct cmap mon_cmap;
+int mon_vol;
+int mon_join;
+int mon_expand;
+
+/*
  * MIDI parser state
  */
 #define MIDI_MSGMAX	32		/* max size of MIDI msg */
@@ -1135,6 +1149,32 @@ offline(void)
 	return 1;
 }
 
+static void
+playrec_monitor(void)
+{
+	int i, off, nch;
+
+	cmap_add(&mon_cmap, dev_rbuf, dev_pbuf, mon_vol, dev_round);
+
+	off = 0;
+	nch = mon_omax - mon_omin + 1;
+	for (i = mon_join - 1; i > 0; i--) {
+		off += nch;
+		if (off + mon_cmap.nch > dev_rchan)
+			break;
+		cmap_add(&mon_cmap, dev_rbuf + off, dev_pbuf, mon_vol, dev_round);
+	}
+
+	off = 0;
+	nch = mon_imax - mon_imin + 1;
+	for (i = mon_expand - 1; i > 0; i--) {
+		off += nch;
+		if (off + mon_cmap.nch > dev_pchan)
+			break;
+		cmap_add(&mon_cmap, dev_rbuf, dev_pbuf + off, mon_vol, dev_round);
+	}
+}
+
 static int
 playrec_cycle(void)
 {
@@ -1178,6 +1218,9 @@ playrec_cycle(void)
 	}
 	if (dev_mode & SIO_PLAY) {
 		pcnt = slot_list_mix(dev_round, dev_pchan, dev_pbuf);
+		if (mon_enable) {
+			playrec_monitor();
+		}
 		todo = dev_par.bps * dev_pchan * dev_round;
 		if (dev_encbuf) {
 			enc_do(&dev_enc,
@@ -1194,7 +1237,7 @@ playrec_cycle(void)
 		}
 	}
 	slot_list_iodo();
-	return pcnt > 0 || rcnt > 0;
+	return pcnt > 0 || rcnt > 0 || mon_enable;
 }
 
 static void
@@ -1206,7 +1249,9 @@ sigint(int s)
 }
 
 static int
-playrec(char *dev, int mode, int rchan, int pchan, int bufsz, char *port)
+playrec(char *dev, int mode, int rchan, int pchan,
+    int imin, int imax, int omin, int omax,
+    int bufsz, char *port)
 {
 #define MIDIBUFSZ 0x100
 	unsigned char mbuf[MIDIBUFSZ];
@@ -1214,6 +1259,7 @@ playrec(char *dev, int mode, int rchan, int pchan, int bufsz, char *port)
 	struct pollfd *pfds;
 	struct slot *s;
 	int n, ns, nm, ev;
+	int inch, onch;
 
 	if (!dev_open(dev, mode, rchan, pchan, bufsz, port))
 		return 0;
@@ -1221,6 +1267,22 @@ playrec(char *dev, int mode, int rchan, int pchan, int bufsz, char *port)
 	if (dev_mh)
 		n += mio_nfds(dev_mh);
 	pfds = xmalloc(n * sizeof(struct pollfd));
+
+	if (imin != -1 && imax != -1 && omin != -1 && omax != -1) {
+		mon_enable = 1;
+		mon_join = mon_expand = 1;
+		inch = (imax - imin + 1);
+		onch = (omax - omin + 1);
+		if (onch > inch)
+			mon_expand = onch / inch;
+		else if (onch < inch)
+			mon_join = inch / onch;
+		mon_vol = ADATA_UNIT / mon_join;
+		cmap_init(&mon_cmap,
+		    0, dev_rchan - 1, imin, imax,
+		    0, dev_pchan - 1, omin, omax);
+	} else
+		mon_enable = 0;
 
 	for (s = slot_list; s != NULL; s = s->next)
 		slot_init(s);
@@ -1500,7 +1562,7 @@ int
 main(int argc, char **argv)
 {
 	int dup, imin, imax, omin, omax, nch, off, rate, vol, bufsz, hdr, mode;
-	int rchan, pchan;
+	int rchan, pchan, dimin, dimax, domin, domax;
 	char *port, *dev;
 	struct aparams par;
 	int n_flag, c;
@@ -1513,6 +1575,7 @@ main(int argc, char **argv)
 	off = 0;
 	rate = DEFAULT_RATE;
 	rchan = pchan = imin = imax = omin = omax = -1;
+	dimin = dimax = domin = domax = -1;
 	par.bits = ADATA_BITS;
 	par.bps = APARAMS_BPS(par.bits);
 	par.le = ADATA_LE;
@@ -1526,7 +1589,7 @@ main(int argc, char **argv)
 	pos = 0;
 
 	while ((c = getopt(argc, argv,
-		"C:b:c:de:f:g:h:i:j:m:no:p:q:r:t:v:")) != -1) {
+		"C:M:b:c:de:f:g:h:i:j:m:no:p:q:r:t:uv:")) != -1) {
 		switch (c) {
 		case 'C':
 			if (!opt_devnch(optarg, &rchan, &pchan))
@@ -1579,6 +1642,11 @@ main(int argc, char **argv)
 		case 'm':
 			if (!opt_map(optarg, &imin, &imax, &omin, &omax))
 				return 1;
+			break;
+		case 'M':
+			if (!opt_map(optarg, &dimin, &dimax, &domin, &domax))
+				return 1;
+			mode = SIO_REC | SIO_PLAY;
 			break;
 		case 'n':
 			n_flag = 1;
@@ -1637,10 +1705,11 @@ main(int argc, char **argv)
 		if (dev == NULL)
 			dev = SIO_DEVANY;
 		if (mode == 0) {
-			log_puts("at least -i or -o required\n");
+			log_puts("at least -i, -o, or -M is required\n");
 			return 1;
 		}
-		if (!playrec(dev, mode, rchan, pchan, bufsz, port))
+		if (!playrec(dev, mode, rchan, pchan,
+			dimin, dimax, domin, domax, bufsz, port))
 			return 1;
 	}
 	return 0;

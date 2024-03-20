@@ -31,6 +31,7 @@
 .Op Fl g Ar position
 .Op Fl h Ar fmt
 .Op Fl i Ar file
+.Op Fl M Ar min : Ns Ar max Ns / Ns Ar min : Ns Ar max
 .Op Fl m Ar min : Ns Ar max Ns / Ns Ar min : Ns Ar max
 .Op Fl o Ar file
 .Op Fl p Ar position
@@ -149,6 +150,10 @@ Play this audio file.
 If the option argument is
 .Sq -
 then standard input will be used.
+.It Fl M Ar min : Ns Ar max Ns / Ns Ar min : Ns Ar max
+Monitor the device.
+Play the given range of device's recording channels
+on the given range of device's playback channels.
 .It Fl m Ar min : Ns Ar max Ns / Ns Ar min : Ns Ar max
 Map the given range of source channels into the given range of
 destination channels.
