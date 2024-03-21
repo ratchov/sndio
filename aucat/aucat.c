@@ -735,7 +735,8 @@ dev_open(char *dev, int mode, int rchan, int pchan, int bufsz, char *port)
 		par.pchan = pchan != -1 ? pchan : pmax + 1;
 	if (mode & SIO_REC)
 		par.rchan = rchan != -1 ? rchan : rmax + 1;
-	par.appbufsz = bufsz > 0 ? bufsz : rate * DEFAULT_BUFSZ_MS / 1000;
+	par.appbufsz = bufsz > 0 ? bufsz : par.rate * DEFAULT_BUFSZ_MS / 1000;
+
 	if (!sio_setpar(dev_sh, &par) || !sio_getpar(dev_sh, &par)) {
 		log_puts(dev_name);
 		log_puts(": couldn't set audio params\n");
