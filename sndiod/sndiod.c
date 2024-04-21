@@ -259,7 +259,7 @@ static void
 dev_reopen(void)
 {
 	struct opt *o;
-	struct dev *d, *dpri;
+	struct dev *d, *a;
 
 	for (o = opt_list; o != NULL; o = o->next) {
 
@@ -267,19 +267,20 @@ dev_reopen(void)
 		if (o->refcnt == 0 || strcmp(o->name, o->dev->name) == 0)
 			continue;
 
-		/* open alt devices, find the one with the highest prio */
-		dpri = NULL;
-		d = o->alt_first;
-		do {
-			if (d->pstate == DEV_CFG && !dev_open(d))
-				continue;
-			if (dpri == NULL)
-				dpri = d;
-		} while ((d = d->alt_next) != o->alt_first);
+		/* circulate to the device with the highest prio */
+		a = o->alt_first;
+		for (d = a; d->alt_next != a; d = d->alt_next) {
+			if (d->num > o->alt_first->num)
+				o->alt_first = d;
+		}
 
-		/* switch to the alt device with the highest prio */
-		if (o->dev != dpri)
-			opt_setdev(o, dpri);
+		/* switch to the first working one, in pririty order */
+		d = o->alt_first;
+		while (d != o->dev) {
+			if (opt_setdev(o, d))
+				break;
+			d = d->alt_next;
+		}
 	}
 }
 
