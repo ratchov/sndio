@@ -373,7 +373,6 @@ opt_setdev(struct opt *o, struct dev *ndev)
 	struct ctl *c;
 	struct ctlslot *p;
 	struct slot *s;
-	char *display;
 	int i;
 
 	if (!dev_ref(ndev))
@@ -431,11 +430,6 @@ opt_setdev(struct opt *o, struct dev *ndev)
 	if (c != NULL) {
 		c->curval = 1;
 		c->val_mask = ~0;
-		display = dev_getdisplay(o->dev);
-		if (strcmp(c->display, display) != 0) {
-			strlcpy(c->display, display, CTL_DISPLAYMAX);
-			c->desc_mask = ~0;
-		}
 	}
 
 	/* attach clients to new device */
