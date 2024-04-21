@@ -256,7 +256,7 @@ opt_mode(void)
  * priorities than the current ones.
  */
 static void
-dev_reopen(void)
+reopen_devs(void)
 {
 	struct opt *o;
 	struct dev *d, *a;
@@ -288,7 +288,7 @@ dev_reopen(void)
  * For each port, open the alt with the highest priority and switch to it
  */
 static void
-port_reopen(void)
+reopen_ports(void)
 {
 	struct port *p, *a, *apri;
 	int inuse;
@@ -694,8 +694,8 @@ main(int argc, char **argv)
 			break;
 		if (reopen_flag) {
 			reopen_flag = 0;
-			dev_reopen();
-			port_reopen();
+			reopen_devs();
+			reopen_ports();
 		}
 		if (!file_poll())
 			break;
