@@ -2736,8 +2736,6 @@ dev_ctlsync(struct dev *d)
 			found = 1;
 	}
 
-	dev_setdisplay(d, dev_getdisplay(d));
-
 	if (d->master_enabled && found) {
 		if (log_level >= 2) {
 			dev_log(d);
