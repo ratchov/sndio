@@ -499,8 +499,9 @@ opt_ref(struct opt *o)
 
 			/* create server.device control */
 			for (d = dev_list; d != NULL; d = d->next) {
-				if (!dev_ref(d))
-					continue;
+				d->refcnt++;
+				if (d->pstate == DEV_CFG)
+					dev_open(d);
 				ctl_new(CTL_OPT_DEV, o, d,
 				    CTL_SEL, dev_getdisplay(d),
 				    o->name, "server", -1, "device",
