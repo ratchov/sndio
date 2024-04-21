@@ -2674,7 +2674,10 @@ void
 dev_setdisplay(struct dev *d, char *display)
 {
 	struct ctl *c;
+	struct ctlslot *s;
+	int changed, i;
 
+	changed = 0;
 	for (c = ctl_list; c != NULL; c = c->next) {
 		if (c->scope != CTL_OPT_DEV ||
 		    c->u.opt_dev.dev != d ||
@@ -2682,6 +2685,16 @@ dev_setdisplay(struct dev *d, char *display)
 			continue;
 		strlcpy(c->display, display, CTL_DISPLAYMAX);
 		c->desc_mask = ~0;
+		changed = 1;
+	}
+
+	if (changed) {
+		for (s = ctlslot_array, i = 0; i < DEV_NCTLSLOT; i++, s++) {
+			if (s->ops == NULL)
+				continue;
+			if (s->opt->dev == d)
+				s->ops->sync(s->arg);
+		}
 	}
 }
 
