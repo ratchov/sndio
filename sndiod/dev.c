@@ -2340,6 +2340,8 @@ ctlslot_update(struct ctlslot *s)
 		/* if control is hidden */
 		c->desc_mask |= s->self;
 	}
+	if (s->ops)
+		s->ops->sync(s->arg);
 }
 
 void
@@ -2553,6 +2555,7 @@ ctl_update(struct ctl *c)
 			c->refs_mask |= s->self;
 		/* if control is hidden */
 		c->desc_mask |= s->self;
+		s->ops->sync(s->arg);
 	}
 }
 
