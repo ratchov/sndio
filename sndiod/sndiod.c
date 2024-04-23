@@ -282,6 +282,15 @@ reopen_devs(void)
 			d = d->alt_next;
 		}
 	}
+
+	/*
+	 * retry to open the remaining devices that are not used but need
+	 * to stay open (ex. '-a on')
+	 */
+	for (d = dev_list; d != NULL; d = d->next) {
+		if (d->refcnt > 0 && d->pstate == DEV_CFG)
+			dev_open(d);
+	}
 }
 
 /*
