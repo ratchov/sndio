@@ -2486,8 +2486,8 @@ ctl_setval(struct ctl *c, int val)
 		c->curval = val;
 		return 1;
 	case CTL_OPT_DEV:
-		c->u.opt_dev.opt->alt_first = c->u.opt_dev.dev;
-		opt_setdev(c->u.opt_dev.opt, c->u.opt_dev.dev);
+		if (opt_setdev(c->u.opt_dev.opt, c->u.opt_dev.dev))
+			c->u.opt_dev.opt->alt_first = c->u.opt_dev.dev;
 		return 1;
 	default:
 		if (log_level >= 2) {
