@@ -1055,6 +1055,8 @@ dev_allocbufs(struct dev *d)
 int
 dev_open(struct dev *d)
 {
+	struct opt *o;
+
 	d->mode = d->reqmode;
 	d->round = d->reqround;
 	d->bufsz = d->reqbufsz;
@@ -1077,6 +1079,18 @@ dev_open(struct dev *d)
 		return 0;
 
 	d->pstate = DEV_INIT;
+
+	/* add server.device if device is opened after opt_ref() call */
+	for (o = opt_list; o != NULL; o = o->next) {
+		if (o->refcnt > 0 && !ctl_find(CTL_OPT_DEV, o, d)) {
+			ctl_new(CTL_OPT_DEV, o, d,
+			    CTL_SEL, dev_getdisplay(d),
+			    o->name, "server", -1, "device",
+			    d->name, -1, 1, o->dev == d);
+			d->refcnt++;
+		}
+	}
+
 	return 1;
 }
 
@@ -1151,6 +1165,14 @@ dev_freebufs(struct dev *d)
 void
 dev_close(struct dev *d)
 {
+	struct opt *o;
+
+	/* remove server.device entries */
+	for (o = opt_list; o != NULL; o = o->next) {
+		if (ctl_del(CTL_OPT_DEV, o, d))
+			d->refcnt--;
+	}
+
 	d->pstate = DEV_CFG;
 	dev_sio_close(d);
 	dev_freebufs(d);
