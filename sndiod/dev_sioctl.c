@@ -92,7 +92,8 @@ dev_sioctl_onval(void *arg, unsigned int addr, unsigned int val)
 	}
 
 	for (c = ctl_list; c != NULL; c = c->next) {
-		if (c->scope != CTL_HW || c->u.hw.addr != addr)
+		if (c->scope != CTL_HW || c->u.hw.dev != d ||
+		    c->u.hw.addr != addr)
 			continue;
 
 		if (log_level >= 2) {
