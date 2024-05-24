@@ -118,20 +118,6 @@ struct mio_hdl *dev_mh;			/* MIDI control port handle */
 unsigned int dev_volctl = MIDI_MAXCTL;	/* master volume */
 
 /*
- * play the recorded signal, similar properties and
- * state as for files.
- */
-int mon_enable;
-int mon_imin;
-int mon_imax;
-int mon_omin;
-int mon_omax;
-struct cmap mon_cmap;
-int mon_vol;
-int mon_join;
-int mon_expand;
-
-/*
  * MIDI parser state
  */
 #define MIDI_MSGMAX	32		/* max size of MIDI msg */
@@ -686,7 +672,7 @@ slot_sub_bcopy(struct slot *s, adata_t *idata, int itodo)
 }
 
 static int
-dev_open(char *dev, int mode, int rchan, int pchan, int bufsz, char *port)
+dev_open(char *dev, int mode, int bufsz, char *port)
 {
 	int rate, pmax, rmax;
 	struct sio_par par;
@@ -730,13 +716,12 @@ dev_open(char *dev, int mode, int rchan, int pchan, int bufsz, char *port)
 	par.bps = sizeof(adata_t);
 	par.msb = 0;
 	par.le = SIO_LE_NATIVE;
-	par.rate = rate != 0 ? rate : DEFAULT_RATE;
+	par.rate = rate;
 	if (mode & SIO_PLAY)
-		par.pchan = pchan != -1 ? pchan : pmax + 1;
+		par.pchan = pmax + 1;
 	if (mode & SIO_REC)
-		par.rchan = rchan != -1 ? rchan : rmax + 1;
-	par.appbufsz = bufsz > 0 ? bufsz : par.rate * DEFAULT_BUFSZ_MS / 1000;
-
+		par.rchan = rmax + 1;
+	par.appbufsz = bufsz > 0 ? bufsz : rate * DEFAULT_BUFSZ_MS / 1000;
 	if (!sio_setpar(dev_sh, &par) || !sio_getpar(dev_sh, &par)) {
 		log_puts(dev_name);
 		log_puts(": couldn't set audio params\n");
@@ -1150,32 +1135,6 @@ offline(void)
 	return 1;
 }
 
-static void
-playrec_monitor(void)
-{
-	int i, off, nch;
-
-	cmap_add(&mon_cmap, dev_rbuf, dev_pbuf, mon_vol, dev_round);
-
-	off = 0;
-	nch = mon_omax - mon_omin + 1;
-	for (i = mon_join - 1; i > 0; i--) {
-		off += nch;
-		if (off + mon_cmap.nch > dev_rchan)
-			break;
-		cmap_add(&mon_cmap, dev_rbuf + off, dev_pbuf, mon_vol, dev_round);
-	}
-
-	off = 0;
-	nch = mon_imax - mon_imin + 1;
-	for (i = mon_expand - 1; i > 0; i--) {
-		off += nch;
-		if (off + mon_cmap.nch > dev_pchan)
-			break;
-		cmap_add(&mon_cmap, dev_rbuf, dev_pbuf + off, mon_vol, dev_round);
-	}
-}
-
 static int
 playrec_cycle(void)
 {
@@ -1219,9 +1178,6 @@ playrec_cycle(void)
 	}
 	if (dev_mode & SIO_PLAY) {
 		pcnt = slot_list_mix(dev_round, dev_pchan, dev_pbuf);
-		if (mon_enable) {
-			playrec_monitor();
-		}
 		todo = dev_par.bps * dev_pchan * dev_round;
 		if (dev_encbuf) {
 			enc_do(&dev_enc,
@@ -1238,7 +1194,7 @@ playrec_cycle(void)
 		}
 	}
 	slot_list_iodo();
-	return pcnt > 0 || rcnt > 0 || mon_enable;
+	return pcnt > 0 || rcnt > 0;
 }
 
 static void
@@ -1250,9 +1206,7 @@ sigint(int s)
 }
 
 static int
-playrec(char *dev, int mode, int rchan, int pchan,
-    int imin, int imax, int omin, int omax,
-    int bufsz, char *port)
+playrec(char *dev, int mode, int bufsz, char *port)
 {
 #define MIDIBUFSZ 0x100
 	unsigned char mbuf[MIDIBUFSZ];
@@ -1260,30 +1214,13 @@ playrec(char *dev, int mode, int rchan, int pchan,
 	struct pollfd *pfds;
 	struct slot *s;
 	int n, ns, nm, ev;
-	int inch, onch;
 
-	if (!dev_open(dev, mode, rchan, pchan, bufsz, port))
+	if (!dev_open(dev, mode, bufsz, port))
 		return 0;
 	n = sio_nfds(dev_sh);
 	if (dev_mh)
 		n += mio_nfds(dev_mh);
 	pfds = xmalloc(n * sizeof(struct pollfd));
-
-	if (imin != -1 && imax != -1 && omin != -1 && omax != -1) {
-		mon_enable = 1;
-		mon_join = mon_expand = 1;
-		inch = (imax - imin + 1);
-		onch = (omax - omin + 1);
-		if (onch > inch)
-			mon_expand = onch / inch;
-		else if (onch < inch)
-			mon_join = inch / onch;
-		mon_vol = ADATA_UNIT / mon_join;
-		cmap_init(&mon_cmap,
-		    0, dev_rchan - 1, imin, imax,
-		    0, dev_pchan - 1, omin, omax);
-	} else
-		mon_enable = 0;
 
 	for (s = slot_list; s != NULL; s = s->next)
 		slot_init(s);
@@ -1497,37 +1434,6 @@ failed:
 }
 
 static int
-opt_devnch(char *str, int *rrchan, int *rpchan)
-{
-	char *s, *next;
-	long rchan, pchan;
-
-	errno = 0;
-	s = str;
-	rchan = strtol(s, &next, 10);
-	if (next == s)
-		goto failed;
-	if (*next == '/') {
-		s = next + 1;
-		pchan = strtol(s, &next, 10);
-		if (next == s)
-			goto failed;
-	} else
-		pchan = rchan;
-	if (*next != '\0')
-		goto failed;
-	if (pchan < 0 || pchan > NCHAN_MAX || pchan < 0 || pchan > NCHAN_MAX)
-		goto failed;
-	*rrchan = rchan;
-	*rpchan = pchan;
-	return 1;
-failed:
-	log_puts(str);
-	log_puts(": play and/or rec channel counts expected\n");
-	return 0;
-}
-
-static int
 opt_num(char *s, int min, int max, int *num)
 {
 	const char *errstr;
@@ -1563,7 +1469,6 @@ int
 main(int argc, char **argv)
 {
 	int dup, imin, imax, omin, omax, nch, off, rate, vol, bufsz, hdr, mode;
-	int rchan, pchan, dimin, dimax, domin, domax;
 	char *port, *dev;
 	struct aparams par;
 	int n_flag, c;
@@ -1575,8 +1480,7 @@ main(int argc, char **argv)
 	nch = 2;
 	off = 0;
 	rate = DEFAULT_RATE;
-	rchan = pchan = imin = imax = omin = omax = -1;
-	dimin = dimax = domin = domax = -1;
+	imin = imax = omin = omax = -1;
 	par.bits = ADATA_BITS;
 	par.bps = APARAMS_BPS(par.bits);
 	par.le = ADATA_LE;
@@ -1590,12 +1494,8 @@ main(int argc, char **argv)
 	pos = 0;
 
 	while ((c = getopt(argc, argv,
-		"C:M:b:c:de:f:g:h:i:j:m:no:p:q:r:t:uv:")) != -1) {
+		"b:c:de:f:g:h:i:j:m:no:p:q:r:t:v:")) != -1) {
 		switch (c) {
-		case 'C':
-			if (!opt_devnch(optarg, &rchan, &pchan))
-				return 1;
-			break;
 		case 'b':
 			if (!opt_num(optarg, 1, RATE_MAX, &bufsz))
 				return 1;
@@ -1643,11 +1543,6 @@ main(int argc, char **argv)
 		case 'm':
 			if (!opt_map(optarg, &imin, &imax, &omin, &omax))
 				return 1;
-			break;
-		case 'M':
-			if (!opt_map(optarg, &dimin, &dimax, &domin, &domax))
-				return 1;
-			mode = SIO_REC | SIO_PLAY;
 			break;
 		case 'n':
 			n_flag = 1;
@@ -1706,11 +1601,10 @@ main(int argc, char **argv)
 		if (dev == NULL)
 			dev = SIO_DEVANY;
 		if (mode == 0) {
-			log_puts("at least -i, -o, or -M is required\n");
+			log_puts("at least -i or -o required\n");
 			return 1;
 		}
-		if (!playrec(dev, mode, rchan, pchan,
-			dimin, dimax, domin, domax, bufsz, port))
+		if (!playrec(dev, mode, bufsz, port))
 			return 1;
 	}
 	return 0;

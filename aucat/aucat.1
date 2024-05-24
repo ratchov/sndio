@@ -24,14 +24,12 @@
 .Nm aucat
 .Op Fl dn
 .Op Fl b Ar size
-.Op Fl C Ar channels Ns Oo / Ns channels Oc
 .Op Fl c Ar channels
 .Op Fl e Ar enc
 .Op Fl f Ar device
 .Op Fl g Ar position
 .Op Fl h Ar fmt
 .Op Fl i Ar file
-.Op Fl M Ar min : Ns Ar max Ns / Ns Ar min : Ns Ar max
 .Op Fl m Ar min : Ns Ar max Ns / Ns Ar min : Ns Ar max
 .Op Fl o Ar file
 .Op Fl p Ar position
@@ -80,10 +78,6 @@ The options are as follows:
 .It Fl b Ar size
 The buffer size of the audio device in frames.
 Default is 7680.
-.It Fl C Ar channels Ns Oo / Ns channels Oc
-Set the device recording and playback channels counts respectively.
-If only a single number is provided, then both are set.
-By default, the device channels are determined from the provided files.
 .It Fl c Ar channels
 The audio file channels count.
 The default is 2, i.e. stereo.
@@ -150,10 +144,6 @@ Play this audio file.
 If the option argument is
 .Sq -
 then standard input will be used.
-.It Fl M Ar min : Ns Ar max Ns / Ns Ar min : Ns Ar max
-Monitor the device.
-Play the given range of device's recording channels
-on the given range of device's playback channels.
 .It Fl m Ar min : Ns Ar max Ns / Ns Ar min : Ns Ar max
 Map the given range of source channels into the given range of
 destination channels.
