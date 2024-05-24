@@ -47,7 +47,7 @@ MAN7 = sndio.7
 # libraries to build and install
 #
 MAJ = 7
-MIN = 2
+MIN = 3
 SO = @so@
 SO_LINK = @so_link@
 STATIC_LIB = @static_lib@
