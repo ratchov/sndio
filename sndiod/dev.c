@@ -2291,6 +2291,14 @@ ctlslot_visible(struct ctlslot *s, struct ctl *c)
 		return 1;
 	switch (c->scope) {
 	case CTL_HW:
+		/*
+		 * Disable hardware's server.device control as its
+		 * replaced by sndiod's one
+		 */
+		if (strcmp(c->node0.name, "server") == 0 &&
+		    strcmp(c->func, "device") == 0)
+			return 0;
+		/* FALLTHROUHG */
 	case CTL_DEV_MASTER:
 		return (s->opt->dev == c->u.any.arg0);
 	case CTL_OPT_DEV:
