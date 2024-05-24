@@ -351,7 +351,7 @@ opt_init(struct opt *o)
 	if (strcmp(o->name, o->dev->name) != 0) {
 		for (d = dev_list; d != NULL; d = d->next) {
 			ctl_new(CTL_OPT_DEV, o, d,
-			    CTL_SEL, o->name, "server", -1, "device",
+			    CTL_SEL, "", o->name, "server", -1, "device",
 			    d->name, -1, 1, o->dev == d);
 		}
 	}
