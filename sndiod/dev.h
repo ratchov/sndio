@@ -301,7 +301,6 @@ int  dev_init(struct dev *);
 void dev_done(struct dev *);
 int dev_ref(struct dev *);
 void dev_unref(struct dev *);
-int  dev_getpos(struct dev *);
 unsigned int dev_roundof(struct dev *, unsigned int);
 int dev_iscompat(struct dev *, struct dev *);
 
@@ -366,7 +365,6 @@ int ctlslot_visible(struct ctlslot *, struct ctl *);
 struct ctl *ctlslot_lookup(struct ctlslot *, int);
 void ctlslot_update(struct ctlslot *);
 
-void dev_label(struct dev *, int);
 void dev_ctlsync(struct dev *);
 
 #endif /* !defined(DEV_H) */

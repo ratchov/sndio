@@ -39,7 +39,6 @@ struct dev_sio {
 
 int dev_sio_open(struct dev *);
 void dev_sio_close(struct dev *);
-void dev_sio_log(struct dev *);
 void dev_sio_start(struct dev *);
 void dev_sio_stop(struct dev *);
 

@@ -70,7 +70,6 @@ void timo_del(struct timo *);
 
 void filelist_init(void);
 void filelist_done(void);
-void filelist_unlisten(void);
 
 struct file *file_new(struct fileops *, void *, char *, unsigned int);
 void file_del(struct file *);
