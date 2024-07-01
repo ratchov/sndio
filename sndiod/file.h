@@ -70,10 +70,10 @@ void timo_del(struct timo *);
 
 void filelist_init(void);
 void filelist_done(void);
+size_t filelist_fmt(char *, size_t, struct pollfd *, int);
 
 struct file *file_new(struct fileops *, void *, char *, unsigned int);
 void file_del(struct file *);
-void file_log(struct file *);
 
 int file_poll(void);
 

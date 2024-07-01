@@ -45,7 +45,7 @@ clean:
 
 OBJS = \
 abuf.o utils.o dev.o dev_sioctl.o dsp.o file.o listen.o midi.o miofile.o \
-opt.o siofile.o sndiod.o sock.o
+opt.o siofile.o sndiod.o snfmt.o sock.o
 
 sndiod:		${OBJS}
 		${CC} ${LDFLAGS} ${LIB} -o sndiod ${OBJS} ${LDADD}
@@ -74,6 +74,7 @@ siofile.o:	siofile.c abuf.h defs.h dev.h dsp.h siofile.h file.h \
 sndiod.o:	sndiod.c ../libsndio/amsg.h defs.h dev.h abuf.h dsp.h \
 		siofile.h file.h dev_sioctl.h opt.h listen.h midi.h \
 		miofile.h sock.h utils.h ../bsd-compat/bsd-compat.h
+snfmt.o:	snfmt.c snfmt.h
 sock.o:		sock.c abuf.h defs.h dev.h dsp.h siofile.h file.h \
 		dev_sioctl.h opt.h midi.h miofile.h sock.h \
 		../libsndio/amsg.h utils.h ../bsd-compat/bsd-compat.h

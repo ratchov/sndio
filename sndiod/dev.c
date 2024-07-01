@@ -55,7 +55,6 @@ unsigned int dev_roundof(struct dev *, unsigned int);
 void dev_wakeup(struct dev *);
 
 void slot_ctlname(struct slot *, char *, size_t);
-void slot_log(struct slot *);
 void slot_del(struct slot *);
 void slot_setvol(struct slot *, unsigned int);
 void slot_ready(struct slot *);
@@ -65,9 +64,6 @@ void slot_skip_update(struct slot *);
 void slot_write(struct slot *);
 void slot_read(struct slot *);
 int slot_skip(struct slot *);
-
-void ctl_node_log(struct ctl_node *);
-void ctl_log(struct ctl *);
 
 struct slotops zomb_slotops = {
 	zomb_onmove,
@@ -109,50 +105,9 @@ slot_array_init(void)
 }
 
 void
-dev_log(struct dev *d)
-{
-#ifdef DEBUG
-	static char *pstates[] = {
-		"cfg", "ini", "run"
-	};
-#endif
-	log_puts("snd");
-	log_putu(d->num);
-#ifdef DEBUG
-	if (log_level >= 3) {
-		log_puts(" pst=");
-		log_puts(pstates[d->pstate]);
-	}
-#endif
-}
-
-void
 slot_ctlname(struct slot *s, char *name, size_t size)
 {
 	snprintf(name, size, "%s%u", s->name, s->unit);
-}
-
-void
-slot_log(struct slot *s)
-{
-	char name[CTL_NAMEMAX];
-#ifdef DEBUG
-	static char *pstates[] = {
-		"ini", "sta", "rdy", "run", "stp", "mid"
-	};
-#endif
-	slot_ctlname(s, name, CTL_NAMEMAX);
-	log_puts(name);
-#ifdef DEBUG
-	if (log_level >= 3) {
-		log_puts(" vol=");
-		log_putu(s->vol);
-		if (s->ops) {
-			log_puts(",pst=");
-			log_puts(pstates[s->pstate]);
-		}
-	}
-#endif
 }
 
 void
@@ -181,10 +136,7 @@ zomb_eof(void *arg)
 	struct slot *s = arg;
 
 #ifdef DEBUG
-	if (log_level >= 3) {
-		slot_log(s);
-		log_puts(": zomb_eof\n");
-	}
+	logx(3, "{slot:%p}: %s", arg, __func__);
 #endif
 	s->ops = NULL;
 }
@@ -193,13 +145,27 @@ void
 zomb_exit(void *arg)
 {
 #ifdef DEBUG
-	struct slot *s = arg;
-
-	if (log_level >= 3) {
-		slot_log(s);
-		log_puts(": zomb_exit\n");
-	}
+	logx(3, "{slot:%p}: %s", arg, __func__);
 #endif
+}
+
+size_t
+chans_fmt(char *buf, size_t size, int mode, int pmin, int pmax, int rmin, int rmax)
+{
+	const char *sep = "";
+	char *end = buf + size;
+	char *p = buf;
+
+	if (mode & MODE_PLAY) {
+		p += snprintf(p, p < end ? end - p : 0, "play %d:%d", pmin, pmax);
+		sep = ", ";
+	}
+	if (mode & MODE_RECMASK) {
+		p += snprintf(p, p < end ? end - p : 0, "%s%s %d:%d", sep,
+		    (mode & MODE_MON) ? "mon" : "rec", rmin, rmax);
+	}
+
+	return p - buf;
 }
 
 /*
@@ -308,14 +274,7 @@ mtc_midi_full(struct mtc *mtc)
 		mtc->fps = 24;
 	}
 #ifdef DEBUG
-	if (log_level >= 3) {
-		dev_log(mtc->dev);
-		log_puts(": mtc full frame at ");
-		log_puti(mtc->delta);
-		log_puts(", ");
-		log_puti(mtc->fps);
-		log_puts(" fps\n");
-	}
+	logx(3, "%s: mtc full frame at %d, %d fps", mtc->dev->path, mtc->delta, mtc->fps);
 #endif
 	fps = mtc->fps;
 	mtc->hr =  (mtc->origin / (MTC_SEC * 3600)) % 24;
@@ -453,10 +412,7 @@ slot_skip(struct slot *s)
 				break;
 		}
 #ifdef DEBUG
-		if (log_level >= 4) {
-			slot_log(s);
-			log_puts(": skipped a cycle\n");
-		}
+		logx(4, "{slot:%p}: skipped a cycle", s);
 #endif
 		if (s->pstate != SLOT_STOP && (s->mode & MODE_RECMASK)) {
 			if (s->sub.encbuf)
@@ -486,10 +442,7 @@ dev_mix_badd(struct dev *d, struct slot *s)
 	idata = (adata_t *)abuf_rgetblk(&s->mix.buf, &icount);
 #ifdef DEBUG
 	if (icount < s->round * s->mix.bpf) {
-		slot_log(s);
-		log_puts(": not enough data to mix (");
-		log_putu(icount);
-		log_puts("bytes)\n");
+		logx(1, "{slot:%p}: not enough data to mix (%u bytes)", s, icount);
 		panic();
 	}
 #endif
@@ -578,14 +531,8 @@ dev_mix_adjvol(struct dev *d)
 		i->mix.weight = d->master_enabled ?
 		    ADATA_MUL(weight, MIDI_TO_ADATA(d->master)) : weight;
 #ifdef DEBUG
-		if (log_level >= 3) {
-			slot_log(i);
-			log_puts(": set weight: ");
-			log_puti(i->mix.weight);
-			log_puts("/");
-			log_puti(i->opt->maxweight);
-			log_puts("\n");
-		}
+		logx(3, "{slot:%p}: set weight: %d / %d", i, i->mix.weight,
+		    i->opt->maxweight);
 #endif
 	}
 }
@@ -606,7 +553,7 @@ dev_sub_bcopy(struct dev *d, struct slot *s)
 	odata = (adata_t *)abuf_wgetblk(&s->sub.buf, &ocount);
 #ifdef DEBUG
 	if (ocount < s->round * s->sub.bpf) {
-		log_puts("dev_sub_bcopy: not enough space\n");
+		logx(0, "dev_sub_bcopy: not enough space");
 		panic();
 	}
 #endif
@@ -682,10 +629,7 @@ dev_cycle(struct dev *d)
 	 */
 	if (d->slot_list == NULL && d->idle >= d->bufsz &&
 	    (mtc_array[0].dev != d || mtc_array[0].tstate != MTC_RUN)) {
-		if (log_level >= 2) {
-			dev_log(d);
-			log_puts(": device stopped\n");
-		}
+		logx(2, "%s: device stopped", d->path);
 		dev_sio_stop(d);
 		d->pstate = DEV_INIT;
 		if (d->refcnt == 0)
@@ -695,12 +639,7 @@ dev_cycle(struct dev *d)
 
 	if (d->prime > 0) {
 #ifdef DEBUG
-		if (log_level >= 4) {
-			dev_log(d);
-			log_puts(": empty cycle, prime = ");
-			log_putu(d->prime);
-			log_puts("\n");
-		}
+		logx(4, "%s: empty cycle, prime = %u", d->path, d->prime);
 #endif
 		base = (unsigned char *)DEV_PBUF(d);
 		nsamp = d->round * d->pchan;
@@ -715,16 +654,7 @@ dev_cycle(struct dev *d)
 
 	d->delta -= d->round;
 #ifdef DEBUG
-	if (log_level >= 4) {
-		dev_log(d);
-		log_puts(": full cycle: delta = ");
-		log_puti(d->delta);
-		if (d->mode & MODE_PLAY) {
-			log_puts(", poffs = ");
-			log_puti(d->poffs);
-		}
-		log_puts("\n");
-	}
+	logx(4, "%s: full cycle: delta = %d", d->path, d->delta);
 #endif
 	if (d->mode & MODE_PLAY) {
 		base = (unsigned char *)DEV_PBUF(d);
@@ -736,13 +666,7 @@ dev_cycle(struct dev *d)
 	ps = &d->slot_list;
 	while ((s = *ps) != NULL) {
 #ifdef DEBUG
-		if (log_level >= 4) {
-			slot_log(s);
-			log_puts(": running");
-			log_puts(", skip = ");
-			log_puti(s->skip);
-			log_puts("\n");
-		}
+		logx(4, "{slot:%p}: running, skip = %d", s, s->skip);
 #endif
 		d->idle = 0;
 
@@ -758,8 +682,7 @@ dev_cycle(struct dev *d)
 
 #ifdef DEBUG
 		if (s->pstate == SLOT_STOP && !(s->mode & MODE_PLAY)) {
-			slot_log(s);
-			log_puts(": rec-only slots can't be drained\n");
+			logx(0, "{slot:%p}: rec-only slots can't be drained", s);
 			panic();
 		}
 #endif
@@ -779,10 +702,7 @@ dev_cycle(struct dev *d)
 			slot_freebufs(s);
 			dev_mix_adjvol(d);
 #ifdef DEBUG
-			if (log_level >= 3) {
-				slot_log(s);
-				log_puts(": drained\n");
-			}
+			logx(3, "{slot:%p}: drained", s);
 #endif
 			continue;
 		}
@@ -797,10 +717,7 @@ dev_cycle(struct dev *d)
 			s->round * s->sub.bpf)) {
 
 #ifdef DEBUG
-			if (log_level >= 3) {
-				slot_log(s);
-				log_puts(": xrun, pause cycle\n");
-			}
+			logx(3, "{slot:%p}: xrun, pause cycle", s);
 #endif
 			if (s->xrun == XRUN_IGNORE) {
 				s->delta -= s->round;
@@ -813,8 +730,7 @@ dev_cycle(struct dev *d)
 				*ps = s->next;
 			} else {
 #ifdef DEBUG
-				slot_log(s);
-				log_puts(": bad xrun mode\n");
+				logx(0, "{slot:%p}: bad xrun mode", s);
 				panic();
 #endif
 			}
@@ -826,12 +742,7 @@ dev_cycle(struct dev *d)
 				s->ops->flush(s->arg);
 			} else {
 #ifdef DEBUG
-				if (log_level >= 3) {
-					slot_log(s);
-					log_puts(": prime = ");
-					log_puti(s->sub.prime);
-					log_puts("\n");
-				}
+				logx(3, "{slot:%p}: prime = %d", s, s->sub.prime);
 #endif
 				s->sub.prime--;
 			}
@@ -891,12 +802,8 @@ dev_master(struct dev *d, unsigned int master)
 	struct ctl *c;
 	unsigned int v;
 
-	if (log_level >= 2) {
-		dev_log(d);
-		log_puts(": master volume set to ");
-		log_putu(master);
-		log_puts("\n");
-	}
+	logx(2, "%s: master volume set to %u", d->path, master);
+
 	if (d->master_enabled) {
 		d->master = master;
 		if (d->mode & MODE_PLAY)
@@ -927,8 +834,7 @@ dev_new(char *path, struct aparams *par,
 	struct dev *d, **pd;
 
 	if (dev_sndnum == DEV_NMAX) {
-		if (log_level >= 1)
-			log_puts("too many devices\n");
+		logx(1, "too many devices");
 		return NULL;
 	}
 	d = xmalloc(sizeof(struct dev));
@@ -1023,29 +929,11 @@ dev_allocbufs(struct dev *d)
 	 */
 	memset(d->rbuf, 0, d->round * d->rchan * sizeof(adata_t));
 
-	if (log_level >= 2) {
-		dev_log(d);
-		log_puts(": ");
-		log_putu(d->rate);
-		log_puts("Hz, ");
-		aparams_log(&d->par);
-		if (d->mode & MODE_PLAY) {
-			log_puts(", play 0:");
-			log_puti(d->pchan - 1);
-		}
-		if (d->mode & MODE_REC) {
-			log_puts(", rec 0:");
-			log_puti(d->rchan - 1);
-		}
-		log_puts(", ");
-		log_putu(d->bufsz / d->round);
-		log_puts(" blocks of ");
-		log_putu(d->round);
-		log_puts(" frames");
-		if (d == mtc_array[0].dev)
-			log_puts(", mtc");
-		log_puts("\n");
-	}
+	logx(2, "%s: %dHz, {aparams:%p}, {chans:%d,%d,%d,%d,%d}, "
+	    "%d blocks of %d frames", d->path, d->rate, &d->par,
+	    d->mode, 0, d->pchan - 1, 0, d->rchan - 1,
+	    d->bufsz / d->round, d->round);
+
 	return 1;
 }
 
@@ -1067,10 +955,7 @@ dev_open(struct dev *d)
 	if (d->rchan == 0)
 		d->rchan = 2;
 	if (!dev_sio_open(d)) {
-		if (log_level >= 1) {
-			dev_log(d);
-			log_puts(": failed to open audio device\n");
-		}
+		logx(1, "%s: failed to open audio device", d->path);
 		return 0;
 	}
 	if (!dev_allocbufs(d))
@@ -1128,10 +1013,7 @@ void
 dev_freebufs(struct dev *d)
 {
 #ifdef DEBUG
-	if (log_level >= 3) {
-		dev_log(d);
-		log_puts(": closing\n");
-	}
+	logx(3, "%s: closing", d->path);
 #endif
 	if (d->mode & MODE_PLAY) {
 		if (d->encbuf != NULL)
@@ -1165,10 +1047,7 @@ int
 dev_ref(struct dev *d)
 {
 #ifdef DEBUG
-	if (log_level >= 3) {
-		dev_log(d);
-		log_puts(": device requested\n");
-	}
+	logx(3, "%s: device requested", d->path);
 #endif
 	if (d->pstate == DEV_CFG && !dev_open(d))
 		return 0;
@@ -1180,10 +1059,7 @@ void
 dev_unref(struct dev *d)
 {
 #ifdef DEBUG
-	if (log_level >= 3) {
-		dev_log(d);
-		log_puts(": device released\n");
-	}
+	logx(3, "%s: device released", d->path);
 #endif
 	d->refcnt--;
 	if (d->refcnt == 0 && d->pstate == DEV_INIT)
@@ -1198,10 +1074,9 @@ dev_init(struct dev *d)
 {
 	if ((d->reqmode & MODE_AUDIOMASK) == 0) {
 #ifdef DEBUG
-		    dev_log(d);
-		    log_puts(": has no streams\n");
+		logx(1, "%s: has no streams", d->path);
 #endif
-		    return 0;
+		return 0;
 	}
 	if (d->hold && !dev_ref(d))
 		return 0;
@@ -1215,10 +1090,7 @@ void
 dev_done(struct dev *d)
 {
 #ifdef DEBUG
-	if (log_level >= 3) {
-		dev_log(d);
-		log_puts(": draining\n");
-	}
+	logx(3, "%s: draining", d->path);
 #endif
 	if (mtc_array[0].dev == d && mtc_array[0].tstate != MTC_STOP)
 		mtc_stop(&mtc_array[0]);
@@ -1247,18 +1119,14 @@ dev_del(struct dev *d)
 	struct dev **p;
 
 #ifdef DEBUG
-	if (log_level >= 3) {
-		dev_log(d);
-		log_puts(": deleting\n");
-	}
+	logx(3, "%s: deleting", d->path);
 #endif
 	if (d->pstate != DEV_CFG)
 		dev_close(d);
 	for (p = &dev_list; *p != d; p = &(*p)->next) {
 #ifdef DEBUG
 		if (*p == NULL) {
-			dev_log(d);
-			log_puts(": device to delete not on the list\n");
+			logx(0, "%s: not on the list", d->path);
 			panic();
 		}
 #endif
@@ -1280,10 +1148,8 @@ void
 dev_wakeup(struct dev *d)
 {
 	if (d->pstate == DEV_INIT) {
-		if (log_level >= 2) {
-			dev_log(d);
-			log_puts(": device started\n");
-		}
+		logx(2, "%s: started", d->path);
+
 		if (d->mode & MODE_PLAY) {
 			d->prime = d->bufsz;
 		} else {
@@ -1312,12 +1178,7 @@ dev_iscompat(struct dev *o, struct dev *n)
 {
 	if (((long long)o->round * n->rate != (long long)n->round * o->rate) ||
 	    ((long long)o->bufsz * n->rate != (long long)n->bufsz * o->rate)) {
-		if (log_level >= 1) {
-			log_puts(n->name);
-			log_puts(": not compatible with ");
-			log_puts(o->name);
-			log_puts("\n");
-		}
+		logx(1, "%s: not compatible with %s", n->name, o->name);
 		return 0;
 	}
 	return 1;
@@ -1344,10 +1205,7 @@ dev_migrate(struct dev *odev)
 		/* try next one, circulating through the list */
 		ndev = ndev->alt_next;
 		if (ndev == odev) {
-			if (log_level >= 1) {
-				dev_log(odev);
-				log_puts(": no fall-back device found\n");
-			}
+			logx(1, "%s: no fall-back device found", odev->path);
 			return NULL;
 		}
 
@@ -1365,12 +1223,7 @@ dev_migrate(struct dev *odev)
 		break;
 	}
 
-	if (log_level >= 1) {
-		dev_log(odev);
-		log_puts(": switching to ");
-		dev_log(ndev);
-		log_puts("\n");
-	}
+	logx(1, "%s: switching to %s", odev->path, ndev->path);
 
 	if (mtc_array[0].dev == odev)
 		mtc_setdev(&mtc_array[0], ndev);
@@ -1411,10 +1264,7 @@ mtc_trigger(struct mtc *mtc)
 	struct slot *s;
 
 	if (mtc->tstate != MTC_START) {
-		if (log_level >= 2) {
-			dev_log(mtc->dev);
-			log_puts(": not started by mmc yet, waiting...\n");
-		}
+		logx(2, "%s: not started by mmc yet, waiting.", mtc->dev->path);
 		return;
 	}
 
@@ -1423,10 +1273,7 @@ mtc_trigger(struct mtc *mtc)
 			continue;
 		if (s->pstate != SLOT_READY) {
 #ifdef DEBUG
-			if (log_level >= 3) {
-				slot_log(s);
-				log_puts(": not ready, start delayed\n");
-			}
+			logx(3, "{slot:%p}: not ready, start delayed", s);
 #endif
 			return;
 		}
@@ -1456,10 +1303,7 @@ mtc_start(struct mtc *mtc)
 		mtc_trigger(mtc);
 #ifdef DEBUG
 	} else {
-		if (log_level >= 3) {
-			dev_log(mtc->dev);
-			log_puts(": ignoring mmc start\n");
-		}
+		logx(3, "%s: ignoring mmc start", mtc->dev->path);
 #endif
 	}
 }
@@ -1480,10 +1324,7 @@ mtc_stop(struct mtc *mtc)
 		break;
 	default:
 #ifdef DEBUG
-		if (log_level >= 3) {
-			dev_log(mtc->dev);
-			log_puts(": ignored mmc stop\n");
-		}
+		logx(3, "%s: ignored mmc stop", mtc->dev->path);
 #endif
 		return;
 	}
@@ -1495,12 +1336,8 @@ mtc_stop(struct mtc *mtc)
 void
 mtc_loc(struct mtc *mtc, unsigned int origin)
 {
-	if (log_level >= 2) {
-		dev_log(mtc->dev);
-		log_puts(": relocated to ");
-		log_putu(origin);
-		log_puts("\n");
-	}
+	logx(2, "%s: relocated to %u", mtc->dev->path, origin);
+
 	if (mtc->tstate == MTC_RUN)
 		mtc_stop(mtc);
 	mtc->origin = origin;
@@ -1519,10 +1356,7 @@ mtc_setdev(struct mtc *mtc, struct dev *d)
 	if (mtc->dev == d)
 		return;
 
-	if (log_level >= 2) {
-		dev_log(d);
-		log_puts(": set to be MIDI clock source\n");
-	}
+	logx(2, "%s: set to be MIDI clock source", d->path);
 
 	/* adjust clock and ref counter, if needed */
 	if (mtc->tstate == MTC_RUN) {
@@ -1656,14 +1490,8 @@ slot_allocbufs(struct slot *s)
 	}
 
 #ifdef DEBUG
-	if (log_level >= 3) {
-		slot_log(s);
-		log_puts(": allocated ");
-		log_putu(s->appbufsz);
-		log_puts("/");
-		log_putu(SLOT_BUFSZ(s));
-		log_puts(" fr buffers\n");
-	}
+	logx(3, "{slot:%p}: allocated %u/%u fr buffers",
+	    s, s->appbufsz, SLOT_BUFSZ(s));
 #endif
 }
 
@@ -1758,10 +1586,7 @@ slot_new(struct opt *opt, unsigned int id, char *who,
 	}
 
 	if (bestidx == DEV_NSLOT) {
-		if (log_level >= 1) {
-			log_puts(name);
-			log_puts(": out of sub-device slots\n");
-		}
+		logx(1, "%s: out of sub-device slots", name);
 		return NULL;
 	}
 
@@ -1801,14 +1626,7 @@ found:
 	dev_midi_slotdesc(s->opt->dev, s);
 	dev_midi_vol(s->opt->dev, s);
 #ifdef DEBUG
-	if (log_level >= 3) {
-		slot_log(s);
-		log_puts(": using ");
-		log_puts(s->opt->name);
-		log_puts(", mode = ");
-		log_putx(mode);
-		log_puts("\n");
-	}
+	logx(3, "{slot:%p}: using %s, mode = %x", s, s->opt->name, mode);
 #endif
 	return s;
 }
@@ -1842,12 +1660,7 @@ void
 slot_setvol(struct slot *s, unsigned int vol)
 {
 #ifdef DEBUG
-	if (log_level >= 3) {
-		slot_log(s);
-		log_puts(": setting volume ");
-		log_putu(vol);
-		log_puts("\n");
-	}
+	logx(3, "{slot:%p}: setting volume %u", s, vol);
 #endif
 	s->vol = vol;
 	s->mix.vol = MIDI_TO_ADATA(s->vol);
@@ -1866,12 +1679,7 @@ slot_setopt(struct slot *s, struct opt *o)
 	if (s->opt == NULL || s->opt == o)
 		return;
 
-	if (log_level >= 2) {
-		slot_log(s);
-		log_puts(": moving to opt ");
-		log_puts(o->name);
-		log_puts("\n");
-	}
+	logx(2, "{slot:%p}: moving to opt %s", s, o->name);
 
 	odev = s->opt->dev;
 	if (s->ops != NULL) {
@@ -1920,12 +1728,9 @@ slot_attach(struct slot *s)
 
 	if (((s->mode & MODE_PLAY) && !(s->opt->mode & MODE_PLAY)) ||
 	    ((s->mode & MODE_RECMASK) && !(s->opt->mode & MODE_RECMASK))) {
-		if (log_level >= 1) {
-			slot_log(s);
-			log_puts(" at ");
-			log_puts(s->opt->name);
-			log_puts(": mode not allowed on this sub-device\n");
-		}
+		logx(1, "{slot:%p} at %s: mode not allowed on this sub-device",
+		    s, s->opt->name);
+		return;
 	}
 
 	/*
@@ -1952,16 +1757,8 @@ slot_attach(struct slot *s)
 	}
 
 #ifdef DEBUG
-	if (log_level >= 2) {
-		slot_log(s);
-		log_puts(": attached at ");
-		log_puti(s->delta);
-		log_puts(" + ");
-		log_puti(s->delta_rem);
-		log_puts("/");
-		log_puti(s->round);
-		log_puts("\n");
-	}
+	logx(2, "{slot:%p}: attached at %d + %d / %d",
+	    s, s->delta, s->delta_rem, s->round);
 #endif
 
 	/*
@@ -2008,30 +1805,14 @@ slot_start(struct slot *s)
 	struct dev *d = s->opt->dev;
 #ifdef DEBUG
 	if (s->pstate != SLOT_INIT) {
-		slot_log(s);
-		log_puts(": slot_start: wrong state\n");
+		logx(0, "{slot:%p}: slot_start: wrong state", s);
 		panic();
 	}
-	if (s->mode & MODE_PLAY) {
-		if (log_level >= 3) {
-			slot_log(s);
-			log_puts(": playing ");
-			aparams_log(&s->par);
-			log_puts(" -> ");
-			aparams_log(&d->par);
-			log_puts("\n");
-		}
-	}
-	if (s->mode & MODE_RECMASK) {
-		if (log_level >= 3) {
-			slot_log(s);
-			log_puts(": recording ");
-			aparams_log(&s->par);
-			log_puts(" <- ");
-			aparams_log(&d->par);
-			log_puts("\n");
-		}
-	}
+	logx(2, "{slot:%p}: %dHz, {aparams:%p}, {chans:%d,%d,%d,%d,%d}, "
+	    "%d blocks of %d frames", s, s->rate, &s->par, s->mode,
+	    s->opt->pmin, s->opt->pmin + s->mix.nch - 1,
+	    s->opt->rmin, s->opt->rmin + s->sub.nch - 1,
+	    s->appbufsz / s->round, s->round);
 #endif
 	slot_allocbufs(s);
 
@@ -2071,8 +1852,7 @@ slot_detach(struct slot *s)
 	for (ps = &d->slot_list; *ps != s; ps = &(*ps)->next) {
 #ifdef DEBUG
 		if (*ps == NULL) {
-			slot_log(s);
-			log_puts(": can't detach, not on list\n");
+			logx(0, "{slot:%p}: can't detach, not on list", s);
 			panic();
 		}
 #endif
@@ -2094,16 +1874,8 @@ slot_detach(struct slot *s)
 	}
 
 #ifdef DEBUG
-	if (log_level >= 2) {
-		slot_log(s);
-		log_puts(": detached at ");
-		log_puti(s->delta);
-		log_puts(" + ");
-		log_puti(s->delta_rem);
-		log_puts("/");
-		log_puti(d->round);
-		log_puts("\n");
-	}
+	logx(2, "{slot:%p}: detached at %d + %d / %d",
+	    s, s->delta, s->delta_rem, d->round);
 #endif
 	if (s->mode & MODE_PLAY)
 		dev_mix_adjvol(d);
@@ -2139,10 +1911,7 @@ void
 slot_stop(struct slot *s, int drain)
 {
 #ifdef DEBUG
-	if (log_level >= 3) {
-		slot_log(s);
-		log_puts(": stopping\n");
-	}
+	logx(3, "{slot:%p}: stopping (drain = %d)", s, drain);
 #endif
 	if (s->pstate == SLOT_START) {
 		/*
@@ -2168,10 +1937,7 @@ slot_stop(struct slot *s, int drain)
 		slot_detach(s);
 	} else {
 #ifdef DEBUG
-		if (log_level >= 3) {
-			slot_log(s);
-			log_puts(": not drained (blocked by mmc)\n");
-		}
+		logx(3, "{slot:%p}: not drained (blocked by mmc)", s);
 #endif
 	}
 
@@ -2188,10 +1954,7 @@ slot_skip_update(struct slot *s)
 	skip = slot_skip(s);
 	while (skip > 0) {
 #ifdef DEBUG
-		if (log_level >= 4) {
-			slot_log(s);
-			log_puts(": catching skipped block\n");
-		}
+		logx(4, "{slot:%p}: catching skipped block", s);
 #endif
 		if (s->mode & MODE_RECMASK)
 			s->ops->flush(s->arg);
@@ -2210,10 +1973,7 @@ slot_write(struct slot *s)
 {
 	if (s->pstate == SLOT_START && s->mix.buf.used == s->mix.buf.len) {
 #ifdef DEBUG
-		if (log_level >= 4) {
-			slot_log(s);
-			log_puts(": switching to READY state\n");
-		}
+		logx(4, "{slot:%p}: switching to READY state", s);
 #endif
 		s->pstate = SLOT_READY;
 		slot_ready(s);
@@ -2352,99 +2112,84 @@ ctlslot_update(struct ctlslot *s)
 		s->ops->sync(s->arg);
 }
 
-void
-ctl_node_log(struct ctl_node *c)
+size_t
+ctl_node_fmt(char *buf, size_t size, struct ctl_node *c)
 {
-	log_puts(c->name);
+	char *end = buf + size;
+	char *p = buf;
+
+	p += snprintf(buf, size, "%s", c->name);
+
 	if (c->unit >= 0)
-		log_putu(c->unit);
+		p += snprintf(p, p < end ? end - p : 0, "%d", c->unit);
+
+	return p - buf;
 }
 
-void
-ctl_log(struct ctl *c)
+size_t
+ctl_scope_fmt(char *buf, size_t size, struct ctl *c)
 {
-	if (c->group[0] != 0) {
-		log_puts(c->group);
-		log_puts("/");
+	switch (c->scope) {
+	case CTL_HW:
+		return snprintf(buf, size, "hw:%s/%u",
+		    c->u.hw.dev->name, c->u.hw.addr);
+	case CTL_DEV_MASTER:
+		return snprintf(buf, size, "dev_master:%s",
+		    c->u.dev_master.dev->name);
+	case CTL_SLOT_LEVEL:
+		return snprintf(buf, size, "slot_level:%s%u",
+		    c->u.slot_level.slot->name, c->u.slot_level.slot->unit);
+	case CTL_OPT_DEV:
+		return snprintf(buf, size, "opt_dev:%s/%s",
+		    c->u.opt_dev.opt->name, c->u.opt_dev.dev->name);
+	default:
+		return snprintf(buf, size, "unknown");
 	}
-	ctl_node_log(&c->node0);
-	log_puts(".");
-	log_puts(c->func);
-	log_puts("=");
+}
+
+size_t
+ctl_fmt(char *buf, size_t size, struct ctl *c)
+{
+	char *end = buf + size;
+	char *p = buf;
+
+	p += snprintf(p, size, "%s/", c->group);
+	p += ctl_node_fmt(p, p < end ? end - p : 0, &c->node0);
+	p += snprintf(p, p < end ? end - p : 0, ".%s", c->func);
+
 	switch (c->type) {
-	case CTL_NONE:
-		log_puts("none");
-		break;
-	case CTL_NUM:
-	case CTL_SW:
-		log_putu(c->curval);
-		break;
 	case CTL_VEC:
 	case CTL_LIST:
 	case CTL_SEL:
-		ctl_node_log(&c->node1);
-		log_puts(":");
-		log_putu(c->curval);
+		p += snprintf(p, p < end ? end - p : 0, "[");
+		p += ctl_node_fmt(p, p < end ? end - p : 0, &c->node1);
+		p += snprintf(p, p < end ? end - p : 0, "]");
 	}
-	log_puts(" at ");
-	log_putu(c->addr);
-	log_puts(" -> ");
-	switch (c->scope) {
-	case CTL_HW:
-		log_puts("hw:");
-		log_puts(c->u.hw.dev->name);
-		log_puts("/");
-		log_putu(c->u.hw.addr);
-		break;
-	case CTL_DEV_MASTER:
-		log_puts("dev_master:");
-		log_puts(c->u.dev_master.dev->name);
-		break;
-	case CTL_SLOT_LEVEL:
-		log_puts("slot_level:");
-		log_puts(c->u.slot_level.slot->name);
-		log_putu(c->u.slot_level.slot->unit);
-		break;
-	case CTL_OPT_DEV:
-		log_puts("opt_dev:");
-		log_puts(c->u.opt_dev.opt->name);
-		log_puts("/");
-		log_puts(c->u.opt_dev.dev->name);
-		break;
-	default:
-		log_puts("unknown");
-	}
-	if (c->display[0] != 0) {
-		log_puts(" (");
-		log_puts(c->display);
-		log_puts(")");
-	}
+
+	p += snprintf(p, p < end ? end - p : 0, " = %d at ", c->curval);
+	p += ctl_scope_fmt(p, p < end ? end - p : 0, c);
+
+	if (c->display[0] != 0)
+		p += snprintf(p, size, " (%s)", c->display);
+
+	return p - buf;
 }
 
 int
 ctl_setval(struct ctl *c, int val)
 {
 	if (c->curval == val) {
-		if (log_level >= 3) {
-			ctl_log(c);
-			log_puts(": already set\n");
-		}
+		logx(3, "ctl%u: already set", c->addr);
 		return 1;
 	}
 	if (val < 0 || val > c->maxval) {
-		if (log_level >= 3) {
-			log_putu(val);
-			log_puts(": ctl val out of bounds\n");
-		}
+		logx(3, "ctl%u: %d: out of range", c->addr, val);
 		return 0;
 	}
 
 	switch (c->scope) {
 	case CTL_HW:
-		if (log_level >= 3) {
-			ctl_log(c);
-			log_puts(": marked as dirty\n");
-		}
+		logx(3, "ctl%u: marked as dirty", c->addr);
 		c->curval = val;
 		c->dirty = 1;
 		return dev_ref(c->u.hw.dev);
@@ -2468,10 +2213,7 @@ ctl_setval(struct ctl *c, int val)
 			c->u.opt_dev.opt->alt_first = c->u.opt_dev.dev;
 		return 1;
 	default:
-		if (log_level >= 2) {
-			ctl_log(c);
-			log_puts(": not writable\n");
-		}
+		logx(2, "ctl%u: not writable", c->addr);
 		return 1;
 	}
 }
@@ -2541,10 +2283,8 @@ ctl_new(int scope, void *arg0, void *arg1,
 	c->next = *pc;
 	*pc = c;
 #ifdef DEBUG
-	if (log_level >= 2) {
-		ctl_log(c);
-		log_puts(": added\n");
-	}
+	logx(2, "ctl%u: {ctl:%p} = %d at {ctl_scope:%p}: added",
+	    c->addr, c, c->curval, c);
 #endif
 	return c;
 }
@@ -2632,10 +2372,7 @@ ctl_del(int scope, void *arg0, void *arg1)
 			return found;
 		if (ctl_match(c, scope, arg0, arg1)) {
 #ifdef DEBUG
-			if (log_level >= 2) {
-				ctl_log(c);
-				log_puts(": removed\n");
-			}
+			logx(2, "ctl%u: {ctl:%p}: removed", c->addr, c);
 #endif
 			found++;
 			c->refs_mask &= ~CTL_DEVMASK;
@@ -2691,17 +2428,11 @@ dev_ctlsync(struct dev *d)
 	}
 
 	if (d->master_enabled && found) {
-		if (log_level >= 2) {
-			dev_log(d);
-			log_puts(": software master level control disabled\n");
-		}
+		logx(2, "%s: software master level control disabled", d->path);
 		d->master_enabled = 0;
 		ctl_del(CTL_DEV_MASTER, d, NULL);
 	} else if (!d->master_enabled && !found) {
-		if (log_level >= 2) {
-			dev_log(d);
-			log_puts(": software master level control enabled\n");
-		}
+		logx(2, "%s: software master level control enabled", d->path);
 		d->master_enabled = 1;
 		ctl_new(CTL_DEV_MASTER, d, NULL,
 		    CTL_NUM, "", d->name, "output", -1, "level",

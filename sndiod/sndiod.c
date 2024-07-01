@@ -40,6 +40,7 @@
 #include "midi.h"
 #include "opt.h"
 #include "sock.h"
+#include "snfmt.h"
 #include "utils.h"
 #include "bsd-compat.h"
 
@@ -452,6 +453,51 @@ mkopt(char *path, struct dev *d,
 }
 
 int
+snfmt_cb(char *buf, size_t size, const char *fmt, union snfmt_arg *arg)
+{
+	if (strcmp(fmt, "sock:%p") == 0) {
+		struct sock *f = arg[0].p;
+
+		if (f->slot) {
+			return snprintf(buf, size,
+			    "%s%u", f->slot->name, f->slot->unit);
+		}
+		if (f->midi) {
+			return snprintf(buf, size,
+			    "midi%u", f->midi->num);
+		}
+		if (f->ctlslot) {
+			return snprintf(buf, size,
+			    "ctlslot%zu", f->ctlslot - ctlslot_array);
+		}
+		return snprintf(buf, size, "sock");
+	}
+	if (strcmp(fmt, "slot:%p") == 0) {
+		struct slot *s = arg[0].p;
+
+		return snprintf(buf, size, "%s%u", s->name, s->unit);
+	}
+	if (strcmp(fmt, "aparams:%p") == 0) {
+		struct aparams *par = arg[0].p;
+		char enc[ENCMAX];
+
+		aparams_enctostr(par, enc);
+		return snprintf(buf, size, "%s", enc);
+	}
+	if (strcmp(fmt, "ctl:%p") == 0)
+		return ctl_fmt(buf, size, arg[0].p);
+	if (strcmp(fmt, "ctl_scope:%p") == 0)
+		return ctl_scope_fmt(buf, size, arg[0].p);
+	if (strcmp(fmt, "filelist:%p,%d") == 0)
+		return filelist_fmt(buf, size, arg[0].p, arg[1].i);
+	if (strcmp(fmt, "chans:%d,%d,%d,%d,%d") == 0)
+		return chans_fmt(buf, size, arg[0].i, arg[1].i, arg[2].i, arg[3].i, arg[4].i);
+	if (strcmp(fmt, "midiev:%p,%u") == 0)
+		return midiev_fmt(buf, size, arg[0].p, arg[1].i);
+	return -1;
+}
+
+int
 main(int argc, char **argv)
 {
 	int c, i, background, unit;
@@ -737,5 +783,6 @@ main(int argc, char **argv)
 	rmdir(base);
 	filelist_done();
 	unsetsig();
+
 	return 0;
 }

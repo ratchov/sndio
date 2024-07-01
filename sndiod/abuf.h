@@ -26,7 +26,6 @@ struct abuf {
 
 void abuf_init(struct abuf *, unsigned int);
 void abuf_done(struct abuf *);
-void abuf_log(struct abuf *);
 unsigned char *abuf_rgetblk(struct abuf *, int *);
 unsigned char *abuf_wgetblk(struct abuf *, int *);
 void abuf_rdiscard(struct abuf *, int);
