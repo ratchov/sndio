@@ -987,7 +987,7 @@ sock_execmsg(struct sock *f)
 	struct slot *s = f->slot;
 	struct amsg *m = &f->rmsg;
 	unsigned char *data;
-	int size, ctl;
+	unsigned int size, ctl;
 	int cmd;
 
 	cmd = ntohl(m->cmd);
@@ -1021,7 +1021,7 @@ sock_execmsg(struct sock *f)
 			return 0;
 		}
 		size = ntohl(m->u.data.size);
-		if (size <= 0) {
+		if (size == 0) {
 #ifdef DEBUG
 			if (log_level >= 1) {
 				sock_log(f);
