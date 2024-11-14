@@ -29,6 +29,7 @@
 #include "utils.h"
 
 void zomb_onmove(void *);
+void zomb_onxrun(void *);
 void zomb_onvol(void *);
 void zomb_fill(void *);
 void zomb_flush(void *);
@@ -65,6 +66,7 @@ int slot_skip(struct slot *);
 
 struct slotops zomb_slotops = {
 	zomb_onmove,
+	zomb_onxrun,
 	zomb_onvol,
 	zomb_fill,
 	zomb_flush,
@@ -88,6 +90,11 @@ struct mtc mtc_array[1] = {
 
 void
 zomb_onmove(void *arg)
+{
+}
+
+void
+zomb_onxrun(void *arg)
 {
 }
 
@@ -636,9 +643,13 @@ dev_cycle(struct dev *d)
 			s->sub.buf.len - s->sub.buf.used <
 			s->round * s->sub.bpf)) {
 
+			if (!s->paused) {
 #ifdef DEBUG
-			logx(3, "slot%zu: xrun, pause cycle", s - slot_array);
+				logx(3, "slot%zu: xrun, paused", s - slot_array);
 #endif
+				s->paused = 1;
+				s->ops->onxrun(s->arg);
+			}
 			if (s->xrun == XRUN_IGNORE) {
 				s->delta -= s->round;
 				ps = &s->next;
@@ -655,7 +666,15 @@ dev_cycle(struct dev *d)
 #endif
 			}
 			continue;
+		} else {
+			if (s->paused) {
+#ifdef DEBUG
+				logx(3, "slot%zu: resumed\n", s - slot_array);
+#endif
+				s->paused = 0;
+			}
 		}
+
 		if ((s->mode & MODE_RECMASK) && !(s->pstate == SLOT_STOP)) {
 			if (s->sub.prime == 0) {
 				dev_sub_bcopy(d, s);
@@ -1589,6 +1608,7 @@ slot_start(struct slot *s)
 		s->sub.prime = d->bufsz / d->round;
 	}
 	s->skip = 0;
+	s->paused = 0;
 
 	/*
 	 * get the current position, the origin is when the first sample

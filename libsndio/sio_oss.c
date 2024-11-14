@@ -696,6 +696,9 @@ sio_oss_xrun(struct sio_oss_hdl *hdl)
 
 	if (!sio_oss_flush(&hdl->sio))
 		return 0;
+
+	_sio_onxrun_cb(&hdl->sio);
+
 	if (!sio_oss_start(&hdl->sio))
 		return 0;
 	if (hdl->sio.mode & SIO_PLAY) {

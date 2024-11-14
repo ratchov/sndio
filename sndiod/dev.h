@@ -40,6 +40,7 @@
 struct slotops
 {
 	void (*onmove)(void *);			/* clock tick */
+	void (*onxrun)(void *);			/* xrun */
 	void (*onvol)(void *);			/* tell client vol changed */
 	void (*fill)(void *);			/* request to fill a play block */
 	void (*flush)(void *);			/* request to flush a rec block */
@@ -100,6 +101,7 @@ struct slot {
 #define SLOT_RUN	3			/* buffer attached to device */
 #define SLOT_STOP	4			/* draining */
 	int pstate;
+	int paused;				/* paused because of xrun */
 
 	struct app *app;
 };

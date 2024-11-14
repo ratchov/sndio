@@ -538,6 +538,9 @@ sio_alsa_xrun(struct sio_alsa_hdl *hdl)
 
 	if (!sio_alsa_flush(&hdl->sio))
 		return 0;
+
+	_sio_onxrun_cb(&hdl->sio);
+
 	if (!sio_alsa_start(&hdl->sio))
 		return 0;
 	if (hdl->sio.mode & SIO_PLAY) {

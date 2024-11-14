@@ -41,6 +41,7 @@ void sock_slot_fill(void *);
 void sock_slot_flush(void *);
 void sock_slot_eof(void *);
 void sock_slot_onmove(void *);
+void sock_slot_onxrun(void *);
 void sock_slot_onvol(void *);
 void sock_midi_imsg(void *, unsigned char *, int);
 void sock_midi_omsg(void *, unsigned char *, int);
@@ -78,6 +79,7 @@ struct fileops sock_fileops = {
 
 struct slotops sock_slotops = {
 	sock_slot_onmove,
+	sock_slot_onxrun,
 	sock_slot_onvol,
 	sock_slot_fill,
 	sock_slot_flush,
@@ -245,6 +247,21 @@ sock_slot_onmove(void *arg)
 }
 
 void
+sock_slot_onxrun(void *arg)
+{
+	struct sock *f = (struct sock *)arg;
+	struct slot *s = f->slot;
+
+#ifdef DEBUG
+	logx(4, "slot%zu: onxrun: notify = %d", s - slot_array, f->xrunnotify);
+#endif
+	if (s->pstate != SOCK_START)
+		return;
+	if (f->xrunnotify)
+		f->xrunpending = 1;
+}
+
+void
 sock_slot_onvol(void *arg)
 {
 	struct sock *f = (struct sock *)arg;
@@ -302,6 +319,7 @@ sock_new(int fd)
 	f->midi = NULL;
 	f->ctlslot = NULL;
 	f->tickpending = 0;
+	f->xrunpending = 0;
 	f->fillpending = 0;
 	f->stoppending = 0;
 	f->wstate = SOCK_WIDLE;
@@ -310,6 +328,7 @@ sock_new(int fd)
 	f->rtodo = sizeof(struct amsg);
 	f->wmax = f->rmax = 0;
 	f->lastvol = -1;
+	f->xrunnotify = 0;
 	f->ctlops = 0;
 	f->ctlsyncpending = 0;
 	f->file = file_new(&sock_fileops, f, "sock", 1);
@@ -883,6 +902,9 @@ sock_execmsg(struct sock *f)
 			return 0;
 		}
 		f->tickpending = 0;
+		f->xrunpending = 0;
+		if (AMSG_ISSET(m->u.start.xrunnotify))
+			f->xrunnotify = m->u.start.xrunnotify ? 1 : 0;
 		f->stoppending = 0;
 		slot_start(s);
 		if (s->mode & MODE_PLAY) {
@@ -1162,6 +1184,18 @@ sock_buildmsg(struct sock *f)
 		 * slot->delta
 		 */
 		f->slot->delta = 0;
+		return 1;
+	}
+
+	if (f->xrunpending) {
+#ifdef DEBUG
+		logx(4, "sock %d: building XRUN message", f->fd);
+#endif
+		AMSG_INIT(&f->wmsg);
+		f->wmsg.cmd = htonl(AMSG_XRUN);
+		f->wtodo = sizeof(struct amsg);
+		f->wstate = SOCK_WMSG;
+		f->xrunpending = 0;
 		return 1;
 	}
 
