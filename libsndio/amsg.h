@@ -80,6 +80,7 @@ struct amsg {
 #define AMSG_CTLSET	14	/* set control value */
 #define AMSG_CTLSYNC	15	/* end of controls descriptions */
 #define AMSG_CTLSUB	16	/* ondesc/onctl subscription */
+#define AMSG_XRUN	17	/* notification about xruns */
 	uint32_t cmd;
 	uint32_t __pad;
 	union {
@@ -104,6 +105,9 @@ struct amsg {
 #define AMSG_DATAMAX	0x1000
 			uint32_t size;
 		} data;
+		struct amsg_start {
+			uint8_t xrunnotify;
+		} start;
 		struct amsg_stop {
 			uint8_t drain;
 		} stop;
@@ -113,6 +117,9 @@ struct amsg {
 		struct amsg_vol {
 			uint32_t ctl;
 		} vol;
+		struct amsg_xrun {
+			uint8_t state;
+		} xrun;
 		struct amsg_hello {
 			uint16_t mode;		/* bitmap of MODE_XXX */
 #define AMSG_VERSION	7

@@ -637,6 +637,7 @@ _aucat_pollfd(struct aucat *hdl, struct pollfd *pfd, int events)
 		events |= POLLIN;
 	pfd->fd = hdl->fd;
 	pfd->events = events;
+	DPRINTF("%s: rstate = 0x%x, wstate = 0x%x, events = 0x%x\n", __func__, hdl->rstate, hdl->wstate, events);
 	return 1;
 }
 

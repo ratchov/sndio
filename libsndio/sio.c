@@ -102,6 +102,7 @@ _sio_create(struct sio_hdl *hdl, struct sio_ops *ops,
 	hdl->started = 0;
 	hdl->eof = 0;
 	hdl->move_cb = NULL;
+	hdl->xrun_cb = NULL;
 	hdl->vol_cb = NULL;
 }
 
@@ -570,4 +571,24 @@ _sio_onvol_cb(struct sio_hdl *hdl, unsigned int ctl)
 {
 	if (hdl->vol_cb)
 		hdl->vol_cb(hdl->vol_addr, ctl);
+}
+
+void
+sio_onxrun(struct sio_hdl *hdl, void (*cb)(void *), void *addr)
+{
+	if (hdl->started) {
+		DPRINTF("sio_onxrun: already started\n");
+		hdl->eof = 1;
+		return;
+	}
+	hdl->xrun_cb = cb;
+	hdl->xrun_addr = addr;
+}
+
+void
+_sio_onxrun_cb(struct sio_hdl *hdl)
+{
+	if (hdl->xrun_cb)
+		hdl->xrun_cb(hdl->xrun_addr);
+	DPRINTFN(1, "sndio: xrun\n");
 }

@@ -570,7 +570,7 @@ sio_sun_revents(struct sio_hdl *sh, struct pollfd *pfd)
 			dierr = doerr;
 		}
 		if (doerr > 0)
-			DPRINTFN(2, "play xrun %d\n", doerr);
+			_sio_onxrun_cb(&hdl->sio);
 	}
 	if (hdl->sio.mode & SIO_REC) {
 		delta = (ap.rec_pos - hdl->ibytes) / hdl->ibpf;
@@ -583,7 +583,7 @@ sio_sun_revents(struct sio_hdl *sh, struct pollfd *pfd)
 			doerr = dierr;
 		}
 		if (dierr > 0)
-			DPRINTFN(2, "rec xrun %d\n", dierr);
+			_sio_onxrun_cb(&hdl->sio);
 	}
 
 	/*

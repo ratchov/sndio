@@ -709,6 +709,7 @@ sio_oss_xrun(struct sio_oss_hdl *hdl)
 	DPRINTFN(2, "xrun: corrected\n");
 	DPRINTFN(2, "wsil = %d, rdrop = %d, odelta = %d, idelta = %d\n",
 	    wsil, rdrop, hdl->odelta, hdl->idelta);
+	_sio_onxrun_cb(&hdl->sio);
 	return 1;
 }
 
