@@ -40,6 +40,7 @@ struct sio_hdl {
 	int wsil;			/* silence to play */
 	int rused;			/* bytes used in read buffer */
 	int wused;			/* bytes used in write buffer */
+	int xrun;			/* xrun reported */
 	long long cpos;			/* clock since start */
 	struct sio_par par;
 #ifdef DEBUG

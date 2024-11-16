@@ -141,6 +141,7 @@ sio_start(struct sio_hdl *hdl)
 	if (!hdl->ops->start(hdl))
 		return 0;
 	hdl->started = 1;
+	hdl->xrun = 0;
 	return 1;
 }
 
@@ -535,6 +536,7 @@ _sio_onmove_cb(struct sio_hdl *hdl, int delta)
 #endif
 	if (hdl->move_cb)
 		hdl->move_cb(hdl->move_addr, delta);
+	hdl->xrun = 0;
 }
 
 int
@@ -588,7 +590,10 @@ sio_onxrun(struct sio_hdl *hdl, void (*cb)(void *), void *addr)
 void
 _sio_onxrun_cb(struct sio_hdl *hdl)
 {
-	if (hdl->xrun_cb)
-		hdl->xrun_cb(hdl->xrun_addr);
+	if (!hdl->xrun) {
+		hdl->xrun = 1;
+		if (hdl->xrun_cb)
+			hdl->xrun_cb(hdl->xrun_addr);
+	}
 	DPRINTFN(1, "sndio: xrun\n");
 }
