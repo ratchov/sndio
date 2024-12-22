@@ -111,7 +111,6 @@ struct cmap {
 extern const int aparams_ctltovol[128];
 
 void aparams_init(struct aparams *);
-void aparams_log(struct aparams *);
 int aparams_strtoenc(struct aparams *, char *);
 int aparams_enctostr(struct aparams *, char *);
 int aparams_native(struct aparams *);
