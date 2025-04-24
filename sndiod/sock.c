@@ -1433,7 +1433,7 @@ sock_write(struct sock *f)
 		}
 		f->wstate = SOCK_WDATA;
 		f->wsize = f->wtodo = ntohl(f->wmsg.u.data.size);
-		/* PASSTHROUGH */
+		/* FALLTHROUGH */
 	case SOCK_WDATA:
 		if (!sock_wdata(f))
 			return 0;
@@ -1448,7 +1448,7 @@ sock_write(struct sock *f)
 			logx(4, "sock %d: drained, moved to INIT state", f->fd);
 #endif
 		}
-		/* PASSTHROUGH */
+		/* FALLTHROUGH */
 	case SOCK_WIDLE:
 		if (f->rstate == SOCK_RRET) {
 			f->wmsg = f->rmsg;
