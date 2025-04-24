@@ -1127,7 +1127,7 @@ sock_execmsg(struct sock *f)
 		return 0;
 	default:
 #ifdef DEBUG
-		logx(1, "sock %d: unknown command in message", f->fd);
+		logx(1, "sock %d: 0x%x: unknown command in message", f->fd, cmd);
 #endif
 		sock_close(f);
 		return 0;
