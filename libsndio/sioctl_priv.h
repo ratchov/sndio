@@ -49,8 +49,6 @@ struct sioctl_ops {
 };
 
 struct sioctl_hdl *_sioctl_aucat_open(const char *, unsigned int, int);
-struct sioctl_hdl *_sioctl_obsd_open(const char *, unsigned int, int);
-struct sioctl_hdl *_sioctl_fake_open(const char *, unsigned int, int);
 #ifdef USE_SUN_MIXER
 struct sioctl_hdl *_sioctl_sun_open(const char *, unsigned int, int);
 #endif
