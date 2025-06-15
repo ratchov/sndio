@@ -107,7 +107,7 @@ slot_array_init(void)
 void
 slot_ctlname(struct slot *s, char *name, size_t size)
 {
-	snprintf(name, size, "%s%u", s->name, s->unit);
+	snprintf(name, size, "slot%zu", s - slot_array);
 }
 
 void
@@ -136,7 +136,7 @@ zomb_eof(void *arg)
 	struct slot *s = arg;
 
 #ifdef DEBUG
-	logx(3, "%s%u: %s", s->name, s->unit, __func__);
+	logx(3, "slot%zu: %s", s - slot_array, __func__);
 #endif
 	s->ops = NULL;
 }
@@ -147,7 +147,7 @@ zomb_exit(void *arg)
 #ifdef DEBUG
 	struct slot *s = arg;
 
-	logx(3, "%s%u: %s", s->name, s->unit, __func__);
+	logx(3, "slot%zu: %s", s - slot_array, __func__);
 #endif
 }
 
@@ -414,7 +414,7 @@ slot_skip(struct slot *s)
 				break;
 		}
 #ifdef DEBUG
-		logx(4, "%s%u: skipped a cycle", s->name, s->unit);
+		logx(4, "slot%zu: skipped a cycle", s - slot_array);
 #endif
 		if (s->pstate != SLOT_STOP && (s->mode & MODE_RECMASK)) {
 			if (s->sub.encbuf)
@@ -444,8 +444,8 @@ dev_mix_badd(struct dev *d, struct slot *s)
 	idata = (adata_t *)abuf_rgetblk(&s->mix.buf, &icount);
 #ifdef DEBUG
 	if (icount < s->round * s->mix.bpf) {
-		logx(0, "%s%u: not enough data to mix (%u bytes)",
-		     s->name, s->unit, icount);
+		logx(0, "slot%zu: not enough data to mix (%u bytes)",
+		     s - slot_array, icount);
 		panic();
 	}
 #endif
@@ -534,7 +534,7 @@ dev_mix_adjvol(struct dev *d)
 		i->mix.weight = d->master_enabled ?
 		    ADATA_MUL(weight, MIDI_TO_ADATA(d->master)) : weight;
 #ifdef DEBUG
-		logx(3, "%s%u: set weight: %d / %d", i->name, i->unit, i->mix.weight,
+		logx(3, "slot%zu: set weight: %d / %d", i - slot_array, i->mix.weight,
 		    i->opt->maxweight);
 #endif
 	}
@@ -669,7 +669,7 @@ dev_cycle(struct dev *d)
 	ps = &d->slot_list;
 	while ((s = *ps) != NULL) {
 #ifdef DEBUG
-		logx(4, "%s%u: running, skip = %d", s->name, s->unit, s->skip);
+		logx(4, "slot%zu: running, skip = %d", s - slot_array, s->skip);
 #endif
 		d->idle = 0;
 
@@ -685,8 +685,8 @@ dev_cycle(struct dev *d)
 
 #ifdef DEBUG
 		if (s->pstate == SLOT_STOP && !(s->mode & MODE_PLAY)) {
-			logx(0, "%s%u: rec-only slots can't be drained",
-			    s->name, s->unit);
+			logx(0, "slot%zu: rec-only slots can't be drained",
+			    s - slot_array);
 			panic();
 		}
 #endif
@@ -706,7 +706,7 @@ dev_cycle(struct dev *d)
 			slot_freebufs(s);
 			dev_mix_adjvol(d);
 #ifdef DEBUG
-			logx(3, "%s%u: drained", s->name, s->unit);
+			logx(3, "slot%zu: drained", s - slot_array);
 #endif
 			continue;
 		}
@@ -721,7 +721,7 @@ dev_cycle(struct dev *d)
 			s->round * s->sub.bpf)) {
 
 #ifdef DEBUG
-			logx(3, "%s%u: xrun, pause cycle", s->name, s->unit);
+			logx(3, "slot%zu: xrun, pause cycle", s - slot_array);
 #endif
 			if (s->xrun == XRUN_IGNORE) {
 				s->delta -= s->round;
@@ -734,7 +734,7 @@ dev_cycle(struct dev *d)
 				*ps = s->next;
 			} else {
 #ifdef DEBUG
-				logx(0, "%s%u: bad xrun mode", s->name, s->unit);
+				logx(0, "slot%zu: bad xrun mode", s - slot_array);
 				panic();
 #endif
 			}
@@ -746,7 +746,7 @@ dev_cycle(struct dev *d)
 				s->ops->flush(s->arg);
 			} else {
 #ifdef DEBUG
-				logx(3, "%s%u: prime = %d", s->name, s->unit,
+				logx(3, "slot%zu: prime = %d", s - slot_array,
 				    s->sub.prime);
 #endif
 				s->sub.prime--;
@@ -1283,7 +1283,7 @@ mtc_trigger(struct mtc *mtc)
 			continue;
 		if (s->pstate != SLOT_READY) {
 #ifdef DEBUG
-			logx(3, "%s%u: not ready, start delayed", s->name, s->unit);
+			logx(3, "slot%zu: not ready, start delayed", s - slot_array);
 #endif
 			return;
 		}
@@ -1500,8 +1500,8 @@ slot_allocbufs(struct slot *s)
 	}
 
 #ifdef DEBUG
-	logx(3, "%s%u: allocated %u/%u fr buffers",
-	    s->name, s->unit, s->appbufsz, SLOT_BUFSZ(s));
+	logx(3, "slot%zu: allocated %u/%u fr buffers",
+	    s - slot_array, s->appbufsz, SLOT_BUFSZ(s));
 #endif
 }
 
@@ -1636,7 +1636,7 @@ found:
 	dev_midi_slotdesc(s->opt->dev, s);
 	dev_midi_vol(s->opt->dev, s);
 #ifdef DEBUG
-	logx(3, "%s%u: using %s, mode = %x", s->name, s->unit, s->opt->name, mode);
+	logx(3, "slot%zu: %s/%s%u", s - slot_array, s->opt->name, s->name, s->unit);
 #endif
 	return s;
 }
@@ -1670,7 +1670,7 @@ void
 slot_setvol(struct slot *s, unsigned int vol)
 {
 #ifdef DEBUG
-	logx(3, "%s%u: setting volume %u", s->name, s->unit, vol);
+	logx(3, "slot%zu: setting volume %u", s - slot_array, vol);
 #endif
 	s->vol = vol;
 	s->mix.vol = MIDI_TO_ADATA(s->vol);
@@ -1689,7 +1689,7 @@ slot_setopt(struct slot *s, struct opt *o)
 	if (s->opt == NULL || s->opt == o)
 		return;
 
-	logx(2, "%s%u: moving to opt %s", s->name, s->unit, o->name);
+	logx(2, "slot%zu: moving to opt %s", s - slot_array, o->name);
 
 	odev = s->opt->dev;
 	if (s->ops != NULL) {
@@ -1738,7 +1738,7 @@ slot_attach(struct slot *s)
 
 	if (((s->mode & MODE_PLAY) && !(s->opt->mode & MODE_PLAY)) ||
 	    ((s->mode & MODE_RECMASK) && !(s->opt->mode & MODE_RECMASK))) {
-		logx(1, "%s%u at %s: mode not allowed", s->name, s->unit, s->opt->name);
+		logx(1, "slot%zu at %s: mode not allowed", s - slot_array, s->opt->name);
 		return;
 	}
 
@@ -1766,8 +1766,8 @@ slot_attach(struct slot *s)
 	}
 
 #ifdef DEBUG
-	logx(2, "%s%u: attached at %d + %d / %d",
-	    s->name, s->unit, s->delta, s->delta_rem, s->round);
+	logx(2, "slot%zu: attached at %d + %d / %d",
+	    s - slot_array, s->delta, s->delta_rem, s->round);
 #endif
 
 	/*
@@ -1816,12 +1816,12 @@ slot_start(struct slot *s)
 	char enc_str[ENCMAX], chans_str[64];
 
 	if (s->pstate != SLOT_INIT) {
-		logx(0, "%s%u: slot_start: wrong state", s->name, s->unit);
+		logx(0, "slot%zu: slot_start: wrong state", s - slot_array);
 		panic();
 	}
 
-	logx(2, "%s%u: %dHz, %s, %s, %d blocks of %d frames",
-	    s->name, s->unit, s->rate,
+	logx(2, "slot%zu: %dHz, %s, %s, %d blocks of %d frames",
+	    s - slot_array, s->rate,
 	    (aparams_enctostr(&s->par, enc_str), enc_str),
 	    (chans_fmt(chans_str, sizeof(chans_str), s->mode,
 	    s->opt->pmin, s->opt->pmin + s->mix.nch - 1,
@@ -1866,7 +1866,7 @@ slot_detach(struct slot *s)
 	for (ps = &d->slot_list; *ps != s; ps = &(*ps)->next) {
 #ifdef DEBUG
 		if (*ps == NULL) {
-			logx(0, "%s%u: can't detach, not on list", s->name, s->unit);
+			logx(0, "slot%zu: can't detach, not on list", s - slot_array);
 			panic();
 		}
 #endif
@@ -1888,8 +1888,8 @@ slot_detach(struct slot *s)
 	}
 
 #ifdef DEBUG
-	logx(2, "%s%u: detached at %d + %d / %d",
-	    s->name, s->unit, s->delta, s->delta_rem, d->round);
+	logx(2, "slot%zu: detached at %d + %d / %d",
+	    s - slot_array, s->delta, s->delta_rem, d->round);
 #endif
 	if (s->mode & MODE_PLAY)
 		dev_mix_adjvol(d);
@@ -1925,7 +1925,7 @@ void
 slot_stop(struct slot *s, int drain)
 {
 #ifdef DEBUG
-	logx(3, "%s%u: stopping (drain = %d)", s->name, s->unit, drain);
+	logx(3, "slot%zu: stopping (drain = %d)", s - slot_array, drain);
 #endif
 	if (s->pstate == SLOT_START) {
 		/*
@@ -1951,7 +1951,7 @@ slot_stop(struct slot *s, int drain)
 		slot_detach(s);
 	} else {
 #ifdef DEBUG
-		logx(3, "%s%u: not drained (blocked by mmc)", s->name, s->unit);
+		logx(3, "slot%zu: not drained (blocked by mmc)", s - slot_array);
 #endif
 	}
 
@@ -1968,7 +1968,7 @@ slot_skip_update(struct slot *s)
 	skip = slot_skip(s);
 	while (skip > 0) {
 #ifdef DEBUG
-		logx(4, "%s%u: catching skipped block", s->name, s->unit);
+		logx(4, "slot%zu: catching skipped block", s - slot_array);
 #endif
 		if (s->mode & MODE_RECMASK)
 			s->ops->flush(s->arg);
@@ -1987,7 +1987,7 @@ slot_write(struct slot *s)
 {
 	if (s->pstate == SLOT_START && s->mix.buf.used == s->mix.buf.len) {
 #ifdef DEBUG
-		logx(4, "%s%u: switching to READY state", s->name, s->unit);
+		logx(4, "slot%zu: switching to READY state", s - slot_array);
 #endif
 		s->pstate = SLOT_READY;
 		slot_ready(s);

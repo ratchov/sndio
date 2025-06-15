@@ -201,8 +201,8 @@ sock_slot_fill(void *arg)
 
 	f->fillpending += s->round;
 #ifdef DEBUG
-	logx(4, "%s%u: fill, rmax -> %d, pending -> %d",
-	    s->name, s->unit, f->rmax, f->fillpending);
+	logx(4, "slot%zu: fill, rmax -> %d, pending -> %d",
+	    s - slot_array, f->rmax, f->fillpending);
 #endif
 }
 
@@ -214,7 +214,7 @@ sock_slot_flush(void *arg)
 
 	f->wmax += s->round * s->sub.bpf;
 #ifdef DEBUG
-	logx(4, "%s%u: flush, wmax -> %d", s->name, s->unit, f->wmax);
+	logx(4, "slot%zu: flush, wmax -> %d", s - slot_array, f->wmax);
 #endif
 }
 
@@ -225,7 +225,7 @@ sock_slot_eof(void *arg)
 #ifdef DEBUG
 	struct slot *s = f->slot;
 
-	logx(3, "%s%u: eof", s->name, s->unit);
+	logx(3, "slot%zu: eof", s - slot_array);
 #endif
 	f->stoppending = 1;
 }
@@ -237,7 +237,7 @@ sock_slot_onmove(void *arg)
 	struct slot *s = f->slot;
 
 #ifdef DEBUG
-	logx(4, "%s%u: onmove: delta -> %d", s->name, s->unit, s->delta);
+	logx(4, "slot%zu: onmove: delta -> %d", s - slot_array, s->delta);
 #endif
 	if (s->pstate != SOCK_START)
 		return;
@@ -251,7 +251,7 @@ sock_slot_onvol(void *arg)
 	struct slot *s = f->slot;
 
 #ifdef DEBUG
-	logx(4, "%s%u: onvol: vol -> %d", s->name, s->unit, s->vol);
+	logx(4, "slot%zu: onvol: vol -> %d", s - slot_array, s->vol);
 #endif
 	if (s->pstate != SOCK_START)
 		return;
