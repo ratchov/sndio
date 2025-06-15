@@ -56,7 +56,6 @@ void dev_wakeup(struct dev *);
 
 void slot_ctlname(struct slot *, char *, size_t);
 void slot_del(struct slot *);
-void slot_setvol(struct slot *, unsigned int);
 void slot_ready(struct slot *);
 void slot_allocbufs(struct slot *);
 void slot_freebufs(struct slot *);
