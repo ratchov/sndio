@@ -548,9 +548,7 @@ dev_sub_bcopy(struct dev *d, struct slot *s)
 	adata_t *idata, *enc_out, *resamp_out, *cmap_out;
 	void *odata;
 	int ocount, moffs;
-
 	int i, vol, offs, nch;
-
 
 	odata = (adata_t *)abuf_wgetblk(&s->sub.buf, &ocount);
 #ifdef DEBUG
