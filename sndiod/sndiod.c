@@ -502,8 +502,6 @@ main(int argc, char **argv)
 	d = NULL;
 	p = NULL;
 
-	slot_array_init();
-
 	while ((c = getopt(argc, argv,
 	    "a:b:c:C:de:F:f:j:L:m:Q:q:r:s:t:U:v:w:x:z:")) != -1) {
 		switch (c) {
