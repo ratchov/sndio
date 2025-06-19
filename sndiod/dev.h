@@ -26,7 +26,7 @@
 /*
  * preallocated audio clients
  */
-#define DEV_NSLOT	8
+#define DEV_NSLOT	32
 
 /*
  * preallocated control clients
