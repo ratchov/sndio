@@ -307,10 +307,7 @@ void dev_cycle(struct dev *);
  */
 void dev_master(struct dev *, unsigned int);
 void dev_midi_send(struct dev *, void *, int);
-void dev_midi_vol(struct opt *, struct app *);
 void dev_midi_master(struct dev *);
-void dev_midi_slotdesc(struct opt *o, struct app *a);
-void dev_midi_dump(struct opt *o);
 
 void mtc_midi_qfr(struct mtc *, int);
 void mtc_midi_full(struct mtc *);
