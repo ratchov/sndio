@@ -77,9 +77,9 @@ dev_sio_timeout(void *arg)
 {
 	struct dev *d = arg;
 
-	logx(1, "%s: watchdog timeout", d->path);
-	dev_migrate(d);
-	dev_abort(d);
+#ifdef DEBUG
+	logx(1, "%s: %d wakeups with no progress", d->path, d->sio.nwakeups);
+#endif
 }
 
 /*
@@ -305,6 +305,8 @@ dev_sio_revents(void *arg, struct pollfd *pfd)
 	events = sio_revents(d->sio.hdl, pfd);
 #ifdef DEBUG
 	d->sio.events = events;
+	if (events & (POLLIN | POLLOUT))
+		d->sio.nwakeups++;
 #endif
 	return events;
 }
@@ -367,6 +369,8 @@ dev_sio_run(void *arg)
 			timo_add(&d->sio.watchdog, WATCHDOG_USEC);
 
 #ifdef DEBUG
+			d->sio.nwakeups = 0;
+
 			/*
 			 * check that we're called at cycle boundary:
 			 * either after a recorded block, or when POLLOUT is

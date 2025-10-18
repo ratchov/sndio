@@ -28,6 +28,7 @@ struct dev_sio {
 	long long wtime, utime;
 	long long sum_wtime, sum_utime;
 	int pused, rused, events;
+	int nwakeups;
 #endif
 	struct file *file;
 #define DEV_SIO_READ	0
