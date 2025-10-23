@@ -78,8 +78,8 @@ dev_sio_timeout(void *arg)
 	struct dev *d = arg;
 
 	logx(1, "%s: watchdog timeout", d->path);
-	dev_migrate(d);
-	dev_abort(d);
+
+	timo_add(&d->sio.watchdog, WATCHDOG_USEC);
 }
 
 /*
