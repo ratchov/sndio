@@ -105,6 +105,9 @@ case `uname` in
 		-DHAVE_SOCK_CLOEXEC -DHAVE_CLOCK_GETTIME'
 		;;
 	OpenBSD)
+		# OpenBSD cranked major after the big stdio change
+		so_maj=$((so_maj + 1))
+		so_min=$((so_min - 3))
 		sun=yes
 		rmidi=yes
 		user=_sndiop
