@@ -36,6 +36,8 @@ END
 # defaults
 #
 version=1.10.0				# package version (used by pkg-config)
+so_maj=7				# library ABI major version
+so_min=3				# library ABI mminor version
 prefix=/usr/local			# where to install sndio
 so="libsndio.so.\${MAJ}.\${MIN}"	# shared libs to build
 so_cflags="-fPIC"			# clags to build shared objects
@@ -326,6 +328,8 @@ do
 	-e "s:@defs@:$defs:" \
 	-e "s:@ldadd@:$ldadd:" \
 	-e "s:@so@:$so:" \
+	-e "s:@so_maj@:$so_maj:" \
+	-e "s:@so_min@:$so_min:" \
 	-e "s:@so_link@:$so_link:" \
 	-e "s:@so_cflags@:$so_cflags:" \
 	-e "s:@so_ldflags@:$so_ldflags:" \
@@ -361,6 +365,7 @@ chmod +x contrib/init.d.sndiod
 cat <<EOF
 
 version.................. $version
+so versio................ $so_maj.$so_min
 bindir................... $bindir
 datadir.................. $datadir
 includedir............... $includedir
