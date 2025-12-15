@@ -340,7 +340,7 @@ print_node(struct sioctl_node *c, int mono)
 void
 print_display(struct info *p)
 {
-	char buf[SIOCTL_NAMEMAX], *s, *d;
+	char buf[SIOCTL_DISPLAYMAX], *s, *d;
 	unsigned int c;
 
 	s = p->desc.display;
