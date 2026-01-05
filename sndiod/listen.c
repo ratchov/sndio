@@ -183,7 +183,7 @@ listen_new_tcp(char *addr, unsigned int port)
 		}
 		f = xmalloc(sizeof(struct listen));
 		f->file = file_new(&listen_fileops, f, "tcp", 1);
-		if (f == NULL) {
+		if (f->file == NULL) {
 		bad_close:
 			close(s);
 			continue;
