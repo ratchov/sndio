@@ -54,7 +54,6 @@ void dev_del(struct dev *);
 unsigned int dev_roundof(struct dev *, unsigned int);
 void dev_wakeup(struct dev *);
 
-void slot_ctlname(struct slot *, char *, size_t);
 void slot_del(struct slot *);
 void slot_ready(struct slot *);
 void slot_allocbufs(struct slot *);
