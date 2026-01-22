@@ -82,7 +82,7 @@ case `uname` in
 		ldadd="-lrt -lm"
 		user=sndiod
 		so_ldflags="-Wl,-soname=libsndio.so.\${MAJ}"
-		so_link="libsndio.so libsndio.so.\${MAJ} libsndio.so.\${MAJ}.0"
+		so_link="libsndio.so libsndio.so.\${MAJ}"
 		defs='-D_GNU_SOURCE -DHAVE_SOCK_CLOEXEC -DHAVE_CLOCK_GETTIME \\\
 		-DHAVE_GETPEEREID'
 		;;
@@ -91,7 +91,7 @@ case `uname` in
 		ldadd="-lrt -lm"
 		user=sndiod
 		so_ldflags="-Wl,-soname=libsndio.so.\${MAJ}"
-		so_link="libsndio.so libsndio.so.\${MAJ} libsndio.so.\${MAJ}.0"
+		so_link="libsndio.so libsndio.so.\${MAJ}"
 		defs='-D_GNU_SOURCE -DHAVE_SOCK_CLOEXEC -DHAVE_CLOCK_GETTIME \\\
 		-DHAVE_GETPEEREID'
 		;;
