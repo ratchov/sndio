@@ -36,8 +36,8 @@ END
 # defaults
 #
 version=1.10.0				# package version (used by pkg-config)
-so_maj=7				# library ABI major version
-so_min=4				# library ABI minor version
+so_maj=9				# library ABI major version
+so_min=0				# library ABI minor version
 prefix=/usr/local			# where to install sndio
 so="libsndio.so.\${MAJ}.\${MIN}"	# shared libs to build
 so_cflags="-fPIC"			# clags to build shared objects
@@ -105,9 +105,6 @@ case `uname` in
 		-DHAVE_SOCK_CLOEXEC -DHAVE_CLOCK_GETTIME'
 		;;
 	OpenBSD)
-		# OpenBSD cranked major after the big stdio change
-		so_maj=$((so_maj + 1))
-		so_min=$((so_min - 3))
 		sun=yes
 		rmidi=yes
 		user=_sndiop
