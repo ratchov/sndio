@@ -46,6 +46,22 @@ struct sio_oss_fmt {
 	unsigned int msb;
 };
 
+/*
+ * Additional OSS formats definitions.
+ */
+#ifndef AFMT_U32_LE
+#define AFMT_U32_LE 0x00004000	/* Little endian unsigned 32-bit */
+#endif
+#ifndef AFMT_U32_BE
+#define AFMT_U32_BE 0x00008000	/* Big endian unsigned 32-bit */
+#endif
+#ifndef AFMT_U24_LE
+#define AFMT_U24_LE 0x00040000	/* Little endian unsigned 24-bit */
+#endif
+#ifndef AFMT_U24_BE
+#define AFMT_U24_BE 0x00080000	/* Big endian unsigned 24-bit */
+#endif
+
 static struct sio_oss_fmt formats[] = {
 	/* See http://manuals.opensound.com/developer/formats.html.
 	 * AFMT_{S8,U16}_* are marked as obsolete so are missing here.
@@ -288,11 +304,13 @@ sio_oss_getfd(const char *str, unsigned int mode, int nbio)
 	}
 
 	val = 1;
+#ifdef SNDCTL_DSP_LOW_WATER
 	if (ioctl(fd, SNDCTL_DSP_LOW_WATER, &val) == -1) {
 		DPERROR("sio_oss_start: LOW_WATER");
 		close(fd);
 		return -1;
 	}
+#endif
 	return fd;
 }
 

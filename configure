@@ -95,7 +95,8 @@ case `uname` in
 		defs='-D_GNU_SOURCE -DHAVE_SOCK_CLOEXEC'
 		;;
 	NetBSD)
-		sun=no
+		oss=yes
+		ldadd="-lossaudio -lm"
 		rmidi=yes
 		user=_sndio
 		so_link="libsndio.so"
