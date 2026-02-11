@@ -37,45 +37,6 @@
 #include "debug.h"
 #include "bsd-compat.h"
 
-#ifndef HAVE_ARC4RANDOM
-
-#ifndef DEV_RANDOM
-#define DEV_RANDOM "/dev/urandom"
-#endif
-
-static int
-random_bytes(unsigned char *buf, int len)
-{
-	ssize_t n;
-	int fd;
-
-	fd = open(DEV_RANDOM, O_RDONLY);
-	if (fd == -1) {
-		DPERROR(DEV_RANDOM);
-		return 0;
-	}
-	while (len > 0) {
-		n = read(fd, buf, len);
-		if (n == -1) {
-			if (errno == EINTR)
-				continue;
-			DPERROR(DEV_RANDOM);
-			close(fd);
-			return 0;
-		}
-		if (n == 0) {
-			DPRINTF("%s: unexpected eof\n", DEV_RANDOM);
-			close(fd);
-			return 0;
-		}
-		buf += n;
-		len -= n;
-	}
-	close(fd);
-	return 1;
-}
-#endif
-
 /*
  * read a message, return 0 if not completed
  */
@@ -299,15 +260,7 @@ bad_gen:
 	/*
 	 * generate a new cookie
 	 */
-#ifdef HAVE_ARC4RANDOM
 	arc4random_buf(cookie, AMSG_COOKIELEN);
-#else
-	if (!random_bytes(cookie, AMSG_COOKIELEN)) {
-		if (path)
-			free(path);
-		return 0;
-	}
-#endif
 
 	/*
 	 * try to save the cookie

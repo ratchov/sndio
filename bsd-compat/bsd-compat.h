@@ -22,29 +22,9 @@
 #include <bsd/bsd.h>
 #endif
 
-#ifndef HAVE_GETPEEREID
-#define getpeereid _sndio_getpeereid
-int getpeereid(int, uid_t *, gid_t *);
-#endif
-
 #ifndef HAVE_ISSETUGID
 #define issetugid _sndio_issetugid
 int issetugid(void);
-#endif
-
-#ifndef HAVE_STRLCAT
-#define strlcat _sndio_strlcat
-size_t strlcat(char *, const char *, size_t);
-#endif
-
-#ifndef HAVE_STRLCPY
-#define strlcpy _sndio_strlcpy
-size_t strlcpy(char *, const char *, size_t);
-#endif
-
-#ifndef HAVE_STRTONUM
-#define strtonum _sndio_strtonum
-long long strtonum(const char *, long long, long long, const char **);
 #endif
 
 #ifndef HAVE_CLOCK_GETTIME
