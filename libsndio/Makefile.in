@@ -121,7 +121,7 @@ OBJS = debug.o aucat.o \
 mio.o mio_rmidi.o mio_alsa.o mio_aucat.o \
 sio.o sio_alsa.o sio_aucat.o sio_oss.o sio_sun.o \
 sioctl.o sioctl_aucat.o sioctl_sun.o \
-issetugid.o clock_gettime.o
+issetugid.o
 
 .c.o:
 		${CC} ${CFLAGS} ${SO_CFLAGS} -I. ${INCLUDE} ${DEFS} -o $@ -c $<
@@ -134,9 +134,6 @@ libsndio.a:	${OBJS}
 
 issetugid.o:	../bsd-compat/issetugid.c
 		${CC} ${CFLAGS} ${SO_CFLAGS} ${INCLUDE} ${DEFS} -c -o issetugid.o ../bsd-compat/issetugid.c
-
-clock_gettime.o:	../bsd-compat/clock_gettime.c
-		${CC} ${CFLAGS} ${SO_CFLAGS} ${INCLUDE} ${DEFS} -c -o clock_gettime.o ../bsd-compat/clock_gettime.c
 
 aucat.o:	aucat.c aucat.h amsg.h debug.h \
 		../bsd-compat/bsd-compat.h

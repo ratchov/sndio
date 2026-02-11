@@ -16,8 +16,6 @@
 #ifndef BSD_COMPAT_H
 #define BSD_COMPAT_H
 
-#include <sys/types.h>
-
 #ifdef USE_LIBBSD
 #include <bsd/bsd.h>
 #endif
@@ -25,13 +23,6 @@
 #ifndef HAVE_ISSETUGID
 #define issetugid _sndio_issetugid
 int issetugid(void);
-#endif
-
-#ifndef HAVE_CLOCK_GETTIME
-#define CLOCK_MONOTONIC	0
-#define clock_gettime _sndio_clock_gettime
-struct timespec;
-int clock_gettime(int, struct timespec *);
 #endif
 
 #ifndef HAVE_SOCK_CLOEXEC
