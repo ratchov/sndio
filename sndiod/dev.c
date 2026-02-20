@@ -2105,7 +2105,7 @@ ctl_update(struct ctl *c)
 int
 ctl_match(struct ctl *c, int scope, void *arg0, void *arg1)
 {
-	if (c->type == CTL_NONE || c->scope != scope || c->u.any.arg0 != arg0)
+	if (c->type == CTL_NONE || c->scope != scope)
 		return 0;
 	if (arg0 != NULL && c->u.any.arg0 != arg0)
 		return 0;
