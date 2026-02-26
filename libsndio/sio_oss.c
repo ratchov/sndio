@@ -786,11 +786,9 @@ sio_oss_revents(struct sio_hdl *sh, struct pollfd *pfd)
 	}
 
 	delta = (hdl->idelta > hdl->odelta) ? hdl->idelta : hdl->odelta;
-	if (delta > 0) {
-		_sio_onmove_cb(&hdl->sio, delta / hdl->bpf);
-		hdl->idelta -= delta;
-		hdl->odelta -= delta;
-	}
+	_sio_onmove_cb(&hdl->sio, delta / hdl->bpf);
+	hdl->idelta -= delta;
+	hdl->odelta -= delta;
 	return revents;
 }
 

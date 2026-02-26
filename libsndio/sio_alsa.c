@@ -1089,8 +1089,6 @@ sio_alsa_onmove(struct sio_alsa_hdl *hdl)
 			delta = hdl->odelta > hdl->idelta ?
 				hdl->odelta : hdl->idelta;
 		}
-		if (delta <= 0)
-			return;
 	} else {
 		delta = 0;
 		hdl->running = 1;

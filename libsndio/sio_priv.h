@@ -41,6 +41,7 @@ struct sio_hdl {
 	int rused;			/* bytes used in read buffer */
 	int wused;			/* bytes used in write buffer */
 	int xrun;			/* xrun reported */
+	int cpending;			/* clock ticks not reported yet */
 	long long cpos;			/* clock since start */
 	struct sio_par par;
 #ifdef DEBUG
