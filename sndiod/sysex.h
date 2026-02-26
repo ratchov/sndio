@@ -110,7 +110,7 @@ struct sysex {
 			uint8_t chan;			/* channel */
 			uint8_t vol;			/* current volume */
 #define SYSEX_NAMELEN	10				/* \0 included */
-			uint8_t name[SYSEX_NAMELEN];	/* stream name */
+			char name[SYSEX_NAMELEN];	/* stream name */
 			uint8_t end;
 		} slotdesc;
 		struct sysex_dumpreq {
