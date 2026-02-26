@@ -22,6 +22,7 @@
 #include "opt.h"
 #include "sysex.h"
 #include "utils.h"
+#include "bsd-compat.h"
 
 struct opt *opt_list;
 
