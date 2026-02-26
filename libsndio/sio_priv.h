@@ -81,6 +81,7 @@ struct sio_hdl *_sio_oss_open(const char *, unsigned, int);
 struct sio_hdl *_sio_alsa_open(const char *, unsigned, int);
 #endif
 void _sio_create(struct sio_hdl *, struct sio_ops *, unsigned, int);
+int  _sio_xrun(struct sio_hdl *);
 void _sio_onmove_cb(struct sio_hdl *, int);
 void _sio_onvol_cb(struct sio_hdl *, unsigned);
 void _sio_onxrun_cb(struct sio_hdl *);
