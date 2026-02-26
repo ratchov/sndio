@@ -120,7 +120,6 @@ static int sio_oss_revents(struct sio_hdl *, struct pollfd *);
 static int sio_oss_setpar(struct sio_hdl *, struct sio_par *);
 static int sio_oss_start(struct sio_hdl *);
 static int sio_oss_flush(struct sio_hdl *);
-static int sio_oss_xrun(struct sio_oss_hdl *);
 static size_t sio_oss_read(struct sio_hdl *, void *, size_t);
 static size_t sio_oss_write(struct sio_hdl *, const void *, size_t);
 static void sio_oss_close(struct sio_hdl *);
@@ -676,64 +675,6 @@ sio_oss_pollfd(struct sio_hdl *sh, struct pollfd *pfd, int events)
 }
 
 static int
-sio_oss_xrun(struct sio_oss_hdl *hdl)
-{
-	int clk;
-	int wsil, rdrop, cmove;
-	int rbpf, rround;
-	int wbpf;
-
-	DPRINTFN(2, "sio_oss_xrun:\n");
-#ifdef DEBUG
-	if (_sndio_debug >= 2)
-		_sio_printpos(&hdl->sio);
-#endif
-
-	/*
-	 * we assume rused/wused are zero if rec/play modes are not
-	 * selected. This allows us to keep the same formula for all
-	 * modes, provided we set rbpf/wbpf to 1 to avoid division by
-	 * zero.
-	 *
-	 * to understand the formula, draw a picture :)
-	 */
-	rbpf = (hdl->sio.mode & SIO_REC) ?
-	    hdl->sio.par.bps * hdl->sio.par.rchan : 1;
-	wbpf = (hdl->sio.mode & SIO_PLAY) ?
-	    hdl->sio.par.bps * hdl->sio.par.pchan : 1;
-	rround = hdl->sio.par.round * rbpf;
-
-	clk = hdl->sio.cpos % hdl->sio.par.round;
-	rdrop = (clk * rbpf - hdl->sio.rused) % rround;
-	if (rdrop < 0)
-		rdrop += rround;
-	cmove = (rdrop + hdl->sio.rused) / rbpf;
-	wsil = cmove * wbpf + hdl->sio.wused;
-
-	DPRINTFN(2, "wsil = %d, cmove = %d, rdrop = %d\n", wsil, cmove, rdrop);
-
-	if (!sio_oss_flush(&hdl->sio))
-		return 0;
-
-	_sio_onxrun_cb(&hdl->sio);
-
-	if (!sio_oss_start(&hdl->sio))
-		return 0;
-	if (hdl->sio.mode & SIO_PLAY) {
-		hdl->odelta -= cmove * hdl->bpf;
-		hdl->sio.wsil = wsil;
-	}
-	if (hdl->sio.mode & SIO_REC) {
-		hdl->idelta -= cmove * hdl->bpf;
-		hdl->sio.rdrop = rdrop;
-	}
-	DPRINTFN(2, "xrun: corrected\n");
-	DPRINTFN(2, "wsil = %d, rdrop = %d, odelta = %d, idelta = %d\n",
-	    wsil, rdrop, hdl->odelta, hdl->idelta);
-	return 1;
-}
-
-static int
 sio_oss_revents(struct sio_hdl *sh, struct pollfd *pfd)
 {
 	struct sio_oss_hdl *hdl = (struct sio_oss_hdl *)sh;
@@ -753,7 +694,7 @@ sio_oss_revents(struct sio_hdl *sh, struct pollfd *pfd)
 		return POLLHUP;
 	}
 	if (ei.play_underruns > 0 || ei.rec_overruns > 0) {
-		if (!sio_oss_xrun(hdl))
+		if (!_sio_xrun(&hdl->sio))
 			return POLLHUP;
 		return 0;
 	}
