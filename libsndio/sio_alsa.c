@@ -500,64 +500,6 @@ sio_alsa_flush(struct sio_hdl *sh)
 }
 
 static int
-sio_alsa_xrun(struct sio_alsa_hdl *hdl)
-{
-	int clk;
-	int wsil, rdrop, cmove;
-	int rbpf, rround;
-	int wbpf;
-
-	DPRINTFN(2, "sio_alsa_xrun:\n");
-#ifdef DEBUG
-	if (_sndio_debug >= 2)
-		_sio_printpos(&hdl->sio);
-#endif
-
-	/*
-	 * we assume rused/wused are zero if rec/play modes are not
-	 * selected. This allows us to keep the same formula for all
-	 * modes, provided we set rbpf/wbpf to 1 to avoid division by
-	 * zero.
-	 *
-	 * to understand the formula, draw a picture :)
-	 */
-	rbpf = (hdl->sio.mode & SIO_REC) ?
-	    hdl->sio.par.bps * hdl->sio.par.rchan : 1;
-	wbpf = (hdl->sio.mode & SIO_PLAY) ?
-	    hdl->sio.par.bps * hdl->sio.par.pchan : 1;
-	rround = hdl->sio.par.round * rbpf;
-
-	clk = hdl->sio.cpos % hdl->sio.par.round;
-	rdrop = (clk * rbpf - hdl->sio.rused) % rround;
-	if (rdrop < 0)
-		rdrop += rround;
-	cmove = (rdrop + hdl->sio.rused) / rbpf;
-	wsil = cmove * wbpf + hdl->sio.wused;
-
-	DPRINTFN(2, "wsil = %d, cmove = %d, rdrop = %d\n", wsil, cmove, rdrop);
-
-	if (!sio_alsa_flush(&hdl->sio))
-		return 0;
-
-	_sio_onxrun_cb(&hdl->sio);
-
-	if (!sio_alsa_start(&hdl->sio))
-		return 0;
-	if (hdl->sio.mode & SIO_PLAY) {
-		hdl->odelta -= cmove;
-		hdl->sio.wsil = wsil;
-	}
-	if (hdl->sio.mode & SIO_REC) {
-		hdl->idelta -= cmove;
-		hdl->sio.rdrop = rdrop;
-	}
-	DPRINTFN(2, "xrun: corrected\n");
-	DPRINTFN(2, "wsil = %d, rdrop = %d, odelta = %d, idelta = %d\n",
-	    wsil, rdrop, hdl->odelta, hdl->idelta);
-	return 1;
-}
-
-static int
 sio_alsa_setpar_hw(snd_pcm_t *pcm, snd_pcm_hw_params_t *hwp,
     snd_pcm_format_t *reqfmt, unsigned int *rate, unsigned int *chans,
     snd_pcm_uframes_t *round, unsigned int *periods)
@@ -1006,7 +948,7 @@ sio_alsa_read(struct sio_hdl *sh, void *buf, size_t len)
 		if (n == -EINTR)
 			continue;
 		if (n == -EPIPE || n == -ESTRPIPE) {
-			sio_alsa_xrun(hdl);
+			_sio_xrun(&hdl->sio);
 			return 0;
 		}
 		if (n != -EAGAIN) {
@@ -1054,7 +996,7 @@ sio_alsa_write(struct sio_hdl *sh, const void *buf, size_t len)
 		if (n == -EINTR)
 			continue;
 		if (n == -ESTRPIPE || n == -EPIPE) {
-			sio_alsa_xrun(hdl);
+			_sio_xrun(&hdl->sio);
 			return 0;
 		}
 		if (n != -EAGAIN) {
@@ -1204,7 +1146,7 @@ sio_alsa_revents(struct sio_hdl *sh, struct pollfd *pfd)
 	if (hdl->sio.mode & SIO_PLAY) {
 		ostate = snd_pcm_state(hdl->opcm);
 		if (ostate == SND_PCM_STATE_XRUN) {
-			if (!sio_alsa_xrun(hdl))
+			if (!_sio_xrun(&hdl->sio))
 				return POLLHUP;
 			return 0;
 		}
@@ -1213,7 +1155,7 @@ sio_alsa_revents(struct sio_hdl *sh, struct pollfd *pfd)
 			oavail = snd_pcm_avail_update(hdl->opcm);
 			if (oavail < 0) {
 				if (oavail == -EPIPE || oavail == -ESTRPIPE) {
-					if (!sio_alsa_xrun(hdl))
+					if (!_sio_xrun(&hdl->sio))
 						return POLLHUP;
 					return 0;
 				}
@@ -1229,7 +1171,7 @@ sio_alsa_revents(struct sio_hdl *sh, struct pollfd *pfd)
 	if (hdl->sio.mode & SIO_REC) {
 		istate = snd_pcm_state(hdl->ipcm);
 		if (istate == SND_PCM_STATE_XRUN) {
-			if (!sio_alsa_xrun(hdl))
+			if (!_sio_xrun(&hdl->sio))
 				return POLLHUP;
 			return 0;
 		}
@@ -1238,7 +1180,7 @@ sio_alsa_revents(struct sio_hdl *sh, struct pollfd *pfd)
 			iused = snd_pcm_avail_update(hdl->ipcm);
 			if (iused < 0) {
 				if (iused == -EPIPE || iused == -ESTRPIPE) {
-					if (!sio_alsa_xrun(hdl))
+					if (!_sio_xrun(&hdl->sio))
 						return POLLHUP;
 					return 0;
 				}
