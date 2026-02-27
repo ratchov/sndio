@@ -22,14 +22,13 @@ struct file;
 struct listen {
 	struct listen *next;
 	struct file *file;
-	char *path;
 	int fd;
 	int slowaccept;
 };
 
 extern struct listen *listen_list;
 
-int listen_new_un(char *);
+int listen_new_un(unsigned int);
 int listen_new_tcp(char *, unsigned int);
 int listen_init(struct listen *);
 void listen_close(struct listen *);

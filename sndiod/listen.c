@@ -68,41 +68,81 @@ listen_close(struct listen *f)
 	}
 	*pf = f->next;
 
-	if (f->path != NULL) {
-		unlink(f->path);
-		xfree(f->path);
-	}
 	file_del(f->file);
 	close(f->fd);
 	xfree(f);
 }
 
 int
-listen_new_un(char *path)
+listen_new_un(unsigned int unit)
 {
-	int sock, oldumask;
+	int len, sock, oldumask;
 	struct sockaddr_un sockname;
 	struct listen *f;
+	struct stat sb;
+	uid_t uid;
+	mode_t mask, omask;
+	char dir[sizeof(sockname.sun_path)];
+
+	uid = geteuid();
+	if (uid == 0) {
+		mask = 022;
+		len = snprintf(sockname.sun_path, sizeof(sockname.sun_path),
+		    SOCKPATH_DIR "/" SOCKPATH_FILE "%u", unit);
+	} else {
+		mask = 077;
+		len = snprintf(sockname.sun_path, sizeof(sockname.sun_path),
+		    SOCKPATH_DIR "-%u/" SOCKPATH_FILE "%u", uid, unit);
+	}
+	if (len >= sizeof(sockname.sun_path)) {
+		logx(0, "unix socket name too long");
+		return 0;
+	}
+
+	while (sockname.sun_path[len] != '/')
+		len--;
+	memcpy(dir, sockname.sun_path, len);
+	dir[len] = 0;
+
+	omask = umask(mask);
+	if (mkdir(dir, 0777) == -1) {
+		if (errno != EEXIST) {
+			logx(0, "mkdir(\"%s\")", dir);
+			return 0;
+		}
+	}
+	umask(omask);
+	if (stat(dir, &sb) == -1) {
+		logx(0, "stat(\"%s\")", dir);
+		return 0;
+	}
+	if (!S_ISDIR(sb.st_mode)) {
+		logx(0, "%s is not a directory", dir);
+		return 0;
+	}
+	if (sb.st_uid != uid || (sb.st_mode & mask) != 0) {
+		logx(0, "%s has wrong permissions", dir);
+		return 0;
+	}
 
 	sock = socket(AF_UNIX, SOCK_STREAM, 0);
 	if (sock == -1) {
-		logx(0, "%s: failed to create socket", path);
+		logx(0, "%s: failed to create socket", sockname.sun_path);
 		return 0;
 	}
-	if (unlink(path) == -1 && errno != ENOENT) {
-		logx(0, "%s: failed to unlink socket", path);
+	if (unlink(sockname.sun_path) == -1 && errno != ENOENT) {
+		logx(0, "%s: failed to unlink socket", sockname.sun_path);
 		goto bad_close;
 	}
 	sockname.sun_family = AF_UNIX;
-	strlcpy(sockname.sun_path, path, sizeof(sockname.sun_path));
 	oldumask = umask(0111);
 	if (bind(sock, (struct sockaddr *)&sockname,
 		sizeof(struct sockaddr_un)) == -1) {
-		logx(0, "%s: failed to bind socket", path);
+		logx(0, "%s: failed to bind socket", sockname.sun_path);
 		goto bad_close;
 	}
 	if (listen(sock, 1) == -1) {
-		logx(0, "%s: failed to listen", path);
+		logx(0, "%s: failed to listen", sockname.sun_path);
 		goto bad_close;
 	}
 	umask(oldumask);
@@ -110,7 +150,6 @@ listen_new_un(char *path)
 	f->file = file_new(&listen_fileops, f, "unix", 1);
 	if (f->file == NULL)
 		goto bad_close;
-	f->path = xstrdup(path);
 	f->fd = sock;
 	f->next = listen_list;
 	listen_list = f;
@@ -188,7 +227,6 @@ listen_new_tcp(char *addr, unsigned int port)
 			close(s);
 			continue;
 		}
-		f->path = NULL;
 		f->fd = s;
 		f->next = listen_list;
 		listen_list = f;
@@ -247,7 +285,7 @@ listen_in(void *arg)
 		logx(0, "%s: failed to set non-blocking mode", f->file->name);
 		goto bad_close;
 	}
-	if (f->path == NULL) {
+	if (caddr.sa_family == AF_INET || caddr.sa_family == AF_INET6) {
 		opt = 1;
 		if (setsockopt(sock, IPPROTO_TCP, TCP_NODELAY,
 		    &opt, sizeof(int)) == -1) {
