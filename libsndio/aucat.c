@@ -229,7 +229,7 @@ aucat_mkcookie(unsigned char *cookie)
 	memcpy(path, home, home_len);
 	memcpy(path + home_len, COOKIE_SUFFIX, sizeof(COOKIE_SUFFIX));
 	path_len = home_len + sizeof(COOKIE_SUFFIX) - 1;
-	fd = open(path, O_RDONLY);
+	fd = open(path, O_RDONLY|O_CLOEXEC);
 	if (fd == -1) {
 		if (errno != ENOENT)
 			DPERROR(path);
