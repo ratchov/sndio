@@ -55,7 +55,14 @@ struct opt {
 	int refcnt;
 };
 
+struct opt_mode {
+	int bit;
+	char *name;
+};
+
 extern struct opt *opt_list;
+
+extern const struct opt_mode opt_modes[];
 
 struct app *opt_mkapp(struct opt *o, char *who);
 void opt_appvol(struct opt *o, struct app *a, int vol);
@@ -70,6 +77,7 @@ struct opt *opt_byname(char *);
 struct opt *opt_bynum(int);
 void opt_init(struct opt *);
 void opt_done(struct opt *);
+void opt_setmode(struct opt *, int, int);
 int opt_setdev(struct opt *, struct dev *);
 void opt_migrate(struct opt *, struct dev *);
 struct dev *opt_ref(struct opt *);

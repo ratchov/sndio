@@ -103,7 +103,7 @@ int
 dev_sio_open(struct dev *d)
 {
 	struct sio_par par;
-	unsigned int rate, mode = d->reqmode & (SIO_PLAY | SIO_REC);
+	unsigned int rate, mode = SIO_PLAY | SIO_REC;
 
 	d->sio.hdl = sio_open(d->path, mode, 1);
 	if (d->sio.hdl == NULL) {
