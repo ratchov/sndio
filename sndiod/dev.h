@@ -78,7 +78,8 @@ struct slot {
 		int prime;			/* initial cycles to skip */
 		int bpf;			/* byte per frame */
 		int nch;			/* number of rec chans */
-		struct cmap cmap;		/* channel mapper state */
+		struct cmap cmap_rec;		/* rec channel mapper state */
+		struct cmap cmap_mon;		/* mon channel mapper state */
 		struct resamp resamp;		/* buffer for resampling */
 		struct conv enc;		/* buffer for encoding */
 		void *resampbuf, *encbuf;	/* tmp buffers */
