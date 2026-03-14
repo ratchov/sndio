@@ -494,7 +494,10 @@ dev_sub_bcopy(struct dev *d, struct slot *s)
 		/*
 		 * recording not allowed in opt structure, produce silence
 		 */
-		enc_sil_do(&s->sub.enc, odata, s->round);
+		if (s->sub.encbuf)
+			enc_sil_do(&s->sub.enc, odata, s->round);
+		else
+			memset(odata, 0, s->round * s->sub.bpf);
 		abuf_wcommit(&s->sub.buf, s->round * s->sub.bpf);
 		return;
 	}
