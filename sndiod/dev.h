@@ -81,8 +81,6 @@ struct slot {
 		struct cmap cmap;		/* channel mapper state */
 		struct resamp resamp;		/* buffer for resampling */
 		struct conv enc;		/* buffer for encoding */
-		int join;			/* channel join factor */
-		int expand;			/* channel expand factor */
 		void *resampbuf, *encbuf;	/* tmp buffers */
 	} sub;
 	int xrun;				/* underrun policy */
