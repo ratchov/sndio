@@ -105,6 +105,8 @@ struct cmap {
 	int onext;
 	int ostart;
 	int nch;
+	int join;			/* channel join factor */
+	int expand;			/* channel expand factor */
 };
 
 #define MIDI_TO_ADATA(m)	(aparams_ctltovol[m])
@@ -125,8 +127,7 @@ void dec_do(struct conv *, unsigned char *, unsigned char *, int);
 void dec_do_float(struct conv *, unsigned char *, unsigned char *, int);
 void dec_do_ulaw(struct conv *, unsigned char *, unsigned char *, int, int);
 void dec_init(struct conv *, struct aparams *, int);
-void cmap_add(struct cmap *, void *, void *, int, int);
-void cmap_copy(struct cmap *, void *, void *, int, int);
-void cmap_init(struct cmap *, int, int, int, int, int, int, int, int);
+void cmap_do(struct cmap *, adata_t *, adata_t *, int, int, int);
+void cmap_init(struct cmap *, int, int, int, int, int, int, int, int, int);
 
 #endif /* !defined(DSP_H) */
