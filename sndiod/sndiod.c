@@ -96,7 +96,7 @@ unsigned int opt_mode(void);
 void getbasepath(char *);
 void setsig(void);
 void unsetsig(void);
-struct dev *mkdev(char *, struct aparams *, int, int, int, int, int);
+struct dev *mkdev(char *, struct aparams *, int, int);
 struct port *mkport(char *, int);
 struct opt *mkopt(char *, struct dev *, struct opt_alt *,
     int, int, int, int, int, int, int, int);
@@ -361,8 +361,7 @@ unsetsig(void)
 }
 
 struct dev *
-mkdev(char *path, struct aparams *par,
-    int bufsz, int round, int rate, int hold, int autovol)
+mkdev(char *path, struct aparams *par, int hold, int autovol)
 {
 	struct dev *d;
 
@@ -370,14 +369,7 @@ mkdev(char *path, struct aparams *par,
 		if (strcmp(d->path, path) == 0)
 			return d;
 	}
-	if (!bufsz && !round) {
-		round = DEFAULT_ROUND;
-		bufsz = DEFAULT_BUFSZ;
-	} else if (!bufsz) {
-		bufsz = round * 2;
-	} else if (!round)
-		round = bufsz / 2;
-	d = dev_new(path, par, bufsz, round, rate, hold, autovol);
+	d = dev_new(path, par, hold, autovol);
 	if (d == NULL)
 		exit(1);
 	return d;
@@ -422,7 +414,7 @@ main(int argc, char **argv)
 	int c, i, background, unit;
 	int pmin, pmax, rmin, rmax;
 	unsigned int mode, dup, mmc, vol;
-	unsigned int hold, autovol, bufsz, round, rate;
+	unsigned int hold, autovol;
 	const char *str;
 	struct aparams par;
 	struct opt *o;
@@ -441,14 +433,12 @@ main(int argc, char **argv)
 	/*
 	 * global options defaults
 	 */
+	dev_rate = DEFAULT_RATE;
 	vol = 127;
 	dup = 1;
 	mmc = 0;
 	hold = 0;
 	autovol = 0;
-	bufsz = 0;
-	round = 0;
-	rate = DEFAULT_RATE;
 	unit = 0;
 	background = 1;
 	pmin = 0;
@@ -504,7 +494,7 @@ main(int argc, char **argv)
 			opt_enc(&par);
 			break;
 		case 'r':
-			rate = strtonum(optarg, RATE_MIN, RATE_MAX, &str);
+			dev_rate = strtonum(optarg, RATE_MIN, RATE_MAX, &str);
 			if (str)
 				errx(1, "%s: rate is %s", optarg, str);
 			break;
@@ -516,8 +506,7 @@ main(int argc, char **argv)
 		case 's':
 			if (d == NULL) {
 				for (i = 0; default_devs[i] != NULL; i++) {
-					mkdev(default_devs[i], &par,
-					    bufsz, round, rate, 0, autovol);
+					mkdev(default_devs[i], &par, 0, autovol);
 				}
 				d = dev_list;
 			}
@@ -546,18 +535,17 @@ main(int argc, char **argv)
 			autovol = opt_onoff();
 			break;
 		case 'b':
-			bufsz = strtonum(optarg, 1, RATE_MAX, &str);
+			dev_bufsz = strtonum(optarg, 1, RATE_MAX, &str);
 			if (str)
 				errx(1, "%s: buffer size is %s", optarg, str);
 			break;
 		case 'z':
-			round = strtonum(optarg, 1, SHRT_MAX, &str);
+			dev_round = strtonum(optarg, 1, SHRT_MAX, &str);
 			if (str)
 				errx(1, "%s: block size is %s", optarg, str);
 			break;
 		case 'f':
-			d = mkdev(optarg, &par, bufsz, round,
-			    rate, hold, autovol);
+			d = mkdev(optarg, &par, hold, autovol);
 			while ((a = alt_list) != NULL) {
 				alt_list = a->next;
 				xfree(a);
@@ -567,8 +555,7 @@ main(int argc, char **argv)
 			if (d == NULL)
 				errx(1, "-F %s: no devices defined", optarg);
 			a = xmalloc(sizeof(struct opt_alt));
-			a->dev = mkdev(optarg, &par, bufsz, round,
-			    rate, hold, autovol);
+			a->dev = mkdev(optarg, &par, hold, autovol);
 			for (pa = &alt_list; *pa != NULL; pa = &(*pa)->next)
 				;
 			a->next = NULL;
@@ -585,14 +572,23 @@ main(int argc, char **argv)
 		fputs(usagestr, stderr);
 		return 1;
 	}
+
+	if (!dev_bufsz && !dev_round) {
+		dev_round = DEFAULT_ROUND;
+		dev_bufsz = DEFAULT_BUFSZ;
+	} else if (!dev_bufsz) {
+		dev_bufsz = dev_round * 2;
+	} else if (!dev_round) {
+		dev_round = dev_bufsz / 2;
+	}
+
 	if (port_list == NULL) {
 		for (i = 0; default_ports[i] != NULL; i++)
 			mkport(default_ports[i], 0);
 	}
 	if (dev_list == NULL) {
 		for (i = 0; default_devs[i] != NULL; i++) {
-			mkdev(default_devs[i], &par,
-			    bufsz, round, rate, 0, autovol);
+			mkdev(default_devs[i], &par, 0, autovol);
 		}
 	}
 
