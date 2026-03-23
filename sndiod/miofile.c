@@ -128,8 +128,8 @@ port_mio_hup(void *arg)
 {
 	struct port *p = arg;
 
-	port_migrate(p);
-	midi_abort(p->midi);
+	port_abort(p);
+
 	if (p->state != PORT_CFG)
 		port_close(p);
 }

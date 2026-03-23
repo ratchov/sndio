@@ -50,7 +50,7 @@ sioctl_open(const char *str, unsigned int mode, int nbio)
 		return NULL;
 #endif
 	}
-	if (_sndio_parsetype(str, "snd"))
+	if (_sndio_parsetype(str, "snd") || _sndio_parsetype(str, "midithru"))
 		return _sioctl_aucat_open(str, mode, nbio);
 	if (_sndio_parsetype(str, "rsnd"))
 #if defined(USE_SUN_MIXER)

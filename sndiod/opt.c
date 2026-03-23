@@ -383,7 +383,7 @@ opt_new(struct dev *d, char *name,
 	 *	allocated
 	 */
 	o->midi = midi_new(&opt_midiops, o, MODE_MIDIIN | MODE_MIDIOUT);
-	midi_tag(o->midi, o->num);
+	midithru_addprog(o->num, o->midi);
 
 	o->pmin = pmin;
 	o->pmax = pmax;
