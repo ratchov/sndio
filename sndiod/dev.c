@@ -1743,7 +1743,7 @@ ctlslot_new(struct opt *o, struct ctlops *ops, void *arg)
 	}
 	s->opt = o;
 	s->self = 1 << i;
-	if (!opt_ref(o))
+	if (s->opt != NULL && !opt_ref(s->opt))
 		return NULL;
 	s->ops = ops;
 	s->arg = arg;
@@ -1773,14 +1773,13 @@ ctlslot_del(struct ctlslot *s)
 			pc = &c->next;
 	}
 	s->ops = NULL;
-	opt_unref(s->opt);
+	if (s->opt != NULL)
+		opt_unref(s->opt);
 }
 
 int
 ctlslot_visible(struct ctlslot *s, struct ctl *c)
 {
-	if (s->opt == NULL)
-		return 1;
 	switch (c->scope) {
 	case CTL_HW:
 		/*
@@ -1792,12 +1791,12 @@ ctlslot_visible(struct ctlslot *s, struct ctl *c)
 			return 0;
 		/* FALLTHROUGH */
 	case CTL_DEV_MASTER:
-		return (s->opt->dev == c->u.any.arg0);
+		return (s->opt != NULL && s->opt->dev == c->u.any.arg0);
 	case CTL_OPT_DEV:
 	case CTL_OPT_MODE:
-		return (s->opt == c->u.any.arg0);
+		return (s->opt != NULL && s->opt == c->u.any.arg0);
 	case CTL_APP_LEVEL:
-		return (s->opt == c->u.app_level.opt);
+		return (s->opt != NULL && s->opt == c->u.app_level.opt);
 	default:
 		return 0;
 	}
@@ -2211,7 +2210,7 @@ dev_ctlsync(struct dev *d)
 	for (s = ctlslot_array, i = 0; i < DEV_NCTLSLOT; i++, s++) {
 		if (s->ops == NULL)
 			continue;
-		if (s->opt->dev == d)
+		if (s->opt != NULL && s->opt->dev == d)
 			s->ops->sync(s->arg);
 	}
 }
