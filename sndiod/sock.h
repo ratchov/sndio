@@ -60,6 +60,7 @@ struct sock {
 	struct slot *slot;		/* audio device slot number */
 	struct midi *midi;		/* midi endpoint */
 	struct port *port;		/* midi port */
+	struct opt *opt;		/* midi-controlled opt */
 	struct ctlslot *ctlslot;
 	unsigned char *ctldesc;		/* temporary buffer */
 	size_t ctl_desc_size;		/* size of client amsg_ctl_desc */

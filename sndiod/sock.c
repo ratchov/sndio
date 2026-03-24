@@ -148,9 +148,7 @@ ctlgroup(struct sock *f, struct ctl *c)
 void
 sock_close(struct sock *f)
 {
-	struct opt *o;
 	struct sock **pf;
-	unsigned int tags, i;
 
 	for (pf = &sock_list; *pf != f; pf = &(*pf)->next) {
 #ifdef DEBUG
@@ -171,19 +169,18 @@ sock_close(struct sock *f)
 		slot_del(f->slot);
 		f->slot = NULL;
 	}
-	if (f->midi) {
-		tags = midi_tags(f->midi);
-		for (i = 0; i < OPT_NMAX; i++) {
-			if ((tags & (1 << i)) && (o = opt_bynum(i)) != NULL)
-				opt_unref(o);
-		}
-		midi_del(f->midi);
-		f->midi = NULL;
-	}
 	if (f->port) {
 		midi_unlink(f->midi, f->port->midi);
 		port_unref(f->port);
 		f->port = NULL;
+	}
+	if (f->midi) {
+		midi_del(f->midi);
+		f->midi = NULL;
+		if (f->opt) {
+			opt_unref(f->opt);
+			f->opt = NULL;
+		}
 	}
 	if (f->ctlslot) {
 		ctlslot_del(f->ctlslot);
@@ -319,6 +316,7 @@ sock_new(int fd)
 	f->port = NULL;
 	f->midi = NULL;
 	f->ctlslot = NULL;
+	f->opt = NULL;
 	f->tickpending = 0;
 	f->xrunpending = 0;
 	f->fillpending = 0;
@@ -745,9 +743,7 @@ sock_hello(struct sock *f)
 		return 0;
 	}
 	f->pstate = SOCK_INIT;
-	f->port = NULL;
 	if (mode & MODE_MIDIMASK) {
-		f->slot = NULL;
 		f->midi = midi_new(&sock_midiops, f, mode);
 		if (f->midi == NULL)
 			return 0;
@@ -758,6 +754,7 @@ sock_hello(struct sock *f)
 				return 0;
 			if (!opt_ref(opt))
 				return 0;
+			f->opt = opt;
 			midi_tag(f->midi, opt->num);
 		} else if (p->devnum < 16) {
 			opt = legacy_opt(p->devnum, p->opt);
@@ -765,6 +762,7 @@ sock_hello(struct sock *f)
 				return 0;
 			if (!opt_ref(opt))
 				return 0;
+			f->opt = opt;
 			midi_tag(f->midi, opt->num);
 		} else if (p->devnum < 32) {
 			midi_tag(f->midi, p->devnum);
