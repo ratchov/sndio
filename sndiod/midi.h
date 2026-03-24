@@ -93,6 +93,7 @@ struct port {
 	char *path;
 	struct port *alt_next;
 	int hold;			/* hold the port open ? */
+	int refcnt;
 	struct midi *midi;
 };
 

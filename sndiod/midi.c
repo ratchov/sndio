@@ -48,6 +48,7 @@ unsigned int midi_portnum = 0;
 
 struct midithru {
 	unsigned int txmask, rxmask;
+	int refcnt;
 #define MIDITHRU_NMAX 32
 } midithru[MIDITHRU_NMAX];
 
@@ -521,6 +522,7 @@ port_new(char *path, unsigned int mode, int hold)
 	c->path = path;
 	c->state = PORT_CFG;
 	c->hold = hold;
+	c->refcnt = 0;
 	c->midi = midi_new(&port_midiops, c, mode);
 	c->num = midi_portnum++;
 	c->alt_next = c;
@@ -560,21 +562,17 @@ port_ref(struct port *c)
 #endif
 	if (c->state == PORT_CFG && !port_open(c))
 		return 0;
+	c->refcnt++;
 	return 1;
 }
 
 void
 port_unref(struct port *c)
 {
-	int i, rxmask;
-
 #ifdef DEBUG
 	logx(3, "midi%u: port released", c->midi->num);
 #endif
-	for (rxmask = 0, i = 0; i < MIDI_NEP; i++)
-		rxmask |= midi_ep[i].txmask;
-	if ((rxmask & c->midi->self) == 0 && c->midi->txmask == 0 &&
-	    c->state == PORT_INIT && !c->hold)
+	if (--c->refcnt == 0 && c->state == PORT_INIT)
 		port_drain(c);
 }
 
