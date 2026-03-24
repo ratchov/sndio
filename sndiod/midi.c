@@ -165,6 +165,22 @@ midi_link(struct midi *ep, struct midi *peer)
 }
 
 /*
+ * disconnect two midi endpoints
+ */
+void
+midi_unlink(struct midi *ep, struct midi *peer)
+{
+	if (peer->txmask & ep->self) {
+		peer->txmask &= ~ep->self;
+		midi_tickets(peer);
+	}
+	if (ep->txmask & peer->self) {
+		ep->txmask &= ~peer->self;
+		midi_tickets(ep);
+	}
+}
+
+/*
  * return the list of endpoints the given one receives from
  */
 unsigned int

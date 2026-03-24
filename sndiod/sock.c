@@ -181,6 +181,7 @@ sock_close(struct sock *f)
 		f->midi = NULL;
 	}
 	if (f->port) {
+		midi_unlink(f->midi, f->port->midi);
 		port_unref(f->port);
 		f->port = NULL;
 	}
