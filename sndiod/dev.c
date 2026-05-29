@@ -654,7 +654,7 @@ dev_cycle(struct dev *d)
 		} else {
 			if (s->paused) {
 #ifdef DEBUG
-				logx(3, "slot%zu: resumed\n", s - slot_array);
+				logx(3, "slot%zu: resumed", s - slot_array);
 #endif
 				s->paused = 0;
 			}
