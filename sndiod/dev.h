@@ -152,8 +152,8 @@ struct ctl {
 			int idx;
 		} opt_mode;
 		struct {
-			struct port *port;
 			struct midithru *midithru;
+			struct port *port;
 		} midi;
 	} u;
 
