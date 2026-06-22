@@ -153,7 +153,7 @@ struct ctl {
 		} opt_mode;
 		struct {
 			struct port *port;
-			unsigned int tag;
+			struct midithru *midithru;
 		} midi;
 	} u;
 
@@ -181,7 +181,7 @@ struct ctlslot {
 	struct ctlops *ops;
 	void *arg;
 	struct opt *opt;
-	unsigned int tag;		/* midithru index */
+	struct midithru *midithru;
 	unsigned int self;		/* equal to (1 << index) */
 	unsigned int mode;
 };
@@ -351,7 +351,7 @@ struct ctl *ctl_find(int, void *, void *);
 void ctl_update(struct ctl *);
 int ctl_onval(int, void *, void *, int);
 
-struct ctlslot *ctlslot_new(struct opt *, unsigned int, struct ctlops *, void *);
+struct ctlslot *ctlslot_new(struct opt *, struct midithru *, struct ctlops *, void *);
 void ctlslot_del(struct ctlslot *);
 int ctlslot_visible(struct ctlslot *, struct ctl *);
 struct ctl *ctlslot_lookup(struct ctlslot *, int);

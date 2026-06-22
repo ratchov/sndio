@@ -57,7 +57,7 @@ struct sock {
 	unsigned int walign;		/* align written data to this */
 	unsigned int ralign;		/* read data is aligned to this */
 	int lastvol;			/* last volume */
-	unsigned int tag;		/* controlled or connected midithru */
+	struct midithru *midithru;	/* controlled or connected midithru */
 	struct slot *slot;		/* audio device slot number */
 	struct midi *midi;		/* midi endpoint */
 	struct port *port;		/* midi port */
