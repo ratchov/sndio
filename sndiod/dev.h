@@ -126,6 +126,7 @@ struct ctl {
 #define CTL_APP_LEVEL	3
 #define CTL_OPT_MODE	4
 #define CTL_MIDI_PORT	5
+#define CTL_MIDI_THRU	6
 	unsigned int scope;
 	union {
 		struct {

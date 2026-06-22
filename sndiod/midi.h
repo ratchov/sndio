@@ -101,6 +101,7 @@ struct midithru {
 	unsigned int progmask;
 	unsigned int prefportmask;
 	int refcnt;
+	int thru;
 };
 
 /*
@@ -149,6 +150,7 @@ void midithru_addport(struct midithru *, struct port *);
 void midithru_addprog(struct midithru *, struct midi *);
 void midithru_rm(struct midithru *, struct midi *);
 int  midithru_setport(struct midithru *, struct port *, int);
+int  midithru_setthru(struct midithru *, int);
 void midithru_scanports(void);
 
 #endif /* !defined(MIDI_H) */

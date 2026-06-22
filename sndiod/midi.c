@@ -592,6 +592,9 @@ midithru_ref(struct midithru *t)
 		    CTL_LIST, "", "", "server", -1, "port",
 		    name, -1, 1, !!(t->portmask & c->midi->self));
 	}
+	ctl_new(CTL_MIDI_THRU, t, c,
+	    CTL_SW, "", "", "server", -1, "thru",
+	    "", -1, 1, t->thru);
 }
 
 void
@@ -611,6 +614,7 @@ midithru_unref(struct midithru *t)
 			port_unref(c);
 		}
 	}
+	ctl_del(CTL_MIDI_THRU, t, NULL);
 }
 
 void
@@ -633,7 +637,9 @@ midithru_addprog(struct midithru *t, struct midi *ep)
 	int i;
 
 	for (i = 0; i < MIDI_NEP; i++) {
-		if ((t->portmask | t->progmask) & (1 << i))
+		if (t->portmask & (1 << i))
+			midi_link(ep, midi_ep + i);
+		if (t->thru && (t->progmask & (1 << i)))
 			midi_link(ep, midi_ep + i);
 	}
 	t->progmask |= ep->self;
@@ -665,6 +671,31 @@ midithru_setport(struct midithru *t, struct port *c, int val)
 		midithru_rm(t, c->midi);
 		t->prefportmask &= ~c->midi->self;
 	}
+	return 1;
+}
+
+int
+midithru_setthru(struct midithru *t, int val)
+{
+	int i, j;
+
+	if (t->thru == val)
+		return 0;
+
+	for (i = 0; i < MIDI_NEP; i++) {
+		if (!(t->progmask & (1 << i)))
+			continue;
+		for (j = i + 1; j < MIDI_NEP; j++) {
+			if (!(t->progmask & (1 << j)))
+				continue;
+			if (val)
+				midi_link(midi_ep + i, midi_ep + j);
+			else
+				midi_unlink(midi_ep + i, midi_ep + j);
+		}
+	}
+
+	t->thru = val;
 	return 1;
 }
 

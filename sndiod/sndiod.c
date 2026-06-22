@@ -530,6 +530,12 @@ main(int argc, char **argv)
 		dev_round = dev_bufsz / 2;
 	}
 
+	/*
+	 * enable midithru by default
+	 */
+	for (i = 0; i < MIDITHRU_NMAX; i++)
+		midithru_array[i].thru = 1;
+
 	if (port_list == NULL) {
 		for (i = 0; default_ports[i] != NULL; i++)
 			mkport(default_ports[i], 0);

@@ -1804,6 +1804,7 @@ ctlslot_visible(struct ctlslot *s, struct ctl *c)
 	case CTL_APP_LEVEL:
 		return (s->opt != NULL && s->opt == c->u.app_level.opt);
 	case CTL_MIDI_PORT:
+	case CTL_MIDI_THRU:
 		return (s->midithru == c->u.midi.midithru);
 	default:
 		return 0;
@@ -1888,6 +1889,9 @@ ctl_scope_fmt(char *buf, size_t size, struct ctl *c)
 	case CTL_MIDI_PORT:
 		return snprintf(buf, size, "midi_port:%zu/%u",
 		    c->u.midi.midithru - midithru_array, c->u.midi.port->num);
+	case CTL_MIDI_THRU:
+		return snprintf(buf, size, "midi_thru:%zu",
+		    c->u.midi.midithru - midithru_array);
 	default:
 		return snprintf(buf, size, "unknown");
 	}
@@ -1963,6 +1967,12 @@ ctl_setval(struct ctl *c, int val)
 		return 1;
 	case CTL_MIDI_PORT:
 		if (midithru_setport(c->u.midi.midithru, c->u.midi.port, val)) {
+			c->val_mask = ~0U;
+			c->curval = val;
+		}
+		return 1;
+	case CTL_MIDI_THRU:
+		if (midithru_setthru(c->u.midi.midithru, val)) {
 			c->val_mask = ~0U;
 			c->curval = val;
 		}
