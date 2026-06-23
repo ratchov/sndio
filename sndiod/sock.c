@@ -748,6 +748,18 @@ sock_hello(struct sock *f)
 #endif
 		return 0;
 	}
+	if (strnlen(p->opt, sizeof(p->opt)) >= sizeof(p->opt)) {
+#ifdef DEBUG
+		logx(1, "sock %d: malformed opt", f->fd);
+#endif
+		return 0;
+	}
+	if (strnlen(p->who, sizeof(p->who)) >= sizeof(p->who)) {
+#ifdef DEBUG
+		logx(1, "sock %d: malformed program name", f->fd);
+#endif
+		return 0;
+	}
 	f->pstate = SOCK_INIT;
 	if (mode & MODE_MIDIMASK) {
 		f->midi = midi_new(&sock_midiops, f, mode);
