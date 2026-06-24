@@ -374,6 +374,7 @@ opt_new(struct dev *d, char *name,
 	o->dev = d;
 	o->alt_list = NULL;
 	o->refcnt = 0;
+	memset(o->app_array, 0, sizeof(o->app_array));
 
 	/*
 	 * XXX: below, we allocate a midi input buffer, since we don't
