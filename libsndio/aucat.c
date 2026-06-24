@@ -414,11 +414,11 @@ _aucat_open(struct aucat *hdl, const char *str, unsigned int mode)
 	unsigned int unit, devnum, type;
 
 	if ((p = _sndio_parsetype(str, "snd")) != NULL)
-		type = 0;
+		type = AMSG_TYPE_SND;
 	else if ((p = _sndio_parsetype(str, "midithru")) != NULL)
-		type = 1;
+		type = AMSG_TYPE_MIDITHRU;
 	else if ((p = _sndio_parsetype(str, "midi")) != NULL)
-		type = 2;
+		type = AMSG_TYPE_MIDI;
 	else {
 		DPRINTF("%s: unsupported device type\n", str);
 		return -1;
@@ -440,7 +440,7 @@ _aucat_open(struct aucat *hdl, const char *str, unsigned int mode)
 		return 0;
 	}
 	p++;
-	if (type == 0) {
+	if (type == AMSG_TYPE_SND) {
 		if (*p < '0' || *p > '9') {
 			devnum = AMSG_NODEV;
 			p = parsestr(p, opt, AMSG_OPTMAX);

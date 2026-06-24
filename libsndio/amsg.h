@@ -43,6 +43,13 @@
 #define AMSG_OLD_DESC_SIZE	92
 
 /*
+ * Server resource type
+ */
+#define AMSG_TYPE_SND		0	/* audio device */
+#define AMSG_TYPE_MIDITHRU	1	/* midithru port */
+#define AMSG_TYPE_MIDI		2	/* midi port */
+
+/*
  * WARNING: since the protocol may be simultaneously used by static
  * binaries or by different versions of a shared library, we are not
  * allowed to change the packet binary representation in a backward
