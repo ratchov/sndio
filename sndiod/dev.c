@@ -171,7 +171,7 @@ dev_midi_send(struct dev *d, void *msg, int msglen)
 	for (o = opt_list; o != NULL; o = o->next) {
 		if (o->dev != d)
 			continue;
-		midi_send(o->midi, msg, msglen);
+		midi_in(o->midi, msg, msglen);
 	}
 }
 
