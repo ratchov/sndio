@@ -19,17 +19,18 @@
 
 #ifdef DEBUG
 #include <stdio.h>
+#include <unistd.h>
 
 #define DPRINTFN(n, ...)					\
 	do {							\
 		if (_sndio_debug >= (n))			\
-			fprintf(stderr, __VA_ARGS__);		\
+			dprintf(STDERR_FILENO, __VA_ARGS__);	\
 	} while(0)
 
 #define DPRINTF(...)						\
 	do {							\
 		if (_sndio_debug > 0)				\
-			fprintf(stderr, __VA_ARGS__);		\
+			dprintf(STDERR_FILENO, __VA_ARGS__);	\
 	} while(0)
 
 #define DPERROR(s)						\
