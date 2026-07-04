@@ -530,7 +530,7 @@ dev_sub_bcopy(struct dev *d, struct slot *s)
 void
 dev_cycle(struct dev *d)
 {
-	struct slot *s, **ps;
+	struct slot *s, *snext;
 	unsigned char *base;
 	int nsamp;
 
@@ -574,8 +574,9 @@ dev_cycle(struct dev *d)
 	}
 	if ((d->mode & MODE_REC) && d->decbuf)
 		dec_do(&d->dec, d->decbuf, (unsigned char *)d->rbuf, d->round);
-	ps = &d->slot_list;
-	while ((s = *ps) != NULL) {
+
+	for (s = d->slot_list; s != NULL; s = snext) {
+		snext = s->next;
 #ifdef DEBUG
 		logx(4, "slot%zu: running, skip = %d", s - slot_array, s->skip);
 #endif
@@ -587,7 +588,6 @@ dev_cycle(struct dev *d)
 		slot_skip(s);
 		if (s->skip < 0) {
 			s->skip++;
-			ps = &s->next;
 			continue;
 		}
 
@@ -637,13 +637,10 @@ dev_cycle(struct dev *d)
 			}
 			if (s->xrun == XRUN_IGNORE) {
 				s->delta -= s->round;
-				ps = &s->next;
 			} else if (s->xrun == XRUN_SYNC) {
 				s->skip++;
-				ps = &s->next;
 			} else if (s->xrun == XRUN_ERROR) {
 				s->ops->exit(s->arg);
-				*ps = s->next;
 			} else {
 #ifdef DEBUG
 				logx(0, "slot%zu: bad xrun mode", s - slot_array);
@@ -677,7 +674,6 @@ dev_cycle(struct dev *d)
 			if (s->pstate != SLOT_STOP)
 				s->ops->fill(s->arg);
 		}
-		ps = &s->next;
 	}
 	if ((d->mode & MODE_PLAY) && d->encbuf) {
 		enc_do(&d->enc, (unsigned char *)DEV_PBUF(d),
