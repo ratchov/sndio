@@ -608,14 +608,14 @@ dev_cycle(struct dev *d)
 			 * layer, so s->mix.buf.used == 0 and we can
 			 * destroy the buffer
 			 */
-			*ps = s->next;
-			s->pstate = SLOT_INIT;
-			s->ops->eof(s->arg);
-			slot_freebufs(s);
-			dev_mix_adjvol(d);
+
 #ifdef DEBUG
 			logx(3, "slot%zu: drained", s - slot_array);
 #endif
+			slot_detach(s);
+			s->pstate = SLOT_INIT;
+			s->ops->eof(s->arg);
+			slot_freebufs(s);
 			continue;
 		}
 
