@@ -124,23 +124,7 @@ dev_sioctl_open(struct dev *d)
 void
 dev_sioctl_close(struct dev *d)
 {
-	struct ctl *c, **pc;
-
-	/* remove controls */
-	pc = &ctl_list;
-	while ((c = *pc) != NULL) {
-		if (c->scope == CTL_HW && c->u.hw.dev == d) {
-			c->refs_mask &= ~CTL_DEVMASK;
-			if (c->refs_mask == 0) {
-				*pc = c->next;
-				xfree(c);
-				continue;
-			}
-			c->type = CTL_NONE;
-			c->desc_mask = ~0;
-		}
-		pc = &c->next;
-	}
+	ctl_del(CTL_HW, d, NULL);
 	dev_ctlsync(d);
 }
 
