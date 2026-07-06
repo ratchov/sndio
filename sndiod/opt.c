@@ -507,6 +507,9 @@ opt_done(struct opt *o)
 		logx(0, "%s: still has refs", o->name);
 	}
 
+	for (i = 0; i < OPT_NAPP; i++)
+		ctl_del(CTL_APP_LEVEL, o, o->app_array + i);
+
 	for (i = 0; i < sizeof(opt_modes) / sizeof(opt_modes[0]); i++)
 		ctl_del(CTL_OPT_MODE, o, &i);
 
