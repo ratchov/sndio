@@ -38,6 +38,7 @@ struct opt {
 	struct dev *dev;
 	struct opt_alt *alt_list;
 	struct midi *midi;
+	struct midithru *midithru;
 	struct mtc *mtc;	/* if set, MMC-controlled MTC source */
 
 	struct app app_array[OPT_NAPP];

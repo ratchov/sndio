@@ -1885,11 +1885,11 @@ ctl_scope_fmt(char *buf, size_t size, struct ctl *c)
 		return snprintf(buf, size, "opt_mode:%s/%s",
 		    c->u.opt_mode.opt->name, opt_modes[c->u.opt_mode.idx].name);
 	case CTL_MIDI_PORT:
-		return snprintf(buf, size, "midi_port:%zu/%u",
-		    c->u.midi.midithru - midithru_array, c->u.midi.port->num);
+		return snprintf(buf, size, "midi_port:%s/%u",
+		    c->u.midi.midithru->name, c->u.midi.port->num);
 	case CTL_MIDI_THRU:
-		return snprintf(buf, size, "midi_thru:%zu",
-		    c->u.midi.midithru - midithru_array);
+		return snprintf(buf, size, "midi_thru:%s",
+		    c->u.midi.midithru->name);
 	default:
 		return snprintf(buf, size, "unknown");
 	}

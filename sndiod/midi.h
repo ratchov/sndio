@@ -21,6 +21,11 @@
 #include "miofile.h"
 
 /*
+ * max number of midithru structures
+ */
+#define MIDITHRU_NMAX	16
+
+/*
  * masks to extract command and channel of status byte
  */
 #define MIDI_CMDMASK	0xf0
@@ -97,6 +102,8 @@ struct port {
 };
 
 struct midithru {
+	struct midithru *next;
+	char name[CTL_NAMEMAX];
 	unsigned int portmask;
 	unsigned int progmask;
 	unsigned int prefportmask;
@@ -112,8 +119,7 @@ extern struct port *port_list;
 /*
  * midithru ports
  */
-#define MIDITHRU_NMAX 32
-extern struct midithru midithru_array[MIDITHRU_NMAX];
+extern struct midithru *midithru_list;
 
 void midi_init(void);
 void midi_done(void);
@@ -144,6 +150,9 @@ int  port_close(struct port *);
 struct port *port_alt_ref(int);
 void port_abort(struct port *p);
 
+struct midithru *midithru_new(const char *);
+struct midithru *midithru_byname(const char *);
+void midithru_del(struct midithru *);
 void midithru_ref(struct midithru *);
 void midithru_unref(struct midithru *);
 void midithru_addport(struct midithru *, struct port *);
