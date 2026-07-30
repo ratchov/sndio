@@ -332,7 +332,7 @@ opt_new(struct dev *d, char *name,
 		len = strlen(name);
 	} else {
 		for (len = 0; name[len] != '\0'; len++) {
-			if (len == OPT_NAMEMAX) {
+			if (len == OPT_NAMEMAX - 1) {
 				logx(0, "%s: too long", name);
 				return NULL;
 			}

@@ -45,8 +45,8 @@ struct opt {
 	unsigned int app_serial;
 
 	int num;
-#define OPT_NAMEMAX 11
-	char name[OPT_NAMEMAX + 1];
+#define OPT_NAMEMAX 12
+	char name[OPT_NAMEMAX];
 	int maxweight;		/* max dynamic range for clients */
 	int pmin, pmax;		/* play channels */
 	int rmin, rmax;		/* recording channels */
