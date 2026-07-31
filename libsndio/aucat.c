@@ -441,24 +441,12 @@ _aucat_open(struct aucat *hdl, const char *str, unsigned int mode)
 	}
 	p++;
 	if (type == AMSG_TYPE_SND) {
-		if (*p < '0' || *p > '9') {
-			devnum = AMSG_NODEV;
-			p = parsestr(p, opt, AMSG_OPTMAX);
-			if (p == NULL)
-				return 0;
-		} else {
-			p = _sndio_parsenum(p, &devnum, 15);
-			if (p == NULL)
-				return 0;
-			if (*p == '.') {
-				p = parsestr(++p, opt, AMSG_OPTMAX);
-				if (p == NULL)
-					return 0;
-			} else
-				strlcpy(opt, "default", AMSG_OPTMAX);
-		}
+		p = parsestr(p, opt, AMSG_OPTMAX);
+		if (p == NULL)
+			return 0;
 	} else {
 		p = _sndio_parsenum(p, &devnum, 15);
+		devnum += type * 16; /* XXX */
 		if (p == NULL)
 			return 0;
 		memset(opt, 0, sizeof(opt));
@@ -467,7 +455,6 @@ _aucat_open(struct aucat *hdl, const char *str, unsigned int mode)
 		DPRINTF("%s: junk at end of dev name\n", p);
 		return 0;
 	}
-	devnum += type * 16; /* XXX */
 	DPRINTFN(2, "_aucat_open: host=%s unit=%u devnum=%u opt=%s\n",
 	    host, unit, devnum, opt);
 	if (host[0] != '\0') {
@@ -497,7 +484,8 @@ _aucat_open(struct aucat *hdl, const char *str, unsigned int mode)
 	hdl->wmsg.cmd = htonl(AMSG_HELLO);
 	hdl->wmsg.u.hello.version = AMSG_VERSION;
 	hdl->wmsg.u.hello.mode = htons(mode);
-	hdl->wmsg.u.hello.devnum = devnum;
+	if (type != AMSG_TYPE_SND)
+		hdl->wmsg.u.hello.devnum = devnum;
 	hdl->wmsg.u.hello.id = htonl(getpid());
 	strlcpy(hdl->wmsg.u.hello.who, __progname,
 	    sizeof(hdl->wmsg.u.hello.who));
