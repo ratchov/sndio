@@ -23,8 +23,7 @@
 struct dev;
 
 struct app {
-#define APP_NAMEMAX	12
-	char name[APP_NAMEMAX];		/* name matching [a-z]+ */
+	char name[CTL_NAMEMAX];		/* name matching [a-z]+ */
 	unsigned int serial;		/* global unique number */
 	int vol;
 };
@@ -45,8 +44,7 @@ struct opt {
 	unsigned int app_serial;
 
 	int num;
-#define OPT_NAMEMAX 12
-	char name[OPT_NAMEMAX];
+	char name[CTL_NAMEMAX];
 	int maxweight;		/* max dynamic range for clients */
 	int pmin, pmax;		/* play channels */
 	int rmin, rmax;		/* recording channels */

@@ -60,4 +60,10 @@
 #define BITS_MIN	1		/* min bits per sample */
 #define BITS_MAX	32		/* max bits per sample */
 
+/*
+ * Max control names lengths (\0 included)
+ */
+#define CTL_NAMEMAX	12
+#define CTL_DISPLAYMAX	24
+
 #endif /* !defined(DEFS_H) */

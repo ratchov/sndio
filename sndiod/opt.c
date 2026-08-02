@@ -48,7 +48,7 @@ struct app *
 opt_mkapp(struct opt *o, char *who)
 {
 	char *p;
-	char name[APP_NAMEMAX];
+	char name[CTL_NAMEMAX];
 	unsigned int i, ser, bestser, bestidx, inuse;
 	struct app *a;
 	struct slot *s;
@@ -57,7 +57,7 @@ opt_mkapp(struct opt *o, char *who)
 	 * create a valid control name (lowcase, remove [^a-z], truncate)
 	 */
 	for (i = 0, p = who; ; p++) {
-		if (i == APP_NAMEMAX - 1 || *p == '\0') {
+		if (i == CTL_NAMEMAX - 1 || *p == '\0') {
 			name[i] = '\0';
 			break;
 		} else if (*p >= 'A' && *p <= 'Z') {
@@ -66,7 +66,7 @@ opt_mkapp(struct opt *o, char *who)
 			name[i++] = *p;
 	}
 	if (i == 0)
-		strlcpy(name, "noname", APP_NAMEMAX);
+		strlcpy(name, "noname", CTL_NAMEMAX);
 
 	/*
 	 * return the app with this name (if any)
@@ -332,7 +332,7 @@ opt_new(struct dev *d, char *name,
 		len = strlen(name);
 	} else {
 		for (len = 0; name[len] != '\0'; len++) {
-			if (len == OPT_NAMEMAX - 1) {
+			if (len == CTL_NAMEMAX - 1) {
 				logx(0, "%s: too long", name);
 				return NULL;
 			}
