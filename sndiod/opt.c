@@ -324,26 +324,8 @@ opt_new(struct dev *d, char *name,
 {
 	struct opt *o, **po;
 	char str[64];
-	unsigned int len, num;
-	char c;
+	unsigned int num;
 
-	if (name == NULL) {
-		name = d->name;
-		len = strlen(name);
-	} else {
-		for (len = 0; name[len] != '\0'; len++) {
-			if (len == CTL_NAMEMAX - 1) {
-				logx(0, "%s: too long", name);
-				return NULL;
-			}
-			c = name[len];
-			if ((c < 'a' || c > 'z') &&
-			    (c < 'A' || c > 'Z')) {
-				logx(0, "%s: only alphabetic chars allowed", name);
-				return NULL;
-			}
-		}
-	}
 	num = 0;
 	for (po = &opt_list; *po != NULL; po = &(*po)->next)
 		num++;
@@ -392,7 +374,7 @@ opt_new(struct dev *d, char *name,
 	o->mtc = mmc ? &mtc_array[0] : NULL;
 	o->dup = dup;
 	o->mode = mode;
-	memcpy(o->name, name, len + 1);
+	strlcpy(o->name, name, sizeof(o->name));
 	opt_setalt(o, d);
 	o->next = *po;
 	*po = o;
