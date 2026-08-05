@@ -116,7 +116,8 @@ struct amsg {
 			uint16_t mode;		/* bitmap of MODE_XXX */
 #define AMSG_VERSION	7
 			uint8_t version;	/* protocol version */
-			uint8_t devnum;		/* device number */
+#define AMSG_TYPE_MAGIC	0x40
+			uint8_t type;		/* AMSG_TYPE_MAGIC | type */
 			uint32_t id;		/* client id */
 #define AMSG_OPTMAX	12
 			char opt[AMSG_OPTMAX];	/* profile name */
