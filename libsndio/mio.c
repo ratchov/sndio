@@ -49,7 +49,7 @@ mio_open(const char *str, unsigned int mode, int nbio)
 			str = portany;
 	}
 	if (strcmp(str, portany) == 0) {
-		hdl = _mio_aucat_open("midithru/0", mode, nbio);
+		hdl = _mio_aucat_open("midi/default", mode, nbio);
 		if (hdl != NULL)
 			return hdl;
 #if defined(USE_RMIDI)
