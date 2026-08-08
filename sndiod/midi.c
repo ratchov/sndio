@@ -639,7 +639,7 @@ midithru_ref(struct midithru *t)
 			    CTL_LIST, "", "", "server", -1, "port",
 			    name, -1, 1, !!(t->portmask & c->midi->self));
 		}
-		ctl_new(CTL_MIDI_THRU, t, c,
+		ctl_new(CTL_MIDI_THRU, t, NULL,
 		    CTL_SW, "", "", "server", -1, "thru",
 		    "", -1, 1, t->thru);
 	}
