@@ -1745,8 +1745,8 @@ ctlslot_new(struct opt *o, struct midithru *t, struct ctlops *ops, void *arg)
 	s->self = 1 << i;
 	if (s->opt != NULL && !opt_ref(s->opt))
 		return NULL;
-	if (s->midithru)
-		midithru_ref(t);
+	if (s->midithru != NULL && !midithru_ref(s->midithru))
+		return NULL;
 	s->ops = ops;
 	s->arg = arg;
 	for (c = ctl_list; c != NULL; c = c->next) {

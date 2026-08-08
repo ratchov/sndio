@@ -804,8 +804,9 @@ sock_hello(struct sock *f)
 			midithru_addprog(f->opt->midithru, f->midi);
 			break;
 		case AMSG_TYPE_MIDITHRU:
+			if (!midithru_ref(midithru))
+				return 0;
 			f->midithru = midithru;
-			midithru_ref(f->midithru);
 			midithru_addprog(f->midithru, f->midi);
 			break;
 		case AMSG_TYPE_MIDI:
