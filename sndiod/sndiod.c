@@ -536,7 +536,7 @@ main(int argc, char **argv)
 	for (i = 0; i < MIDITHRU_NMAX; i++) {
 		char name[CTL_NAMEMAX];
 
-		snprintf(name, sizeof(name), "%d", i);
+		snprintf(name, sizeof(name), "default-%d", i);
 		midithru_new(name);
 	}
 

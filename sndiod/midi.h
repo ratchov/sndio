@@ -99,6 +99,7 @@ struct port {
 	int hold;			/* hold the port open ? */
 	int refcnt;
 	struct midi *midi;
+	struct midithru *midithru;
 };
 
 struct midithru {
@@ -109,6 +110,7 @@ struct midithru {
 	unsigned int prefportmask;
 	int refcnt;
 	int thru;
+	int fixed;
 };
 
 /*

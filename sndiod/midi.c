@@ -423,6 +423,7 @@ struct port *
 port_new(char *path, unsigned int mode, int hold)
 {
 	struct port *c;
+	char name[CTL_NAMEMAX];
 
 	c = xmalloc(sizeof(struct port));
 	c->path = path;
@@ -431,6 +432,10 @@ port_new(char *path, unsigned int mode, int hold)
 	c->refcnt = 0;
 	c->midi = midi_new(&port_midiops, c, mode);
 	c->num = midi_portnum++;
+	snprintf(name, sizeof(name), "%d", c->num);
+	c->midithru = midithru_new(name);
+	c->midithru->prefportmask |= c->midi->self;
+	c->midithru->fixed = 1;
 	c->next = port_list;
 	port_list = c;
 	return c;
@@ -447,6 +452,7 @@ port_del(struct port *c)
 	if (c->state != PORT_CFG)
 		port_close(c);
 	midi_del(c->midi);
+	midithru_del(c->midithru);
 	for (p = &port_list; *p != c; p = &(*p)->next) {
 #ifdef DEBUG
 		if (*p == NULL) {
@@ -560,7 +566,14 @@ port_abort(struct port *p)
 	struct midithru *t;
 
 	for (t = midithru_list; t != NULL; t = t->next) {
-		midithru_rm(t, p->midi);
+
+		/*
+		 * For non-fixed midithru structures unlink the port,
+		 * allowing client to continue operation (otherwise
+		 * midi_abort() will disconnect clients using the port).
+		 */
+		if (!t->fixed)
+			midithru_rm(t, p->midi);
 
 		c = ctl_find(CTL_MIDI_PORT, t, p);
 		if (c != NULL && c->curval != 0) {
@@ -627,23 +640,32 @@ midithru_ref(struct midithru *t)
 #ifdef DEBUG
 	logx(3, "%s: midithru requested", t->name);
 #endif
-	if (t->refcnt == 0) {
-		for (c = port_list; c != NULL; c = c->next) {
-			c->refcnt++;
-			if (c->state == DEV_CFG)
-				port_open(c);
-			if (c->state == DEV_INIT && (t->prefportmask & c->midi->self))
+	if (t->refcnt++ > 0)
+		return 1;
+
+	for (c = port_list; c != NULL; c = c->next) {
+		if (t->fixed && !(t->prefportmask & c->midi->self))
+			continue;
+		if (port_ref(c)) {
+			if (t->prefportmask & c->midi->self)
 				midithru_addport(t, c);
-			snprintf(name, sizeof(name), "%u", c->num);
-			ctl_new(CTL_MIDI_PORT, t, c,
-			    CTL_LIST, "", "", "server", -1, "port",
-			    name, -1, 1, !!(t->portmask & c->midi->self));
+		} else {
+			if (t->fixed) {
+				midithru_unref(t);
+				return 0;
+			}
+			c->refcnt++;
 		}
+		snprintf(name, sizeof(name), "%u", c->num);
+		ctl_new(CTL_MIDI_PORT, t, c,
+		    CTL_LIST, "", "", "server", -1, "port",
+		    name, -1, 1, !!(t->portmask & c->midi->self));
+	}
+	if (!t->fixed) {
 		ctl_new(CTL_MIDI_THRU, t, NULL,
 		    CTL_SW, "", "", "server", -1, "thru",
 		    "", -1, 1, t->thru);
 	}
-	t->refcnt++;
 	return 1;
 }
 
@@ -657,6 +679,7 @@ midithru_unref(struct midithru *t)
 #endif
 	if (--t->refcnt > 0)
 		return;
+
 	/* delete server.port control */
 	for (c = port_list; c != NULL; c = c->next) {
 		if (ctl_del(CTL_MIDI_PORT, t, c)) {

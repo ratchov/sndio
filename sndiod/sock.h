@@ -60,7 +60,6 @@ struct sock {
 	struct midithru *midithru;	/* controlled or connected midithru */
 	struct slot *slot;		/* audio device slot number */
 	struct midi *midi;		/* midi endpoint */
-	struct port *port;		/* midi port */
 	struct opt *opt;		/* midi-controlled opt */
 	struct ctlslot *ctlslot;
 	unsigned char *ctldesc;		/* temporary buffer */
