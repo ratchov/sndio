@@ -14,6 +14,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include <err.h>
 #include <errno.h>
 #include <limits.h>
 #include <poll.h>
@@ -146,13 +147,18 @@ static void *
 allocbuf(int nfr, int nch, int bps)
 {
 	size_t fsize;
+	void *ptr;
 
 	if (nch < 0 || nch > NCHAN_MAX || bps < 0 || bps > 4) {
 		logx(1, "allocbuf: bogus channels or bytes per sample count\n");
 		panic();
 	}
 	fsize = nch * bps;
-	return xmalloc(nfr * fsize);
+
+	ptr = reallocarray(NULL, nfr, fsize);
+	if (ptr == NULL)
+		err(1, "reallocarray");
+	return ptr;
 }
 
 static size_t
@@ -1075,7 +1081,9 @@ playrec(char *dev, int mode, int bufsz, char *port)
 	n = sio_nfds(dev_sh);
 	if (dev_mh)
 		n += mio_nfds(dev_mh);
-	pfds = xmalloc(n * sizeof(struct pollfd));
+	pfds = reallocarray(NULL, n, sizeof(struct pollfd));
+	if (pfds == NULL)
+		err(1, "malloc");
 
 	for (s = slot_list; s != NULL; s = s->next)
 		slot_init(s);
