@@ -93,7 +93,6 @@ int opt_mmc(void);
 int opt_onoff(void);
 int getword(char *, char **);
 unsigned int opt_mode(void);
-void getbasepath(char *);
 void setsig(void);
 void unsetsig(void);
 struct dev *mkdev(char *, struct aparams *, int, int);
