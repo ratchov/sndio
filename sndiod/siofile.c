@@ -103,20 +103,17 @@ int
 dev_sio_open(struct dev *d)
 {
 	struct sio_par par;
-	unsigned int rate, mode = SIO_PLAY | SIO_REC;
+	unsigned int rate, mode;
 
+	mode = SIO_PLAY | SIO_REC;
 	d->sio.hdl = sio_open(d->path, mode, 1);
 	if (d->sio.hdl == NULL) {
-		if (mode != (SIO_PLAY | SIO_REC))
-			return 0;
-		d->sio.hdl = sio_open(d->path, SIO_PLAY, 1);
-		if (d->sio.hdl != NULL)
-			mode = SIO_PLAY;
-		else {
-			d->sio.hdl = sio_open(d->path, SIO_REC, 1);
-			if (d->sio.hdl != NULL)
-				mode = SIO_REC;
-			else
+		mode = SIO_PLAY;
+		d->sio.hdl = sio_open(d->path, mode, 1);
+		if (d->sio.hdl == NULL) {
+			mode = SIO_REC;
+			d->sio.hdl = sio_open(d->path, mode, 1);
+			if (d->sio.hdl == NULL)
 				return 0;
 		}
 		logx(1, "%s: warning, device opened in %s mode",
