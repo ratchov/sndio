@@ -813,6 +813,10 @@ sock_hello(struct sock *f)
 		f->ctlops = 0;
 		f->ctlsyncpending = 0;
 	} else {
+		if (type != AMSG_TYPE_SND) {
+			logx(2, "sock %d: expected 'snd' type", f->fd);
+			return 0;
+		}
 		f->slot = slot_new(opt, id, p->who, &sock_slotops, f, mode);
 		if (f->slot == NULL)
 			return 0;
