@@ -57,8 +57,8 @@ int parse_name(char **, char *);
 int parse_unit(char **, int *);
 int parse_val(char **, float *);
 int parse_node(char **, char *, int *);
-void parse_mode(char **, int *);
-int parse_modeval(char **, int *, float *);
+void parse_mode(char **, unsigned int *);
+int parse_modeval(char **, unsigned int *, float *);
 void dump(void);
 int cmd(char *);
 void commit(void);
@@ -609,7 +609,7 @@ parse_node(char **line, char *str, int *unit)
  * parse a decimal prefixed by the optional mode
  */
 void
-parse_mode(char **line, int *rmode)
+parse_mode(char **line, unsigned int *rmode)
 {
 	char *p = *line;
 	unsigned mode;
@@ -638,7 +638,7 @@ parse_mode(char **line, int *rmode)
  * parse a decimal prefixed by the optional mode
  */
 int
-parse_modeval(char **line, int *rmode, float *rval)
+parse_modeval(char **line, unsigned int *rmode, float *rval)
 {
 	char *p = *line;
 	unsigned mode;
