@@ -571,7 +571,7 @@ port_abort(struct port *p)
 
 		if (t->fixed) {
 			for (s = ctlslot_array, i = 0; i < DEV_NCTLSLOT; i++, s++) {
-				if (s->ops == NULL && s->midithru == t) {
+				if (s->ops != NULL && s->midithru == t) {
 					s->ops->exit(s->arg);
 					s->ops = NULL;
 				}
