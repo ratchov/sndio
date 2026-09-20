@@ -51,6 +51,10 @@ port_mio_open(struct port *p)
 	if (p->mio.hdl == NULL)
 		return 0;
 	p->mio.file = file_new(&port_mio_ops, p, "port", mio_nfds(p->mio.hdl));
+	if (p->mio.file == NULL) {
+		mio_close(p->mio.hdl);
+		return 0;
+	}
 	return 1;
 }
 

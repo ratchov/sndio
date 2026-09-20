@@ -225,9 +225,15 @@ dev_sio_open(struct dev *d)
 	sio_onmove(d->sio.hdl, dev_sio_onmove, d);
 	sio_onxrun(d->sio.hdl, dev_sio_onxrun, d);
 	d->sio.file = file_new(&dev_sio_ops, d, "dev", sio_nfds(d->sio.hdl));
+	if (d->sio.file == NULL)
+		goto bad_close;
 	if (d->sioctl.hdl) {
 		d->sioctl.file = file_new(&dev_sioctl_ops, d, "mix",
 		    sioctl_nfds(d->sioctl.hdl));
+		if (d->sioctl.file == NULL) {
+			sioctl_close(d->sioctl.hdl);
+			d->sioctl.hdl = NULL;
+		}
 	}
 	timo_set(&d->sio.watchdog, dev_sio_timeout, d);
 	dev_sioctl_open(d);
