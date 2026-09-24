@@ -150,14 +150,8 @@ midi_link(struct midi *ep, struct midi *peer)
 		midi_tickets(ep);
 	}
 	if ((ep->mode & MODE_MIDIIN) && (peer->mode & MODE_MIDIOUT)) {
-#ifdef DEBUG
-		if (ep->obuf.used > 0) {
-			logx(0, "midi%u: linked with non-empty buffer", ep->num);
-			panic();
-		}
-#endif
-		/* ep has empty buffer, so no need to call midi_tickets() */
 		peer->txmask |= ep->self;
+		midi_tickets(peer);
 	}
 }
 
