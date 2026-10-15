@@ -225,7 +225,7 @@ mio_alsa_revents(struct mio_hdl *sh, struct pollfd *pfd)
 			hdl->mio.eof = 1;
 			return POLLHUP;
 		}
-		revents |= r & (POLLIN | POLLHUP);
+		revents |= r & (POLLIN | POLLHUP | POLLERR);
 	}
 	if (hdl->events & POLLOUT) {
 		rc = snd_rawmidi_poll_descriptors_revents(hdl->in,
@@ -235,7 +235,7 @@ mio_alsa_revents(struct mio_hdl *sh, struct pollfd *pfd)
 			hdl->mio.eof = 1;
 			return POLLHUP;
 		}
-		revents |= r & (POLLOUT | POLLHUP);
+		revents |= r & (POLLOUT | POLLHUP | POLLERR);
 	}
 	return revents;
 }

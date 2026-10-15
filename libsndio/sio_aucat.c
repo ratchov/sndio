@@ -485,7 +485,7 @@ sio_aucat_revents(struct sio_hdl *sh, struct pollfd *pfd)
 	if (hdl->sio.eof)
 		return POLLHUP;
 	DPRINTFN(3, "sio_aucat_revents: %x\n", revents & hdl->events);
-	return revents & (hdl->events | POLLHUP);
+	return revents & (hdl->events | (POLLHUP | POLLERR));
 }
 
 static int

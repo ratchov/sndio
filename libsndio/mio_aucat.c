@@ -179,5 +179,5 @@ mio_aucat_revents(struct mio_hdl *sh, struct pollfd *pfd)
 	}
 	if (hdl->mio.eof)
 		return POLLHUP;
-	return revents & (hdl->events | POLLHUP);
+	return revents & (hdl->events | (POLLHUP | POLLERR));
 }

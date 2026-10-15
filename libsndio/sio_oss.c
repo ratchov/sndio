@@ -683,7 +683,7 @@ sio_oss_revents(struct sio_hdl *sh, struct pollfd *pfd)
 	int revents = pfd->revents;
 	oss_count_t optr, iptr;
 
-	if ((pfd->revents & POLLHUP) ||
+	if ((pfd->revents & (POLLHUP | POLLERR)) ||
 	    (pfd->revents & (POLLIN | POLLOUT)) == 0)
 		return pfd->revents;
 

@@ -528,6 +528,7 @@ sioctl_sun_revents(struct sioctl_hdl *arg, struct pollfd *pfd)
 				return POLLHUP;
 		}
 	}
-	return 0;
+
+	return pfd->revents & (POLLHUP | POLLERR);
 }
 #endif

@@ -550,7 +550,7 @@ sio_sun_revents(struct sio_hdl *sh, struct pollfd *pfd)
 	int revents = pfd->revents;
 	int delta;
 
-	if ((pfd->revents & POLLHUP) ||
+	if ((pfd->revents & (POLLHUP | POLLERR)) ||
 	    (pfd->revents & (POLLIN | POLLOUT)) == 0)
 		return pfd->revents;
 	if (ioctl(hdl->fd, AUDIO_GETPOS, &ap) == -1) {
